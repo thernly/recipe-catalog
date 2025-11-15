@@ -7,6 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from sqlalchemy.orm import declarative_base
 from app.core.config import settings
 
+# Create base class for models
+Base = declarative_base()
+
 # Create async engine
 engine = create_async_engine(
     settings.DATABASE_URL,
@@ -22,9 +25,6 @@ AsyncSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
-
-# Create base class for models
-Base = declarative_base()
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -49,6 +49,17 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db():
     """Initialize database tables."""
+    # Import all models to ensure they're registered with SQLAlchemy
+    from app.models import (  # noqa: F401
+        User,
+        UserPreferences,
+        Recipe,
+        Collection,
+        RecipeCollection,
+        VerificationToken,
+        PasswordResetToken,
+    )
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
