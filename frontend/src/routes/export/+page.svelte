@@ -236,20 +236,23 @@
 	}
 
 	.status-message {
-		padding: 1rem;
+		padding: 1rem 1.5rem;
 		margin-bottom: 1.5rem;
 		background: var(--error-50);
-		border: 1px solid var(--error-200);
+		border: 2px solid var(--error-300);
 		border-radius: var(--radius-md);
-		color: var(--error-700);
+		color: var(--error-800);
 		text-align: center;
-		font-weight: 500;
+		font-weight: 600;
+		font-size: 1rem;
+		box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1);
 	}
 
 	.status-message.success {
 		background: var(--success-50);
-		border-color: var(--success-200);
-		color: var(--success-700);
+		border-color: var(--success-300);
+		color: var(--success-800);
+		box-shadow: 0 2px 8px rgba(34, 197, 94, 0.1);
 	}
 
 	.stats-overview {

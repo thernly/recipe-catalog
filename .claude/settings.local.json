@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(uv sync:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(uv run ruff:*)"
     ],
     "deny": [],
     "ask": []

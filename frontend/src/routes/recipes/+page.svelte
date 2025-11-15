@@ -7,7 +7,6 @@
 	import RecipeListItem from '$lib/components/RecipeListItem.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
 	import Navbar from '$lib/components/Navbar.svelte';
-	import { importRecipes } from '$lib/api/recipes';
 
 	let searchResult: RecipeSearchResult | null = null;
 	let loading = true;
@@ -137,44 +136,6 @@
 		loadRecipes();
 	}
 
-	// Handle JSON file upload
-	let uploading = false;
-	let fileInput: HTMLInputElement;
-
-	function triggerFileUpload() {
-		fileInput?.click();
-	}
-
-	async function handleFileUpload(e: Event) {
-		const target = e.target as HTMLInputElement;
-		const file = target.files?.[0];
-
-		if (!file) return;
-
-		if (file.type !== 'application/json') {
-			alert('Please select a JSON file');
-			return;
-		}
-
-		uploading = true;
-		try {
-			// Call the import API with the file
-			const result = await importRecipes(file, 'skip');
-
-			// Reload the recipes list
-			await loadRecipes();
-
-			alert(result.message || 'Recipes imported successfully!');
-		} catch (err) {
-			console.error('Failed to import recipes:', err);
-			alert(err instanceof Error ? err.message : 'Failed to import recipes');
-		} finally {
-			uploading = false;
-			// Reset the file input
-			target.value = '';
-		}
-	}
-
 	// Initialize
 	onMount(() => {
 		// Restore view mode from localStorage
@@ -191,15 +152,6 @@
 	<title>My Recipes - Recipe Catalog</title>
 </svelte:head>
 
-<!-- Hidden file input for JSON upload -->
-<input
-	type="file"
-	accept="application/json,.json"
-	bind:this={fileInput}
-	on:change={handleFileUpload}
-	style="display: none;"
-/>
-
 <div class="min-h-screen bg-neutral-50">
 	<!-- Navbar -->
 	<Navbar />
@@ -212,6 +164,13 @@
 				<h1 class="text-3xl font-bold" style="color: var(--text-900);">My Recipes</h1>
 
 				<div class="flex items-center gap-2">
+					<button
+						on:click={() => goto('/import')}
+						class="import-btn"
+						title="Import recipes"
+					>
+						📥 Import
+					</button>
 					<button
 						on:click={() => (showFilters = !showFilters)}
 						class="filter-toggle-btn"
@@ -320,8 +279,8 @@
 					<button on:click={() => goto('/recipes/new')} class="btn btn-primary">
 						+ Add Recipe
 					</button>
-					<button on:click={triggerFileUpload} class="btn btn-secondary" disabled={uploading}>
-						{uploading ? 'Uploading...' : '📥 Upload JSON'}
+					<button on:click={() => goto('/import')} class="btn btn-secondary">
+						📥 Import Recipes
 					</button>
 				</div>
 			</div>
@@ -475,6 +434,25 @@
 	.pagination-btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	.import-btn {
+		padding: 0.5rem 1rem;
+		border: 1px solid var(--neutral-200);
+		border-radius: var(--radius-md);
+		background: var(--neutral-white);
+		color: var(--text-900);
+		font-size: 0.875rem;
+		cursor: pointer;
+		transition: all var(--transition-fast);
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.import-btn:hover {
+		background: var(--accent-50);
+		border-color: var(--accent-300);
 	}
 
 	.filter-toggle-btn {
