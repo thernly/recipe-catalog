@@ -92,25 +92,25 @@
 					<h2 class="text-2xl font-semibold mb-6" style="color: var(--text-900);">Quick Actions</h2>
 
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<button class="btn btn-primary text-left p-6">
+						<button on:click={() => goto('/recipes/new')} class="btn btn-primary text-left p-6">
 							<div class="text-2xl mb-2">➕</div>
 							<h3 class="font-semibold mb-1">Add Recipe</h3>
 							<p class="text-sm opacity-90">Manually add a new recipe</p>
 						</button>
 
-						<button class="btn btn-secondary text-left p-6">
+						<button on:click={() => goto('/recipes')} class="btn btn-secondary text-left p-6">
 							<div class="text-2xl mb-2">🔍</div>
 							<h3 class="font-semibold mb-1">Browse Recipes</h3>
 							<p class="text-sm opacity-90">View all your recipes</p>
 						</button>
 
-						<button class="btn btn-secondary text-left p-6">
+						<button on:click={() => goto('/import')} class="btn btn-secondary text-left p-6">
 							<div class="text-2xl mb-2">📥</div>
 							<h3 class="font-semibold mb-1">Import from Extension</h3>
 							<p class="text-sm opacity-90">Import recipes from websites</p>
 						</button>
 
-						<button class="btn btn-secondary text-left p-6">
+						<button on:click={() => goto('/export')} class="btn btn-secondary text-left p-6">
 							<div class="text-2xl mb-2">📤</div>
 							<h3 class="font-semibold mb-1">Export Data</h3>
 							<p class="text-sm opacity-90">Download your recipes</p>

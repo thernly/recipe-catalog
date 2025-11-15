@@ -1,0 +1,204 @@
+<script lang="ts">
+	import type { RecipeSummary } from '$lib/api/recipes';
+	import { createEventDispatcher } from 'svelte';
+
+	export let recipe: RecipeSummary;
+	export let showActions: boolean = true;
+
+	const dispatch = createEventDispatcher();
+
+	function formatTime(minutes: number | undefined): string {
+		if (!minutes) return '';
+		if (minutes < 60) return `${minutes}min`;
+		const hours = Math.floor(minutes / 60);
+		const mins = minutes % 60;
+		return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
+	}
+
+	function handleView() {
+		dispatch('view', recipe);
+	}
+
+	function handleEdit() {
+		dispatch('edit', recipe);
+	}
+
+	function handleDelete() {
+		dispatch('delete', recipe);
+	}
+
+	function handleFavorite() {
+		dispatch('favorite', recipe);
+	}
+</script>
+
+<article class="recipe-card group">
+	<button on:click={handleView} class="w-full text-left">
+		<!-- Image -->
+		<div class="recipe-card-image">
+			{#if recipe.image_url}
+				<img src={recipe.image_url} alt={recipe.name} class="w-full h-full object-cover" />
+			{:else}
+				<div
+					class="w-full h-full flex items-center justify-center text-6xl"
+					style="background: var(--neutral-100);"
+				>
+					🍽️
+				</div>
+			{/if}
+		</div>
+
+		<!-- Content -->
+		<div class="p-4">
+			<h3 class="recipe-card-title">{recipe.name}</h3>
+
+			{#if recipe.description}
+				<p class="recipe-card-description">{recipe.description}</p>
+			{/if}
+
+			<!-- Metadata -->
+			<div class="flex flex-wrap gap-2 mt-3">
+				{#if recipe.cuisine}
+					<span class="badge">{recipe.cuisine}</span>
+				{/if}
+				{#if recipe.category}
+					<span class="badge badge-secondary">{recipe.category}</span>
+				{/if}
+			</div>
+
+			<div class="flex items-center justify-between mt-3">
+				{#if recipe.total_time_minutes}
+					<span class="text-sm" style="color: var(--text-600);">
+						🕐 {formatTime(recipe.total_time_minutes)}
+					</span>
+				{:else}
+					<span />
+				{/if}
+
+				<span
+					class="text-xs px-2 py-1 rounded"
+					style="background: var(--neutral-100); color: var(--text-600);"
+				>
+					{recipe.source_type === 'imported' ? '📥 Imported' : '✏️ Manual'}
+				</span>
+			</div>
+		</div>
+	</button>
+
+	<!-- Quick Actions (shown on hover) -->
+	{#if showActions}
+		<div class="recipe-card-actions">
+			<button
+				on:click|stopPropagation={handleFavorite}
+				class="action-btn"
+				title="Add to favorites"
+			>
+				⭐
+			</button>
+			<button on:click|stopPropagation={handleEdit} class="action-btn" title="Edit recipe">
+				✏️
+			</button>
+			<button on:click|stopPropagation={handleDelete} class="action-btn" title="Delete recipe">
+				🗑️
+			</button>
+		</div>
+	{/if}
+</article>
+
+<style>
+	.recipe-card {
+		position: relative;
+		background: var(--neutral-white);
+		border: 1px solid var(--neutral-200);
+		border-radius: var(--radius-lg);
+		overflow: hidden;
+		transition: all var(--transition-base);
+	}
+
+	.recipe-card:hover {
+		box-shadow: var(--shadow-lg);
+		transform: translateY(-2px);
+		border-color: var(--neutral-300);
+	}
+
+	.recipe-card-image {
+		aspect-ratio: 1;
+		overflow: hidden;
+		background: var(--neutral-100);
+	}
+
+	.recipe-card-title {
+		font-size: 1.125rem;
+		font-weight: 600;
+		color: var(--text-900);
+		margin-bottom: 0.5rem;
+		line-height: 1.4;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	.recipe-card-description {
+		font-size: 0.875rem;
+		color: var(--text-600);
+		line-height: 1.5;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	.recipe-card-actions {
+		position: absolute;
+		top: 0.5rem;
+		right: 0.5rem;
+		display: flex;
+		gap: 0.25rem;
+		opacity: 0;
+		transition: opacity var(--transition-fast);
+	}
+
+	.recipe-card:hover .recipe-card-actions {
+		opacity: 1;
+	}
+
+	.action-btn {
+		width: 2rem;
+		height: 2rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(255, 255, 255, 0.95);
+		border: 1px solid var(--neutral-200);
+		border-radius: var(--radius-md);
+		font-size: 1rem;
+		cursor: pointer;
+		transition: all var(--transition-fast);
+		backdrop-filter: blur(4px);
+	}
+
+	.action-btn:hover {
+		background: var(--accent-50);
+		border-color: var(--accent-300);
+		transform: scale(1.1);
+	}
+
+	.badge {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.25rem 0.75rem;
+		background: var(--color-badge-bg);
+		color: var(--color-badge-text);
+		border-radius: var(--radius-full);
+		font-size: 0.75rem;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.025em;
+	}
+
+	.badge-secondary {
+		background: var(--neutral-100);
+		color: var(--text-600);
+	}
+</style>
