@@ -16,6 +16,7 @@ from app.core.security import get_current_user
 from app.models.user import User
 from app.models.recipe import Recipe
 from app.models.collection import Collection, RecipeCollection
+from app.utils.recipe_format import convert_to_schema_org
 
 router = APIRouter()
 
@@ -44,37 +45,13 @@ async def export_recipes(
     recipes = result.scalars().all()
 
     if format == "json":
-        # Export as JSON
-        export_data = {
-            "export_date": datetime.utcnow().isoformat(),
-            "user": {
-                "email": current_user.email,
-                "display_name": current_user.display_name,
-            },
-            "total_recipes": len(recipes),
-            "recipes": [
-                {
-                    "id": recipe.id,
-                    "name": recipe.name,
-                    "description": recipe.description,
-                    "image_url": recipe.image_url,
-                    "recipe_data": recipe.recipe_data,
-                    "source_url": recipe.source_url,
-                    "source_type": recipe.source_type,
-                    "cuisine": recipe.cuisine,
-                    "category": recipe.category,
-                    "total_time_minutes": recipe.total_time_minutes,
-                    "created_at": recipe.created_at.isoformat() if recipe.created_at else None,
-                    "updated_at": recipe.updated_at.isoformat() if recipe.updated_at else None,
-                    "imported_at": recipe.imported_at.isoformat() if recipe.imported_at else None,
-                }
-                for recipe in recipes
-            ],
-        }
+        # Export as JSON in Schema.org Recipe format
+        recipes_schema_org = [convert_to_schema_org(recipe) for recipe in recipes]
 
         # Return as downloadable JSON file
+        # Export as array of recipes (not wrapped in object)
         return Response(
-            content=json.dumps(export_data, indent=2),
+            content=json.dumps(recipes_schema_org, indent=2),
             media_type="application/json",
             headers={
                 "Content-Disposition": f'attachment; filename="recipes_export_{datetime.utcnow().strftime("%Y%m%d")}.json"'
