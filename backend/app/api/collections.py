@@ -200,7 +200,7 @@ async def update_collection(
             )
 
     # Update fields
-    update_data = collection_update.dict(exclude_unset=True)
+    update_data = collection_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(collection, field, value)
 

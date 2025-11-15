@@ -6,6 +6,33 @@ from pydantic import BaseModel, EmailStr, Field, validator
 
 
 # ============================================
+# Shared Validators
+# ============================================
+
+
+def validate_password_complexity(password: str) -> str:
+    """
+    Shared password validation logic for complexity requirements.
+
+    Args:
+        password: The password to validate
+
+    Returns:
+        The validated password
+
+    Raises:
+        ValueError: If password doesn't meet complexity requirements
+    """
+    if not any(c.isupper() for c in password):
+        raise ValueError("Password must contain at least one uppercase letter")
+    if not any(c.islower() for c in password):
+        raise ValueError("Password must contain at least one lowercase letter")
+    if not any(c.isdigit() for c in password):
+        raise ValueError("Password must contain at least one digit")
+    return password
+
+
+# ============================================
 # User Registration & Authentication
 # ============================================
 
@@ -20,13 +47,7 @@ class UserCreate(BaseModel):
     @validator("password")
     def validate_password(cls, v):
         """Validate password complexity."""
-        if not any(c.isupper() for c in v):
-            raise ValueError("Password must contain at least one uppercase letter")
-        if not any(c.islower() for c in v):
-            raise ValueError("Password must contain at least one lowercase letter")
-        if not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain at least one digit")
-        return v
+        return validate_password_complexity(v)
 
 
 class UserLogin(BaseModel):
@@ -92,13 +113,7 @@ class PasswordChange(BaseModel):
     @validator("new_password")
     def validate_password(cls, v):
         """Validate password complexity."""
-        if not any(c.isupper() for c in v):
-            raise ValueError("Password must contain at least one uppercase letter")
-        if not any(c.islower() for c in v):
-            raise ValueError("Password must contain at least one lowercase letter")
-        if not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain at least one digit")
-        return v
+        return validate_password_complexity(v)
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -116,13 +131,7 @@ class ResetPasswordRequest(BaseModel):
     @validator("new_password")
     def validate_password(cls, v):
         """Validate password complexity."""
-        if not any(c.isupper() for c in v):
-            raise ValueError("Password must contain at least one uppercase letter")
-        if not any(c.islower() for c in v):
-            raise ValueError("Password must contain at least one lowercase letter")
-        if not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain at least one digit")
-        return v
+        return validate_password_complexity(v)
 
 
 class ResendVerificationRequest(BaseModel):

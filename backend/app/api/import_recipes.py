@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Dict, Any, Literal
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
@@ -18,6 +18,118 @@ from app.models.collection import Collection, RecipeCollection
 from app.utils.recipe_format import convert_from_schema_org
 
 router = APIRouter()
+
+
+async def _import_recipes_internal(
+    recipes_data: List[Dict[str, Any]],
+    user_id: int,
+    duplicate_handling: Literal["skip", "update", "create"],
+    collection: Collection | None,
+    db: AsyncSession,
+) -> Dict[str, Any]:
+    """
+    Internal helper function to import recipes from data.
+
+    Args:
+        recipes_data: List of recipe dictionaries in Schema.org format
+        user_id: ID of the user importing recipes
+        duplicate_handling: How to handle duplicates ("skip", "update", or "create")
+        collection: Optional collection to add recipes to
+        db: Database session
+
+    Returns:
+        Dictionary containing import results and statistics
+    """
+    # Track import results
+    results = {
+        "total": len(recipes_data),
+        "created": 0,
+        "updated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": [],
+    }
+
+    # Process each recipe
+    for idx, recipe_data in enumerate(recipes_data):
+        try:
+            # Convert from Schema.org format to internal format
+            recipe_dict = convert_from_schema_org(recipe_data)
+
+            # Check for duplicate by name
+            existing_recipe = None
+            if duplicate_handling in ["skip", "update"]:
+                result = await db.execute(
+                    select(Recipe)
+                    .where(Recipe.user_id == user_id)
+                    .where(Recipe.name == recipe_dict["name"])
+                    .where(Recipe.deleted_at.is_(None))
+                )
+                existing_recipe = result.scalar_one_or_none()
+
+            if existing_recipe:
+                if duplicate_handling == "skip":
+                    results["skipped"] += 1
+                    continue
+                elif duplicate_handling == "update":
+                    # Update existing recipe
+                    existing_recipe.description = recipe_dict["description"]
+                    existing_recipe.image_url = recipe_dict["image_url"]
+                    existing_recipe.recipe_data = recipe_dict["recipe_data"]
+                    existing_recipe.source_url = recipe_dict["source_url"]
+                    existing_recipe.cuisine = recipe_dict["cuisine"]
+                    existing_recipe.category = recipe_dict["category"]
+                    existing_recipe.total_time_minutes = recipe_dict["total_time_minutes"]
+                    existing_recipe.is_modified = True
+                    existing_recipe.updated_at = datetime.now(timezone.utc)
+
+                    results["updated"] += 1
+                    recipe_to_add = existing_recipe
+            else:
+                # Create new recipe
+                new_recipe = Recipe(
+                    user_id=user_id,
+                    name=recipe_dict["name"],
+                    description=recipe_dict["description"],
+                    image_url=recipe_dict["image_url"],
+                    recipe_data=recipe_dict["recipe_data"],
+                    source_url=recipe_dict["source_url"],
+                    source_type=recipe_dict["source_type"],
+                    cuisine=recipe_dict["cuisine"],
+                    category=recipe_dict["category"],
+                    total_time_minutes=recipe_dict["total_time_minutes"],
+                    imported_at=datetime.now(timezone.utc),
+                )
+                db.add(new_recipe)
+                results["created"] += 1
+                recipe_to_add = new_recipe
+
+            # Add to collection if specified
+            if collection and recipe_to_add:
+                # Flush to get the recipe ID if it's new
+                await db.flush()
+
+                # Check if recipe is already in collection
+                existing_link = await db.execute(
+                    select(RecipeCollection)
+                    .where(RecipeCollection.recipe_id == recipe_to_add.id)
+                    .where(RecipeCollection.collection_id == collection.id)
+                )
+                if not existing_link.scalar_one_or_none():
+                    db.add(RecipeCollection(
+                        recipe_id=recipe_to_add.id,
+                        collection_id=collection.id
+                    ))
+
+        except Exception as e:
+            results["failed"] += 1
+            results["errors"].append({
+                "index": idx,
+                "name": recipe_data.get("name", "Unknown"),
+                "error": str(e)
+            })
+
+    return results
 
 
 @router.post("/recipes")
@@ -77,94 +189,14 @@ async def import_recipes(
         if not collection:
             raise HTTPException(status_code=404, detail="Collection not found")
 
-    # Track import results
-    results = {
-        "total": len(recipes_data),
-        "created": 0,
-        "updated": 0,
-        "skipped": 0,
-        "failed": 0,
-        "errors": [],
-    }
-
-    # Process each recipe
-    for idx, recipe_data in enumerate(recipes_data):
-        try:
-            # Convert from Schema.org format to internal format
-            recipe_dict = convert_from_schema_org(recipe_data)
-
-            # Check for duplicate by name
-            existing_recipe = None
-            if duplicate_handling in ["skip", "update"]:
-                result = await db.execute(
-                    select(Recipe)
-                    .where(Recipe.user_id == current_user.id)
-                    .where(Recipe.name == recipe_dict["name"])
-                    .where(Recipe.deleted_at.is_(None))
-                )
-                existing_recipe = result.scalar_one_or_none()
-
-            if existing_recipe:
-                if duplicate_handling == "skip":
-                    results["skipped"] += 1
-                    continue
-                elif duplicate_handling == "update":
-                    # Update existing recipe
-                    existing_recipe.description = recipe_dict["description"]
-                    existing_recipe.image_url = recipe_dict["image_url"]
-                    existing_recipe.recipe_data = recipe_dict["recipe_data"]
-                    existing_recipe.source_url = recipe_dict["source_url"]
-                    existing_recipe.cuisine = recipe_dict["cuisine"]
-                    existing_recipe.category = recipe_dict["category"]
-                    existing_recipe.total_time_minutes = recipe_dict["total_time_minutes"]
-                    existing_recipe.is_modified = True
-                    existing_recipe.updated_at = datetime.utcnow()
-
-                    results["updated"] += 1
-                    recipe_to_add = existing_recipe
-            else:
-                # Create new recipe
-                new_recipe = Recipe(
-                    user_id=current_user.id,
-                    name=recipe_dict["name"],
-                    description=recipe_dict["description"],
-                    image_url=recipe_dict["image_url"],
-                    recipe_data=recipe_dict["recipe_data"],
-                    source_url=recipe_dict["source_url"],
-                    source_type=recipe_dict["source_type"],
-                    cuisine=recipe_dict["cuisine"],
-                    category=recipe_dict["category"],
-                    total_time_minutes=recipe_dict["total_time_minutes"],
-                    imported_at=datetime.utcnow(),
-                )
-                db.add(new_recipe)
-                results["created"] += 1
-                recipe_to_add = new_recipe
-
-            # Add to collection if specified
-            if collection and recipe_to_add:
-                # Flush to get the recipe ID if it's new
-                await db.flush()
-
-                # Check if recipe is already in collection
-                existing_link = await db.execute(
-                    select(RecipeCollection)
-                    .where(RecipeCollection.recipe_id == recipe_to_add.id)
-                    .where(RecipeCollection.collection_id == collection.id)
-                )
-                if not existing_link.scalar_one_or_none():
-                    db.add(RecipeCollection(
-                        recipe_id=recipe_to_add.id,
-                        collection_id=collection.id
-                    ))
-
-        except Exception as e:
-            results["failed"] += 1
-            results["errors"].append({
-                "index": idx,
-                "name": recipe_data.get("name", "Unknown"),
-                "error": str(e)
-            })
+    # Import recipes using shared helper function
+    results = await _import_recipes_internal(
+        recipes_data=recipes_data,
+        user_id=current_user.id,
+        duplicate_handling=duplicate_handling,
+        collection=collection,
+        db=db,
+    )
 
     # Commit all changes
     try:
@@ -213,94 +245,14 @@ async def import_recipes_json(
         if not collection:
             raise HTTPException(status_code=404, detail="Collection not found")
 
-    # Track import results
-    results = {
-        "total": len(recipes),
-        "created": 0,
-        "updated": 0,
-        "skipped": 0,
-        "failed": 0,
-        "errors": [],
-    }
-
-    # Process each recipe
-    for idx, recipe_data in enumerate(recipes):
-        try:
-            # Convert from Schema.org format to internal format
-            recipe_dict = convert_from_schema_org(recipe_data)
-
-            # Check for duplicate by name
-            existing_recipe = None
-            if duplicate_handling in ["skip", "update"]:
-                result = await db.execute(
-                    select(Recipe)
-                    .where(Recipe.user_id == current_user.id)
-                    .where(Recipe.name == recipe_dict["name"])
-                    .where(Recipe.deleted_at.is_(None))
-                )
-                existing_recipe = result.scalar_one_or_none()
-
-            if existing_recipe:
-                if duplicate_handling == "skip":
-                    results["skipped"] += 1
-                    continue
-                elif duplicate_handling == "update":
-                    # Update existing recipe
-                    existing_recipe.description = recipe_dict["description"]
-                    existing_recipe.image_url = recipe_dict["image_url"]
-                    existing_recipe.recipe_data = recipe_dict["recipe_data"]
-                    existing_recipe.source_url = recipe_dict["source_url"]
-                    existing_recipe.cuisine = recipe_dict["cuisine"]
-                    existing_recipe.category = recipe_dict["category"]
-                    existing_recipe.total_time_minutes = recipe_dict["total_time_minutes"]
-                    existing_recipe.is_modified = True
-                    existing_recipe.updated_at = datetime.utcnow()
-
-                    results["updated"] += 1
-                    recipe_to_add = existing_recipe
-            else:
-                # Create new recipe
-                new_recipe = Recipe(
-                    user_id=current_user.id,
-                    name=recipe_dict["name"],
-                    description=recipe_dict["description"],
-                    image_url=recipe_dict["image_url"],
-                    recipe_data=recipe_dict["recipe_data"],
-                    source_url=recipe_dict["source_url"],
-                    source_type=recipe_dict["source_type"],
-                    cuisine=recipe_dict["cuisine"],
-                    category=recipe_dict["category"],
-                    total_time_minutes=recipe_dict["total_time_minutes"],
-                    imported_at=datetime.utcnow(),
-                )
-                db.add(new_recipe)
-                results["created"] += 1
-                recipe_to_add = new_recipe
-
-            # Add to collection if specified
-            if collection and recipe_to_add:
-                # Flush to get the recipe ID if it's new
-                await db.flush()
-
-                # Check if recipe is already in collection
-                existing_link = await db.execute(
-                    select(RecipeCollection)
-                    .where(RecipeCollection.recipe_id == recipe_to_add.id)
-                    .where(RecipeCollection.collection_id == collection.id)
-                )
-                if not existing_link.scalar_one_or_none():
-                    db.add(RecipeCollection(
-                        recipe_id=recipe_to_add.id,
-                        collection_id=collection.id
-                    ))
-
-        except Exception as e:
-            results["failed"] += 1
-            results["errors"].append({
-                "index": idx,
-                "name": recipe_data.get("name", "Unknown"),
-                "error": str(e)
-            })
+    # Import recipes using shared helper function
+    results = await _import_recipes_internal(
+        recipes_data=recipes,
+        user_id=current_user.id,
+        duplicate_handling=duplicate_handling,
+        collection=collection,
+        db=db,
+    )
 
     # Commit all changes
     try:

@@ -2,7 +2,7 @@
 Recipe CRUD API endpoints.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,7 +53,7 @@ async def create_recipe(
         cuisine=recipe_data.cuisine,
         category=recipe_data.category,
         total_time_minutes=recipe_data.total_time_minutes,
-        imported_at=datetime.utcnow()
+        imported_at=datetime.now(timezone.utc)
         if recipe_data.source_type == "imported"
         else None,
     )
@@ -254,7 +254,7 @@ async def update_recipe(
         )
 
     # Update fields
-    update_data = recipe_update.dict(exclude_unset=True, exclude={"collection_ids"})
+    update_data = recipe_update.model_dump(exclude_unset=True, exclude={"collection_ids"})
     for field, value in update_data.items():
         setattr(recipe, field, value)
 
@@ -316,7 +316,7 @@ async def delete_recipe(
         await db.delete(recipe)
     else:
         # Soft delete
-        recipe.deleted_at = datetime.utcnow()
+        recipe.deleted_at = datetime.now(timezone.utc)
 
     await db.commit()
 

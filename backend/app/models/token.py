@@ -4,7 +4,7 @@ Token models for email verification and password reset
 
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import secrets
 
 from app.core.database import Base
@@ -34,7 +34,7 @@ class VerificationToken(Base):
     def create_for_user(cls, user_id: int, hours_valid: int = 24):
         """Create a new verification token for a user"""
         token = cls.generate_token()
-        expires_at = datetime.utcnow() + timedelta(hours=hours_valid)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=hours_valid)
 
         return cls(
             user_id=user_id,
@@ -44,7 +44,7 @@ class VerificationToken(Base):
 
     def is_valid(self) -> bool:
         """Check if token is still valid"""
-        return not self.used and self.expires_at > datetime.utcnow()
+        return not self.used and self.expires_at > datetime.now(timezone.utc)
 
 
 class PasswordResetToken(Base):
@@ -71,7 +71,7 @@ class PasswordResetToken(Base):
     def create_for_user(cls, user_id: int, hours_valid: int = 1):
         """Create a new password reset token for a user"""
         token = cls.generate_token()
-        expires_at = datetime.utcnow() + timedelta(hours=hours_valid)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=hours_valid)
 
         return cls(
             user_id=user_id,
@@ -81,4 +81,4 @@ class PasswordResetToken(Base):
 
     def is_valid(self) -> bool:
         """Check if token is still valid"""
-        return not self.used and self.expires_at > datetime.utcnow()
+        return not self.used and self.expires_at > datetime.now(timezone.utc)

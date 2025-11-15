@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Literal
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
@@ -54,7 +54,7 @@ async def export_recipes(
             content=json.dumps(recipes_schema_org, indent=2),
             media_type="application/json",
             headers={
-                "Content-Disposition": f'attachment; filename="recipes_export_{datetime.utcnow().strftime("%Y%m%d")}.json"'
+                "Content-Disposition": f'attachment; filename="recipes_export_{datetime.now(timezone.utc).strftime("%Y%m%d")}.json"'
             },
         )
 
@@ -62,7 +62,7 @@ async def export_recipes(
         # Export as Markdown
         lines = [
             f"# Recipe Export - {current_user.display_name}",
-            f"\nExported: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}",
+            f"\nExported: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
             f"\nTotal Recipes: {len(recipes)}",
             "\n---\n",
         ]
@@ -112,7 +112,7 @@ async def export_recipes(
             content=content,
             media_type="text/markdown",
             headers={
-                "Content-Disposition": f'attachment; filename="recipes_export_{datetime.utcnow().strftime("%Y%m%d")}.md"'
+                "Content-Disposition": f'attachment; filename="recipes_export_{datetime.now(timezone.utc).strftime("%Y%m%d")}.md"'
             },
         )
 
@@ -120,7 +120,7 @@ async def export_recipes(
         # Export as plain text
         lines = [
             f"RECIPE EXPORT - {current_user.display_name}",
-            f"Exported: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}",
+            f"Exported: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
             f"Total Recipes: {len(recipes)}",
             "\n" + "="*80 + "\n",
         ]
@@ -171,7 +171,7 @@ async def export_recipes(
             content=content,
             media_type="text/plain",
             headers={
-                "Content-Disposition": f'attachment; filename="recipes_export_{datetime.utcnow().strftime("%Y%m%d")}.txt"'
+                "Content-Disposition": f'attachment; filename="recipes_export_{datetime.now(timezone.utc).strftime("%Y%m%d")}.txt"'
             },
         )
 
@@ -199,7 +199,7 @@ async def export_collections(
     if format == "json":
         # Export as JSON
         export_data = {
-            "export_date": datetime.utcnow().isoformat(),
+            "export_date": datetime.now(timezone.utc).isoformat(),
             "user": {
                 "email": current_user.email,
                 "display_name": current_user.display_name,
@@ -238,7 +238,7 @@ async def export_collections(
             content=json.dumps(export_data, indent=2),
             media_type="application/json",
             headers={
-                "Content-Disposition": f'attachment; filename="collections_export_{datetime.utcnow().strftime("%Y%m%d")}.json"'
+                "Content-Disposition": f'attachment; filename="collections_export_{datetime.now(timezone.utc).strftime("%Y%m%d")}.json"'
             },
         )
 
@@ -246,7 +246,7 @@ async def export_collections(
         # Export as Markdown
         lines = [
             f"# Collections Export - {current_user.display_name}",
-            f"\nExported: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}",
+            f"\nExported: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
             f"\nTotal Collections: {len(collections)}",
             "\n---\n",
         ]
@@ -281,7 +281,7 @@ async def export_collections(
             content=content,
             media_type="text/markdown",
             headers={
-                "Content-Disposition": f'attachment; filename="collections_export_{datetime.utcnow().strftime("%Y%m%d")}.md"'
+                "Content-Disposition": f'attachment; filename="collections_export_{datetime.now(timezone.utc).strftime("%Y%m%d")}.md"'
             },
         )
 
@@ -316,7 +316,7 @@ async def export_all_data(
 
     # Build complete export
     export_data = {
-        "export_date": datetime.utcnow().isoformat(),
+        "export_date": datetime.now(timezone.utc).isoformat(),
         "export_type": "complete_backup",
         "user": {
             "email": current_user.email,
@@ -374,6 +374,6 @@ async def export_all_data(
         content=json.dumps(export_data, indent=2),
         media_type="application/json",
         headers={
-            "Content-Disposition": f'attachment; filename="complete_backup_{datetime.utcnow().strftime("%Y%m%d")}.json"'
+            "Content-Disposition": f'attachment; filename="complete_backup_{datetime.now(timezone.utc).strftime("%Y%m%d")}.json"'
         },
     )

@@ -191,7 +191,7 @@ async def update_user_preferences(
         db.add(preferences)
 
     # Update fields
-    update_data = prefs_update.dict(exclude_unset=True)
+    update_data = prefs_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(preferences, field, value)
 
