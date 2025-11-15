@@ -2,7 +2,7 @@
 Application configuration settings.
 """
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 
 
@@ -33,27 +33,6 @@ class Settings(BaseSettings):
     ALLOWED_METHODS: list[str] = ["GET", "POST", "PUT", "DELETE", "PATCH"]
     ALLOWED_HEADERS: str = "*"
 
-    @field_validator("ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def parse_origins(cls, v):
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
-
-    @field_validator("ALLOWED_METHODS", mode="before")
-    @classmethod
-    def parse_methods(cls, v):
-        if isinstance(v, str):
-            return [method.strip() for method in v.split(",")]
-        return v
-
-    @field_validator("ALLOWED_IMAGE_TYPES", mode="before")
-    @classmethod
-    def parse_image_types(cls, v):
-        if isinstance(v, str):
-            return [image_type.strip() for image_type in v.split(",")]
-        return v
-
     # Email
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
@@ -74,9 +53,28 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = "logs/app.log"
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, env_parse_none_str="null")
+
+    @field_validator("ALLOWED_ORIGINS", mode="before")
+    @classmethod
+    def parse_origins(cls, v):
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",")]
+        return v
+
+    @field_validator("ALLOWED_METHODS", mode="before")
+    @classmethod
+    def parse_methods(cls, v):
+        if isinstance(v, str):
+            return [method.strip() for method in v.split(",")]
+        return v
+
+    @field_validator("ALLOWED_IMAGE_TYPES", mode="before")
+    @classmethod
+    def parse_image_types(cls, v):
+        if isinstance(v, str):
+            return [image_type.strip() for image_type in v.split(",")]
+        return v
 
 
 # Create global settings instance

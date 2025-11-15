@@ -2,6 +2,7 @@
 Recipe Catalog API - Main Application
 FastAPI backend for recipe management.
 """
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +11,7 @@ from app.core.database import init_db, close_db
 
 # Include API routers
 from app.api import auth, recipes, collections, users
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -57,7 +59,6 @@ async def root():
 async def health_check():
     """Health check endpoint."""
     return {"status": "ok"}
-
 
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])

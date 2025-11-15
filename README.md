@@ -82,11 +82,24 @@ Frontend runs on `http://localhost:5173`
 
 ### Backend Setup
 
+Run this to generate a secret key for your .env file:
+
+```python
+import secrets
+print(secrets.token_urlsafe(32))
+```
+
+or
+
+```powerhell
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+uv run venv .venv
+source .venv/bin/activate  # On Windows: venv\Scripts\activate
+uv sync
 uvicorn app.main:app --reload
 ```
 
