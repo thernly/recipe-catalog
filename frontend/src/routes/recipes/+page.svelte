@@ -303,7 +303,7 @@
 			{#if searchResult.total_pages > 1}
 				<div class="flex justify-center items-center gap-2 mt-8">
 					<button
-						on:click={() => goToPage(searchParams.page! - 1)}
+						on:click={() => goToPage(searchParams.page - 1)}
 						disabled={!searchResult.has_prev}
 						class="pagination-btn"
 					>
@@ -315,7 +315,7 @@
 					</span>
 
 					<button
-						on:click={() => goToPage(searchParams.page! + 1)}
+						on:click={() => goToPage(searchParams.page + 1)}
 						disabled={!searchResult.has_next}
 						class="pagination-btn"
 					>
