@@ -173,3 +173,30 @@ export async function importRecipes(
 		headers: {} // Let browser set Content-Type for FormData
 	});
 }
+
+/**
+ * Export a single recipe
+ */
+export async function exportRecipe(
+	id: number,
+	format: 'json' | 'markdown' | 'text'
+): Promise<Blob> {
+	const token = localStorage.getItem('auth_token');
+	if (!token) {
+		throw new Error('Not authenticated');
+	}
+
+	const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+	const response = await fetch(`${API_BASE_URL}/api/recipes/${id}/export?format=${format}`, {
+		headers: {
+			Authorization: `Bearer ${token}`
+		}
+	});
+
+	if (!response.ok) {
+		const errorText = await response.text();
+		throw new Error(`Export failed: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`);
+	}
+
+	return response.blob();
+}

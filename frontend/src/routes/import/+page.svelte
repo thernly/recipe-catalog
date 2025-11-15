@@ -10,10 +10,11 @@
 	let error: string | null = null;
 	let success: string | null = null;
 	let fileInput: HTMLInputElement;
-	let selectedFile: File | null = null;
+	let selectedFiles: File[] = [];
 	let duplicateHandling: 'skip' | 'update' | 'create' = 'skip';
 	let selectedCollectionId: number | undefined = undefined;
 	let collections: Collection[] = [];
+	let importProgress = { current: 0, total: 0 };
 
 	// Load collections
 	async function loadCollections() {
@@ -26,64 +27,106 @@
 
 	function handleFileSelect(e: Event) {
 		const target = e.target as HTMLInputElement;
-		const file = target.files?.[0];
+		const files = target.files;
 
-		if (!file) {
-			selectedFile = null;
+		if (!files || files.length === 0) {
+			selectedFiles = [];
 			return;
 		}
 
-		if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
-			error = 'Please select a JSON file';
-			selectedFile = null;
-			target.value = '';
-			return;
+		// Validate all files are JSON
+		const validFiles: File[] = [];
+		const invalidFiles: string[] = [];
+
+		for (let i = 0; i < files.length; i++) {
+			const file = files[i];
+			if (file.type === 'application/json' || file.name.endsWith('.json')) {
+				validFiles.push(file);
+			} else {
+				invalidFiles.push(file.name);
+			}
 		}
 
-		selectedFile = file;
+		if (invalidFiles.length > 0) {
+			error = `Invalid files (not JSON): ${invalidFiles.join(', ')}`;
+			if (validFiles.length === 0) {
+				selectedFiles = [];
+				target.value = '';
+				return;
+			}
+		}
+
+		selectedFiles = validFiles;
 		error = null;
 	}
 
 	async function handleImport() {
-		if (!selectedFile) {
-			error = 'Please select a file to import';
+		if (selectedFiles.length === 0) {
+			error = 'Please select at least one file to import';
 			return;
 		}
 
 		loading = true;
 		error = null;
 		success = null;
+		importProgress = { current: 0, total: selectedFiles.length };
 
 		try {
-			const result = await importRecipes(selectedFile, duplicateHandling, selectedCollectionId);
+			const results = [];
+			const errors = [];
 
-			success = result.message;
+			// Import each file sequentially
+			for (let i = 0; i < selectedFiles.length; i++) {
+				const file = selectedFiles[i];
+				importProgress.current = i + 1;
 
-			// Reset form
-			selectedFile = null;
-			if (fileInput) {
-				fileInput.value = '';
-			}
+				try {
+					const result = await importRecipes(file, duplicateHandling, selectedCollectionId);
+					results.push({ file: file.name, result });
 
-			// Show details if available
-			if (result.details) {
-				const details = result.details;
-				console.log('Import details:', details);
-
-				if (details.errors && details.errors.length > 0) {
-					error = `Import completed with some errors. Check console for details.`;
+					if (result.details?.errors && result.details.errors.length > 0) {
+						errors.push(`${file.name}: ${result.details.errors.length} errors`);
+					}
+				} catch (err) {
+					const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+					errors.push(`${file.name}: ${errorMsg}`);
+					console.error(`Failed to import ${file.name}:`, err);
 				}
 			}
 
-			// Redirect to recipes page after 2 seconds
-			setTimeout(() => {
-				goto('/recipes');
-			}, 2000);
+			// Summarize results
+			const totalFiles = selectedFiles.length;
+			const successfulFiles = results.length;
+
+			if (successfulFiles === totalFiles && errors.length === 0) {
+				success = `Successfully imported ${totalFiles} file${totalFiles > 1 ? 's' : ''}!`;
+			} else if (successfulFiles > 0) {
+				success = `Imported ${successfulFiles} of ${totalFiles} file${totalFiles > 1 ? 's' : ''}`;
+				if (errors.length > 0) {
+					error = `Some errors occurred:\n${errors.join('\n')}`;
+				}
+			} else {
+				error = `Failed to import files:\n${errors.join('\n')}`;
+			}
+
+			// Reset form on success
+			if (successfulFiles > 0) {
+				selectedFiles = [];
+				if (fileInput) {
+					fileInput.value = '';
+				}
+
+				// Redirect to recipes page after 2 seconds
+				setTimeout(() => {
+					goto('/recipes');
+				}, 2000);
+			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to import recipes';
 			console.error('Import failed:', err);
 		} finally {
 			loading = false;
+			importProgress = { current: 0, total: 0 };
 		}
 	}
 
@@ -122,21 +165,32 @@
 					<!-- File input -->
 					<div class="mb-4">
 						<label class="block mb-2 font-medium" style="color: var(--text-700);">
-							Select File
+							Select File(s)
 						</label>
 						<input
 							type="file"
 							accept="application/json,.json"
+							multiple
 							bind:this={fileInput}
 							on:change={handleFileSelect}
 							class="w-full px-4 py-2 border rounded-md"
 							style="border-color: var(--neutral-300);"
 							disabled={loading}
 						/>
-						{#if selectedFile}
-							<p class="mt-2 text-sm" style="color: var(--text-600);">
-								Selected: {selectedFile.name} ({Math.round(selectedFile.size / 1024)} KB)
-							</p>
+						{#if selectedFiles.length > 0}
+							<div class="mt-2">
+								<p class="text-sm font-medium mb-1" style="color: var(--text-600);">
+									Selected {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''}:
+								</p>
+								<ul class="text-sm space-y-1" style="color: var(--text-600);">
+									{#each selectedFiles.slice(0, 5) as file}
+										<li>• {file.name} ({Math.round(file.size / 1024)} KB)</li>
+									{/each}
+									{#if selectedFiles.length > 5}
+										<li class="italic">... and {selectedFiles.length - 5} more</li>
+									{/if}
+								</ul>
+							</div>
 						{/if}
 					</div>
 
@@ -181,7 +235,7 @@
 					<!-- Status messages -->
 					{#if error}
 						<div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-							<p class="text-red-800">{error}</p>
+							<p class="text-red-800 whitespace-pre-line">{error}</p>
 						</div>
 					{/if}
 
@@ -192,13 +246,28 @@
 						</div>
 					{/if}
 
+					<!-- Progress indicator -->
+					{#if loading && importProgress.total > 0}
+						<div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+							<p class="text-blue-800">
+								Importing file {importProgress.current} of {importProgress.total}...
+							</p>
+							<div class="mt-2 w-full bg-blue-200 rounded-full h-2">
+								<div
+									class="bg-blue-600 h-2 rounded-full transition-all"
+									style="width: {(importProgress.current / importProgress.total) * 100}%"
+								></div>
+							</div>
+						</div>
+					{/if}
+
 					<!-- Import button -->
 					<button
 						on:click={handleImport}
-						disabled={!selectedFile || loading}
+						disabled={selectedFiles.length === 0 || loading}
 						class="btn btn-primary w-full"
 					>
-						{loading ? 'Importing...' : '📥 Import Recipes'}
+						{loading ? 'Importing...' : selectedFiles.length > 1 ? `📥 Import ${selectedFiles.length} Files` : '📥 Import Recipes'}
 					</button>
 				</div>
 

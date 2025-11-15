@@ -3,10 +3,11 @@ Recipe CRUD API endpoints.
 """
 
 from datetime import datetime, timezone
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from typing import List, Optional, Literal
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
+import json
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
@@ -20,6 +21,7 @@ from app.schemas.recipe import (
     RecipeSummary,
     RecipeSearchResult,
 )
+from app.utils.recipe_format import convert_to_schema_org
 
 router = APIRouter()
 
@@ -420,6 +422,243 @@ async def duplicate_recipe(
     await db.refresh(duplicate)
 
     return duplicate
+
+
+@router.get("/{recipe_id}/export")
+async def export_recipe(
+    recipe_id: int,
+    format: Literal["json", "markdown", "text"] = "json",
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Export a single recipe in the specified format.
+
+    Args:
+        recipe_id: Recipe ID to export
+        format: Export format (json, markdown, or text)
+        current_user: The authenticated user
+        db: Database session
+
+    Returns:
+        Response: The exported recipe file
+
+    Raises:
+        HTTPException: If recipe not found or user doesn't have access
+    """
+    # Fetch the recipe
+    result = await db.execute(
+        select(Recipe).where(
+            Recipe.id == recipe_id,
+            Recipe.user_id == current_user.id,
+            Recipe.deleted_at.is_(None),
+        )
+    )
+    recipe = result.scalar_one_or_none()
+
+    if not recipe:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found"
+        )
+
+    # Generate safe filename from recipe name
+    safe_name = "".join(c if c.isalnum() or c in (' ', '-', '_') else '_' for c in recipe.name)
+    safe_name = safe_name.replace(' ', '_').lower()[:50]  # Limit length
+
+    if format == "json":
+        # Export as JSON in Schema.org Recipe format
+        schema_recipe = convert_to_schema_org(recipe)
+
+        return Response(
+            content=json.dumps(schema_recipe, indent=2),
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_name}.json"'
+            },
+        )
+
+    elif format == "markdown":
+        # Export as Markdown
+        schema_recipe = convert_to_schema_org(recipe)
+
+        lines = [f"# {schema_recipe['name']}\n"]
+
+        if schema_recipe.get('description'):
+            lines.append(f"{schema_recipe['description']}\n")
+
+        # Metadata section
+        metadata_items = []
+        if schema_recipe.get('recipeYield'):
+            metadata_items.append(f"**Yield:** {schema_recipe['recipeYield']}")
+        if schema_recipe.get('prepTime'):
+            metadata_items.append(f"**Prep Time:** {schema_recipe['prepTime']}")
+        if schema_recipe.get('cookTime'):
+            metadata_items.append(f"**Cook Time:** {schema_recipe['cookTime']}")
+        if schema_recipe.get('totalTime'):
+            metadata_items.append(f"**Total Time:** {schema_recipe['totalTime']}")
+        if schema_recipe.get('recipeCategory'):
+            categories = schema_recipe['recipeCategory']
+            category_str = ', '.join(categories) if isinstance(categories, list) else str(categories)
+            metadata_items.append(f"**Category:** {category_str}")
+        if schema_recipe.get('recipeCuisine'):
+            cuisines = schema_recipe['recipeCuisine']
+            cuisine_str = ', '.join(cuisines) if isinstance(cuisines, list) else str(cuisines)
+            metadata_items.append(f"**Cuisine:** {cuisine_str}")
+        if schema_recipe.get('keywords'):
+            metadata_items.append(f"**Keywords:** {schema_recipe['keywords']}")
+        if schema_recipe.get('url'):
+            metadata_items.append(f"**Source:** {schema_recipe['url']}")
+
+        if metadata_items:
+            lines.append("")
+            lines.extend(metadata_items)
+
+        # Ingredients
+        if schema_recipe.get('recipeIngredient'):
+            lines.append("\n## Ingredients")
+            for ingredient in schema_recipe['recipeIngredient']:
+                lines.append(f"- {ingredient}")
+
+        # Equipment
+        if schema_recipe.get('equipment'):
+            lines.append("\n## Equipment")
+            equipment = schema_recipe['equipment']
+            if isinstance(equipment, list):
+                for item in equipment:
+                    lines.append(f"- {item}")
+            elif isinstance(equipment, str):
+                lines.append(f"- {equipment}")
+
+        # Instructions
+        if schema_recipe.get('recipeInstructions'):
+            lines.append("\n## Instructions")
+            instructions = schema_recipe['recipeInstructions']
+            if isinstance(instructions, list):
+                for i, step in enumerate(instructions, 1):
+                    if isinstance(step, dict):
+                        step_text = step.get('text', str(step))
+                    else:
+                        step_text = str(step)
+                    lines.append(f"{i}. {step_text}")
+            elif isinstance(instructions, str):
+                lines.append(instructions)
+
+        # Notes
+        if schema_recipe.get('notes'):
+            lines.append("\n## Notes\n")
+            lines.append(schema_recipe['notes'])
+
+        # Nutrition
+        if schema_recipe.get('nutrition'):
+            nutrition = schema_recipe['nutrition']
+            if isinstance(nutrition, dict) and nutrition:
+                lines.append("\n## Nutrition Information\n")
+                for key, value in nutrition.items():
+                    if value:
+                        label = ''.join([' ' + c if c.isupper() else c for c in key]).strip().title()
+                        lines.append(f"- **{label}:** {value}")
+
+        content = "\n".join(lines)
+
+        return Response(
+            content=content,
+            media_type="text/markdown",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_name}.md"'
+            },
+        )
+
+    elif format == "text":
+        # Export as plain text
+        schema_recipe = convert_to_schema_org(recipe)
+
+        lines = [
+            f"{schema_recipe['name'].upper()}",
+            "=" * len(schema_recipe['name']),
+        ]
+
+        if schema_recipe.get('description'):
+            lines.append(f"\n{schema_recipe['description']}\n")
+
+        # Metadata
+        if schema_recipe.get('recipeYield'):
+            lines.append(f"Yield: {schema_recipe['recipeYield']}")
+        if schema_recipe.get('prepTime'):
+            lines.append(f"Prep Time: {schema_recipe['prepTime']}")
+        if schema_recipe.get('cookTime'):
+            lines.append(f"Cook Time: {schema_recipe['cookTime']}")
+        if schema_recipe.get('totalTime'):
+            lines.append(f"Total Time: {schema_recipe['totalTime']}")
+        if schema_recipe.get('recipeCategory'):
+            categories = schema_recipe['recipeCategory']
+            category_str = ', '.join(categories) if isinstance(categories, list) else str(categories)
+            lines.append(f"Category: {category_str}")
+        if schema_recipe.get('recipeCuisine'):
+            cuisines = schema_recipe['recipeCuisine']
+            cuisine_str = ', '.join(cuisines) if isinstance(cuisines, list) else str(cuisines)
+            lines.append(f"Cuisine: {cuisine_str}")
+        if schema_recipe.get('keywords'):
+            lines.append(f"Keywords: {schema_recipe['keywords']}")
+        if schema_recipe.get('url'):
+            lines.append(f"Source: {schema_recipe['url']}")
+
+        # Ingredients
+        if schema_recipe.get('recipeIngredient'):
+            lines.append("\nINGREDIENTS:")
+            for ingredient in schema_recipe['recipeIngredient']:
+                lines.append(f"  - {ingredient}")
+
+        # Equipment
+        if schema_recipe.get('equipment'):
+            lines.append("\nEQUIPMENT:")
+            equipment = schema_recipe['equipment']
+            if isinstance(equipment, list):
+                for item in equipment:
+                    lines.append(f"  - {item}")
+            elif isinstance(equipment, str):
+                lines.append(f"  - {equipment}")
+
+        # Instructions
+        if schema_recipe.get('recipeInstructions'):
+            lines.append("\nINSTRUCTIONS:")
+            instructions = schema_recipe['recipeInstructions']
+            if isinstance(instructions, list):
+                for i, step in enumerate(instructions, 1):
+                    if isinstance(step, dict):
+                        step_text = step.get('text', str(step))
+                    else:
+                        step_text = str(step)
+                    lines.append(f"  {i}. {step_text}")
+            elif isinstance(instructions, str):
+                lines.append(f"  {instructions}")
+
+        # Notes
+        if schema_recipe.get('notes'):
+            lines.append("\nNOTES:")
+            lines.append(f"  {schema_recipe['notes']}")
+
+        # Nutrition
+        if schema_recipe.get('nutrition'):
+            nutrition = schema_recipe['nutrition']
+            if isinstance(nutrition, dict) and nutrition:
+                lines.append("\nNUTRITION INFORMATION:")
+                for key, value in nutrition.items():
+                    if value:
+                        label = ''.join([' ' + c if c.isupper() else c for c in key]).strip().title()
+                        lines.append(f"  {label}: {value}")
+
+        content = "\n".join(lines)
+
+        return Response(
+            content=content,
+            media_type="text/plain",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_name}.txt"'
+            },
+        )
+
+    else:
+        raise HTTPException(status_code=400, detail="Invalid export format")
 
 
 @router.get("/trash/list", response_model=List[RecipeSummary])

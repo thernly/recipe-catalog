@@ -2,12 +2,14 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { getRecipe, deleteRecipe, duplicateRecipe, type Recipe } from '$lib/api/recipes';
+	import { getRecipe, deleteRecipe, duplicateRecipe, exportRecipe, type Recipe } from '$lib/api/recipes';
 
 	let recipe: Recipe | null = null;
 	let loading = true;
 	let error: string | null = null;
 	let checkedIngredients = new Set<number>();
+	let showExportMenu = false;
+	let exporting = false;
 
 	// Get recipe ID from URL
 	$: recipeId = parseInt($page.params.id);
@@ -101,8 +103,50 @@
 		window.print();
 	}
 
+	async function handleExport(format: 'json' | 'markdown' | 'text') {
+		if (!recipe) return;
+
+		exporting = true;
+		showExportMenu = false;
+
+		try {
+			const blob = await exportRecipe(recipe.id, format);
+
+			// Generate filename
+			const extensions = { json: 'json', markdown: 'md', text: 'txt' };
+			const safeName = recipe.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+			const filename = `${safeName}.${extensions[format]}`;
+
+			// Create download
+			const url = window.URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = filename;
+			document.body.appendChild(a);
+			a.click();
+			window.URL.revokeObjectURL(url);
+			document.body.removeChild(a);
+		} catch (err) {
+			alert(`Failed to export recipe: ${err instanceof Error ? err.message : 'Unknown error'}`);
+			console.error('Export failed:', err);
+		} finally {
+			exporting = false;
+		}
+	}
+
+	function handleClickOutside(event: MouseEvent) {
+		const target = event.target as HTMLElement;
+		if (!target.closest('.export-dropdown')) {
+			showExportMenu = false;
+		}
+	}
+
 	onMount(() => {
 		loadRecipe();
+		document.addEventListener('click', handleClickOutside);
+		return () => {
+			document.removeEventListener('click', handleClickOutside);
+		};
 	});
 </script>
 
@@ -170,6 +214,31 @@
 								✏️ Edit
 							</button>
 							<button on:click={handleDuplicate} class="btn btn-secondary">📋 Duplicate</button>
+
+							<!-- Export dropdown -->
+							<div class="export-dropdown">
+								<button
+									on:click={() => showExportMenu = !showExportMenu}
+									class="btn btn-secondary"
+									disabled={exporting}
+								>
+									{exporting ? '⏳' : '📤'} Export
+								</button>
+								{#if showExportMenu}
+									<div class="export-menu">
+										<button on:click={() => handleExport('json')} class="export-menu-item">
+											JSON
+										</button>
+										<button on:click={() => handleExport('markdown')} class="export-menu-item">
+											Markdown
+										</button>
+										<button on:click={() => handleExport('text')} class="export-menu-item">
+											Plain Text
+										</button>
+									</div>
+								{/if}
+							</div>
+
 							<button on:click={handlePrint} class="btn btn-secondary">🖨️ Print</button>
 							<button on:click={handleDelete} class="btn btn-danger">🗑️ Delete</button>
 						</div>
@@ -177,52 +246,56 @@
 				</div>
 			</div>
 
-			<!-- Hero Image -->
-			{#if recipe.image_url}
-				<div class="recipe-hero-image">
-					<img src={recipe.image_url} alt={recipe.name} />
-				</div>
-			{/if}
-
 			<!-- Main content -->
 			<div class="container-custom py-8">
-				<!-- Description -->
-				{#if recipe.description}
-					<p class="text-lg mb-8" style="color: var(--text-700);">{recipe.description}</p>
+				<!-- Hero Image -->
+				{#if recipe.image_url}
+					<div class="recipe-hero-image mb-6">
+						<img src={recipe.image_url} alt={recipe.name} />
+					</div>
 				{/if}
 
-				<!-- Metadata cards -->
-				<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-					{#if recipe.recipe_data?.prepTime}
-						<div class="metadata-card">
-							<div class="metadata-label">Prep Time</div>
-							<div class="metadata-value">{formatTime(recipe.recipe_data.prepTime)}</div>
-						</div>
-					{/if}
+				<!-- Description -->
+				{#if recipe.description}
+					<p class="text-lg mb-6" style="color: var(--text-700);">{recipe.description}</p>
+				{/if}
 
-					{#if recipe.recipe_data?.cookTime}
-						<div class="metadata-card">
-							<div class="metadata-label">Cook Time</div>
-							<div class="metadata-value">{formatTime(recipe.recipe_data.cookTime)}</div>
-						</div>
-					{/if}
+				<!-- Consolidated Metadata card -->
+				{#if recipe.recipe_data?.prepTime || recipe.recipe_data?.cookTime || recipe.recipe_data?.totalTime || recipe.total_time_minutes || recipe.recipe_data?.recipeYield}
+					<div class="metadata-card-consolidated mb-8">
+						<div class="metadata-items">
+							{#if recipe.recipe_data?.prepTime}
+								<div class="metadata-item">
+									<span class="metadata-label-inline">Prep:</span>
+									<span class="metadata-value-inline">{formatTime(recipe.recipe_data.prepTime)}</span>
+								</div>
+							{/if}
 
-					{#if recipe.recipe_data?.totalTime || recipe.total_time_minutes}
-						<div class="metadata-card">
-							<div class="metadata-label">Total Time</div>
-							<div class="metadata-value">
-								{recipe.recipe_data?.totalTime ? formatTime(recipe.recipe_data.totalTime) : `${recipe.total_time_minutes}min`}
-							</div>
-						</div>
-					{/if}
+							{#if recipe.recipe_data?.cookTime}
+								<div class="metadata-item">
+									<span class="metadata-label-inline">Cook:</span>
+									<span class="metadata-value-inline">{formatTime(recipe.recipe_data.cookTime)}</span>
+								</div>
+							{/if}
 
-					{#if recipe.recipe_data?.recipeYield}
-						<div class="metadata-card">
-							<div class="metadata-label">Yield</div>
-							<div class="metadata-value">{recipe.recipe_data.recipeYield}</div>
+							{#if recipe.recipe_data?.totalTime || recipe.total_time_minutes}
+								<div class="metadata-item">
+									<span class="metadata-label-inline">Total:</span>
+									<span class="metadata-value-inline">
+										{recipe.recipe_data?.totalTime ? formatTime(recipe.recipe_data.totalTime) : `${recipe.total_time_minutes}min`}
+									</span>
+								</div>
+							{/if}
+
+							{#if recipe.recipe_data?.recipeYield}
+								<div class="metadata-item">
+									<span class="metadata-label-inline">Yield:</span>
+									<span class="metadata-value-inline">{recipe.recipe_data.recipeYield}</span>
+								</div>
+							{/if}
 						</div>
-					{/if}
-				</div>
+					</div>
+				{/if}
 
 				<!-- Tags -->
 				{#if recipe.cuisine || recipe.category || recipe.recipe_data?.keywords}
@@ -238,6 +311,18 @@
 								<span class="tag tag-outline">{keyword.trim()}</span>
 							{/each}
 						{/if}
+					</div>
+				{/if}
+
+				<!-- Equipment (if any) -->
+				{#if recipe.recipe_data?.equipment && recipe.recipe_data.equipment.length > 0}
+					<div class="card mb-8">
+						<h2 class="text-xl font-semibold mb-3" style="color: var(--text-900);">Equipment</h2>
+						<ul class="equipment-list">
+							{#each recipe.recipe_data.equipment as item}
+								<li style="color: var(--text-700);">{item}</li>
+							{/each}
+						</ul>
 					</div>
 				{/if}
 
@@ -339,12 +424,14 @@
 
 	.recipe-hero-image {
 		width: 100%;
-		max-height: 500px;
+		max-height: 250px;
 		overflow: hidden;
 		background: var(--neutral-100);
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		border-radius: var(--radius-lg);
+		margin: 0 auto;
 	}
 
 	.recipe-hero-image img {
@@ -353,24 +440,51 @@
 		object-fit: cover;
 	}
 
-	.metadata-card {
+	.metadata-card-consolidated {
 		background: var(--neutral-50);
 		border: 1px solid var(--neutral-200);
 		border-radius: var(--radius-md);
-		padding: 1rem;
-		text-align: center;
+		padding: 1rem 1.5rem;
 	}
 
-	.metadata-label {
+	.metadata-items {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1.5rem;
+		align-items: center;
+	}
+
+	.metadata-item {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.metadata-label-inline {
 		font-size: 0.875rem;
 		color: var(--text-600);
-		margin-bottom: 0.25rem;
+		font-weight: 500;
 	}
 
-	.metadata-value {
-		font-size: 1.25rem;
+	.metadata-value-inline {
+		font-size: 1rem;
 		font-weight: 600;
 		color: var(--text-900);
+	}
+
+	.equipment-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		list-style: none;
+		padding: 0;
+	}
+
+	.equipment-list li {
+		background: var(--neutral-100);
+		padding: 0.5rem 1rem;
+		border-radius: var(--radius-md);
+		font-size: 0.875rem;
 	}
 
 	.tag {
@@ -426,6 +540,45 @@
 
 	.btn-danger:hover {
 		background: #DC2626;
+	}
+
+	.export-dropdown {
+		position: relative;
+	}
+
+	.export-menu {
+		position: absolute;
+		top: 100%;
+		right: 0;
+		margin-top: 0.5rem;
+		background: white;
+		border: 1px solid var(--neutral-200);
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-md);
+		min-width: 150px;
+		z-index: 10;
+		overflow: hidden;
+	}
+
+	.export-menu-item {
+		display: block;
+		width: 100%;
+		padding: 0.75rem 1rem;
+		text-align: left;
+		background: white;
+		border: none;
+		cursor: pointer;
+		font-size: 0.875rem;
+		color: var(--text-700);
+		transition: background var(--transition-fast);
+	}
+
+	.export-menu-item:hover {
+		background: var(--neutral-50);
+	}
+
+	.export-menu-item:not(:last-child) {
+		border-bottom: 1px solid var(--neutral-100);
 	}
 
 	/* Print styles */
