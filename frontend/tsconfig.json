@@ -9,12 +9,6 @@
 		"skipLibCheck": true,
 		"sourceMap": true,
 		"strict": true,
-		"moduleResolution": "bundler",
-		"paths": {
-			"$components/*": ["src/lib/components/*"],
-			"$stores/*": ["src/lib/stores/*"],
-			"$utils/*": ["src/lib/utils/*"],
-			"$types/*": ["src/lib/types/*"]
-		}
+		"moduleResolution": "bundler"
 	}
 }
