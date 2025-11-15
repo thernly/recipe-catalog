@@ -2,42 +2,28 @@
 Security utilities for password hashing and JWT tokens.
 """
 
-import hashlib
-import base64
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.core.config import settings
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def _prehash_password(password: str) -> str:
-    """
-    Pre-hash password with SHA256 to handle bcrypt's 72-byte limitation.
-
-    This allows passwords of any length while maintaining security.
-    The SHA256 hash is base64-encoded to ensure it's within bcrypt's limits.
-    """
-    # Hash the password with SHA256
-    password_bytes = password.encode('utf-8')
-    sha256_hash = hashlib.sha256(password_bytes).digest()
-    # Base64 encode to get a string representation
-    return base64.b64encode(sha256_hash).decode('utf-8')
+# Password hashing context using Argon2
+# Argon2 is the modern standard (won Password Hashing Competition 2015)
+# - No password length limitations (unlike bcrypt's 72-byte limit)
+# - Memory-hard algorithm resistant to GPU/ASIC attacks
+# - Configurable time/memory parameters for future-proofing
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
-    prehashed = _prehash_password(plain_password)
-    return pwd_context.verify(prehashed, hashed_password)
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password using SHA256 pre-hash + bcrypt."""
-    prehashed = _prehash_password(password)
-    return pwd_context.hash(prehashed)
+    """Hash a password using Argon2."""
+    return pwd_context.hash(password)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
