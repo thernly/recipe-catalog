@@ -1,11 +1,11 @@
 """
 Collection management API endpoints.
 """
+
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from sqlalchemy.exc import IntegrityError
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
@@ -28,7 +28,7 @@ router = APIRouter()
 async def create_collection(
     collection_data: CollectionCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Create a new collection.
@@ -48,7 +48,7 @@ async def create_collection(
     result = await db.execute(
         select(Collection).where(
             Collection.user_id == current_user.id,
-            Collection.name == collection_data.name
+            Collection.name == collection_data.name,
         )
     )
     existing = result.scalar_one_or_none()
@@ -56,7 +56,7 @@ async def create_collection(
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Collection with this name already exists"
+            detail="Collection with this name already exists",
         )
 
     # Create collection
@@ -77,8 +77,7 @@ async def create_collection(
 
 @router.get("/", response_model=List[CollectionWithCount])
 async def list_collections(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """
     List all collections for the current user.
@@ -92,10 +91,7 @@ async def list_collections(
     """
     # Get collections with recipe counts
     stmt = (
-        select(
-            Collection,
-            func.count(RecipeCollection.recipe_id).label("recipe_count")
-        )
+        select(Collection, func.count(RecipeCollection.recipe_id).label("recipe_count"))
         .outerjoin(RecipeCollection)
         .where(Collection.user_id == current_user.id)
         .group_by(Collection.id)
@@ -106,10 +102,7 @@ async def list_collections(
     collections_with_counts = result.all()
 
     return [
-        CollectionWithCount(
-            **collection.__dict__,
-            recipe_count=count
-        )
+        CollectionWithCount(**collection.__dict__, recipe_count=count)
         for collection, count in collections_with_counts
     ]
 
@@ -118,7 +111,7 @@ async def list_collections(
 async def get_collection(
     collection_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Get a single collection by ID.
@@ -136,15 +129,9 @@ async def get_collection(
     """
     # Get collection with recipe count
     stmt = (
-        select(
-            Collection,
-            func.count(RecipeCollection.recipe_id).label("recipe_count")
-        )
+        select(Collection, func.count(RecipeCollection.recipe_id).label("recipe_count"))
         .outerjoin(RecipeCollection)
-        .where(
-            Collection.id == collection_id,
-            Collection.user_id == current_user.id
-        )
+        .where(Collection.id == collection_id, Collection.user_id == current_user.id)
         .group_by(Collection.id)
     )
 
@@ -153,16 +140,12 @@ async def get_collection(
 
     if not collection_with_count:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Collection not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
         )
 
     collection, count = collection_with_count
 
-    return CollectionWithCount(
-        **collection.__dict__,
-        recipe_count=count
-    )
+    return CollectionWithCount(**collection.__dict__, recipe_count=count)
 
 
 @router.patch("/{collection_id}", response_model=CollectionSchema)
@@ -170,7 +153,7 @@ async def update_collection(
     collection_id: int,
     collection_update: CollectionUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Update a collection.
@@ -189,16 +172,14 @@ async def update_collection(
     """
     result = await db.execute(
         select(Collection).where(
-            Collection.id == collection_id,
-            Collection.user_id == current_user.id
+            Collection.id == collection_id, Collection.user_id == current_user.id
         )
     )
     collection = result.scalar_one_or_none()
 
     if not collection:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Collection not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
         )
 
     # Check if updating name and it already exists
@@ -207,7 +188,7 @@ async def update_collection(
             select(Collection).where(
                 Collection.user_id == current_user.id,
                 Collection.name == collection_update.name,
-                Collection.id != collection_id
+                Collection.id != collection_id,
             )
         )
         existing = result.scalar_one_or_none()
@@ -215,7 +196,7 @@ async def update_collection(
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Collection with this name already exists"
+                detail="Collection with this name already exists",
             )
 
     # Update fields
@@ -233,7 +214,7 @@ async def update_collection(
 async def delete_collection(
     collection_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Delete a collection (recipes are not deleted).
@@ -248,22 +229,20 @@ async def delete_collection(
     """
     result = await db.execute(
         select(Collection).where(
-            Collection.id == collection_id,
-            Collection.user_id == current_user.id
+            Collection.id == collection_id, Collection.user_id == current_user.id
         )
     )
     collection = result.scalar_one_or_none()
 
     if not collection:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Collection not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
         )
 
     if collection.is_default:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete default collection"
+            detail="Cannot delete default collection",
         )
 
     await db.delete(collection)
@@ -275,7 +254,7 @@ async def add_recipes_to_collection(
     collection_id: int,
     recipe_data: CollectionRecipeAdd,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Add recipes to a collection.
@@ -292,16 +271,14 @@ async def add_recipes_to_collection(
     # Verify collection exists and belongs to user
     result = await db.execute(
         select(Collection).where(
-            Collection.id == collection_id,
-            Collection.user_id == current_user.id
+            Collection.id == collection_id, Collection.user_id == current_user.id
         )
     )
     collection = result.scalar_one_or_none()
 
     if not collection:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Collection not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
         )
 
     # Add recipes to collection (ignore duplicates)
@@ -309,8 +286,7 @@ async def add_recipes_to_collection(
         # Verify recipe belongs to user
         result = await db.execute(
             select(Recipe).where(
-                Recipe.id == recipe_id,
-                Recipe.user_id == current_user.id
+                Recipe.id == recipe_id, Recipe.user_id == current_user.id
             )
         )
         recipe = result.scalar_one_or_none()
@@ -322,15 +298,14 @@ async def add_recipes_to_collection(
         result = await db.execute(
             select(RecipeCollection).where(
                 RecipeCollection.recipe_id == recipe_id,
-                RecipeCollection.collection_id == collection_id
+                RecipeCollection.collection_id == collection_id,
             )
         )
         existing = result.scalar_one_or_none()
 
         if not existing:
             recipe_collection = RecipeCollection(
-                recipe_id=recipe_id,
-                collection_id=collection_id
+                recipe_id=recipe_id, collection_id=collection_id
             )
             db.add(recipe_collection)
 
@@ -342,7 +317,7 @@ async def remove_recipes_from_collection(
     collection_id: int,
     recipe_data: CollectionRecipeRemove,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Remove recipes from a collection.
@@ -359,16 +334,14 @@ async def remove_recipes_from_collection(
     # Verify collection exists and belongs to user
     result = await db.execute(
         select(Collection).where(
-            Collection.id == collection_id,
-            Collection.user_id == current_user.id
+            Collection.id == collection_id, Collection.user_id == current_user.id
         )
     )
     collection = result.scalar_one_or_none()
 
     if not collection:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Collection not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
         )
 
     # Remove recipes from collection
@@ -376,7 +349,7 @@ async def remove_recipes_from_collection(
         result = await db.execute(
             select(RecipeCollection).where(
                 RecipeCollection.recipe_id == recipe_id,
-                RecipeCollection.collection_id == collection_id
+                RecipeCollection.collection_id == collection_id,
             )
         )
         recipe_collection = result.scalar_one_or_none()
@@ -391,7 +364,7 @@ async def remove_recipes_from_collection(
 async def get_collection_recipes(
     collection_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Get all recipes in a collection.
@@ -412,16 +385,14 @@ async def get_collection_recipes(
     # Verify collection exists
     result = await db.execute(
         select(Collection).where(
-            Collection.id == collection_id,
-            Collection.user_id == current_user.id
+            Collection.id == collection_id, Collection.user_id == current_user.id
         )
     )
     collection = result.scalar_one_or_none()
 
     if not collection:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Collection not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
         )
 
     # Get recipes in collection
@@ -429,8 +400,7 @@ async def get_collection_recipes(
         select(Recipe)
         .join(RecipeCollection)
         .where(
-            RecipeCollection.collection_id == collection_id,
-            Recipe.deleted_at.is_(None)
+            RecipeCollection.collection_id == collection_id, Recipe.deleted_at.is_(None)
         )
         .order_by(RecipeCollection.added_at.desc())
     )

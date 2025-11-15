@@ -1,6 +1,7 @@
 """User model."""
+
 from datetime import datetime
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, Text
+from sqlalchemy import Boolean, Column, Integer, String, DateTime
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -17,12 +18,23 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     # Relationships
-    recipes = relationship("Recipe", back_populates="owner", cascade="all, delete-orphan")
-    collections = relationship("Collection", back_populates="owner", cascade="all, delete-orphan")
-    preferences = relationship("UserPreferences", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    recipes = relationship(
+        "Recipe", back_populates="owner", cascade="all, delete-orphan"
+    )
+    collections = relationship(
+        "Collection", back_populates="owner", cascade="all, delete-orphan"
+    )
+    preferences = relationship(
+        "UserPreferences",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
 
 class UserPreferences(Base):
@@ -39,7 +51,9 @@ class UserPreferences(Base):
     email_notifications = Column(Boolean, default=False, nullable=False)
     timezone = Column(String(100), default="UTC", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     # Relationships
     user = relationship("User", back_populates="preferences")

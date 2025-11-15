@@ -1,6 +1,16 @@
 """Recipe model."""
+
 from datetime import datetime
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, Text, JSON, ForeignKey
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Integer,
+    String,
+    DateTime,
+    Text,
+    JSON,
+    ForeignKey,
+)
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -23,12 +33,16 @@ class Recipe(Base):
 
     # Metadata
     source_url = Column(Text, index=True)
-    source_type = Column(String(20), default="manual", nullable=False)  # 'imported' or 'manual'
+    source_type = Column(
+        String(20), default="manual", nullable=False
+    )  # 'imported' or 'manual'
     is_modified = Column(Boolean, default=False, nullable=False)
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
     imported_at = Column(DateTime)
 
     # Soft delete
@@ -42,7 +56,5 @@ class Recipe(Base):
     # Relationships
     owner = relationship("User", back_populates="recipes")
     collections = relationship(
-        "RecipeCollection",
-        back_populates="recipe",
-        cascade="all, delete-orphan"
+        "RecipeCollection", back_populates="recipe", cascade="all, delete-orphan"
     )

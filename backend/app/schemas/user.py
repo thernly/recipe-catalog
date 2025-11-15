@@ -1,4 +1,5 @@
 """User-related Pydantic schemas."""
+
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field, validator
@@ -8,32 +9,36 @@ from pydantic import BaseModel, EmailStr, Field, validator
 # User Registration & Authentication
 # ============================================
 
+
 class UserCreate(BaseModel):
     """Schema for user registration."""
+
     email: EmailStr
     password: str = Field(..., min_length=12)
     display_name: Optional[str] = Field(None, max_length=100)
 
-    @validator('password')
+    @validator("password")
     def validate_password(cls, v):
         """Validate password complexity."""
         if not any(c.isupper() for c in v):
-            raise ValueError('Password must contain at least one uppercase letter')
+            raise ValueError("Password must contain at least one uppercase letter")
         if not any(c.islower() for c in v):
-            raise ValueError('Password must contain at least one lowercase letter')
+            raise ValueError("Password must contain at least one lowercase letter")
         if not any(c.isdigit() for c in v):
-            raise ValueError('Password must contain at least one digit')
+            raise ValueError("Password must contain at least one digit")
         return v
 
 
 class UserLogin(BaseModel):
     """Schema for user login."""
+
     email: EmailStr
     password: str
 
 
 class Token(BaseModel):
     """JWT token response."""
+
     access_token: str
     token_type: str = "bearer"
     expires_in: int  # seconds
@@ -41,6 +46,7 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     """Data stored in JWT token."""
+
     user_id: int
     email: str
 
@@ -49,14 +55,17 @@ class TokenData(BaseModel):
 # User Profile
 # ============================================
 
+
 class UserBase(BaseModel):
     """Base user schema."""
+
     email: EmailStr
     display_name: Optional[str] = None
 
 
 class User(UserBase):
     """Full user schema (response)."""
+
     id: int
     is_active: bool
     is_verified: bool
@@ -69,24 +78,26 @@ class User(UserBase):
 
 class UserUpdate(BaseModel):
     """Schema for updating user profile."""
+
     display_name: Optional[str] = Field(None, max_length=100)
     email: Optional[EmailStr] = None
 
 
 class PasswordChange(BaseModel):
     """Schema for password change."""
+
     current_password: str
     new_password: str = Field(..., min_length=12)
 
-    @validator('new_password')
+    @validator("new_password")
     def validate_password(cls, v):
         """Validate password complexity."""
         if not any(c.isupper() for c in v):
-            raise ValueError('Password must contain at least one uppercase letter')
+            raise ValueError("Password must contain at least one uppercase letter")
         if not any(c.islower() for c in v):
-            raise ValueError('Password must contain at least one lowercase letter')
+            raise ValueError("Password must contain at least one lowercase letter")
         if not any(c.isdigit() for c in v):
-            raise ValueError('Password must contain at least one digit')
+            raise ValueError("Password must contain at least one digit")
         return v
 
 
@@ -94,8 +105,10 @@ class PasswordChange(BaseModel):
 # User Preferences
 # ============================================
 
+
 class UserPreferencesBase(BaseModel):
     """Base user preferences schema."""
+
     theme: str = Field("classic", pattern="^(classic|professional)$")
     default_view: str = Field("grid", pattern="^(grid|list)$")
     default_sort: str = "recently_added"
@@ -106,6 +119,7 @@ class UserPreferencesBase(BaseModel):
 
 class UserPreferences(UserPreferencesBase):
     """User preferences response schema."""
+
     id: int
     user_id: int
     created_at: datetime
@@ -117,6 +131,7 @@ class UserPreferences(UserPreferencesBase):
 
 class UserPreferencesUpdate(BaseModel):
     """Schema for updating user preferences."""
+
     theme: Optional[str] = Field(None, pattern="^(classic|professional)$")
     default_view: Optional[str] = Field(None, pattern="^(grid|list)$")
     default_sort: Optional[str] = None

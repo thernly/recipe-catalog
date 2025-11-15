@@ -8,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import init_db, close_db
 
+# Include API routers
+from app.api import auth, recipes, collections, users
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -57,8 +59,6 @@ async def health_check():
     return {"status": "ok"}
 
 
-# Include API routers
-from app.api import auth, recipes, collections, users
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])

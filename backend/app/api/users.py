@@ -1,6 +1,7 @@
 """
 User profile and preferences API endpoints.
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -23,9 +24,7 @@ router = APIRouter()
 
 
 @router.get("/me", response_model=UserSchema)
-async def get_current_user_profile(
-    current_user: User = Depends(get_current_user)
-):
+async def get_current_user_profile(current_user: User = Depends(get_current_user)):
     """
     Get current user profile.
 
@@ -42,7 +41,7 @@ async def get_current_user_profile(
 async def update_user_profile(
     user_update: UserUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Update current user profile.
@@ -62,16 +61,14 @@ async def update_user_profile(
         # Check if new email is already in use
         result = await db.execute(
             select(User).where(
-                User.email == user_update.email.lower(),
-                User.id != current_user.id
+                User.email == user_update.email.lower(), User.id != current_user.id
             )
         )
         existing_user = result.scalar_one_or_none()
 
         if existing_user:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already in use"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Email already in use"
             )
 
         current_user.email = user_update.email.lower()
@@ -88,7 +85,7 @@ async def update_user_profile(
 async def change_password(
     password_change: PasswordChange,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Change user password.
@@ -102,10 +99,12 @@ async def change_password(
         dict: Success message
     """
     # Verify current password
-    if not verify_password(password_change.current_password, current_user.hashed_password):
+    if not verify_password(
+        password_change.current_password, current_user.hashed_password
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Current password is incorrect"
+            detail="Current password is incorrect",
         )
 
     # Update password
@@ -117,8 +116,7 @@ async def change_password(
 
 @router.delete("/me")
 async def delete_account(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """
     Delete user account and all associated data.
@@ -139,8 +137,7 @@ async def delete_account(
 
 @router.get("/me/preferences", response_model=UserPreferences)
 async def get_user_preferences(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """
     Get user preferences.
@@ -171,7 +168,7 @@ async def get_user_preferences(
 async def update_user_preferences(
     prefs_update: UserPreferencesUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Update user preferences.
@@ -206,8 +203,7 @@ async def update_user_preferences(
 
 @router.get("/me/stats")
 async def get_user_stats(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """
     Get user statistics.
@@ -221,18 +217,18 @@ async def get_user_stats(
     """
     # Count total recipes
     result = await db.execute(
-        select(func.count(Recipe.id))
-        .where(Recipe.user_id == current_user.id, Recipe.deleted_at.is_(None))
+        select(func.count(Recipe.id)).where(
+            Recipe.user_id == current_user.id, Recipe.deleted_at.is_(None)
+        )
     )
     total_recipes = result.scalar()
 
     # Count imported recipes
     result = await db.execute(
-        select(func.count(Recipe.id))
-        .where(
+        select(func.count(Recipe.id)).where(
             Recipe.user_id == current_user.id,
             Recipe.source_type == "imported",
-            Recipe.deleted_at.is_(None)
+            Recipe.deleted_at.is_(None),
         )
     )
     imported_recipes = result.scalar()
@@ -242,15 +238,15 @@ async def get_user_stats(
 
     # Count collections
     result = await db.execute(
-        select(func.count(Collection.id))
-        .where(Collection.user_id == current_user.id)
+        select(func.count(Collection.id)).where(Collection.user_id == current_user.id)
     )
     total_collections = result.scalar()
 
     # Count trashed recipes
     result = await db.execute(
-        select(func.count(Recipe.id))
-        .where(Recipe.user_id == current_user.id, Recipe.deleted_at.isnot(None))
+        select(func.count(Recipe.id)).where(
+            Recipe.user_id == current_user.id, Recipe.deleted_at.isnot(None)
+        )
     )
     trashed_recipes = result.scalar()
 

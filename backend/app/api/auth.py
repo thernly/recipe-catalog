@@ -1,18 +1,13 @@
 """
 Authentication API endpoints.
 """
-from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 
 from app.core.database import get_db
-from app.core.security import (
-    verify_password,
-    get_password_hash,
-    create_access_token
-)
+from app.core.security import verify_password, get_password_hash, create_access_token
 from app.core.config import settings
 from app.models.user import User, UserPreferences
 from app.schemas.user import (
@@ -25,11 +20,10 @@ from app.schemas.user import (
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
-async def register(
-    user_data: UserCreate,
-    db: AsyncSession = Depends(get_db)
-):
+@router.post(
+    "/register", response_model=UserSchema, status_code=status.HTTP_201_CREATED
+)
+async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     """
     Register a new user account.
 
@@ -44,15 +38,12 @@ async def register(
         HTTPException: If email already exists
     """
     # Check if email already exists
-    result = await db.execute(
-        select(User).where(User.email == user_data.email.lower())
-    )
+    result = await db.execute(select(User).where(User.email == user_data.email.lower()))
     existing_user = result.scalar_one_or_none()
 
     if existing_user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
     # Create new user
@@ -81,7 +72,7 @@ async def register(
             name="Favorites",
             description="Your favorite recipes",
             is_default=True,
-            icon="⭐"
+            icon="⭐",
         ),
     ]
 
@@ -97,10 +88,7 @@ async def register(
 
 
 @router.post("/login", response_model=Token)
-async def login(
-    login_data: UserLogin,
-    db: AsyncSession = Depends(get_db)
-):
+async def login(login_data: UserLogin, db: AsyncSession = Depends(get_db)):
     """
     Authenticate user and return JWT token.
 
@@ -131,19 +119,16 @@ async def login(
     # Check if user is active
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is inactive"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive"
         )
 
     # Create access token
-    access_token = create_access_token(
-        data={"sub": str(user.id), "email": user.email}
-    )
+    access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
 
     return Token(
         access_token=access_token,
         token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
 

@@ -1,12 +1,12 @@
 """
 Recipe CRUD API endpoints.
 """
+
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, and_
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, func, or_
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
@@ -18,9 +18,7 @@ from app.schemas.recipe import (
     RecipeUpdate,
     Recipe as RecipeSchema,
     RecipeSummary,
-    RecipeSearchParams,
     RecipeSearchResult,
-    RecipeImport,
 )
 
 router = APIRouter()
@@ -30,7 +28,7 @@ router = APIRouter()
 async def create_recipe(
     recipe_data: RecipeCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Create a new recipe.
@@ -55,7 +53,9 @@ async def create_recipe(
         cuisine=recipe_data.cuisine,
         category=recipe_data.category,
         total_time_minutes=recipe_data.total_time_minutes,
-        imported_at=datetime.utcnow() if recipe_data.source_type == "imported" else None,
+        imported_at=datetime.utcnow()
+        if recipe_data.source_type == "imported"
+        else None,
     )
 
     db.add(new_recipe)
@@ -65,8 +65,7 @@ async def create_recipe(
     if recipe_data.collection_ids:
         for collection_id in recipe_data.collection_ids:
             recipe_collection = RecipeCollection(
-                recipe_id=new_recipe.id,
-                collection_id=collection_id
+                recipe_id=new_recipe.id, collection_id=collection_id
             )
             db.add(recipe_collection)
 
@@ -89,7 +88,7 @@ async def search_recipes(
     page: int = Query(1, ge=1),
     per_page: int = Query(24, ge=1, le=100),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Search and filter recipes.
@@ -113,8 +112,7 @@ async def search_recipes(
     """
     # Base query for active recipes
     stmt = select(Recipe).where(
-        Recipe.user_id == current_user.id,
-        Recipe.deleted_at.is_(None)
+        Recipe.user_id == current_user.id, Recipe.deleted_at.is_(None)
     )
 
     # Apply text search
@@ -192,7 +190,7 @@ async def search_recipes(
 async def get_recipe(
     recipe_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Get a single recipe by ID.
@@ -209,17 +207,13 @@ async def get_recipe(
         HTTPException: If recipe not found or unauthorized
     """
     result = await db.execute(
-        select(Recipe).where(
-            Recipe.id == recipe_id,
-            Recipe.user_id == current_user.id
-        )
+        select(Recipe).where(Recipe.id == recipe_id, Recipe.user_id == current_user.id)
     )
     recipe = result.scalar_one_or_none()
 
     if not recipe:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Recipe not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found"
         )
 
     # TODO: Track recipe view for "recently viewed" feature
@@ -232,7 +226,7 @@ async def update_recipe(
     recipe_id: int,
     recipe_update: RecipeUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Update a recipe.
@@ -250,17 +244,13 @@ async def update_recipe(
         HTTPException: If recipe not found or unauthorized
     """
     result = await db.execute(
-        select(Recipe).where(
-            Recipe.id == recipe_id,
-            Recipe.user_id == current_user.id
-        )
+        select(Recipe).where(Recipe.id == recipe_id, Recipe.user_id == current_user.id)
     )
     recipe = result.scalar_one_or_none()
 
     if not recipe:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Recipe not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found"
         )
 
     # Update fields
@@ -282,8 +272,7 @@ async def update_recipe(
         # Add new collections
         for collection_id in recipe_update.collection_ids:
             recipe_collection = RecipeCollection(
-                recipe_id=recipe.id,
-                collection_id=collection_id
+                recipe_id=recipe.id, collection_id=collection_id
             )
             db.add(recipe_collection)
 
@@ -298,7 +287,7 @@ async def delete_recipe(
     recipe_id: int,
     permanent: bool = Query(False),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Delete a recipe (soft delete by default).
@@ -313,17 +302,13 @@ async def delete_recipe(
         HTTPException: If recipe not found or unauthorized
     """
     result = await db.execute(
-        select(Recipe).where(
-            Recipe.id == recipe_id,
-            Recipe.user_id == current_user.id
-        )
+        select(Recipe).where(Recipe.id == recipe_id, Recipe.user_id == current_user.id)
     )
     recipe = result.scalar_one_or_none()
 
     if not recipe:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Recipe not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found"
         )
 
     if permanent:
@@ -340,7 +325,7 @@ async def delete_recipe(
 async def restore_recipe(
     recipe_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Restore a soft-deleted recipe.
@@ -357,23 +342,18 @@ async def restore_recipe(
         HTTPException: If recipe not found or not deleted
     """
     result = await db.execute(
-        select(Recipe).where(
-            Recipe.id == recipe_id,
-            Recipe.user_id == current_user.id
-        )
+        select(Recipe).where(Recipe.id == recipe_id, Recipe.user_id == current_user.id)
     )
     recipe = result.scalar_one_or_none()
 
     if not recipe:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Recipe not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found"
         )
 
     if recipe.deleted_at is None:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Recipe is not deleted"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Recipe is not deleted"
         )
 
     recipe.deleted_at = None
@@ -383,11 +363,15 @@ async def restore_recipe(
     return recipe
 
 
-@router.post("/{recipe_id}/duplicate", response_model=RecipeSchema, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{recipe_id}/duplicate",
+    response_model=RecipeSchema,
+    status_code=status.HTTP_201_CREATED,
+)
 async def duplicate_recipe(
     recipe_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Duplicate a recipe.
@@ -407,15 +391,14 @@ async def duplicate_recipe(
         select(Recipe).where(
             Recipe.id == recipe_id,
             Recipe.user_id == current_user.id,
-            Recipe.deleted_at.is_(None)
+            Recipe.deleted_at.is_(None),
         )
     )
     original_recipe = result.scalar_one_or_none()
 
     if not original_recipe:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Recipe not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found"
         )
 
     # Create duplicate
@@ -441,8 +424,7 @@ async def duplicate_recipe(
 
 @router.get("/trash/list", response_model=List[RecipeSummary])
 async def list_trashed_recipes(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """
     List all soft-deleted recipes.
@@ -455,10 +437,9 @@ async def list_trashed_recipes(
         List[RecipeSummary]: List of trashed recipes
     """
     result = await db.execute(
-        select(Recipe).where(
-            Recipe.user_id == current_user.id,
-            Recipe.deleted_at.isnot(None)
-        ).order_by(Recipe.deleted_at.desc())
+        select(Recipe)
+        .where(Recipe.user_id == current_user.id, Recipe.deleted_at.isnot(None))
+        .order_by(Recipe.deleted_at.desc())
     )
     recipes = result.scalars().all()
 

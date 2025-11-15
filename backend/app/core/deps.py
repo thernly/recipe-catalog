@@ -1,6 +1,7 @@
 """
 Dependency functions for FastAPI routes.
 """
+
 from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -10,7 +11,6 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.security import decode_token
 from app.models.user import User
-from app.schemas.user import TokenData
 
 # Security scheme for JWT tokens
 security = HTTPBearer()
@@ -18,7 +18,7 @@ security = HTTPBearer()
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> User:
     """
     Get the current authenticated user from JWT token.
@@ -67,15 +67,14 @@ async def get_current_user(
 
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user"
         )
 
     return user
 
 
 async def get_current_verified_user(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> User:
     """
     Get the current authenticated and verified user.
@@ -91,15 +90,14 @@ async def get_current_verified_user(
     """
     if not current_user.is_verified:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email not verified"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Email not verified"
         )
     return current_user
 
 
 async def get_optional_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> Optional[User]:
     """
     Get the current user if authenticated, None otherwise.

@@ -1,15 +1,18 @@
 """Recipe-related Pydantic schemas."""
+
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 
 # ============================================
 # Recipe Schemas
 # ============================================
 
+
 class RecipeBase(BaseModel):
     """Base recipe schema."""
+
     name: str = Field(..., min_length=1, max_length=500)
     description: Optional[str] = None
     image_url: Optional[str] = None
@@ -22,12 +25,14 @@ class RecipeBase(BaseModel):
 
 class RecipeCreate(RecipeBase):
     """Schema for creating a recipe."""
+
     source_type: str = Field("manual", pattern="^(imported|manual)$")
     collection_ids: Optional[List[int]] = Field(default_factory=list)
 
 
 class RecipeUpdate(BaseModel):
     """Schema for updating a recipe."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=500)
     description: Optional[str] = None
     image_url: Optional[str] = None
@@ -40,6 +45,7 @@ class RecipeUpdate(BaseModel):
 
 class Recipe(RecipeBase):
     """Full recipe schema (response)."""
+
     id: int
     user_id: int
     source_type: str
@@ -55,6 +61,7 @@ class Recipe(RecipeBase):
 
 class RecipeSummary(BaseModel):
     """Simplified recipe schema for listings."""
+
     id: int
     name: str
     description: Optional[str] = None
@@ -72,6 +79,7 @@ class RecipeSummary(BaseModel):
 
 class RecipeImport(BaseModel):
     """Schema for importing recipes from browser extension."""
+
     recipes: List[Dict[str, Any]]
     duplicate_handling: str = Field("skip", pattern="^(skip|update|create)$")
     collection_id: Optional[int] = None
@@ -81,8 +89,10 @@ class RecipeImport(BaseModel):
 # Recipe Search & Filter
 # ============================================
 
+
 class RecipeSearchParams(BaseModel):
     """Search and filter parameters."""
+
     query: Optional[str] = None
     cuisine: Optional[List[str]] = None
     category: Optional[List[str]] = None
@@ -90,13 +100,17 @@ class RecipeSearchParams(BaseModel):
     collection_ids: Optional[List[int]] = None
     max_time_minutes: Optional[int] = None
     min_time_minutes: Optional[int] = None
-    sort_by: str = Field("recently_added", pattern="^(recently_added|alphabetical|time_asc|time_desc|recently_viewed)$")
+    sort_by: str = Field(
+        "recently_added",
+        pattern="^(recently_added|alphabetical|time_asc|time_desc|recently_viewed)$",
+    )
     page: int = Field(1, ge=1)
     per_page: int = Field(24, ge=1, le=100)
 
 
 class RecipeSearchResult(BaseModel):
     """Recipe search results with pagination."""
+
     recipes: List[RecipeSummary]
     total: int
     page: int
