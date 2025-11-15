@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.core.database import init_db, close_db
 
 # Include API routers
-from app.api import auth, recipes, collections, users
+from app.api import auth, recipes, collections, users, export
 
 
 @asynccontextmanager
@@ -65,6 +65,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(recipes.router, prefix="/api/recipes", tags=["Recipes"])
 app.include_router(collections.router, prefix="/api/collections", tags=["Collections"])
+app.include_router(export.router, prefix="/api/export", tags=["Export"])
 
 
 if __name__ == "__main__":
