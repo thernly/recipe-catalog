@@ -3,9 +3,11 @@ Authentication API endpoints.
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token
@@ -23,12 +25,14 @@ from app.schemas.user import (
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post(
     "/register", response_model=UserSchema, status_code=status.HTTP_201_CREATED
 )
-async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/hour")
+async def register(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     """
     Register a new user account.
 
@@ -109,7 +113,8 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(login_data: UserLogin, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def login(request: Request, login_data: UserLogin, db: AsyncSession = Depends(get_db)):
     """
     Authenticate user and return JWT token.
 
@@ -166,8 +171,9 @@ async def logout():
 
 
 @router.post("/forgot-password")
+@limiter.limit("3/hour")
 async def forgot_password(
-    request: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
+    req: Request, request: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
 ):
     """
     Send password reset email.
@@ -213,8 +219,9 @@ async def forgot_password(
 
 
 @router.post("/reset-password")
+@limiter.limit("5/hour")
 async def reset_password(
-    request: ResetPasswordRequest, db: AsyncSession = Depends(get_db)
+    req: Request, request: ResetPasswordRequest, db: AsyncSession = Depends(get_db)
 ):
     """
     Reset password with token.

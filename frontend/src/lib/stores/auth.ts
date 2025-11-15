@@ -3,6 +3,7 @@
  */
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
+import { API_BASE_URL } from '$lib/config';
 
 interface User {
 	id: number;
@@ -39,7 +40,7 @@ function createAuthStore() {
 			update((state) => ({ ...state, isLoading: true }));
 
 			try {
-				const response = await fetch('http://localhost:8000/api/auth/login', {
+				const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ email, password })
@@ -58,7 +59,7 @@ function createAuthStore() {
 				}
 
 				// Fetch user profile
-				const userResponse = await fetch('http://localhost:8000/api/users/me', {
+				const userResponse = await fetch(`${API_BASE_URL}/api/users/me`, {
 					headers: {
 						Authorization: `Bearer ${data.access_token}`
 					}
@@ -89,7 +90,7 @@ function createAuthStore() {
 			update((state) => ({ ...state, isLoading: true }));
 
 			try {
-				const response = await fetch('http://localhost:8000/api/auth/register', {
+				const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
@@ -140,7 +141,7 @@ function createAuthStore() {
 			update((state) => ({ ...state, isLoading: true }));
 
 			try {
-				const response = await fetch('http://localhost:8000/api/users/me', {
+				const response = await fetch(`${API_BASE_URL}/api/users/me`, {
 					headers: {
 						Authorization: `Bearer ${token}`
 					}

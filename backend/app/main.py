@@ -9,6 +9,9 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.database import init_db, close_db
 
@@ -33,6 +36,9 @@ async def lifespan(app: FastAPI):
     await close_db()
 
 
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
 # Create FastAPI app
 app = FastAPI(
     title=settings.APP_NAME,
@@ -42,6 +48,10 @@ app = FastAPI(
     redoc_url="/redoc" if settings.DEBUG else None,
     lifespan=lifespan,
 )
+
+# Add rate limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configure CORS
 app.add_middleware(
@@ -76,7 +86,8 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 # Root endpoint
 @app.get("/")
-async def root():
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute")
+async def root(request: Request):
     """Root endpoint - API health check."""
     return {
         "app": settings.APP_NAME,
@@ -88,7 +99,7 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
+    """Health check endpoint - no rate limiting."""
     return {"status": "ok"}
 
 

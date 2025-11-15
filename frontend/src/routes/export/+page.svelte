@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { getUserStats } from '$lib/api/users';
 	import type { UserStats } from '$lib/api/users';
+	import { API_BASE_URL } from '$lib/config';
 
 	let stats: UserStats | null = null;
 	let loading = true;
@@ -10,8 +11,6 @@
 	// Export state
 	let exporting = false;
 	let exportStatus = '';
-
-	const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 	// Load user stats
 	async function loadStats() {
@@ -41,7 +40,7 @@
 			}
 
 			// Build URL with format parameter
-			const url = `${API_URL}/api/export/${endpoint}?format=${format}`;
+			const url = `${API_BASE_URL}/api/export/${endpoint}?format=${format}`;
 
 			// Fetch the export
 			const response = await fetch(url, {

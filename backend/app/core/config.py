@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     FROM_EMAIL: str = "noreply@recipecatalog.app"
     FROM_NAME: str = "Recipe Catalog"
 
+    # Frontend URL for email links
+    FRONTEND_URL: str = "http://localhost:5173"
+
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_PER_HOUR: int = 1000
