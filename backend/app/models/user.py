@@ -1,7 +1,7 @@
 """User model."""
 
 from datetime import datetime
-from sqlalchemy import Boolean, Column, Integer, String, DateTime
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -49,7 +49,7 @@ class UserPreferences(Base):
     __tablename__ = "user_preferences"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, nullable=False, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
     theme = Column(String(50), default="classic", nullable=False)
     default_view = Column(String(20), default="grid", nullable=False)
     default_sort = Column(String(50), default="recently_added", nullable=False)
