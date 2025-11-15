@@ -3,6 +3,7 @@
 	import { getUserStats } from '$lib/api/users';
 	import type { UserStats } from '$lib/api/users';
 	import { API_BASE_URL } from '$lib/config';
+	import ExportCard from '$lib/components/export/ExportCard.svelte';
 
 	let stats: UserStats | null = null;
 	let loading = true;
@@ -155,122 +156,49 @@
 			<!-- Export Options -->
 			<div class="export-grid">
 				<!-- Export Recipes -->
-				<div class="export-card">
-					<div class="card-header">
-						<div class="card-icon">📖</div>
-						<div>
-							<h2 class="card-title">Export Recipes</h2>
-							<p class="card-description">Download all your recipes in your preferred format</p>
-						</div>
-					</div>
-
-					<div class="card-content">
-						<div class="format-section">
-							<h3 class="format-title">Available Formats:</h3>
-
-							<button
-								on:click={() => exportRecipes('json')}
-								disabled={exporting}
-								class="format-button"
-							>
-								<div class="format-info">
-									<span class="format-name">📄 JSON</span>
-									<span class="format-desc">Complete data, machine-readable</span>
-								</div>
-								<span class="download-icon">⬇️</span>
-							</button>
-
-							<button
-								on:click={() => exportRecipes('markdown')}
-								disabled={exporting}
-								class="format-button"
-							>
-								<div class="format-info">
-									<span class="format-name">📝 Markdown</span>
-									<span class="format-desc">Human-readable, formatted text</span>
-								</div>
-								<span class="download-icon">⬇️</span>
-							</button>
-
-							<button
-								on:click={() => exportRecipes('text')}
-								disabled={exporting}
-								class="format-button"
-							>
-								<div class="format-info">
-									<span class="format-name">📃 Plain Text</span>
-									<span class="format-desc">Simple, universal format</span>
-								</div>
-								<span class="download-icon">⬇️</span>
-							</button>
-						</div>
-					</div>
-				</div>
+				<ExportCard
+					icon="📖"
+					title="Export Recipes"
+					description="Download all your recipes in your preferred format"
+					{exporting}
+					formats={[
+						{ name: 'JSON', emoji: '📄', desc: 'Complete data, machine-readable', value: 'json' },
+						{ name: 'Markdown', emoji: '📝', desc: 'Human-readable, formatted text', value: 'markdown' },
+						{ name: 'Plain Text', emoji: '📃', desc: 'Simple, universal format', value: 'text' }
+					]}
+					on:export={(e) => exportRecipes(e.detail)}
+				/>
 
 				<!-- Export Collections -->
-				<div class="export-card">
-					<div class="card-header">
-						<div class="card-icon">📚</div>
-						<div>
-							<h2 class="card-title">Export Collections</h2>
-							<p class="card-description">Download your collections and their recipes</p>
-						</div>
-					</div>
-
-					<div class="card-content">
-						<div class="format-section">
-							<h3 class="format-title">Available Formats:</h3>
-
-							<button
-								on:click={() => exportCollections('json')}
-								disabled={exporting}
-								class="format-button"
-							>
-								<div class="format-info">
-									<span class="format-name">📄 JSON</span>
-									<span class="format-desc">Complete collection data</span>
-								</div>
-								<span class="download-icon">⬇️</span>
-							</button>
-
-							<button
-								on:click={() => exportCollections('markdown')}
-								disabled={exporting}
-								class="format-button"
-							>
-								<div class="format-info">
-									<span class="format-name">📝 Markdown</span>
-									<span class="format-desc">Formatted collection lists</span>
-								</div>
-								<span class="download-icon">⬇️</span>
-							</button>
-						</div>
-					</div>
-				</div>
+				<ExportCard
+					icon="📚"
+					title="Export Collections"
+					description="Download your collections and their recipes"
+					{exporting}
+					formats={[
+						{ name: 'JSON', emoji: '📄', desc: 'Complete collection data', value: 'json' },
+						{ name: 'Markdown', emoji: '📝', desc: 'Formatted collection lists', value: 'markdown' }
+					]}
+					on:export={(e) => exportCollections(e.detail)}
+				/>
 
 				<!-- Complete Backup -->
-				<div class="export-card featured">
-					<div class="card-header">
-						<div class="card-icon">💾</div>
-						<div>
-							<h2 class="card-title">Complete Backup</h2>
-							<p class="card-description">
-								Download everything: recipes, collections, and preferences
-							</p>
-						</div>
-					</div>
+				<ExportCard
+					icon="💾"
+					title="Complete Backup"
+					description="Download everything: recipes, collections, and preferences"
+					{exporting}
+					featured={true}
+				>
+					<p class="backup-info">
+						This export includes all your data in a single JSON file. Perfect for backups or
+						migrating to another instance.
+					</p>
 
-					<div class="card-content">
-						<p class="backup-info">
-							This export includes all your data in a single JSON file. Perfect for backups or
-							migrating to another instance.
-						</p>
-
-						<button on:click={exportAllData} disabled={exporting} class="btn btn-primary btn-large">
-							{exporting ? 'Exporting...' : '⬇️ Download Complete Backup'}
-						</button>
-					</div>
-				</div>
+					<button on:click={exportAllData} disabled={exporting} class="btn btn-primary btn-large">
+						{exporting ? 'Exporting...' : '⬇️ Download Complete Backup'}
+					</button>
+				</ExportCard>
 			</div>
 
 			<!-- Info Box -->
@@ -359,112 +287,6 @@
 		grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
 		gap: 1.5rem;
 		margin-bottom: 2rem;
-	}
-
-	.export-card {
-		background: var(--neutral-white);
-		border: 1px solid var(--neutral-200);
-		border-radius: var(--radius-lg);
-		padding: 1.5rem;
-		transition: all var(--transition-fast);
-	}
-
-	.export-card.featured {
-		border-color: var(--accent-300);
-		box-shadow: 0 0 0 2px var(--accent-100);
-	}
-
-	.export-card:hover {
-		box-shadow: var(--shadow-md);
-	}
-
-	.card-header {
-		display: flex;
-		gap: 1rem;
-		margin-bottom: 1.5rem;
-		align-items: start;
-	}
-
-	.card-icon {
-		font-size: 2rem;
-	}
-
-	.card-title {
-		font-size: 1.25rem;
-		font-weight: 700;
-		color: var(--text-900);
-		margin: 0 0 0.25rem 0;
-	}
-
-	.card-description {
-		font-size: 0.875rem;
-		color: var(--text-600);
-		margin: 0;
-	}
-
-	.card-content {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.format-section {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.format-title {
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: var(--text-700);
-		margin: 0 0 0.5rem 0;
-	}
-
-	.format-button {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 0.75rem 1rem;
-		background: var(--neutral-50);
-		border: 1px solid var(--neutral-200);
-		border-radius: var(--radius-md);
-		cursor: pointer;
-		transition: all var(--transition-fast);
-		text-align: left;
-	}
-
-	.format-button:hover:not(:disabled) {
-		background: var(--accent-50);
-		border-color: var(--accent-300);
-		transform: translateY(-1px);
-		box-shadow: var(--shadow-sm);
-	}
-
-	.format-button:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.format-info {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.format-name {
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: var(--text-900);
-	}
-
-	.format-desc {
-		font-size: 0.75rem;
-		color: var(--text-600);
-	}
-
-	.download-icon {
-		font-size: 1.25rem;
 	}
 
 	.backup-info {

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { Recipe, RecipeCreate, RecipeUpdate } from '$lib/api/recipes';
+	import IngredientsEditor from '$lib/components/recipe/IngredientsEditor.svelte';
+	import InstructionsEditor from '$lib/components/recipe/InstructionsEditor.svelte';
 
 	export let recipe: Recipe | null = null; // null for create, recipe for edit
 	export let saving = false;
@@ -60,38 +62,13 @@
 		totalTimeMinutes = prep + cook;
 	}
 
-	// Add/remove ingredients
-	function addIngredient() {
-		ingredients = [...ingredients, ''];
+	// Handle ingredient/instruction changes
+	function handleIngredientsChange(e: CustomEvent) {
+		ingredients = e.detail;
 	}
 
-	function removeIngredient(index: number) {
-		ingredients = ingredients.filter((_, i) => i !== index);
-	}
-
-	// Add/remove instructions
-	function addInstruction() {
-		instructions = [...instructions, ''];
-	}
-
-	function removeInstruction(index: number) {
-		instructions = instructions.filter((_, i) => i !== index);
-	}
-
-	function moveInstructionUp(index: number) {
-		if (index === 0) return;
-		const temp = instructions[index];
-		instructions[index] = instructions[index - 1];
-		instructions[index - 1] = temp;
-		instructions = [...instructions]; // Trigger reactivity
-	}
-
-	function moveInstructionDown(index: number) {
-		if (index === instructions.length - 1) return;
-		const temp = instructions[index];
-		instructions[index] = instructions[index + 1];
-		instructions[index + 1] = temp;
-		instructions = [...instructions]; // Trigger reactivity
+	function handleInstructionsChange(e: CustomEvent) {
+		instructions = e.detail;
 	}
 
 	// Add/remove equipment
@@ -273,86 +250,18 @@
 	</section>
 
 	<!-- Ingredients Section -->
-	<section class="form-section">
-		<h2 class="section-title required">Ingredients</h2>
-
-		{#if errors.ingredients}
-			<p class="error-message mb-4">{errors.ingredients}</p>
-		{/if}
-
-		<div class="dynamic-list">
-			{#each ingredients as ingredient, index}
-				<div class="dynamic-list-item">
-					<span class="item-number">{index + 1}</span>
-					<input
-						type="text"
-						bind:value={ingredients[index]}
-						placeholder="e.g., 2 cups all-purpose flour"
-						class="form-input flex-1"
-					/>
-					<button type="button" on:click={() => removeIngredient(index)} class="btn-remove" title="Remove">
-						×
-					</button>
-				</div>
-			{/each}
-		</div>
-
-		<button type="button" on:click={addIngredient} class="btn btn-secondary btn-sm mt-3">
-			+ Add Ingredient
-		</button>
-	</section>
+	<IngredientsEditor
+		bind:ingredients
+		error={errors.ingredients || ''}
+		on:change={handleIngredientsChange}
+	/>
 
 	<!-- Instructions Section -->
-	<section class="form-section">
-		<h2 class="section-title required">Instructions</h2>
-
-		{#if errors.instructions}
-			<p class="error-message mb-4">{errors.instructions}</p>
-		{/if}
-
-		<div class="dynamic-list">
-			{#each instructions as instruction, index}
-				<div class="dynamic-list-item">
-					<div class="flex gap-2">
-						<span class="item-number">{index + 1}</span>
-						<div class="flex flex-col gap-1">
-							<button
-								type="button"
-								on:click={() => moveInstructionUp(index)}
-								disabled={index === 0}
-								class="btn-reorder"
-								title="Move up"
-							>
-								↑
-							</button>
-							<button
-								type="button"
-								on:click={() => moveInstructionDown(index)}
-								disabled={index === instructions.length - 1}
-								class="btn-reorder"
-								title="Move down"
-							>
-								↓
-							</button>
-						</div>
-					</div>
-					<textarea
-						bind:value={instructions[index]}
-						placeholder="Describe this step..."
-						rows="2"
-						class="form-input flex-1"
-					/>
-					<button type="button" on:click={() => removeInstruction(index)} class="btn-remove" title="Remove">
-						×
-					</button>
-				</div>
-			{/each}
-		</div>
-
-		<button type="button" on:click={addInstruction} class="btn btn-secondary btn-sm mt-3">
-			+ Add Step
-		</button>
-	</section>
+	<InstructionsEditor
+		bind:instructions
+		error={errors.instructions || ''}
+		on:change={handleInstructionsChange}
+	/>
 
 	<!-- Times & Yield Section -->
 	<section class="form-section">
@@ -617,80 +526,6 @@
 		font-size: 0.875rem;
 		color: #EF4444;
 		margin-top: 0.5rem;
-	}
-
-	.dynamic-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.dynamic-list-item {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.75rem;
-	}
-
-	.item-number {
-		flex-shrink: 0;
-		width: 2rem;
-		height: 2.75rem;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: var(--neutral-100);
-		color: var(--text-600);
-		border-radius: var(--radius-md);
-		font-size: 0.875rem;
-		font-weight: 500;
-	}
-
-	.btn-remove {
-		flex-shrink: 0;
-		width: 2.5rem;
-		height: 2.75rem;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: var(--neutral-50);
-		border: 1px solid var(--neutral-200);
-		border-radius: var(--radius-md);
-		color: var(--text-600);
-		font-size: 1.5rem;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-remove:hover {
-		background: #FEE2E2;
-		border-color: #EF4444;
-		color: #EF4444;
-	}
-
-	.btn-reorder {
-		width: 1.5rem;
-		height: 1.25rem;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: var(--neutral-100);
-		border: 1px solid var(--neutral-200);
-		border-radius: 0.25rem;
-		color: var(--text-600);
-		font-size: 0.875rem;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-reorder:hover:not(:disabled) {
-		background: var(--accent-50);
-		border-color: var(--accent-300);
-		color: var(--accent-700);
-	}
-
-	.btn-reorder:disabled {
-		opacity: 0.3;
-		cursor: not-allowed;
 	}
 
 	.form-actions {

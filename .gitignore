@@ -73,12 +73,14 @@ dist/
 
 # SvelteKit specific
 .svelte-kit/
-**/.svelte-kit
+**/.svelte-kit/
 
-# Package manager files
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
+# Package manager files (keep your lock file!)
+# Note: Lock files should be committed to ensure reproducible builds
+# Uncomment only the lock files you're NOT using:
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
 
 # Environment variables
 .env
@@ -124,8 +126,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+backend/lib/
+backend/lib64/
 parts/
 sdist/
 var/
@@ -204,8 +206,7 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
-# Environments
-.env
+# Python virtual environments
 .venv
 env/
 venv/
@@ -264,11 +265,10 @@ wrangler.toml.local
 
 # Environment files with secrets
 .env
-.env.*
-!.env.example
-.env.production
-.env.development
 .env.local
+.env.*.local
+# Keep example files
+!.env.example
 secrets.json
 credentials.json
 service-account.json
@@ -286,8 +286,11 @@ api_keys.txt
 # Build & Deployment
 # ============================================
 
-# Static build outputs
-static/
+# Static build outputs (NOT source assets!)
+# Note: SvelteKit's frontend/static/ folder contains SOURCE assets and should be committed
+# Only exclude build outputs in specific locations:
+.svelte-kit/build/
+build/static/
 public/build/
 
 # Cloudflare
