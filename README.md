@@ -5,14 +5,17 @@ A privacy-focused web application for organizing and managing your personal reci
 ## 🎯 Overview
 
 Recipe Catalog allows you to:
-- Import recipes from websites via browser extension
-- Manually add family recipes and personal favorites
-- Organize recipes into custom collections
-- Search and filter your recipe library
-- Export your data anytime
-- Access your recipes from any device
+- **Import recipes** from JSON files (browser extension coming soon)
+- **Manually add** family recipes and personal favorites
+- **Organize** recipes into custom collections with icons
+- **Search and filter** your recipe library with advanced filters
+- **Export your data** in JSON, Markdown, or plain text formats
+- **Access** your recipes from any device with responsive design
+- **Customize** appearance with two beautiful themes
 
 **Privacy First**: No tracking, no analytics, no third-party data sharing. Your recipes are yours.
+
+**Status**: ✅ MVP Complete and production-ready!
 
 ## 🏗️ Tech Stack
 
@@ -63,43 +66,80 @@ recipe-catalog/
     └── requirements/  # Product requirements
 ```
 
+## ✨ Features
+
+### Core Features (Implemented ✅)
+- **User Authentication** - Register, login, email verification, password reset
+- **Recipe Management** - Full CRUD operations with comprehensive forms
+- **Collections** - Organize recipes into custom collections with emoji icons
+- **Search & Filter** - Advanced search with multiple filter criteria
+- **Import/Export** - JSON file import and export in multiple formats
+- **Themes** - Two beautiful themes (Classic Minimal & Professional Warm)
+- **Responsive Design** - Works on mobile, tablet, and desktop
+- **Soft Delete** - 30-day recovery period for deleted recipes
+
+See [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md) for detailed feature list.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Node.js 18+ (for frontend)
 - Python 3.11+ (for backend)
 - pnpm or npm (package manager)
+- SQLite (included with Python)
 
 ### Frontend Setup
 
 ```bash
 cd frontend
+
+# Install dependencies
 pnpm install
+# or: npm install
+
+# Create .env file
+echo "VITE_API_URL=http://localhost:8000" > .env
+
+# Start the development server
 pnpm dev
+# or: npm run dev
 ```
 
 Frontend runs on `http://localhost:5173`
 
+### First Steps
+
+1. Open http://localhost:5173 in your browser
+2. Click "Register" to create an account
+3. Log in with your credentials
+4. Start adding recipes!
+
 ### Backend Setup
-
-Run this to generate a secret key for your .env file:
-
-```python
-import secrets
-print(secrets.token_urlsafe(32))
-```
-
-or
-
-```powerhell
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-```
 
 ```bash
 cd backend
-uv run venv .venv
-source .venv/bin/activate  # On Windows: venv\Scripts\activate
-uv sync
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create .env file with secret key
+cat > .env << EOF
+DATABASE_URL=sqlite+aiosqlite:///./recipes.db
+SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+DEBUG=True
+ENVIRONMENT=development
+EOF
+
+# Run database migrations
+alembic upgrade head
+
+# Start the server
 uvicorn app.main:app --reload
 ```
 
@@ -107,12 +147,14 @@ Backend runs on `http://localhost:8000`
 
 API documentation: `http://localhost:8000/docs`
 
-### Database Setup
+### Database
 
+The database is automatically created when you run the backend server. Migrations are handled by Alembic.
+
+To load sample data (optional):
 ```bash
 cd database
-sqlite3 recipes.db < schema.sql
-sqlite3 recipes.db < seed.sql  # Optional: Load test data
+sqlite3 ../backend/recipes.db < seed.sql
 ```
 
 ## 🎨 Design System
@@ -133,16 +175,25 @@ See `docs/requirements/Recipe_App_Themeable_Design_System.md` for complete desig
 
 ### Frontend (.env)
 ```env
-PUBLIC_API_URL=http://localhost:8000
-VITE_APP_NAME=Recipe Catalog
+VITE_API_URL=http://localhost:8000
 ```
 
 ### Backend (.env)
 ```env
-DATABASE_URL=sqlite:///./recipes.db
-SECRET_KEY=your-secret-key-here
+DATABASE_URL=sqlite+aiosqlite:///./recipes.db
+SECRET_KEY=your-secret-key-here  # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
+DEBUG=True
+ENVIRONMENT=development
+
+# Optional: Email configuration (for verification/password reset)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_FROM_EMAIL=your-email@gmail.com
+SMTP_FROM_NAME=Recipe Catalog
 ```
 
 ## 🧪 Testing
@@ -203,10 +254,11 @@ docker-compose up -d
 
 ## 📖 Documentation
 
-- [Product Requirements](docs/requirements/Recipe_Catalog_App_PRD_v1.1.md)
-- [Wireframes](docs/requirements/Recipe_App_Wireframes.md)
-- [User Flows](docs/requirements/Recipe_App_IA_and_User_Flows.md)
-- [Design System](docs/requirements/Recipe_App_Themeable_Design_System.md)
+- **[Implementation Status](IMPLEMENTATION_STATUS.md)** - Complete feature list and progress
+- [Product Requirements](docs/requirements/Recipe_Catalog_App_PRD_v1.1.md) - Full PRD
+- [Wireframes](docs/requirements/Recipe_App_Wireframes.md) - UI wireframes
+- [User Flows](docs/requirements/Recipe_App_IA_and_User_Flows.md) - User flows and IA
+- [Design System](docs/requirements/Recipe_App_Themeable_Design_System.md) - Design tokens and themes
 
 ## 🤝 Contributing
 
@@ -228,6 +280,22 @@ Built with ❤️ for home cooks who value privacy and organization.
 
 ---
 
-**Version**: 1.0.0-alpha
-**Status**: In Development
-**Last Updated**: November 2025
+**Version**: 1.0.0-beta
+**Status**: MVP Complete - Production Ready
+**Last Updated**: November 15, 2025
+
+## 🚢 Deployment
+
+See [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md#-next-steps-for-production-deployment) for detailed deployment instructions including:
+- Cloudflare deployment (recommended)
+- Self-hosted Docker deployment
+- Traditional cloud platforms
+
+## 🔮 Roadmap
+
+See the [PRD](docs/requirements/Recipe_Catalog_App_PRD_v1.1.md) for planned Phase 2+ features:
+- Browser extension for recipe import
+- Meal planning calendar
+- Shopping list generation
+- Cooking mode (hands-free view)
+- Recipe sharing and social features
