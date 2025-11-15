@@ -558,6 +558,24 @@ async def export_recipe(
                         label = ''.join([' ' + c if c.isupper() else c for c in key]).strip().title()
                         lines.append(f"- **{label}:** {value}")
 
+        # Images (at the end, as base64)
+        if schema_recipe.get('image'):
+            lines.append("\n")
+            images = schema_recipe['image']
+            if isinstance(images, list) and images:
+                for idx, img in enumerate(images, 1):
+                    if isinstance(img, dict):
+                        if img.get('data'):
+                            # Image has base64 data
+                            mime_type = img.get('mimeType', 'image/jpeg')
+                            lines.append(f"![Recipe Image {idx}](data:{mime_type};base64,{img['data']})")
+                        elif img.get('url'):
+                            # Image has URL
+                            lines.append(f"![Recipe Image {idx}]({img['url']})")
+            elif isinstance(images, str):
+                # Single image URL
+                lines.append(f"![Recipe Image](data:image/jpeg;base64,{images})")
+
         content = "\n".join(lines)
 
         return Response(
