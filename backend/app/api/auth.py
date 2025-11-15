@@ -108,8 +108,13 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        logger.exception(f"Error during registration for {user_data.email}: {str(e)}")
-        raise
+        # Log unexpected errors and re-raise
+        logger.exception(f"Unexpected error during registration for {user_data.email}")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during registration. Please try again."
+        )
 
 
 @router.post("/login", response_model=Token)
@@ -210,8 +215,8 @@ async def forgot_password(
         db.add(reset_token)
         await db.commit()
 
-        # Send email
-        email_service.send_password_reset_email(
+        # Send email asynchronously
+        await email_service.send_password_reset_email(
             to_email=user.email, reset_token=reset_token.token, user_name=user.display_name
         )
 
@@ -359,8 +364,8 @@ async def resend_verification(
     db.add(verification_token)
     await db.commit()
 
-    # Send email
-    email_service.send_verification_email(
+    # Send email asynchronously
+    await email_service.send_verification_email(
         to_email=user.email,
         verification_token=verification_token.token,
         user_name=user.display_name,

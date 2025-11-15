@@ -249,7 +249,7 @@ async def delete_collection(
     await db.commit()
 
 
-@router.post("/{collection_id}/recipes", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/{collection_id}/recipes")
 async def add_recipes_to_collection(
     collection_id: int,
     recipe_data: CollectionRecipeAdd,
@@ -264,6 +264,9 @@ async def add_recipes_to_collection(
         recipe_data: Recipe IDs to add
         current_user: The authenticated user
         db: Database session
+
+    Returns:
+        dict: Results with successful, skipped, and failed recipe IDs
 
     Raises:
         HTTPException: If collection not found or unauthorized
@@ -281,7 +284,12 @@ async def add_recipes_to_collection(
             status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
         )
 
-    # Add recipes to collection (ignore duplicates)
+    # Track results
+    added = []
+    skipped = []
+    not_found = []
+
+    # Add recipes to collection
     for recipe_id in recipe_data.recipe_ids:
         # Verify recipe belongs to user
         result = await db.execute(
@@ -292,7 +300,8 @@ async def add_recipes_to_collection(
         recipe = result.scalar_one_or_none()
 
         if not recipe:
-            continue  # Skip invalid recipe IDs
+            not_found.append(recipe_id)
+            continue
 
         # Check if already in collection
         result = await db.execute(
@@ -303,13 +312,23 @@ async def add_recipes_to_collection(
         )
         existing = result.scalar_one_or_none()
 
-        if not existing:
+        if existing:
+            skipped.append(recipe_id)
+        else:
             recipe_collection = RecipeCollection(
                 recipe_id=recipe_id, collection_id=collection_id
             )
             db.add(recipe_collection)
+            added.append(recipe_id)
 
     await db.commit()
+
+    return {
+        "added": added,
+        "skipped": skipped,
+        "not_found": not_found,
+        "message": f"Added {len(added)} recipes, skipped {len(skipped)} already in collection, {len(not_found)} not found"
+    }
 
 
 @router.delete("/{collection_id}/recipes", status_code=status.HTTP_204_NO_CONTENT)

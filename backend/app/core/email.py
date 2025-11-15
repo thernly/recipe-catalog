@@ -2,11 +2,12 @@
 Email service for sending verification and password reset emails
 """
 
-import smtplib
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List
-import logging
+
+import aiosmtplib
 
 from app.core.config import settings
 
@@ -24,7 +25,7 @@ class EmailService:
         self.from_email = settings.FROM_EMAIL
         self.from_name = settings.FROM_NAME
 
-    def send_email(
+    async def send_email(
         self,
         to_email: str,
         subject: str,
@@ -32,7 +33,7 @@ class EmailService:
         text_content: str = None,
     ) -> bool:
         """
-        Send an email via SMTP
+        Send an email via SMTP asynchronously
 
         Args:
             to_email: Recipient email address
@@ -59,17 +60,21 @@ class EmailService:
             part2 = MIMEText(html_content, "html")
             msg.attach(part2)
 
-            # Send email
-            with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
-                # Use TLS if not using SSL port
-                if self.smtp_port != 465:
-                    server.starttls()
+            # Determine if we should use TLS or SSL
+            use_tls = self.smtp_port != 465
 
+            # Send email asynchronously
+            async with aiosmtplib.SMTP(
+                hostname=self.smtp_host,
+                port=self.smtp_port,
+                use_tls=not use_tls,  # Use SSL for port 465
+                start_tls=use_tls,    # Use STARTTLS for other ports
+            ) as server:
                 # Login if credentials provided
                 if self.smtp_user and self.smtp_password:
-                    server.login(self.smtp_user, self.smtp_password)
+                    await server.login(self.smtp_user, self.smtp_password)
 
-                server.send_message(msg)
+                await server.send_message(msg)
 
             logger.info(f"Email sent successfully to {to_email}")
             return True
@@ -78,9 +83,9 @@ class EmailService:
             logger.error(f"Failed to send email to {to_email}: {str(e)}")
             return False
 
-    def send_verification_email(self, to_email: str, verification_token: str, user_name: str) -> bool:
+    async def send_verification_email(self, to_email: str, verification_token: str, user_name: str) -> bool:
         """
-        Send email verification link
+        Send email verification link asynchronously
 
         Args:
             to_email: User's email address
@@ -149,18 +154,18 @@ class EmailService:
         Recipe Catalog
         """
 
-        return self.send_email(
+        return await self.send_email(
             to_email=to_email,
             subject="Verify Your Email - Recipe Catalog",
             html_content=html_content,
             text_content=text_content,
         )
 
-    def send_password_reset_email(
+    async def send_password_reset_email(
         self, to_email: str, reset_token: str, user_name: str
     ) -> bool:
         """
-        Send password reset link
+        Send password reset link asynchronously
 
         Args:
             to_email: User's email address
@@ -240,7 +245,7 @@ class EmailService:
         Recipe Catalog
         """
 
-        return self.send_email(
+        return await self.send_email(
             to_email=to_email,
             subject="Reset Your Password - Recipe Catalog",
             html_content=html_content,

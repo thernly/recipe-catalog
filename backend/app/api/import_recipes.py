@@ -3,12 +3,14 @@ Import API endpoints
 Allows users to import recipes from JSON files in Schema.org format
 """
 
+import json
+import logging
+from datetime import datetime, timezone
+from typing import List, Dict, Any, Literal
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import List, Dict, Any, Literal
-import json
-from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
@@ -18,6 +20,7 @@ from app.models.collection import Collection, RecipeCollection
 from app.utils.recipe_format import convert_from_schema_org
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 async def _import_recipes_internal(
@@ -121,13 +124,18 @@ async def _import_recipes_internal(
                         collection_id=collection.id
                     ))
 
-        except Exception as e:
+        except (ValueError, KeyError, TypeError) as e:
+            # Handle expected validation and format errors
             results["failed"] += 1
             results["errors"].append({
                 "index": idx,
                 "name": recipe_data.get("name", "Unknown"),
                 "error": str(e)
             })
+        except Exception as e:
+            # Log unexpected errors and re-raise
+            logger.exception(f"Unexpected error during import at index {idx}")
+            raise
 
     return results
 

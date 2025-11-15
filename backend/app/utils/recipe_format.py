@@ -2,11 +2,15 @@
 Utilities for converting between internal recipe format and Schema.org Recipe JSON-LD format.
 """
 
-from typing import Dict, Any, List, Optional
 import base64
-import httpx
-from datetime import datetime
+import logging
 import re
+from datetime import datetime
+from typing import Dict, Any, List, Optional
+
+import httpx
+
+logger = logging.getLogger(__name__)
 
 
 def convert_to_schema_org(recipe_db: Any) -> Dict[str, Any]:
@@ -156,8 +160,17 @@ def _convert_images_to_schema(image_url: Optional[str]) -> List[Dict[str, str]]:
                 "data": base64_data,
                 "mimeType": content_type
             })
-    except Exception:
+    except (httpx.HTTPError, httpx.RequestError, ValueError) as e:
         # If image fetch fails, just include URL without data
+        logger.warning(f"Failed to fetch image from {image_url}: {str(e)}")
+        images.append({
+            "url": image_url,
+            "data": "",
+            "mimeType": "image/jpeg"
+        })
+    except Exception as e:
+        # Log unexpected errors during image conversion
+        logger.exception(f"Unexpected error fetching image: {image_url}")
         images.append({
             "url": image_url,
             "data": "",
