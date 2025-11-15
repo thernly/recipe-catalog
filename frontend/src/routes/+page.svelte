@@ -32,6 +32,18 @@
 		</div>
 
 		<div class="flex items-center gap-4">
+			<a
+				href="/auth/login"
+				class="px-4 py-2 rounded-md hover:bg-white/10 transition text-sm"
+			>
+				Sign In
+			</a>
+			<a
+				href="/auth/register"
+				class="px-4 py-2 rounded-md hover:bg-white/10 transition text-sm"
+			>
+				Sign Up
+			</a>
 			<button
 				on:click={toggleTheme}
 				class="px-4 py-2 rounded-md hover:bg-white/10 transition"
@@ -54,8 +66,8 @@
 			</p>
 
 			<div class="flex justify-center gap-4 mb-12">
-				<button class="btn btn-primary">Get Started</button>
-				<button class="btn btn-secondary">Learn More</button>
+				<a href="/auth/register" class="btn btn-primary">Get Started</a>
+				<a href="/auth/login" class="btn btn-secondary">Sign In</a>
 			</div>
 
 			<!-- Feature Cards -->
