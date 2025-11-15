@@ -3,7 +3,7 @@ Application configuration settings.
 """
 
 from pydantic_settings import BaseSettings
-from pydantic import validator
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -29,20 +29,29 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS
-    ALLOWED_ORIGINS: str = "http://localhost:5173"
-    ALLOWED_METHODS: str = "GET,POST,PUT,DELETE,PATCH"
+    ALLOWED_ORIGINS: list[str] = ["http://localhost:5173"]
+    ALLOWED_METHODS: list[str] = ["GET", "POST", "PUT", "DELETE", "PATCH"]
     ALLOWED_HEADERS: str = "*"
 
-    @validator("ALLOWED_ORIGINS", pre=True)
+    @field_validator("ALLOWED_ORIGINS", mode="before")
+    @classmethod
     def parse_origins(cls, v):
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",")]
         return v
 
-    @validator("ALLOWED_METHODS", pre=True)
+    @field_validator("ALLOWED_METHODS", mode="before")
+    @classmethod
     def parse_methods(cls, v):
         if isinstance(v, str):
             return [method.strip() for method in v.split(",")]
+        return v
+
+    @field_validator("ALLOWED_IMAGE_TYPES", mode="before")
+    @classmethod
+    def parse_image_types(cls, v):
+        if isinstance(v, str):
+            return [image_type.strip() for image_type in v.split(",")]
         return v
 
     # Email
@@ -59,7 +68,7 @@ class Settings(BaseSettings):
 
     # File Upload
     MAX_UPLOAD_SIZE_MB: int = 10
-    ALLOWED_IMAGE_TYPES: str = "image/jpeg,image/png,image/webp"
+    ALLOWED_IMAGE_TYPES: list[str] = ["image/jpeg", "image/png", "image/webp"]
 
     # Logging
     LOG_LEVEL: str = "INFO"
