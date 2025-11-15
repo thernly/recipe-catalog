@@ -101,6 +101,36 @@ class PasswordChange(BaseModel):
         return v
 
 
+class ForgotPasswordRequest(BaseModel):
+    """Schema for forgot password request."""
+
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Schema for password reset."""
+
+    token: str
+    new_password: str = Field(..., min_length=12)
+
+    @validator("new_password")
+    def validate_password(cls, v):
+        """Validate password complexity."""
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(c.islower() for c in v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one digit")
+        return v
+
+
+class ResendVerificationRequest(BaseModel):
+    """Schema for resending verification email."""
+
+    email: EmailStr
+
+
 # ============================================
 # User Preferences
 # ============================================

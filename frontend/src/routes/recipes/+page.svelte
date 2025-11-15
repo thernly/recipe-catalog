@@ -5,6 +5,7 @@
 	import type { RecipeSearchResult, RecipeSummary } from '$lib/api/recipes';
 	import RecipeCard from '$lib/components/RecipeCard.svelte';
 	import RecipeListItem from '$lib/components/RecipeListItem.svelte';
+	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
 
 	let searchResult: RecipeSearchResult | null = null;
 	let loading = true;
@@ -12,6 +13,9 @@
 
 	// View mode
 	let viewMode: 'grid' | 'list' = 'grid';
+
+	// Show/hide filters
+	let showFilters = true;
 
 	// Search and filter params
 	let searchParams: RecipeSearchParams = {
@@ -26,6 +30,7 @@
 	let selectedCategories: string[] = [];
 	let selectedSourceTypes: string[] = [];
 	let maxTime: number | undefined;
+	let minTime: number | undefined;
 
 	// Load recipes
 	async function loadRecipes() {
@@ -38,7 +43,8 @@
 				cuisine: selectedCuisines.length > 0 ? selectedCuisines : undefined,
 				category: selectedCategories.length > 0 ? selectedCategories : undefined,
 				source_type: selectedSourceTypes.length > 0 ? selectedSourceTypes : undefined,
-				max_time_minutes: maxTime
+				max_time_minutes: maxTime,
+				min_time_minutes: minTime
 			};
 
 			searchResult = await searchRecipes(params);
@@ -117,6 +123,18 @@
 		localStorage.setItem('recipe-view-mode', mode);
 	}
 
+	// Handle filter changes
+	function handleFilterChange(e: CustomEvent) {
+		const filters = e.detail;
+		selectedCuisines = filters.selectedCuisines;
+		selectedCategories = filters.selectedCategories;
+		selectedSourceTypes = filters.selectedSourceTypes;
+		maxTime = filters.maxTime;
+		minTime = filters.minTime;
+		searchParams.page = 1; // Reset to first page when filters change
+		loadRecipes();
+	}
+
 	// Initialize
 	onMount(() => {
 		// Restore view mode from localStorage
@@ -142,6 +160,13 @@
 				<h1 class="text-3xl font-bold" style="color: var(--text-900);">My Recipes</h1>
 
 				<div class="flex items-center gap-2">
+					<button
+						on:click={() => (showFilters = !showFilters)}
+						class="filter-toggle-btn"
+						title={showFilters ? 'Hide filters' : 'Show filters'}
+					>
+						🔍 {showFilters ? 'Hide' : 'Show'} Filters
+					</button>
 					<button
 						on:click={() => toggleViewMode('grid')}
 						class="view-btn"
@@ -198,6 +223,23 @@
 
 	<!-- Main content -->
 	<div class="container-custom py-8">
+		<div class="recipes-layout">
+			<!-- Filter Sidebar -->
+			{#if showFilters}
+				<div class="filter-column">
+					<FilterSidebar
+						bind:selectedCuisines
+						bind:selectedCategories
+						bind:selectedSourceTypes
+						bind:maxTime
+						bind:minTime
+						on:change={handleFilterChange}
+					/>
+				</div>
+			{/if}
+
+			<!-- Recipes Column -->
+			<div class="recipes-column">
 		{#if loading}
 			<!-- Loading state -->
 			<div class="text-center py-16">
@@ -282,6 +324,8 @@
 				</div>
 			{/if}
 		{/if}
+			</div>
+		</div>
 	</div>
 </div>
 
@@ -377,5 +421,51 @@
 	.pagination-btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	.filter-toggle-btn {
+		padding: 0.5rem 1rem;
+		border: 1px solid var(--neutral-200);
+		border-radius: var(--radius-md);
+		background: var(--neutral-white);
+		color: var(--text-900);
+		font-size: 0.875rem;
+		cursor: pointer;
+		transition: all var(--transition-fast);
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.filter-toggle-btn:hover {
+		background: var(--accent-50);
+		border-color: var(--accent-300);
+	}
+
+	.recipes-layout {
+		display: flex;
+		gap: 2rem;
+		align-items: start;
+	}
+
+	.filter-column {
+		flex: 0 0 280px;
+		min-width: 280px;
+	}
+
+	.recipes-column {
+		flex: 1;
+		min-width: 0;
+	}
+
+	@media (max-width: 1024px) {
+		.recipes-layout {
+			flex-direction: column;
+		}
+
+		.filter-column {
+			width: 100%;
+			flex: 1;
+		}
 	}
 </style>
