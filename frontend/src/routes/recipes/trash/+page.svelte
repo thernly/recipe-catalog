@@ -163,7 +163,15 @@
 					<article class="trash-item">
 						<!-- Recipe info -->
 						<div class="flex items-start gap-4 flex-1">
-							{#if recipe.image_url}
+							{#if recipe.recipe_data?.images?.[0]?.data}
+								<div class="trash-item-thumbnail">
+									<img
+										src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
+										alt={recipe.name}
+										class="w-full h-full object-cover"
+									/>
+								</div>
+							{:else if recipe.image_url}
 								<div class="trash-item-thumbnail">
 									<img src={recipe.image_url} alt={recipe.name} class="w-full h-full object-cover" />
 								</div>

@@ -36,7 +36,13 @@
 	<button on:click={handleView} class="w-full text-left">
 		<!-- Image -->
 		<div class="recipe-card-image">
-			{#if recipe.image_url}
+			{#if recipe.recipe_data?.images?.[0]?.data}
+				<img
+					src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
+					alt={recipe.name}
+					class="w-full h-full object-cover"
+				/>
+			{:else if recipe.image_url}
 				<img src={recipe.image_url} alt={recipe.name} class="w-full h-full object-cover" />
 			{:else}
 				<div

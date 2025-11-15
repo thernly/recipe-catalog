@@ -35,7 +35,13 @@
 	<button on:click={handleView} class="flex items-center gap-4 w-full text-left p-4">
 		<!-- Thumbnail -->
 		<div class="recipe-list-thumbnail">
-			{#if recipe.image_url}
+			{#if recipe.recipe_data?.images?.[0]?.data}
+				<img
+					src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
+					alt={recipe.name}
+					class="w-full h-full object-cover"
+				/>
+			{:else if recipe.image_url}
 				<img src={recipe.image_url} alt={recipe.name} class="w-full h-full object-cover" />
 			{:else}
 				<div

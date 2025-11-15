@@ -25,11 +25,21 @@ def convert_to_schema_org(recipe_db: Any) -> Dict[str, Any]:
     """
     recipe_data = recipe_db.recipe_data or {}
 
+    # Get stored images or fall back to fetching from URL
+    stored_images = recipe_data.get("images", [])
+    if stored_images:
+        images = stored_images
+    elif recipe_db.image_url:
+        # Legacy support: fetch and encode if no stored images
+        images = _convert_images_to_schema(recipe_db.image_url)
+    else:
+        images = []
+
     # Build the Schema.org format
     schema_recipe = {
         "name": recipe_db.name,
         "description": recipe_db.description or "",
-        "image": _convert_images_to_schema(recipe_db.image_url),
+        "image": images,
         "author": recipe_data.get("author", []),
         "datePublished": recipe_data.get("datePublished") or (
             recipe_db.created_at.strftime("%Y-%m-%d") if recipe_db.created_at else ""
@@ -63,16 +73,64 @@ def convert_from_schema_org(schema_recipe: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Dict with fields ready for RecipeCreate schema
     """
-    # Extract first image URL if available
+    # Process images - extract and fetch base64 data if needed
     image_url = None
+    images_data = []
     images = schema_recipe.get("image", [])
-    if images and isinstance(images, list) and len(images) > 0:
-        if isinstance(images[0], dict):
-            image_url = images[0].get("url")
-        elif isinstance(images[0], str):
-            image_url = images[0]
-    elif isinstance(images, str):
-        image_url = images
+
+    # Normalize images to list format
+    if isinstance(images, str):
+        images = [images]
+    elif not isinstance(images, list):
+        images = []
+
+    # Process each image
+    for img in images:
+        if isinstance(img, dict):
+            # Image object with potential base64 data
+            url = img.get("url", "")
+            data = img.get("data", "")
+            mime_type = img.get("mimeType", "image/jpeg")
+
+            # If no base64 data but URL exists, fetch it
+            if url and not data:
+                fetched_image = _fetch_and_encode_image(url)
+                if fetched_image:
+                    images_data.append(fetched_image)
+                else:
+                    # Store without data if fetch fails
+                    images_data.append({
+                        "url": url,
+                        "data": "",
+                        "mimeType": mime_type
+                    })
+            else:
+                # Store as-is
+                images_data.append({
+                    "url": url,
+                    "data": data,
+                    "mimeType": mime_type
+                })
+
+            # Use first URL for image_url field
+            if not image_url and url:
+                image_url = url
+        elif isinstance(img, str):
+            # Just a URL string - fetch and encode it
+            fetched_image = _fetch_and_encode_image(img)
+            if fetched_image:
+                images_data.append(fetched_image)
+            else:
+                # Store without data if fetch fails
+                images_data.append({
+                    "url": img,
+                    "data": "",
+                    "mimeType": "image/jpeg"
+                })
+
+            # Use first URL for image_url field
+            if not image_url:
+                image_url = img
 
     # Extract category and cuisine (take first if array)
     category = schema_recipe.get("recipeCategory")
@@ -115,6 +173,7 @@ def convert_from_schema_org(schema_recipe: Dict[str, Any]) -> Dict[str, Any]:
         "notes": schema_recipe.get("notes", ""),
         "aggregateRating": schema_recipe.get("aggregateRating", {}),
         "nutrition": schema_recipe.get("nutrition", {}),
+        "images": images_data,  # Store base64 image data
     }
 
     return {
@@ -130,22 +189,19 @@ def convert_from_schema_org(schema_recipe: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _convert_images_to_schema(image_url: Optional[str]) -> List[Dict[str, str]]:
+def _fetch_and_encode_image(image_url: str) -> Optional[Dict[str, str]]:
     """
-    Convert image URL to Schema.org image format with base64 data.
+    Fetch an image from URL and encode it to base64.
 
     Args:
-        image_url: URL of the image
+        image_url: URL of the image to fetch
 
     Returns:
-        List of image objects with URL, base64 data, and MIME type
+        Dict with url, data (base64), and mimeType, or None if fetch fails
     """
     if not image_url:
-        return []
+        return None
 
-    images = []
-
-    # Try to fetch and encode the image
     try:
         with httpx.Client(timeout=10) as client:
             response = client.get(image_url, headers={
@@ -159,29 +215,43 @@ def _convert_images_to_schema(image_url: Optional[str]) -> List[Dict[str, str]]:
             # Encode to base64
             base64_data = base64.b64encode(response.content).decode('utf-8')
 
-            images.append({
+            return {
                 "url": image_url,
                 "data": base64_data,
                 "mimeType": content_type
-            })
+            }
     except (httpx.HTTPError, httpx.RequestError, ValueError) as e:
-        # If image fetch fails, just include URL without data
         logger.warning(f"Failed to fetch image from {image_url}: {str(e)}")
-        images.append({
-            "url": image_url,
-            "data": "",
-            "mimeType": "image/jpeg"
-        })
+        return None
     except Exception as e:
-        # Log unexpected errors during image conversion
         logger.exception(f"Unexpected error fetching image: {image_url}")
-        images.append({
-            "url": image_url,
-            "data": "",
-            "mimeType": "image/jpeg"
-        })
+        return None
 
-    return images
+
+def _convert_images_to_schema(image_url: Optional[str]) -> List[Dict[str, str]]:
+    """
+    Convert image URL to Schema.org image format with base64 data.
+    Legacy function for backward compatibility.
+
+    Args:
+        image_url: URL of the image
+
+    Returns:
+        List of image objects with URL, base64 data, and MIME type
+    """
+    if not image_url:
+        return []
+
+    fetched = _fetch_and_encode_image(image_url)
+    if fetched:
+        return [fetched]
+
+    # If fetch fails, return URL without data
+    return [{
+        "url": image_url,
+        "data": "",
+        "mimeType": "image/jpeg"
+    }]
 
 
 def _ensure_array(value: Any) -> List[str]:
