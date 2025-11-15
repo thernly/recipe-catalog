@@ -149,7 +149,7 @@ async def logout():
 
 @router.post("/forgot-password")
 async def forgot_password(
-    request: schemas.ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
+    request: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
 ):
     """
     Send password reset email.
@@ -196,7 +196,7 @@ async def forgot_password(
 
 @router.post("/reset-password")
 async def reset_password(
-    request: schemas.ResetPasswordRequest, db: AsyncSession = Depends(get_db)
+    request: ResetPasswordRequest, db: AsyncSession = Depends(get_db)
 ):
     """
     Reset password with token.
@@ -290,7 +290,7 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/resend-verification")
 async def resend_verification(
-    request: schemas.ResendVerificationRequest, db: AsyncSession = Depends(get_db)
+    request: ResendVerificationRequest, db: AsyncSession = Depends(get_db)
 ):
     """
     Resend verification email.
