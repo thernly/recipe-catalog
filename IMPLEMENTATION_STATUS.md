@@ -202,8 +202,11 @@ You can currently:
 
 #### 7. Browser Extension
 - Separate project
+  - already exists
 - Recipe scraping logic
+  - already exists
 - Import API integration
+  - this functionality does not exist but will be implemented in that separate project
 
 #### 8. Testing Suite
 - Backend: pytest
