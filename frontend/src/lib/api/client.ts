@@ -20,10 +20,13 @@ export async function apiRequest<T>(
 ): Promise<T> {
 	const { requireAuth = true, ...fetchOptions } = options;
 
-	const headers: HeadersInit = {
-		'Content-Type': 'application/json',
-		...fetchOptions.headers
-	};
+	// Don't set Content-Type for FormData - let the browser set it with boundary
+	const headers: HeadersInit = fetchOptions.body instanceof FormData
+		? { ...fetchOptions.headers }
+		: {
+			'Content-Type': 'application/json',
+			...fetchOptions.headers
+		};
 
 	// Add authentication token if required
 	if (requireAuth) {

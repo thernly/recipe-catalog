@@ -68,9 +68,22 @@ app.add_middleware(
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors and return JSON response."""
     logger.error(f"Validation error on {request.url}: {exc.errors()}")
+
+    # Don't include body in response if it's FormData (not JSON serializable)
+    response_content = {"detail": exc.errors()}
+    try:
+        # Only include body if it's JSON serializable
+        if exc.body is not None:
+            import json
+            json.dumps(exc.body)
+            response_content["body"] = exc.body
+    except (TypeError, ValueError):
+        # Body is not JSON serializable (e.g., FormData), skip it
+        pass
+
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"detail": exc.errors(), "body": exc.body},
+        content=response_content,
     )
 
 
