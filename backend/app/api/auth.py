@@ -319,8 +319,9 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/resend-verification")
+@limiter.limit("3/hour")
 async def resend_verification(
-    request: ResendVerificationRequest, db: AsyncSession = Depends(get_db)
+    req: Request, request: ResendVerificationRequest, db: AsyncSession = Depends(get_db)
 ):
     """
     Resend verification email.

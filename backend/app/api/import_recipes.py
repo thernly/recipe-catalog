@@ -8,9 +8,11 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
@@ -21,6 +23,7 @@ from app.utils.recipe_format import convert_from_schema_org
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+limiter = Limiter(key_func=get_remote_address)
 
 
 async def _import_recipes_internal(
@@ -141,7 +144,9 @@ async def _import_recipes_internal(
 
 
 @router.post("/recipes")
+@limiter.limit("20/hour")
 async def import_recipes(
+    request: Request,
     file: UploadFile = File(...),
     duplicate_handling: Literal["skip", "update", "create"] = Form("skip"),
     collection_id: int = Form(None),
@@ -221,7 +226,9 @@ async def import_recipes(
 
 
 @router.post("/recipes/json")
+@limiter.limit("20/hour")
 async def import_recipes_json(
+    request: Request,
     recipes: List[Dict[str, Any]],
     duplicate_handling: Literal["skip", "update", "create"] = "skip",
     collection_id: int = None,
