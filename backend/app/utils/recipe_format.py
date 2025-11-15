@@ -76,12 +76,16 @@ def convert_from_schema_org(schema_recipe: Dict[str, Any]) -> Dict[str, Any]:
 
     # Extract category and cuisine (take first if array)
     category = schema_recipe.get("recipeCategory")
-    if isinstance(category, list) and len(category) > 0:
-        category = category[0]
+    if isinstance(category, list):
+        category = category[0] if len(category) > 0 else None
+    elif not category:
+        category = None
 
     cuisine = schema_recipe.get("recipeCuisine")
-    if isinstance(cuisine, list) and len(cuisine) > 0:
-        cuisine = cuisine[0]
+    if isinstance(cuisine, list):
+        cuisine = cuisine[0] if len(cuisine) > 0 else None
+    elif not cuisine:
+        cuisine = None
 
     # Calculate total time in minutes
     total_time_minutes = None
