@@ -1,7 +1,16 @@
 """Database models."""
 
-from app.models.user import User
+from app.models.user import User, UserPreferences
 from app.models.recipe import Recipe
 from app.models.collection import Collection, RecipeCollection
+from app.models.token import VerificationToken, PasswordResetToken
 
-__all__ = ["User", "Recipe", "Collection", "RecipeCollection"]
+__all__ = [
+    "User",
+    "UserPreferences",
+    "Recipe",
+    "Collection",
+    "RecipeCollection",
+    "VerificationToken",
+    "PasswordResetToken",
+]

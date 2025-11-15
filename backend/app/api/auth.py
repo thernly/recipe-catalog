@@ -2,6 +2,7 @@
 Authentication API endpoints.
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -21,6 +22,7 @@ from app.schemas.user import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -40,54 +42,70 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     Raises:
         HTTPException: If email already exists
     """
-    # Check if email already exists
-    result = await db.execute(select(User).where(User.email == user_data.email.lower()))
-    existing_user = result.scalar_one_or_none()
+    logger.info(f"Registration attempt for email: {user_data.email}")
 
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
+    try:
+        # Check if email already exists
+        result = await db.execute(select(User).where(User.email == user_data.email.lower()))
+        existing_user = result.scalar_one_or_none()
+
+        if existing_user:
+            logger.warning(f"Registration failed - email already exists: {user_data.email}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
+            )
+
+        # Create new user
+        logger.debug(f"Creating new user: {user_data.email}")
+        hashed_password = get_password_hash(user_data.password)
+        new_user = User(
+            email=user_data.email.lower(),
+            hashed_password=hashed_password,
+            display_name=user_data.display_name,
+            is_active=True,
+            is_verified=False,  # Set to True for MVP (no email verification yet)
         )
 
-    # Create new user
-    hashed_password = get_password_hash(user_data.password)
-    new_user = User(
-        email=user_data.email.lower(),
-        hashed_password=hashed_password,
-        display_name=user_data.display_name,
-        is_active=True,
-        is_verified=False,  # Set to True for MVP (no email verification yet)
-    )
+        db.add(new_user)
+        await db.flush()  # Get the user ID
+        logger.debug(f"User created with ID: {new_user.id}")
 
-    db.add(new_user)
-    await db.flush()  # Get the user ID
+        # Create default preferences
+        logger.debug(f"Creating default preferences for user {new_user.id}")
+        preferences = UserPreferences(user_id=new_user.id)
+        db.add(preferences)
 
-    # Create default preferences
-    preferences = UserPreferences(user_id=new_user.id)
-    db.add(preferences)
+        # Create default collections
+        from app.models.collection import Collection
 
-    # Create default collections
-    from app.models.collection import Collection
+        logger.debug(f"Creating default collections for user {new_user.id}")
+        default_collections = [
+            Collection(
+                user_id=new_user.id,
+                name="Favorites",
+                description="Your favorite recipes",
+                is_default=True,
+                icon="⭐",
+            ),
+        ]
 
-    default_collections = [
-        Collection(
-            user_id=new_user.id,
-            name="Favorites",
-            description="Your favorite recipes",
-            is_default=True,
-            icon="⭐",
-        ),
-    ]
+        for collection in default_collections:
+            db.add(collection)
 
-    for collection in default_collections:
-        db.add(collection)
+        await db.commit()
+        await db.refresh(new_user)
 
-    await db.commit()
-    await db.refresh(new_user)
+        logger.info(f"User registered successfully: {new_user.email} (ID: {new_user.id})")
 
-    # TODO: Send verification email
+        # TODO: Send verification email
 
-    return new_user
+        return new_user
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.exception(f"Error during registration for {user_data.email}: {str(e)}")
+        raise
 
 
 @router.post("/login", response_model=Token)
