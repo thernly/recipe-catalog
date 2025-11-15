@@ -151,3 +151,25 @@ export async function duplicateRecipe(id: number): Promise<Recipe> {
 export async function getTrashedRecipes(): Promise<RecipeSummary[]> {
 	return apiRequest<RecipeSummary[]>('/api/recipes/trash/list');
 }
+
+/**
+ * Import recipes from JSON file
+ */
+export async function importRecipes(
+	file: File,
+	duplicateHandling: 'skip' | 'update' | 'create' = 'skip',
+	collectionId?: number
+): Promise<{ success: boolean; message: string; details: any }> {
+	const formData = new FormData();
+	formData.append('file', file);
+	formData.append('duplicate_handling', duplicateHandling);
+	if (collectionId) {
+		formData.append('collection_id', collectionId.toString());
+	}
+
+	return apiRequest<{ success: boolean; message: string; details: any }>('/api/import/recipes', {
+		method: 'POST',
+		body: formData,
+		headers: {} // Let browser set Content-Type for FormData
+	});
+}

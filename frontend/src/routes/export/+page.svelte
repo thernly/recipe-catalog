@@ -4,6 +4,7 @@
 	import type { UserStats } from '$lib/api/users';
 	import { API_BASE_URL } from '$lib/config';
 	import ExportCard from '$lib/components/export/ExportCard.svelte';
+	import Navbar from '$lib/components/Navbar.svelte';
 
 	let stats: UserStats | null = null;
 	let loading = true;
@@ -40,8 +41,10 @@
 				throw new Error('Not authenticated');
 			}
 
-			// Build URL with format parameter
-			const url = `${API_BASE_URL}/api/export/${endpoint}?format=${format}`;
+			// Build URL with format parameter (only if format is provided)
+			const url = format
+				? `${API_BASE_URL}/api/export/${endpoint}?format=${format}`
+				: `${API_BASE_URL}/api/export/${endpoint}`;
 
 			// Fetch the export
 			const response = await fetch(url, {
@@ -51,7 +54,8 @@
 			});
 
 			if (!response.ok) {
-				throw new Error(`Export failed: ${response.statusText}`);
+				const errorText = await response.text();
+				throw new Error(`Export failed: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`);
 			}
 
 			// Get the blob
@@ -94,7 +98,8 @@
 	// Export all data
 	async function exportAllData() {
 		const filename = `complete_backup_${new Date().toISOString().split('T')[0]}.json`;
-		await exportData('all', 'json', filename);
+		// The 'all' endpoint doesn't accept a format parameter, so we don't pass it
+		await exportData('all', '', filename);
 	}
 
 	onMount(() => {
@@ -107,6 +112,9 @@
 </svelte:head>
 
 <div class="min-h-screen bg-neutral-50">
+	<!-- Navbar -->
+	<Navbar />
+
 	<div class="container-custom py-8">
 		<div class="header-section">
 			<h1 class="text-4xl font-bold" style="color: var(--text-900);">Export Your Data</h1>

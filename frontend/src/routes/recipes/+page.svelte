@@ -6,6 +6,8 @@
 	import RecipeCard from '$lib/components/RecipeCard.svelte';
 	import RecipeListItem from '$lib/components/RecipeListItem.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
+	import Navbar from '$lib/components/Navbar.svelte';
+	import { importRecipes } from '$lib/api/recipes';
 
 	let searchResult: RecipeSearchResult | null = null;
 	let loading = true;
@@ -135,6 +137,44 @@
 		loadRecipes();
 	}
 
+	// Handle JSON file upload
+	let uploading = false;
+	let fileInput: HTMLInputElement;
+
+	function triggerFileUpload() {
+		fileInput?.click();
+	}
+
+	async function handleFileUpload(e: Event) {
+		const target = e.target as HTMLInputElement;
+		const file = target.files?.[0];
+
+		if (!file) return;
+
+		if (file.type !== 'application/json') {
+			alert('Please select a JSON file');
+			return;
+		}
+
+		uploading = true;
+		try {
+			// Call the import API with the file
+			const result = await importRecipes(file, 'skip');
+
+			// Reload the recipes list
+			await loadRecipes();
+
+			alert(result.message || 'Recipes imported successfully!');
+		} catch (err) {
+			console.error('Failed to import recipes:', err);
+			alert(err instanceof Error ? err.message : 'Failed to import recipes');
+		} finally {
+			uploading = false;
+			// Reset the file input
+			target.value = '';
+		}
+	}
+
 	// Initialize
 	onMount(() => {
 		// Restore view mode from localStorage
@@ -151,9 +191,21 @@
 	<title>My Recipes - Recipe Catalog</title>
 </svelte:head>
 
+<!-- Hidden file input for JSON upload -->
+<input
+	type="file"
+	accept="application/json,.json"
+	bind:this={fileInput}
+	on:change={handleFileUpload}
+	style="display: none;"
+/>
+
 <div class="min-h-screen bg-neutral-50">
+	<!-- Navbar -->
+	<Navbar />
+
 	<!-- Header -->
-	<div class="sticky top-0 z-40 bg-white border-b border-neutral-200">
+	<div class="sticky top-16 z-40 bg-white border-b border-neutral-200">
 		<div class="container-custom py-4">
 			<!-- Top row: Title and View toggle -->
 			<div class="flex items-center justify-between mb-4">
@@ -268,7 +320,9 @@
 					<button on:click={() => goto('/recipes/new')} class="btn btn-primary">
 						+ Add Recipe
 					</button>
-					<button class="btn btn-secondary">📥 Upload JSON</button>
+					<button on:click={triggerFileUpload} class="btn btn-secondary" disabled={uploading}>
+						{uploading ? 'Uploading...' : '📥 Upload JSON'}
+					</button>
 				</div>
 			</div>
 		{:else if searchResult}
