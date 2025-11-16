@@ -12,37 +12,37 @@
 	<div class="stats-grid">
 		<div class="stat-card">
 			<div class="stat-icon">📖</div>
-			<div class="stat-value">{stats.total_recipes}</div>
+			<div class="stat-value">{stats.total_recipes ?? 0}</div>
 			<div class="stat-label">Total Recipes</div>
 		</div>
 
 		<div class="stat-card">
 			<div class="stat-icon">📚</div>
-			<div class="stat-value">{stats.total_collections}</div>
+			<div class="stat-value">{stats.total_collections ?? 0}</div>
 			<div class="stat-label">Collections</div>
 		</div>
 
 		<div class="stat-card">
 			<div class="stat-icon">📥</div>
-			<div class="stat-value">{stats.recipes_imported}</div>
+			<div class="stat-value">{stats.recipes_imported ?? 0}</div>
 			<div class="stat-label">Imported</div>
 		</div>
 
 		<div class="stat-card">
 			<div class="stat-icon">✍️</div>
-			<div class="stat-value">{stats.recipes_manual}</div>
+			<div class="stat-value">{stats.recipes_manual ?? 0}</div>
 			<div class="stat-label">Manual Entry</div>
 		</div>
 
 		<div class="stat-card">
 			<div class="stat-icon">📅</div>
-			<div class="stat-value">{stats.recipes_this_month}</div>
+			<div class="stat-value">{stats.recipes_this_month ?? 0}</div>
 			<div class="stat-label">This Month</div>
 		</div>
 
 		<div class="stat-card">
 			<div class="stat-icon">👤</div>
-			<div class="stat-value">{user.display_name}</div>
+			<div class="stat-value">{user.display_name || ''}</div>
 			<div class="stat-label">Member Since {new Date(user.created_at).getFullYear()}</div>
 		</div>
 	</div>

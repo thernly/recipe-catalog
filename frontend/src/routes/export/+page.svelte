@@ -4,7 +4,6 @@
 	import type { UserStats } from '$lib/api/users';
 	import { API_BASE_URL } from '$lib/config';
 	import ExportCard from '$lib/components/export/ExportCard.svelte';
-	import Navbar from '$lib/components/Navbar.svelte';
 
 	let stats: UserStats | null = null;
 	let loading = true;
@@ -112,9 +111,6 @@
 </svelte:head>
 
 <div class="min-h-screen bg-neutral-50">
-	<!-- Navbar -->
-	<Navbar />
-
 	<div class="container-custom py-8">
 		<div class="header-section">
 			<h1 class="text-4xl font-bold" style="color: var(--text-900);">Export Your Data</h1>
