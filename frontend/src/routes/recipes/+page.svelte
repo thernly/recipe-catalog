@@ -240,24 +240,25 @@
 	<!-- Main content -->
 	<div class="container-custom py-8">
 		<div class="recipes-layout">
-			<!-- Collections Sidebar -->
-			{#if showCollections}
-				<div class="collections-column">
-					<CollectionsSidebar />
-				</div>
-			{/if}
+			<!-- Sidebar (Collections + Filters) -->
+			{#if showCollections || showFilters}
+				<div class="sidebar-column">
+					{#if showCollections}
+						<div class="mb-6">
+							<CollectionsSidebar />
+						</div>
+					{/if}
 
-			<!-- Filter Sidebar -->
-			{#if showFilters}
-				<div class="filter-column">
-					<FilterSidebar
-						bind:selectedCuisines
-						bind:selectedCategories
-						bind:selectedSourceTypes
-						bind:maxTime
-						bind:minTime
-						on:change={handleFilterChange}
-					/>
+					{#if showFilters}
+						<FilterSidebar
+							bind:selectedCuisines
+							bind:selectedCategories
+							bind:selectedSourceTypes
+							bind:maxTime
+							bind:minTime
+							on:change={handleFilterChange}
+						/>
+					{/if}
 				</div>
 			{/if}
 
@@ -492,12 +493,7 @@
 		align-items: start;
 	}
 
-	.collections-column {
-		flex: 0 0 280px;
-		min-width: 280px;
-	}
-
-	.filter-column {
+	.sidebar-column {
 		flex: 0 0 280px;
 		min-width: 280px;
 	}
@@ -512,8 +508,7 @@
 			flex-direction: column;
 		}
 
-		.collections-column,
-		.filter-column {
+		.sidebar-column {
 			width: 100%;
 			flex: 1;
 		}

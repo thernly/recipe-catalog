@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     recipes_per_page INTEGER DEFAULT 24 NOT NULL,
     email_notifications BOOLEAN DEFAULT 0 NOT NULL,
     timezone VARCHAR(100) DEFAULT 'UTC' NOT NULL,
+    custom_cuisines TEXT DEFAULT '[]' NOT NULL,
+    custom_categories TEXT DEFAULT '[]' NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
