@@ -293,13 +293,7 @@ The Recipe Catalog application is **fully functional** with all core MVP feature
 - ❌ **Timer Integration** - Built-in cooking timers
 - ❌ **Serving Calculator** - Scale recipes automatically
 
-### Phase 4 Features (Social & Sharing)
-- ❌ **Public Profiles** - Share recipes publicly
-- ❌ **Recipe Comments** - Community feedback
-- ❌ **Following System** - Follow other users
-- ❌ **Trending Recipes** - Popular recipe discovery
-
-### Phase 5 Features (Intelligence)
+### Phase 4 Features (Intelligence)
 - ❌ **Ingredient-Based Search** - "What can I make with..."
 - ❌ **Dietary Filters** - Vegetarian, vegan, gluten-free, etc.
 - ❌ **Nutrition Calculator** - Auto-calculate nutrition from ingredients

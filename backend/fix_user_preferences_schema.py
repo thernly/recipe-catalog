@@ -5,12 +5,13 @@ This fixes the database schema for existing databases.
 Run this script from the backend directory:
     python fix_user_preferences_schema.py
 """
+
 import sqlite3
 import os
 from pathlib import Path
 
 # Find the database file
-db_path = Path(__file__).parent.parent / "database" / "recipe_catalog.db"
+db_path = Path(__file__).parent.parent / "backend" / "recipes.db"
 
 if not db_path.exists():
     print(f"❌ Database not found at: {db_path}")
@@ -28,8 +29,8 @@ try:
     cursor.execute("PRAGMA table_info(user_preferences)")
     columns = [row[1] for row in cursor.fetchall()]
 
-    needs_custom_cuisines = 'custom_cuisines' not in columns
-    needs_custom_categories = 'custom_categories' not in columns
+    needs_custom_cuisines = "custom_cuisines" not in columns
+    needs_custom_categories = "custom_categories" not in columns
 
     if not needs_custom_cuisines and not needs_custom_categories:
         print("✅ Database schema is already up to date!")
@@ -65,8 +66,8 @@ except sqlite3.Error as e:
 finally:
     conn.close()
 
-print("\n" + "="*60)
+print("\n" + "=" * 60)
 print("Note: In the future, you can also run Alembic migrations:")
 print("  cd backend")
 print("  alembic upgrade head")
-print("="*60)
+print("=" * 60)

@@ -4,11 +4,7 @@
 
 ### Inconsistencies
 
-- The navigation bar does not appear on the page where a specific recipe is displayed.  Example: http://localhost:5173/recipes/3
-- The text in the navigation bar changes color from the `Dashboard` page to the `Recipes` page
-- The navigation bar does not appear on the `Settings` page.
-- On the `Settings` page under `Danger Zone` there is a label `Delete Account`, but no action can be taken.  This needs to be implemented.
-- Before logging in, there is an icon in the upper right of the page that allows the user to toggle between the different themes.  Once logged in, this is no longer available.
-- There is no apparent way to add/edit collections.
-- There is no apparent way to add/edit the cuisines and categories (these show under filters).
-
+- The navigation bar appears twice on `Export` page.
+- On the `Settings` page under `Danger Zone` there is a label `Delete Account`, but no action can be taken.  If this has been implemented, then a button needs to be added to allow the user to take action.
+- On the recipe pages, the contrast of the butttons (Edit, Duplicate, Export, and Print) is low against the background, making them hard to see.
+- On the settings page, on statistics, imported, manual entry, and "this month" all have undefined values.  These should never be undefined.  They should be zero if there is no data.  There is also a box with a person icon that has the value "null" displayed.  If this is supposed to be a name, then if no name is provided it should just display blank.
