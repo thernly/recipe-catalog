@@ -1,6 +1,5 @@
 """Recipe model."""
 
-from datetime import datetime
 from sqlalchemy import (
     Boolean,
     Column,
@@ -13,6 +12,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+from app.models._utils import utc_now
 
 
 class Recipe(Base):
@@ -39,9 +39,9 @@ class Recipe(Base):
     is_modified = Column(Boolean, default=False, nullable=False)
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False, index=True)
     updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, onupdate=utc_now, nullable=False
     )
     imported_at = Column(DateTime)
 

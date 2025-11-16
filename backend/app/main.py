@@ -16,7 +16,7 @@ from app.core.config import settings
 from app.core.database import init_db, close_db
 
 # Include API routers
-from app.api import auth, recipes, collections, users, export, import_recipes
+from app.api import auth, oauth, recipes, collections, users, export, import_recipes
 
 # Configure logging
 logging.basicConfig(
@@ -69,21 +69,25 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     """Handle validation errors and return JSON response."""
     logger.error(f"Validation error on {request.url}: {exc.errors()}")
 
-    # Don't include body in response if it's FormData (not JSON serializable)
-    response_content = {"detail": exc.errors()}
-    try:
-        # Only include body if it's JSON serializable
-        if exc.body is not None:
-            import json
+    # Convert Pydantic errors to JSON-serializable format
+    errors = []
+    for error in exc.errors():
+        # Create a serializable copy of the error dict
+        error_dict = {
+            "type": error.get("type"),
+            "loc": error.get("loc"),
+            "msg": error.get("msg"),
+            "input": str(error.get("input")) if error.get("input") is not None else None,
+        }
+        # Add ctx if present, but convert non-serializable values
+        if "ctx" in error:
+            error_dict["ctx"] = {k: str(v) for k, v in error["ctx"].items()}
+        errors.append(error_dict)
 
-            json.dumps(exc.body)
-            response_content["body"] = exc.body
-    except (TypeError, ValueError):
-        # Body is not JSON serializable (e.g., FormData), skip it
-        pass
+    response_content = {"detail": errors}
 
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content=response_content,
     )
 
@@ -121,6 +125,7 @@ async def health_check():
 
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(oauth.router, prefix="/api/auth", tags=["OAuth"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(recipes.router, prefix="/api/recipes", tags=["Recipes"])
 app.include_router(collections.router, prefix="/api/collections", tags=["Collections"])

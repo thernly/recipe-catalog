@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 # ============================================
@@ -41,8 +41,7 @@ class Collection(CollectionBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CollectionWithCount(Collection):
@@ -54,10 +53,10 @@ class CollectionWithCount(Collection):
 class CollectionRecipeAdd(BaseModel):
     """Schema for adding recipes to a collection."""
 
-    recipe_ids: List[int] = Field(..., min_items=1)
+    recipe_ids: List[int] = Field(..., min_length=1)
 
 
 class CollectionRecipeRemove(BaseModel):
     """Schema for removing recipes from a collection."""
 
-    recipe_ids: List[int] = Field(..., min_items=1)
+    recipe_ids: List[int] = Field(..., min_length=1)

@@ -49,7 +49,9 @@ async def _validate_collection(
         return None
 
     result = await db.execute(
-        select(Collection).where(Collection.id == collection_id).where(Collection.user_id == user_id)
+        select(Collection)
+        .where(Collection.id == collection_id)
+        .where(Collection.user_id == user_id)
     )
     collection = result.scalar_one_or_none()
     if not collection:
@@ -134,7 +136,9 @@ async def _import_recipes_internal(
                     existing_recipe.source_url = recipe_dict["source_url"]
                     existing_recipe.cuisine = recipe_dict["cuisine"]
                     existing_recipe.category = recipe_dict["category"]
-                    existing_recipe.total_time_minutes = recipe_dict["total_time_minutes"]
+                    existing_recipe.total_time_minutes = recipe_dict[
+                        "total_time_minutes"
+                    ]
                     existing_recipe.is_modified = True
                     existing_recipe.updated_at = datetime.now(timezone.utc)
 
@@ -171,7 +175,11 @@ async def _import_recipes_internal(
                     .where(RecipeCollection.collection_id == collection.id)
                 )
                 if not existing_link.scalar_one_or_none():
-                    db.add(RecipeCollection(recipe_id=recipe_to_add.id, collection_id=collection.id))
+                    db.add(
+                        RecipeCollection(
+                            recipe_id=recipe_to_add.id, collection_id=collection.id
+                        )
+                    )
 
         except (ValueError, KeyError, TypeError) as e:
             # Handle expected validation and format errors
@@ -183,7 +191,7 @@ async def _import_recipes_internal(
                     "error": str(e),
                 }
             )
-        except Exception as e:
+        except Exception:
             # Log unexpected errors and re-raise
             logger.exception(f"Unexpected error during import at index {idx}")
             raise
@@ -236,7 +244,9 @@ async def import_recipes(
         # Array of recipes
         recipes_data = data
     else:
-        raise HTTPException(status_code=400, detail="JSON must be a recipe object or array of recipes")
+        raise HTTPException(
+            status_code=400, detail="JSON must be a recipe object or array of recipes"
+        )
 
     # Validate collection if specified
     collection = await _validate_collection(collection_id, current_user.id, db)

@@ -1,9 +1,9 @@
 """User model."""
 
-from datetime import datetime
 from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+from app.models._utils import utc_now
 
 
 class User(Base):
@@ -13,13 +13,16 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
-    hashed_password = Column(String(255), nullable=False)
+    hashed_password = Column(
+        String(255), nullable=True
+    )  # Nullable for IdP-only accounts
     display_name = Column(String(100))
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    email_verified_at = Column(DateTime, nullable=True)  # Track when email was verified
+    created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, onupdate=utc_now, nullable=False
     )
 
     # Relationships
@@ -41,6 +44,9 @@ class User(Base):
     password_reset_tokens = relationship(
         "PasswordResetToken", back_populates="user", cascade="all, delete-orphan"
     )
+    identity_providers = relationship(
+        "IdentityProvider", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class UserPreferences(Base):
@@ -60,9 +66,9 @@ class UserPreferences(Base):
     timezone = Column(String(100), default="UTC", nullable=False)
     custom_cuisines = Column(JSON, default=list, nullable=False)
     custom_categories = Column(JSON, default=list, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, onupdate=utc_now, nullable=False
     )
 
     # Relationships

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 
 
 # ============================================
@@ -44,8 +44,9 @@ class UserCreate(BaseModel):
     password: str = Field(..., min_length=12)
     display_name: Optional[str] = Field(None, max_length=100)
 
-    @validator("password")
-    def validate_password(cls, v):
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
         """Validate password complexity."""
         return validate_password_complexity(v)
 
@@ -93,8 +94,7 @@ class User(UserBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserUpdate(BaseModel):
@@ -110,8 +110,9 @@ class PasswordChange(BaseModel):
     current_password: str
     new_password: str = Field(..., min_length=12)
 
-    @validator("new_password")
-    def validate_password(cls, v):
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
         """Validate password complexity."""
         return validate_password_complexity(v)
 
@@ -128,8 +129,9 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str = Field(..., min_length=12)
 
-    @validator("new_password")
-    def validate_password(cls, v):
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
         """Validate password complexity."""
         return validate_password_complexity(v)
 
@@ -166,8 +168,7 @@ class UserPreferences(UserPreferencesBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserPreferencesUpdate(BaseModel):

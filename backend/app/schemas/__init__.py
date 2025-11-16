@@ -28,6 +28,11 @@ from app.schemas.collection import (
     CollectionRecipeAdd,
     CollectionRecipeRemove,
 )
+from app.schemas.oauth import (
+    ProviderInfo,
+    LinkedProviderResponse,
+    OAuthCallbackRequest,
+)
 
 __all__ = [
     # User
@@ -55,4 +60,8 @@ __all__ = [
     "CollectionWithCount",
     "CollectionRecipeAdd",
     "CollectionRecipeRemove",
+    # OAuth
+    "ProviderInfo",
+    "LinkedProviderResponse",
+    "OAuthCallbackRequest",
 ]

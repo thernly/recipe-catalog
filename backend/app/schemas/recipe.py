@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 # ============================================
@@ -55,8 +55,7 @@ class Recipe(RecipeBase):
     imported_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RecipeSummary(BaseModel):
@@ -73,8 +72,7 @@ class RecipeSummary(BaseModel):
     created_at: datetime
     is_modified: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RecipeImport(BaseModel):

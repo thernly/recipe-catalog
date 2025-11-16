@@ -1,6 +1,5 @@
 """Collection models."""
 
-from datetime import datetime
 from sqlalchemy import (
     Boolean,
     Column,
@@ -13,6 +12,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+from app.models._utils import utc_now
 
 
 class Collection(Base):
@@ -26,9 +26,9 @@ class Collection(Base):
     description = Column(Text)
     is_default = Column(Boolean, default=False, nullable=False, index=True)
     icon = Column(String(50))
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, onupdate=utc_now, nullable=False
     )
 
     # Relationships
@@ -53,7 +53,7 @@ class RecipeCollection(Base):
     collection_id = Column(
         Integer, ForeignKey("collections.id"), nullable=False, index=True
     )
-    added_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    added_at = Column(DateTime, default=utc_now, nullable=False)
 
     # Relationships
     recipe = relationship("Recipe", back_populates="collections")

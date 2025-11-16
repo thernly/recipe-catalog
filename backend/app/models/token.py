@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 import secrets
 
 from app.core.database import Base
+from app.models._utils import utc_now
 
 
 class VerificationToken(Base):
@@ -22,7 +23,7 @@ class VerificationToken(Base):
     token = Column(String(64), unique=True, index=True, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     # Relationship
     user = relationship("User", back_populates="verification_tokens")
@@ -61,7 +62,7 @@ class PasswordResetToken(Base):
     token = Column(String(64), unique=True, index=True, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     # Relationship
     user = relationship("User", back_populates="password_reset_tokens")
