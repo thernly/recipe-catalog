@@ -144,7 +144,7 @@ async def _import_recipes_internal(
 
 
 @router.post("/recipes")
-@limiter.limit("20/hour")
+@limiter.limit("100/hour")
 async def import_recipes(
     request: Request,
     file: UploadFile = File(...),
@@ -226,7 +226,7 @@ async def import_recipes(
 
 
 @router.post("/recipes/json")
-@limiter.limit("20/hour")
+@limiter.limit("100/hour")
 async def import_recipes_json(
     request: Request,
     recipes: List[Dict[str, Any]],
