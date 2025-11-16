@@ -2,13 +2,24 @@
 	import { auth } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { getPreferences, updatePreferences } from '$lib/api/users';
 
 	let user: any = null;
+	let currentTheme: 'classic' | 'professional' = 'classic';
 
-	onMount(() => {
+	onMount(async () => {
 		const unsubscribe = auth.subscribe((state) => {
 			user = state.user;
 		});
+
+		// Load current theme from user preferences
+		try {
+			const prefs = await getPreferences();
+			currentTheme = prefs.theme as 'classic' | 'professional';
+			document.documentElement.setAttribute('data-theme', currentTheme);
+		} catch (err) {
+			console.log('Could not load theme preferences, using default');
+		}
 
 		return unsubscribe;
 	});
@@ -16,6 +27,19 @@
 	function handleLogout() {
 		auth.logout();
 		goto('/');
+	}
+
+	async function toggleTheme() {
+		const newTheme = currentTheme === 'classic' ? 'professional' : 'classic';
+		currentTheme = newTheme;
+		document.documentElement.setAttribute('data-theme', newTheme);
+
+		// Save theme preference to backend
+		try {
+			await updatePreferences({ theme: newTheme });
+		} catch (err) {
+			console.error('Failed to save theme preference:', err);
+		}
 	}
 </script>
 
@@ -58,6 +82,13 @@
 	</div>
 
 	<div class="flex items-center gap-4">
+		<button
+			on:click={toggleTheme}
+			class="px-3 py-2 rounded-md hover:bg-white/10 transition text-sm"
+			title="Toggle theme"
+		>
+			{currentTheme === 'classic' ? '🎨' : '💼'}
+		</button>
 		{#if user}
 			<span class="text-sm">{user.email}</span>
 		{/if}

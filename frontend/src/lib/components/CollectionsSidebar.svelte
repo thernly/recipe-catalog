@@ -216,13 +216,16 @@
 
 <style>
 	.collections-sidebar {
-		width: 260px;
-		height: 100vh;
-		background: var(--neutral-50);
-		border-right: 1px solid var(--neutral-200);
+		width: 100%;
+		background: var(--neutral-white);
+		border: 1px solid var(--neutral-200);
+		border-radius: var(--radius-lg);
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
+		position: sticky;
+		top: 5.5rem;
+		max-height: calc(100vh - 7rem);
 	}
 
 	.sidebar-header {

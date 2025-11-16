@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 
 	export let selectedCuisines: string[] = [];
 	export let selectedCategories: string[] = [];
@@ -9,8 +9,8 @@
 
 	const dispatch = createEventDispatcher();
 
-	// Available filter options
-	const cuisineOptions = [
+	// Default filter options
+	const defaultCuisines = [
 		'Italian',
 		'Mexican',
 		'Chinese',
@@ -28,7 +28,7 @@
 		'Other'
 	];
 
-	const categoryOptions = [
+	const defaultCategories = [
 		'Breakfast',
 		'Lunch',
 		'Dinner',
@@ -45,6 +45,33 @@
 		'Sauce',
 		'Other'
 	];
+
+	let cuisineOptions = [...defaultCuisines];
+	let categoryOptions = [...defaultCategories];
+
+	// Load custom options from localStorage
+	onMount(() => {
+		const savedCuisines = localStorage.getItem('custom_cuisines');
+		const savedCategories = localStorage.getItem('custom_categories');
+
+		if (savedCuisines) {
+			try {
+				const customCuisines = JSON.parse(savedCuisines);
+				cuisineOptions = [...defaultCuisines, ...customCuisines];
+			} catch (e) {
+				console.error('Failed to load custom cuisines:', e);
+			}
+		}
+
+		if (savedCategories) {
+			try {
+				const customCategories = JSON.parse(savedCategories);
+				categoryOptions = [...defaultCategories, ...customCategories];
+			} catch (e) {
+				console.error('Failed to load custom categories:', e);
+			}
+		}
+	});
 
 	const sourceTypeOptions = [
 		{ value: 'imported', label: 'Imported' },

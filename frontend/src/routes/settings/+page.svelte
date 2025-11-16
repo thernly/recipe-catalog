@@ -15,6 +15,7 @@
 	import PreferencesSection from '$lib/components/settings/PreferencesSection.svelte';
 	import SecuritySection from '$lib/components/settings/SecuritySection.svelte';
 	import StatsSection from '$lib/components/settings/StatsSection.svelte';
+	import FiltersSection from '$lib/components/settings/FiltersSection.svelte';
 	import DangerZoneSection from '$lib/components/settings/DangerZoneSection.svelte';
 
 	let user: User | null = null;
@@ -24,7 +25,7 @@
 	let error: string | null = null;
 
 	// Active section
-	let activeSection: 'profile' | 'preferences' | 'security' | 'stats' | 'danger' = 'profile';
+	let activeSection: 'profile' | 'preferences' | 'security' | 'stats' | 'filters' | 'danger' = 'profile';
 
 	// Load user data
 	async function loadUserData() {
@@ -135,6 +136,13 @@
 						📊 Statistics
 					</button>
 					<button
+						class="sidebar-link"
+						class:active={activeSection === 'filters'}
+						on:click={() => (activeSection = 'filters')}
+					>
+						🔍 Filters
+					</button>
+					<button
 						class="sidebar-link danger"
 						class:active={activeSection === 'danger'}
 						on:click={() => (activeSection = 'danger')}
@@ -153,6 +161,8 @@
 						<SecuritySection />
 					{:else if activeSection === 'stats'}
 						<StatsSection {stats} {user} />
+					{:else if activeSection === 'filters'}
+						<FiltersSection />
 					{:else if activeSection === 'danger'}
 						<DangerZoneSection on:delete={handleDeleteAccount} />
 					{/if}
