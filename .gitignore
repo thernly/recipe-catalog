@@ -353,3 +353,11 @@ seed-data/
 # ============================================
 .turbo
 .lighthouseci/
+
+# Temporary and Backup Files
+*.bak
+*.old
+*.orig
+*.backup
+*.tmp
+*.temp

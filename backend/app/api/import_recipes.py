@@ -122,19 +122,12 @@ async def _import_recipes_internal(
                     .where(RecipeCollection.collection_id == collection.id)
                 )
                 if not existing_link.scalar_one_or_none():
-                    db.add(RecipeCollection(
-                        recipe_id=recipe_to_add.id,
-                        collection_id=collection.id
-                    ))
+                    db.add(RecipeCollection(recipe_id=recipe_to_add.id, collection_id=collection.id))
 
         except (ValueError, KeyError, TypeError) as e:
             # Handle expected validation and format errors
             results["failed"] += 1
-            results["errors"].append({
-                "index": idx,
-                "name": recipe_data.get("name", "Unknown"),
-                "error": str(e)
-            })
+            results["errors"].append({"index": idx, "name": recipe_data.get("name", "Unknown"), "error": str(e)})
         except Exception as e:
             # Log unexpected errors and re-raise
             logger.exception(f"Unexpected error during import at index {idx}")
@@ -144,7 +137,7 @@ async def _import_recipes_internal(
 
 
 @router.post("/recipes")
-@limiter.limit("100/hour")
+@limiter.limit("20000/hour")
 async def import_recipes(
     request: Request,
     file: UploadFile = File(...),
@@ -170,7 +163,7 @@ async def import_recipes(
         Summary of import results
     """
     # Validate file type
-    if not file.filename.endswith('.json'):
+    if not file.filename.endswith(".json"):
         raise HTTPException(status_code=400, detail="File must be a JSON file")
 
     # Read and parse JSON
@@ -194,9 +187,7 @@ async def import_recipes(
     collection = None
     if collection_id:
         result = await db.execute(
-            select(Collection)
-            .where(Collection.id == collection_id)
-            .where(Collection.user_id == current_user.id)
+            select(Collection).where(Collection.id == collection_id).where(Collection.user_id == current_user.id)
         )
         collection = result.scalar_one_or_none()
         if not collection:
@@ -221,12 +212,12 @@ async def import_recipes(
     return {
         "success": True,
         "message": f"Imported {results['created']} new recipes, updated {results['updated']}, skipped {results['skipped']}, failed {results['failed']}",
-        "details": results
+        "details": results,
     }
 
 
 @router.post("/recipes/json")
-@limiter.limit("100/hour")
+@limiter.limit("20000/hour")
 async def import_recipes_json(
     request: Request,
     recipes: List[Dict[str, Any]],
@@ -252,9 +243,7 @@ async def import_recipes_json(
     collection = None
     if collection_id:
         result = await db.execute(
-            select(Collection)
-            .where(Collection.id == collection_id)
-            .where(Collection.user_id == current_user.id)
+            select(Collection).where(Collection.id == collection_id).where(Collection.user_id == current_user.id)
         )
         collection = result.scalar_one_or_none()
         if not collection:
@@ -279,5 +268,5 @@ async def import_recipes_json(
     return {
         "success": True,
         "message": f"Imported {results['created']} new recipes, updated {results['updated']}, skipped {results['skipped']}, failed {results['failed']}",
-        "details": results
+        "details": results,
     }
