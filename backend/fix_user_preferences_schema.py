@@ -7,7 +7,6 @@ Run this script from the backend directory:
 """
 
 import sqlite3
-import os
 from pathlib import Path
 
 # Find the database file

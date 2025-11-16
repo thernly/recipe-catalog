@@ -32,7 +32,9 @@ limiter = Limiter(key_func=get_remote_address)
     "/register", response_model=UserSchema, status_code=status.HTTP_201_CREATED
 )
 @limiter.limit("5/hour")
-async def register(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register(
+    request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)
+):
     """
     Register a new user account.
 
@@ -50,13 +52,18 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
 
     try:
         # Check if email already exists
-        result = await db.execute(select(User).where(User.email == user_data.email.lower()))
+        result = await db.execute(
+            select(User).where(User.email == user_data.email.lower())
+        )
         existing_user = result.scalar_one_or_none()
 
         if existing_user:
-            logger.warning(f"Registration failed - email already exists: {user_data.email}")
+            logger.warning(
+                f"Registration failed - email already exists: {user_data.email}"
+            )
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered",
             )
 
         # Create new user
@@ -99,7 +106,9 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
         await db.commit()
         await db.refresh(new_user)
 
-        logger.info(f"User registered successfully: {new_user.email} (ID: {new_user.id})")
+        logger.info(
+            f"User registered successfully: {new_user.email} (ID: {new_user.id})"
+        )
 
         # TODO: Send verification email
 
@@ -107,19 +116,21 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
     except HTTPException:
         # Re-raise HTTP exceptions
         raise
-    except Exception as e:
+    except Exception:
         # Log unexpected errors and re-raise
         logger.exception(f"Unexpected error during registration for {user_data.email}")
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred during registration. Please try again."
+            detail="An error occurred during registration. Please try again.",
         )
 
 
 @router.post("/login", response_model=Token)
 @limiter.limit("10/minute")
-async def login(request: Request, login_data: UserLogin, db: AsyncSession = Depends(get_db)):
+async def login(
+    request: Request, login_data: UserLogin, db: AsyncSession = Depends(get_db)
+):
     """
     Authenticate user and return JWT token.
 
@@ -203,7 +214,7 @@ async def forgot_password(
         # Invalidate any existing reset tokens
         existing_tokens_result = await db.execute(
             select(PasswordResetToken).where(
-                PasswordResetToken.user_id == user.id, PasswordResetToken.used == False
+                PasswordResetToken.user_id == user.id, not PasswordResetToken.used
             )
         )
         existing_tokens = existing_tokens_result.scalars().all()
@@ -217,7 +228,9 @@ async def forgot_password(
 
         # Send email asynchronously
         await email_service.send_password_reset_email(
-            to_email=user.email, reset_token=reset_token.token, user_name=user.display_name
+            to_email=user.email,
+            reset_token=reset_token.token,
+            user_name=user.display_name,
         )
 
     return {"message": "If the email exists, a password reset link has been sent"}
@@ -251,9 +264,7 @@ async def reset_password(
     reset_token = result.scalar_one_or_none()
 
     if not reset_token or not reset_token.is_valid():
-        raise HTTPException(
-            status_code=400, detail="Invalid or expired reset token"
-        )
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
     # Get user
     user_result = await db.execute(select(User).where(User.id == reset_token.user_id))
@@ -353,7 +364,7 @@ async def resend_verification(
     # Invalidate existing verification tokens
     existing_tokens_result = await db.execute(
         select(VerificationToken).where(
-            VerificationToken.user_id == user.id, VerificationToken.used == False
+            VerificationToken.user_id == user.id, not VerificationToken.used
         )
     )
     existing_tokens = existing_tokens_result.scalars().all()

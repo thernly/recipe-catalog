@@ -21,7 +21,7 @@ from app.api import auth, recipes, collections, users, export, import_recipes
 # Configure logging
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -75,6 +75,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         # Only include body if it's JSON serializable
         if exc.body is not None:
             import json
+
             json.dumps(exc.body)
             response_content["body"] = exc.body
     except (TypeError, ValueError):
@@ -93,7 +94,10 @@ async def general_exception_handler(request: Request, exc: Exception):
     logger.exception(f"Unhandled exception on {request.url}: {str(exc)}")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Internal server error", "error": str(exc) if settings.DEBUG else "An error occurred"},
+        content={
+            "detail": "Internal server error",
+            "error": str(exc) if settings.DEBUG else "An error occurred",
+        },
     )
 
 

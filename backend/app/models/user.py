@@ -49,7 +49,9 @@ class UserPreferences(Base):
     __tablename__ = "user_preferences"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True
+    )
     theme = Column(String(50), default="classic", nullable=False)
     default_view = Column(String(20), default="grid", nullable=False)
     default_sort = Column(String(50), default="recently_added", nullable=False)

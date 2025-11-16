@@ -56,7 +56,9 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = "logs/app.log"
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, env_parse_none_str="null")
+    model_config = SettingsConfigDict(
+        env_file=".env", case_sensitive=True, env_parse_none_str="null"
+    )
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod

@@ -26,6 +26,57 @@ logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 
 
+async def _validate_collection(
+    collection_id: int | None,
+    user_id: int,
+    db: AsyncSession,
+) -> Collection | None:
+    """
+    Validate and retrieve a collection if collection_id is provided.
+
+    Args:
+        collection_id: Optional collection ID to validate
+        user_id: ID of the user who must own the collection
+        db: Database session
+
+    Returns:
+        Collection object if found, None if collection_id is None
+
+    Raises:
+        HTTPException: If collection_id is provided but collection not found
+    """
+    if not collection_id:
+        return None
+
+    result = await db.execute(
+        select(Collection)
+        .where(Collection.id == collection_id)
+        .where(Collection.user_id == user_id)
+    )
+    collection = result.scalar_one_or_none()
+    if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    return collection
+
+
+async def _commit_import_results(db: AsyncSession) -> None:
+    """
+    Commit import results to the database with error handling.
+
+    Args:
+        db: Database session
+
+    Raises:
+        HTTPException: If commit fails
+    """
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to save recipes: {str(e)}")
+
+
 async def _import_recipes_internal(
     recipes_data: List[Dict[str, Any]],
     user_id: int,
@@ -85,7 +136,9 @@ async def _import_recipes_internal(
                     existing_recipe.source_url = recipe_dict["source_url"]
                     existing_recipe.cuisine = recipe_dict["cuisine"]
                     existing_recipe.category = recipe_dict["category"]
-                    existing_recipe.total_time_minutes = recipe_dict["total_time_minutes"]
+                    existing_recipe.total_time_minutes = recipe_dict[
+                        "total_time_minutes"
+                    ]
                     existing_recipe.is_modified = True
                     existing_recipe.updated_at = datetime.now(timezone.utc)
 
@@ -122,13 +175,23 @@ async def _import_recipes_internal(
                     .where(RecipeCollection.collection_id == collection.id)
                 )
                 if not existing_link.scalar_one_or_none():
-                    db.add(RecipeCollection(recipe_id=recipe_to_add.id, collection_id=collection.id))
+                    db.add(
+                        RecipeCollection(
+                            recipe_id=recipe_to_add.id, collection_id=collection.id
+                        )
+                    )
 
         except (ValueError, KeyError, TypeError) as e:
             # Handle expected validation and format errors
             results["failed"] += 1
-            results["errors"].append({"index": idx, "name": recipe_data.get("name", "Unknown"), "error": str(e)})
-        except Exception as e:
+            results["errors"].append(
+                {
+                    "index": idx,
+                    "name": recipe_data.get("name", "Unknown"),
+                    "error": str(e),
+                }
+            )
+        except Exception:
             # Log unexpected errors and re-raise
             logger.exception(f"Unexpected error during import at index {idx}")
             raise
@@ -181,17 +244,12 @@ async def import_recipes(
         # Array of recipes
         recipes_data = data
     else:
-        raise HTTPException(status_code=400, detail="JSON must be a recipe object or array of recipes")
+        raise HTTPException(
+            status_code=400, detail="JSON must be a recipe object or array of recipes"
+        )
 
     # Validate collection if specified
-    collection = None
-    if collection_id:
-        result = await db.execute(
-            select(Collection).where(Collection.id == collection_id).where(Collection.user_id == current_user.id)
-        )
-        collection = result.scalar_one_or_none()
-        if not collection:
-            raise HTTPException(status_code=404, detail="Collection not found")
+    collection = await _validate_collection(collection_id, current_user.id, db)
 
     # Import recipes using shared helper function
     results = await _import_recipes_internal(
@@ -203,11 +261,7 @@ async def import_recipes(
     )
 
     # Commit all changes
-    try:
-        await db.commit()
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to save recipes: {str(e)}")
+    await _commit_import_results(db)
 
     return {
         "success": True,
@@ -240,14 +294,7 @@ async def import_recipes_json(
         Summary of import results
     """
     # Validate collection if specified
-    collection = None
-    if collection_id:
-        result = await db.execute(
-            select(Collection).where(Collection.id == collection_id).where(Collection.user_id == current_user.id)
-        )
-        collection = result.scalar_one_or_none()
-        if not collection:
-            raise HTTPException(status_code=404, detail="Collection not found")
+    collection = await _validate_collection(collection_id, current_user.id, db)
 
     # Import recipes using shared helper function
     results = await _import_recipes_internal(
@@ -259,11 +306,7 @@ async def import_recipes_json(
     )
 
     # Commit all changes
-    try:
-        await db.commit()
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to save recipes: {str(e)}")
+    await _commit_import_results(db)
 
     return {
         "success": True,

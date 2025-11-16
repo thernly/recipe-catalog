@@ -72,32 +72,40 @@ async def export_recipes(
 
             lines.append(f"# {schema_recipe['name']}\n")
 
-            if schema_recipe.get('description'):
+            if schema_recipe.get("description"):
                 lines.append(f"{schema_recipe['description']}\n")
 
             # Metadata section
             metadata_items = []
-            if schema_recipe.get('datePublished'):
-                metadata_items.append(f"**Date Published:** {schema_recipe['datePublished']}")
-            if schema_recipe.get('recipeYield'):
+            if schema_recipe.get("datePublished"):
+                metadata_items.append(
+                    f"**Date Published:** {schema_recipe['datePublished']}"
+                )
+            if schema_recipe.get("recipeYield"):
                 metadata_items.append(f"**Yield:** {schema_recipe['recipeYield']}")
-            if schema_recipe.get('prepTime'):
+            if schema_recipe.get("prepTime"):
                 metadata_items.append(f"**Prep Time:** {schema_recipe['prepTime']}")
-            if schema_recipe.get('cookTime'):
+            if schema_recipe.get("cookTime"):
                 metadata_items.append(f"**Cook Time:** {schema_recipe['cookTime']}")
-            if schema_recipe.get('totalTime'):
+            if schema_recipe.get("totalTime"):
                 metadata_items.append(f"**Total Time:** {schema_recipe['totalTime']}")
-            if schema_recipe.get('recipeCategory'):
-                categories = schema_recipe['recipeCategory']
-                category_str = ', '.join(categories) if isinstance(categories, list) else str(categories)
+            if schema_recipe.get("recipeCategory"):
+                categories = schema_recipe["recipeCategory"]
+                category_str = (
+                    ", ".join(categories)
+                    if isinstance(categories, list)
+                    else str(categories)
+                )
                 metadata_items.append(f"**Category:** {category_str}")
-            if schema_recipe.get('recipeCuisine'):
-                cuisines = schema_recipe['recipeCuisine']
-                cuisine_str = ', '.join(cuisines) if isinstance(cuisines, list) else str(cuisines)
+            if schema_recipe.get("recipeCuisine"):
+                cuisines = schema_recipe["recipeCuisine"]
+                cuisine_str = (
+                    ", ".join(cuisines) if isinstance(cuisines, list) else str(cuisines)
+                )
                 metadata_items.append(f"**Cuisine:** {cuisine_str}")
-            if schema_recipe.get('keywords'):
+            if schema_recipe.get("keywords"):
                 metadata_items.append(f"**Keywords:** {schema_recipe['keywords']}")
-            if schema_recipe.get('url'):
+            if schema_recipe.get("url"):
                 metadata_items.append(f"**Source:** {schema_recipe['url']}")
 
             if metadata_items:
@@ -105,24 +113,24 @@ async def export_recipes(
                 lines.extend(metadata_items)
 
             # Rating
-            if schema_recipe.get('aggregateRating'):
-                rating = schema_recipe['aggregateRating']
-                if isinstance(rating, dict) and rating.get('ratingValue'):
+            if schema_recipe.get("aggregateRating"):
+                rating = schema_recipe["aggregateRating"]
+                if isinstance(rating, dict) and rating.get("ratingValue"):
                     rating_text = f"**Rating:** {rating['ratingValue']}"
-                    if rating.get('ratingCount'):
+                    if rating.get("ratingCount"):
                         rating_text += f" / 5 ({rating['ratingCount']} ratings)"
                     lines.append(f"\n{rating_text}\n")
 
             # Ingredients
-            if schema_recipe.get('recipeIngredient'):
+            if schema_recipe.get("recipeIngredient"):
                 lines.append("\n## Ingredients")
-                for ingredient in schema_recipe['recipeIngredient']:
+                for ingredient in schema_recipe["recipeIngredient"]:
                     lines.append(f"- {ingredient}")
 
             # Equipment
-            if schema_recipe.get('equipment'):
+            if schema_recipe.get("equipment"):
                 lines.append("\n## Equipment")
-                equipment = schema_recipe['equipment']
+                equipment = schema_recipe["equipment"]
                 if isinstance(equipment, list):
                     for item in equipment:
                         lines.append(f"- {item}")
@@ -130,13 +138,13 @@ async def export_recipes(
                     lines.append(f"- {equipment}")
 
             # Instructions
-            if schema_recipe.get('recipeInstructions'):
+            if schema_recipe.get("recipeInstructions"):
                 lines.append("\n## Instructions")
-                instructions = schema_recipe['recipeInstructions']
+                instructions = schema_recipe["recipeInstructions"]
                 if isinstance(instructions, list):
                     for i, step in enumerate(instructions, 1):
                         if isinstance(step, dict):
-                            step_text = step.get('text', str(step))
+                            step_text = step.get("text", str(step))
                         else:
                             step_text = str(step)
                         lines.append(f"{i}. {step_text}")
@@ -144,32 +152,38 @@ async def export_recipes(
                     lines.append(instructions)
 
             # Notes
-            if schema_recipe.get('notes'):
+            if schema_recipe.get("notes"):
                 lines.append("\n## Notes\n")
-                lines.append(schema_recipe['notes'])
+                lines.append(schema_recipe["notes"])
 
             # Nutrition
-            if schema_recipe.get('nutrition'):
-                nutrition = schema_recipe['nutrition']
+            if schema_recipe.get("nutrition"):
+                nutrition = schema_recipe["nutrition"]
                 if isinstance(nutrition, dict) and nutrition:
                     lines.append("\n## Nutrition Information\n")
                     for key, value in nutrition.items():
                         if value:
                             # Convert camelCase to Title Case
-                            label = ''.join([' ' + c if c.isupper() else c for c in key]).strip().title()
+                            label = (
+                                "".join([" " + c if c.isupper() else c for c in key])
+                                .strip()
+                                .title()
+                            )
                             lines.append(f"- **{label}:** {value}")
 
             # Images
-            if schema_recipe.get('image'):
-                images = schema_recipe['image']
+            if schema_recipe.get("image"):
+                images = schema_recipe["image"]
                 if isinstance(images, list) and images:
                     lines.append("\n")
                     for idx, img in enumerate(images, 1):
                         if isinstance(img, dict):
-                            if img.get('data'):
-                                mime_type = img.get('mimeType', 'image/jpeg')
-                                lines.append(f"![Recipe Image {idx}](data:{mime_type};base64,{img['data']})")
-                            elif img.get('url'):
+                            if img.get("data"):
+                                mime_type = img.get("mimeType", "image/jpeg")
+                                lines.append(
+                                    f"![Recipe Image {idx}](data:{mime_type};base64,{img['data']})"
+                                )
+                            elif img.get("url"):
                                 lines.append(f"![Recipe Image {idx}]({img['url']})")
 
             lines.append("\n---\n")
@@ -190,7 +204,7 @@ async def export_recipes(
             f"RECIPE EXPORT - {current_user.display_name}",
             f"Exported: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
             f"Total Recipes: {len(recipes)}",
-            "\n" + "="*80 + "\n",
+            "\n" + "=" * 80 + "\n",
         ]
 
         for recipe in recipes:
@@ -198,54 +212,60 @@ async def export_recipes(
             schema_recipe = convert_to_schema_org(recipe)
 
             lines.append(f"\n{schema_recipe['name'].upper()}")
-            lines.append("=" * len(schema_recipe['name']))
+            lines.append("=" * len(schema_recipe["name"]))
 
-            if schema_recipe.get('description'):
+            if schema_recipe.get("description"):
                 lines.append(f"\n{schema_recipe['description']}\n")
 
             # Metadata section
-            if schema_recipe.get('datePublished'):
+            if schema_recipe.get("datePublished"):
                 lines.append(f"Date Published: {schema_recipe['datePublished']}")
-            if schema_recipe.get('recipeYield'):
+            if schema_recipe.get("recipeYield"):
                 lines.append(f"Yield: {schema_recipe['recipeYield']}")
-            if schema_recipe.get('prepTime'):
+            if schema_recipe.get("prepTime"):
                 lines.append(f"Prep Time: {schema_recipe['prepTime']}")
-            if schema_recipe.get('cookTime'):
+            if schema_recipe.get("cookTime"):
                 lines.append(f"Cook Time: {schema_recipe['cookTime']}")
-            if schema_recipe.get('totalTime'):
+            if schema_recipe.get("totalTime"):
                 lines.append(f"Total Time: {schema_recipe['totalTime']}")
-            if schema_recipe.get('recipeCategory'):
-                categories = schema_recipe['recipeCategory']
-                category_str = ', '.join(categories) if isinstance(categories, list) else str(categories)
+            if schema_recipe.get("recipeCategory"):
+                categories = schema_recipe["recipeCategory"]
+                category_str = (
+                    ", ".join(categories)
+                    if isinstance(categories, list)
+                    else str(categories)
+                )
                 lines.append(f"Category: {category_str}")
-            if schema_recipe.get('recipeCuisine'):
-                cuisines = schema_recipe['recipeCuisine']
-                cuisine_str = ', '.join(cuisines) if isinstance(cuisines, list) else str(cuisines)
+            if schema_recipe.get("recipeCuisine"):
+                cuisines = schema_recipe["recipeCuisine"]
+                cuisine_str = (
+                    ", ".join(cuisines) if isinstance(cuisines, list) else str(cuisines)
+                )
                 lines.append(f"Cuisine: {cuisine_str}")
-            if schema_recipe.get('keywords'):
+            if schema_recipe.get("keywords"):
                 lines.append(f"Keywords: {schema_recipe['keywords']}")
-            if schema_recipe.get('url'):
+            if schema_recipe.get("url"):
                 lines.append(f"Source: {schema_recipe['url']}")
 
             # Rating
-            if schema_recipe.get('aggregateRating'):
-                rating = schema_recipe['aggregateRating']
-                if isinstance(rating, dict) and rating.get('ratingValue'):
+            if schema_recipe.get("aggregateRating"):
+                rating = schema_recipe["aggregateRating"]
+                if isinstance(rating, dict) and rating.get("ratingValue"):
                     rating_text = f"Rating: {rating['ratingValue']}"
-                    if rating.get('ratingCount'):
+                    if rating.get("ratingCount"):
                         rating_text += f" / 5 ({rating['ratingCount']} ratings)"
                     lines.append(f"\n{rating_text}")
 
             # Ingredients
-            if schema_recipe.get('recipeIngredient'):
+            if schema_recipe.get("recipeIngredient"):
                 lines.append("\nINGREDIENTS:")
-                for ingredient in schema_recipe['recipeIngredient']:
+                for ingredient in schema_recipe["recipeIngredient"]:
                     lines.append(f"  - {ingredient}")
 
             # Equipment
-            if schema_recipe.get('equipment'):
+            if schema_recipe.get("equipment"):
                 lines.append("\nEQUIPMENT:")
-                equipment = schema_recipe['equipment']
+                equipment = schema_recipe["equipment"]
                 if isinstance(equipment, list):
                     for item in equipment:
                         lines.append(f"  - {item}")
@@ -253,13 +273,13 @@ async def export_recipes(
                     lines.append(f"  - {equipment}")
 
             # Instructions
-            if schema_recipe.get('recipeInstructions'):
+            if schema_recipe.get("recipeInstructions"):
                 lines.append("\nINSTRUCTIONS:")
-                instructions = schema_recipe['recipeInstructions']
+                instructions = schema_recipe["recipeInstructions"]
                 if isinstance(instructions, list):
                     for i, step in enumerate(instructions, 1):
                         if isinstance(step, dict):
-                            step_text = step.get('text', str(step))
+                            step_text = step.get("text", str(step))
                         else:
                             step_text = str(step)
                         lines.append(f"  {i}. {step_text}")
@@ -267,31 +287,35 @@ async def export_recipes(
                     lines.append(f"  {instructions}")
 
             # Notes
-            if schema_recipe.get('notes'):
+            if schema_recipe.get("notes"):
                 lines.append("\nNOTES:")
                 lines.append(f"  {schema_recipe['notes']}")
 
             # Nutrition
-            if schema_recipe.get('nutrition'):
-                nutrition = schema_recipe['nutrition']
+            if schema_recipe.get("nutrition"):
+                nutrition = schema_recipe["nutrition"]
                 if isinstance(nutrition, dict) and nutrition:
                     lines.append("\nNUTRITION INFORMATION:")
                     for key, value in nutrition.items():
                         if value:
                             # Convert camelCase to Title Case
-                            label = ''.join([' ' + c if c.isupper() else c for c in key]).strip().title()
+                            label = (
+                                "".join([" " + c if c.isupper() else c for c in key])
+                                .strip()
+                                .title()
+                            )
                             lines.append(f"  {label}: {value}")
 
             # Images (just URLs for text format)
-            if schema_recipe.get('image'):
-                images = schema_recipe['image']
+            if schema_recipe.get("image"):
+                images = schema_recipe["image"]
                 if isinstance(images, list) and images:
                     lines.append("\nIMAGES:")
                     for idx, img in enumerate(images, 1):
-                        if isinstance(img, dict) and img.get('url'):
+                        if isinstance(img, dict) and img.get("url"):
                             lines.append(f"  {idx}. {img['url']}")
 
-            lines.append("\n" + "="*80 + "\n")
+            lines.append("\n" + "=" * 80 + "\n")
 
         content = "\n".join(lines)
 
@@ -346,21 +370,25 @@ async def export_collections(
             )
             recipes = recipe_result.scalars().all()
 
-            export_data["collections"].append({
-                "id": collection.id,
-                "name": collection.name,
-                "description": collection.description,
-                "created_at": collection.created_at.isoformat() if collection.created_at else None,
-                "recipe_count": len(recipes),
-                "recipes": [
-                    {
-                        "id": recipe.id,
-                        "name": recipe.name,
-                        "description": recipe.description,
-                    }
-                    for recipe in recipes
-                ],
-            })
+            export_data["collections"].append(
+                {
+                    "id": collection.id,
+                    "name": collection.name,
+                    "description": collection.description,
+                    "created_at": collection.created_at.isoformat()
+                    if collection.created_at
+                    else None,
+                    "recipe_count": len(recipes),
+                    "recipes": [
+                        {
+                            "id": recipe.id,
+                            "name": recipe.name,
+                            "description": recipe.description,
+                        }
+                        for recipe in recipes
+                    ],
+                }
+            )
 
         return Response(
             content=json.dumps(export_data, indent=2),
@@ -414,7 +442,9 @@ async def export_collections(
         )
 
     else:
-        raise HTTPException(status_code=400, detail="Format not supported for collections")
+        raise HTTPException(
+            status_code=400, detail="Format not supported for collections"
+        )
 
 
 @router.get("/all")
@@ -455,13 +485,21 @@ async def export_all_data(
         "user": {
             "email": current_user.email,
             "display_name": current_user.display_name,
-            "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+            "created_at": current_user.created_at.isoformat()
+            if current_user.created_at
+            else None,
         },
         "preferences": {
             "theme": user_preferences.theme if user_preferences else "classic",
-            "default_view": user_preferences.default_view if user_preferences else "grid",
-            "default_sort": user_preferences.default_sort if user_preferences else "recently_added",
-        } if user_preferences else None,
+            "default_view": user_preferences.default_view
+            if user_preferences
+            else "grid",
+            "default_sort": user_preferences.default_sort
+            if user_preferences
+            else "recently_added",
+        }
+        if user_preferences
+        else None,
         "statistics": {
             "total_recipes": len(recipes),
             "total_collections": len(collections),
@@ -478,8 +516,12 @@ async def export_all_data(
                 "cuisine": recipe.cuisine,
                 "category": recipe.category,
                 "total_time_minutes": recipe.total_time_minutes,
-                "created_at": recipe.created_at.isoformat() if recipe.created_at else None,
-                "updated_at": recipe.updated_at.isoformat() if recipe.updated_at else None,
+                "created_at": recipe.created_at.isoformat()
+                if recipe.created_at
+                else None,
+                "updated_at": recipe.updated_at.isoformat()
+                if recipe.updated_at
+                else None,
             }
             for recipe in recipes
         ],
@@ -496,13 +538,17 @@ async def export_all_data(
         )
         coll_recipes = recipe_result.scalars().all()
 
-        export_data["collections"].append({
-            "id": collection.id,
-            "name": collection.name,
-            "description": collection.description,
-            "created_at": collection.created_at.isoformat() if collection.created_at else None,
-            "recipe_ids": [r.id for r in coll_recipes],
-        })
+        export_data["collections"].append(
+            {
+                "id": collection.id,
+                "name": collection.name,
+                "description": collection.description,
+                "created_at": collection.created_at.isoformat()
+                if collection.created_at
+                else None,
+                "recipe_ids": [r.id for r in coll_recipes],
+            }
+        )
 
     return Response(
         content=json.dumps(export_data, indent=2),

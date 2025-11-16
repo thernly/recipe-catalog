@@ -5,7 +5,6 @@ Utilities for converting between internal recipe format and Schema.org Recipe JS
 import base64
 import logging
 import re
-from datetime import datetime
 from typing import Dict, Any, List, Optional
 
 import httpx
@@ -41,15 +40,18 @@ def convert_to_schema_org(recipe_db: Any) -> Dict[str, Any]:
         "description": recipe_db.description or "",
         "image": images,
         "author": recipe_data.get("author", []),
-        "datePublished": recipe_data.get("datePublished") or (
-            recipe_db.created_at.strftime("%Y-%m-%d") if recipe_db.created_at else ""
-        ),
+        "datePublished": recipe_data.get("datePublished")
+        or (recipe_db.created_at.strftime("%Y-%m-%d") if recipe_db.created_at else ""),
         "recipeYield": recipe_data.get("recipeYield", ""),
         "prepTime": recipe_data.get("prepTime", ""),
         "cookTime": recipe_data.get("cookTime", ""),
         "totalTime": recipe_data.get("totalTime", ""),
-        "recipeCategory": _ensure_array(recipe_data.get("recipeCategory") or recipe_db.category),
-        "recipeCuisine": _ensure_array(recipe_data.get("recipeCuisine") or recipe_db.cuisine),
+        "recipeCategory": _ensure_array(
+            recipe_data.get("recipeCategory") or recipe_db.category
+        ),
+        "recipeCuisine": _ensure_array(
+            recipe_data.get("recipeCuisine") or recipe_db.cuisine
+        ),
         "keywords": recipe_data.get("keywords", ""),
         "recipeIngredient": recipe_data.get("recipeIngredient", []),
         "recipeInstructions": recipe_data.get("recipeInstructions", []),
@@ -99,18 +101,10 @@ def convert_from_schema_org(schema_recipe: Dict[str, Any]) -> Dict[str, Any]:
                     images_data.append(fetched_image)
                 else:
                     # Store without data if fetch fails
-                    images_data.append({
-                        "url": url,
-                        "data": "",
-                        "mimeType": mime_type
-                    })
+                    images_data.append({"url": url, "data": "", "mimeType": mime_type})
             else:
                 # Store as-is
-                images_data.append({
-                    "url": url,
-                    "data": data,
-                    "mimeType": mime_type
-                })
+                images_data.append({"url": url, "data": data, "mimeType": mime_type})
 
             # Use first URL for image_url field
             if not image_url and url:
@@ -122,11 +116,7 @@ def convert_from_schema_org(schema_recipe: Dict[str, Any]) -> Dict[str, Any]:
                 images_data.append(fetched_image)
             else:
                 # Store without data if fetch fails
-                images_data.append({
-                    "url": img,
-                    "data": "",
-                    "mimeType": "image/jpeg"
-                })
+                images_data.append({"url": img, "data": "", "mimeType": "image/jpeg"})
 
             # Use first URL for image_url field
             if not image_url:
@@ -204,26 +194,25 @@ def _fetch_and_encode_image(image_url: str) -> Optional[Dict[str, str]]:
 
     try:
         with httpx.Client(timeout=10) as client:
-            response = client.get(image_url, headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            })
+            response = client.get(
+                image_url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                },
+            )
             response.raise_for_status()
 
             # Get MIME type from headers
-            content_type = response.headers.get('Content-Type', 'image/jpeg')
+            content_type = response.headers.get("Content-Type", "image/jpeg")
 
             # Encode to base64
-            base64_data = base64.b64encode(response.content).decode('utf-8')
+            base64_data = base64.b64encode(response.content).decode("utf-8")
 
-            return {
-                "url": image_url,
-                "data": base64_data,
-                "mimeType": content_type
-            }
+            return {"url": image_url, "data": base64_data, "mimeType": content_type}
     except (httpx.HTTPError, httpx.RequestError, ValueError) as e:
         logger.warning(f"Failed to fetch image from {image_url}: {str(e)}")
         return None
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error fetching image: {image_url}")
         return None
 
@@ -247,11 +236,7 @@ def _convert_images_to_schema(image_url: Optional[str]) -> List[Dict[str, str]]:
         return [fetched]
 
     # If fetch fails, return URL without data
-    return [{
-        "url": image_url,
-        "data": "",
-        "mimeType": "image/jpeg"
-    }]
+    return [{"url": image_url, "data": "", "mimeType": "image/jpeg"}]
 
 
 def _ensure_array(value: Any) -> List[str]:
@@ -279,7 +264,7 @@ def _parse_duration_to_minutes(duration: str) -> Optional[int]:
         return None
 
     # Try ISO 8601 format (PT30M, PT1H30M, etc.)
-    iso_pattern = r'PT(?:(\d+)H)?(?:(\d+)M)?'
+    iso_pattern = r"PT(?:(\d+)H)?(?:(\d+)M)?"
     match = re.match(iso_pattern, duration)
     if match:
         hours = int(match.group(1) or 0)
@@ -290,12 +275,12 @@ def _parse_duration_to_minutes(duration: str) -> Optional[int]:
     total = 0
 
     # Extract hours
-    hour_match = re.search(r'(\d+)\s*(?:hour|hr)s?', duration, re.IGNORECASE)
+    hour_match = re.search(r"(\d+)\s*(?:hour|hr)s?", duration, re.IGNORECASE)
     if hour_match:
         total += int(hour_match.group(1)) * 60
 
     # Extract minutes
-    min_match = re.search(r'(\d+)\s*(?:minute|min)s?', duration, re.IGNORECASE)
+    min_match = re.search(r"(\d+)\s*(?:minute|min)s?", duration, re.IGNORECASE)
     if min_match:
         total += int(min_match.group(1))
 

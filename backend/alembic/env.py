@@ -9,9 +9,6 @@ from alembic import context
 
 # Import all models
 from app.core.database import Base
-from app.models.user import User, UserPreferences
-from app.models.recipe import Recipe
-from app.models.collection import Collection, RecipeCollection
 from app.core.config import settings
 
 # Alembic Config object

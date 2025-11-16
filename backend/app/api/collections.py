@@ -327,7 +327,7 @@ async def add_recipes_to_collection(
         "added": added,
         "skipped": skipped,
         "not_found": not_found,
-        "message": f"Added {len(added)} recipes, skipped {len(skipped)} already in collection, {len(not_found)} not found"
+        "message": f"Added {len(added)} recipes, skipped {len(skipped)} already in collection, {len(not_found)} not found",
     }
 
 

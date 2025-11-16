@@ -5,7 +5,6 @@ Email service for sending verification and password reset emails
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import List
 
 import aiosmtplib
 
@@ -68,7 +67,7 @@ class EmailService:
                 hostname=self.smtp_host,
                 port=self.smtp_port,
                 use_tls=not use_tls,  # Use SSL for port 465
-                start_tls=use_tls,    # Use STARTTLS for other ports
+                start_tls=use_tls,  # Use STARTTLS for other ports
             ) as server:
                 # Login if credentials provided
                 if self.smtp_user and self.smtp_password:
@@ -83,7 +82,9 @@ class EmailService:
             logger.error(f"Failed to send email to {to_email}: {str(e)}")
             return False
 
-    async def send_verification_email(self, to_email: str, verification_token: str, user_name: str) -> bool:
+    async def send_verification_email(
+        self, to_email: str, verification_token: str, user_name: str
+    ) -> bool:
         """
         Send email verification link asynchronously
 
@@ -96,7 +97,9 @@ class EmailService:
             True if email sent successfully
         """
         # Build verification URL
-        verification_url = f"{settings.FRONTEND_URL}/auth/verify-email/{verification_token}"
+        verification_url = (
+            f"{settings.FRONTEND_URL}/auth/verify-email/{verification_token}"
+        )
 
         # HTML content
         html_content = f"""
