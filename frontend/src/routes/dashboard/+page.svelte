@@ -32,27 +32,6 @@
 
 {#if user}
 	<div class="min-h-screen bg-neutral-50">
-		<!-- Navbar -->
-		<nav
-			class="sticky top-0 z-50 h-16 flex items-center justify-between px-6"
-			style="background: var(--color-navbar-bg); color: var(--color-navbar-text);"
-		>
-			<div class="flex items-center gap-3">
-				<span class="text-2xl">🍽️</span>
-				<span class="font-semibold text-lg">Recipe Catalog</span>
-			</div>
-
-			<div class="flex items-center gap-4">
-				<span class="text-sm">{user.email}</span>
-				<button
-					on:click={handleLogout}
-					class="px-4 py-2 rounded-md hover:bg-white/10 transition text-sm"
-				>
-					Logout
-				</button>
-			</div>
-		</nav>
-
 		<!-- Main Content -->
 		<main class="container-custom py-12">
 			<div class="max-w-4xl mx-auto">

@@ -6,7 +6,7 @@
 	import RecipeCard from '$lib/components/RecipeCard.svelte';
 	import RecipeListItem from '$lib/components/RecipeListItem.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
-	import Navbar from '$lib/components/Navbar.svelte';
+	import CollectionsSidebar from '$lib/components/CollectionsSidebar.svelte';
 
 	let searchResult: RecipeSearchResult | null = null;
 	let loading = true;
@@ -15,8 +15,9 @@
 	// View mode
 	let viewMode: 'grid' | 'list' = 'grid';
 
-	// Show/hide filters
+	// Show/hide filters and collections
 	let showFilters = true;
+	let showCollections = true;
 
 	// Search and filter params
 	let searchParams: RecipeSearchParams = {
@@ -153,9 +154,6 @@
 </svelte:head>
 
 <div class="min-h-screen bg-neutral-50">
-	<!-- Navbar -->
-	<Navbar />
-
 	<!-- Header -->
 	<div class="sticky top-16 z-40 bg-white border-b border-neutral-200">
 		<div class="container-custom py-4">
@@ -170,6 +168,13 @@
 						title="Import recipes"
 					>
 						📥 Import
+					</button>
+					<button
+						on:click={() => (showCollections = !showCollections)}
+						class="filter-toggle-btn"
+						title={showCollections ? 'Hide collections' : 'Show collections'}
+					>
+						📁 {showCollections ? 'Hide' : 'Show'} Collections
 					</button>
 					<button
 						on:click={() => (showFilters = !showFilters)}
@@ -235,6 +240,13 @@
 	<!-- Main content -->
 	<div class="container-custom py-8">
 		<div class="recipes-layout">
+			<!-- Collections Sidebar -->
+			{#if showCollections}
+				<div class="collections-column">
+					<CollectionsSidebar />
+				</div>
+			{/if}
+
 			<!-- Filter Sidebar -->
 			{#if showFilters}
 				<div class="filter-column">
@@ -480,6 +492,11 @@
 		align-items: start;
 	}
 
+	.collections-column {
+		flex: 0 0 280px;
+		min-width: 280px;
+	}
+
 	.filter-column {
 		flex: 0 0 280px;
 		min-width: 280px;
@@ -495,6 +512,7 @@
 			flex-direction: column;
 		}
 
+		.collections-column,
 		.filter-column {
 			width: 100%;
 			flex: 1;

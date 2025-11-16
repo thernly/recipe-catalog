@@ -20,6 +20,8 @@ export interface UserPreferences {
 	recipes_per_page: number;
 	email_notifications: boolean;
 	timezone: string;
+	custom_cuisines: string[];
+	custom_categories: string[];
 }
 
 export interface UserStats {
