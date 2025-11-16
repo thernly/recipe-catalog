@@ -1,7 +1,7 @@
 """User-related Pydantic schemas."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field, validator
 
 
@@ -154,6 +154,8 @@ class UserPreferencesBase(BaseModel):
     recipes_per_page: int = Field(24, ge=12, le=100)
     email_notifications: bool = False
     timezone: str = "UTC"
+    custom_cuisines: List[str] = Field(default_factory=list)
+    custom_categories: List[str] = Field(default_factory=list)
 
 
 class UserPreferences(UserPreferencesBase):
@@ -177,3 +179,5 @@ class UserPreferencesUpdate(BaseModel):
     recipes_per_page: Optional[int] = Field(None, ge=12, le=100)
     email_notifications: Optional[bool] = None
     timezone: Optional[str] = None
+    custom_cuisines: Optional[List[str]] = None
+    custom_categories: Optional[List[str]] = None

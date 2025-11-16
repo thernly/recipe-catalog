@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { getPreferences, updatePreferences } from '$lib/api/users';
 
-	// Load from localStorage or use defaults
+	// Custom filters
 	let customCuisines: string[] = [];
 	let customCategories: string[] = [];
 	let newCuisine = '';
 	let newCategory = '';
+	let loading = false;
+	let saving = false;
 
 	const defaultCuisines = [
 		'Italian',
@@ -43,67 +46,70 @@
 		'Other'
 	];
 
-	onMount(() => {
-		// Load custom filters from localStorage
-		const savedCuisines = localStorage.getItem('custom_cuisines');
-		const savedCategories = localStorage.getItem('custom_categories');
-
-		if (savedCuisines) {
-			try {
-				customCuisines = JSON.parse(savedCuisines);
-			} catch (e) {
-				customCuisines = [];
-			}
-		}
-
-		if (savedCategories) {
-			try {
-				customCategories = JSON.parse(savedCategories);
-			} catch (e) {
-				customCategories = [];
-			}
+	onMount(async () => {
+		// Load custom filters from user preferences
+		loading = true;
+		try {
+			const prefs = await getPreferences();
+			customCuisines = prefs.custom_cuisines || [];
+			customCategories = prefs.custom_categories || [];
+		} catch (err) {
+			console.error('Failed to load custom filters:', err);
+			customCuisines = [];
+			customCategories = [];
+		} finally {
+			loading = false;
 		}
 	});
 
-	function addCuisine() {
+	async function saveToDatabase() {
+		saving = true;
+		try {
+			await updatePreferences({
+				custom_cuisines: customCuisines,
+				custom_categories: customCategories
+			});
+		} catch (err) {
+			alert('Failed to save custom filters: ' + (err instanceof Error ? err.message : 'Unknown error'));
+			console.error('Failed to save custom filters:', err);
+		} finally {
+			saving = false;
+		}
+	}
+
+	async function addCuisine() {
 		const cuisine = newCuisine.trim();
 		if (cuisine && !allCuisines.includes(cuisine)) {
 			customCuisines = [...customCuisines, cuisine];
-			saveToLocalStorage();
+			await saveToDatabase();
 			newCuisine = '';
 		}
 	}
 
-	function addCategory() {
+	async function addCategory() {
 		const category = newCategory.trim();
 		if (category && !allCategories.includes(category)) {
 			customCategories = [...customCategories, category];
-			saveToLocalStorage();
+			await saveToDatabase();
 			newCategory = '';
 		}
 	}
 
-	function removeCuisine(cuisine: string) {
+	async function removeCuisine(cuisine: string) {
 		customCuisines = customCuisines.filter((c) => c !== cuisine);
-		saveToLocalStorage();
+		await saveToDatabase();
 	}
 
-	function removeCategory(category: string) {
+	async function removeCategory(category: string) {
 		customCategories = customCategories.filter((c) => c !== category);
-		saveToLocalStorage();
+		await saveToDatabase();
 	}
 
-	function saveToLocalStorage() {
-		localStorage.setItem('custom_cuisines', JSON.stringify(customCuisines));
-		localStorage.setItem('custom_categories', JSON.stringify(customCategories));
-	}
-
-	function resetToDefaults() {
+	async function resetToDefaults() {
 		if (confirm('Reset all custom cuisines and categories to defaults? This will remove any custom entries you\'ve added.')) {
 			customCuisines = [];
 			customCategories = [];
-			localStorage.removeItem('custom_cuisines');
-			localStorage.removeItem('custom_categories');
+			await saveToDatabase();
 		}
 	}
 
@@ -204,8 +210,9 @@
 	<!-- Info note -->
 	<div class="info-note">
 		<p>
-			<strong>Note:</strong> Custom filters are stored locally in your browser. Default options
-			cannot be removed, but you can add your own custom options to better organize your recipes.
+			<strong>Note:</strong> Custom filters are stored in your account and synced across all your
+			devices. Default options cannot be removed, but you can add your own custom options to
+			better organize your recipes.
 		</p>
 	</div>
 </div>

@@ -49,27 +49,20 @@
 	let cuisineOptions = [...defaultCuisines];
 	let categoryOptions = [...defaultCategories];
 
-	// Load custom options from localStorage
-	onMount(() => {
-		const savedCuisines = localStorage.getItem('custom_cuisines');
-		const savedCategories = localStorage.getItem('custom_categories');
-
-		if (savedCuisines) {
-			try {
-				const customCuisines = JSON.parse(savedCuisines);
-				cuisineOptions = [...defaultCuisines, ...customCuisines];
-			} catch (e) {
-				console.error('Failed to load custom cuisines:', e);
-			}
-		}
-
-		if (savedCategories) {
-			try {
-				const customCategories = JSON.parse(savedCategories);
-				categoryOptions = [...defaultCategories, ...customCategories];
-			} catch (e) {
-				console.error('Failed to load custom categories:', e);
-			}
+	// Load custom options from user preferences
+	onMount(async () => {
+		try {
+			const { getPreferences } = await import('$lib/api/users');
+			const prefs = await getPreferences();
+			const customCuisines = prefs.custom_cuisines || [];
+			const customCategories = prefs.custom_categories || [];
+			cuisineOptions = [...defaultCuisines, ...customCuisines];
+			categoryOptions = [...defaultCategories, ...customCategories];
+		} catch (e) {
+			console.error('Failed to load custom filters:', e);
+			// Fall back to defaults if loading fails
+			cuisineOptions = [...defaultCuisines];
+			categoryOptions = [...defaultCategories];
 		}
 	});
 

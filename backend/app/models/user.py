@@ -1,7 +1,7 @@
 """User model."""
 
 from datetime import datetime
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -56,6 +56,8 @@ class UserPreferences(Base):
     recipes_per_page = Column(Integer, default=24, nullable=False)
     email_notifications = Column(Boolean, default=False, nullable=False)
     timezone = Column(String(100), default="UTC", nullable=False)
+    custom_cuisines = Column(JSON, default=list, nullable=False)
+    custom_categories = Column(JSON, default=list, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
