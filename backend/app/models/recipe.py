@@ -40,9 +40,7 @@ class Recipe(Base):
 
     # Timestamps
     created_at = Column(DateTime, default=utc_now, nullable=False, index=True)
-    updated_at = Column(
-        DateTime, default=utc_now, onupdate=utc_now, nullable=False
-    )
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
     imported_at = Column(DateTime)
 
     # Soft delete

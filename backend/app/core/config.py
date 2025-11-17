@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "production"
+    TESTING: bool = False  # Set to True to disable rate limiting for tests
 
     # Server
     HOST: str = "0.0.0.0"

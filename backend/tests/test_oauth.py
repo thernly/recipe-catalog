@@ -1,0 +1,340 @@
+"""Tests for OAuth/OIDC authentication endpoints."""
+
+import pytest
+from httpx import AsyncClient
+from unittest.mock import patch, AsyncMock
+from app.models.user import User
+from app.models.identity_provider import IdentityProvider
+
+
+@pytest.mark.asyncio
+async def test_list_available_providers(client: AsyncClient):
+    """Test listing available OAuth providers."""
+    response = await client.get("/api/auth/providers")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+
+
+@pytest.mark.asyncio
+async def test_authorize_provider_invalid(client: AsyncClient):
+    """Test authorization with invalid provider."""
+    response = await client.get("/api/auth/invalid_provider/authorize")
+
+    assert response.status_code == 400
+    data = response.json()
+    assert "Unknown provider" in data["detail"]
+
+
+@pytest.mark.asyncio
+async def test_authorize_provider_not_configured(client: AsyncClient):
+    """Test authorization with provider that's not configured."""
+    # Google, Microsoft, GitHub should return 503 if not configured in test env
+    with patch("app.core.oauth.oauth.create_client", return_value=None):
+        response = await client.get("/api/auth/google/authorize")
+        assert response.status_code == 503
+        assert "not configured" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_oauth_callback_missing_state(client: AsyncClient):
+    """Test OAuth callback with missing state parameter."""
+    response = await client.get("/api/auth/google/callback?code=test_code")
+
+    assert response.status_code in [400, 503]  # 400 if no state, 503 if not configured
+
+
+@pytest.mark.asyncio
+async def test_oauth_callback_invalid_state(client: AsyncClient):
+    """Test OAuth callback with invalid state."""
+    response = await client.get(
+        "/api/auth/google/callback?code=test_code&state=invalid_state"
+    )
+
+    assert response.status_code in [400, 503]
+
+
+@pytest.mark.asyncio
+async def test_list_linked_providers_requires_auth(client: AsyncClient):
+    """Test that listing linked providers requires authentication."""
+    response = await client.get("/api/auth/me/providers")
+    # 403 Forbidden is returned when no auth token provided
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_unlink_provider_requires_auth(client: AsyncClient):
+    """Test that unlinking provider requires authentication."""
+    response = await client.delete("/api/auth/providers/1")
+    # 403 Forbidden is returned when no auth token provided
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_list_linked_providers_authenticated(client: AsyncClient):
+    """Test listing linked providers for authenticated user."""
+    # Register and login with unique email
+    import uuid
+
+    email = f"test-{uuid.uuid4()}@example.com"
+
+    await client.post(
+        "/api/auth/register",
+        json={
+            "email": email,
+            "password": "TestPassword123",
+            "display_name": "Test User",
+        },
+    )
+
+    login_response = await client.post(
+        "/api/auth/login",
+        json={"email": email, "password": "TestPassword123"},
+    )
+    token = login_response.json()["access_token"]
+
+    # List linked providers
+    response = await client.get(
+        "/api/auth/me/providers", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    # Should be empty initially (no OAuth providers linked)
+    assert len(data) == 0
+
+
+@pytest.mark.asyncio
+async def test_unlink_provider_not_found(client: AsyncClient):
+    """Test unlinking non-existent provider."""
+    # Register and login with unique email
+    import uuid
+
+    email = f"test-{uuid.uuid4()}@example.com"
+
+    await client.post(
+        "/api/auth/register",
+        json={
+            "email": email,
+            "password": "TestPassword123",
+            "display_name": "Test User",
+        },
+    )
+
+    login_response = await client.post(
+        "/api/auth/login",
+        json={"email": email, "password": "TestPassword123"},
+    )
+    token = login_response.json()["access_token"]
+
+    # Try to unlink non-existent provider
+    response = await client.delete(
+        "/api/auth/providers/9999", headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+@patch("app.core.oauth.oauth.create_client")
+async def test_oauth_callback_new_user_flow(mock_create_client, client: AsyncClient):
+    """Test OAuth callback creating new user (mocked)."""
+    # Mock OAuth client with async methods
+    mock_client = AsyncMock()
+    mock_client.authorize_access_token = AsyncMock(
+        return_value={
+            "userinfo": {
+                "sub": "google_123456",
+                "email": "newuser@example.com",
+                "email_verified": True,
+                "name": "New User",
+            }
+        }
+    )
+    mock_create_client.return_value = mock_client
+
+    # Mock state storage
+    from app.api.oauth import _state_storage
+
+    _state_storage["test_state"] = {"provider": "google", "link_user_id": None}
+
+    # Make callback request
+    response = await client.get(
+        "/api/auth/google/callback?code=test_code&state=test_state"
+    )
+
+    # Should successfully create user and return token
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+
+
+@pytest.mark.asyncio
+@patch("app.core.oauth.oauth.create_client")
+async def test_oauth_callback_auto_link_existing_user(
+    mock_create_client, client: AsyncClient, test_db
+):
+    """Test OAuth callback auto-linking to existing user with verified email."""
+    # Create existing user
+    await client.post(
+        "/api/auth/register",
+        json={
+            "email": "existing@example.com",
+            "password": "TestPassword123",
+            "display_name": "Existing User",
+        },
+    )
+
+    # Mock OAuth client
+    mock_client = AsyncMock()
+    mock_client.authorize_access_token = AsyncMock(
+        return_value={
+            "userinfo": {
+                "sub": "google_789",
+                "email": "existing@example.com",
+                "email_verified": True,
+                "name": "Existing User",
+            }
+        }
+    )
+    mock_create_client.return_value = mock_client
+
+    # Mock state storage
+    from app.api.oauth import _state_storage
+
+    _state_storage["test_state"] = {"provider": "google", "link_user_id": None}
+
+    response = await client.get(
+        "/api/auth/google/callback?code=test_code&state=test_state"
+    )
+
+    # Should successfully link and return token
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+
+
+@pytest.mark.asyncio
+@patch("app.core.oauth.oauth.create_client")
+async def test_oauth_callback_unverified_email_rejects_link(
+    mock_create_client, client: AsyncClient
+):
+    """Test OAuth callback rejects auto-link if email not verified by provider."""
+    # Create existing user with unique email
+    import uuid
+
+    email = f"existing-{uuid.uuid4()}@example.com"
+
+    await client.post(
+        "/api/auth/register",
+        json={
+            "email": email,
+            "password": "TestPassword123",
+        },
+    )
+
+    # Mock OAuth client with unverified email
+    mock_client = AsyncMock()
+    mock_client.authorize_access_token = AsyncMock(
+        return_value={
+            "userinfo": {
+                "sub": "google_999",
+                "email": email,
+                "email_verified": False,  # Not verified
+                "name": "User",
+            }
+        }
+    )
+    mock_create_client.return_value = mock_client
+
+    # Mock state storage
+    from app.api.oauth import _state_storage
+
+    _state_storage["test_state"] = {"provider": "google", "link_user_id": None}
+
+    response = await client.get(
+        "/api/auth/google/callback?code=test_code&state=test_state"
+    )
+
+    # Should reject auto-linking
+    assert response.status_code == 400
+    data = response.json()
+    assert "Email not verified" in data["detail"]
+
+
+@pytest.mark.asyncio
+async def test_prevent_remove_last_auth_method(client: AsyncClient, test_db):
+    """Test prevention of removing last authentication method."""
+    # Register user with unique email
+    import uuid
+
+    email = f"test-{uuid.uuid4()}@example.com"
+
+    await client.post(
+        "/api/auth/register",
+        json={
+            "email": email,
+            "password": "TestPassword123",
+            "display_name": "Test User",
+        },
+    )
+
+    # Login to get token
+    login_response = await client.post(
+        "/api/auth/login",
+        json={"email": email, "password": "TestPassword123"},
+    )
+    token = login_response.json()["access_token"]
+
+    # Get user from DB and create a provider link
+    from sqlalchemy import select
+
+    result = await test_db.execute(select(User).where(User.email == email))
+    user = result.scalar_one()
+
+    # Add provider link
+    idp = IdentityProvider(
+        user_id=user.id,
+        provider_name="google",
+        provider_subject="test_123",
+        email_at_provider=user.email,
+    )
+    test_db.add(idp)
+    await test_db.commit()
+    await test_db.refresh(idp)
+
+    # Remove password to simulate passwordless account
+    user.hashed_password = None
+    await test_db.commit()
+
+    # Try to unlink the only provider
+    response = await client.delete(
+        f"/api/auth/providers/{idp.id}", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    # Should reject removal
+    assert response.status_code == 400
+    data = response.json()
+    assert "Cannot remove last authentication method" in data["detail"]
+
+
+@pytest.mark.asyncio
+async def test_oauth_callback_state_mismatch(client: AsyncClient):
+    """Test OAuth callback with state provider mismatch."""
+    from app.api.oauth import _state_storage
+
+    # Set state for google
+    _state_storage["test_state"] = {"provider": "google", "link_user_id": None}
+
+    # Try to use with microsoft (mismatch)
+    with patch("app.core.oauth.oauth.create_client") as mock:
+        mock.return_value = AsyncMock()
+        response = await client.get(
+            "/api/auth/microsoft/callback?code=test_code&state=test_state"
+        )
+
+        # Should reject due to state mismatch (if provider is configured)
+        # or return 503 if not configured
+        assert response.status_code in [400, 503]

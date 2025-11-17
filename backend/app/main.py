@@ -77,7 +77,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "type": error.get("type"),
             "loc": error.get("loc"),
             "msg": error.get("msg"),
-            "input": str(error.get("input")) if error.get("input") is not None else None,
+            "input": str(error.get("input"))
+            if error.get("input") is not None
+            else None,
         }
         # Add ctx if present, but convert non-serializable values
         if "ctx" in error:

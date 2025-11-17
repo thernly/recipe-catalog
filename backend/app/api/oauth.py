@@ -171,7 +171,11 @@ async def oauth_callback(
 
             # Create access token
             access_token = create_access_token(data={"sub": str(user.id)})
-            return {"access_token": access_token, "token_type": "bearer"}
+            return {
+                "access_token": access_token,
+                "token_type": "bearer",
+                "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            }
 
         # Check if email already exists (for account linking)
         email_result = await db.execute(
@@ -207,7 +211,11 @@ async def oauth_callback(
             logger.info(f"Linked {provider} to existing user {existing_user.id}")
 
             access_token = create_access_token(data={"sub": str(existing_user.id)})
-            return {"access_token": access_token, "token_type": "bearer"}
+            return {
+                "access_token": access_token,
+                "token_type": "bearer",
+                "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            }
 
         # Create new user account
         new_user = User(
@@ -257,7 +265,11 @@ async def oauth_callback(
 
         # Create access token
         access_token = create_access_token(data={"sub": str(new_user.id)})
-        return {"access_token": access_token, "token_type": "bearer"}
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        }
 
     except Exception as e:
         logger.error(f"OAuth callback error: {str(e)}")

@@ -27,9 +27,7 @@ class Collection(Base):
     is_default = Column(Boolean, default=False, nullable=False, index=True)
     icon = Column(String(50))
     created_at = Column(DateTime, default=utc_now, nullable=False)
-    updated_at = Column(
-        DateTime, default=utc_now, onupdate=utc_now, nullable=False
-    )
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # Relationships
     owner = relationship("User", back_populates="collections")

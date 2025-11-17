@@ -21,9 +21,7 @@ class User(Base):
     is_verified = Column(Boolean, default=False, nullable=False)
     email_verified_at = Column(DateTime, nullable=True)  # Track when email was verified
     created_at = Column(DateTime, default=utc_now, nullable=False)
-    updated_at = Column(
-        DateTime, default=utc_now, onupdate=utc_now, nullable=False
-    )
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # Relationships
     recipes = relationship(
@@ -67,9 +65,7 @@ class UserPreferences(Base):
     custom_cuisines = Column(JSON, default=list, nullable=False)
     custom_categories = Column(JSON, default=list, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
-    updated_at = Column(
-        DateTime, default=utc_now, onupdate=utc_now, nullable=False
-    )
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # Relationships
     user = relationship("User", back_populates="preferences")

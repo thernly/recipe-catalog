@@ -1,5 +1,13 @@
 <script lang="ts">
 	import { changePassword } from '$lib/api/users';
+	import {
+		getLinkedProviders,
+		unlinkProvider,
+		initiateOAuthFlow,
+		type LinkedProvider
+	} from '$lib/api/oauth';
+	import { auth } from '$lib/stores/auth';
+	import { onMount } from 'svelte';
 
 	let passwordForm = {
 		current_password: '',
@@ -9,6 +17,12 @@
 	let saving = false;
 	let success = false;
 	let error = '';
+
+	let linkedProviders: LinkedProvider[] = [];
+	let loadingProviders = true;
+	let providerError = '';
+	let removingProvider: number | null = null;
+	let hasPassword = false;
 
 	async function savePassword() {
 		error = '';
@@ -34,6 +48,7 @@
 			});
 
 			success = true;
+			hasPassword = true;
 			passwordForm = {
 				current_password: '',
 				new_password: '',
@@ -47,6 +62,74 @@
 			saving = false;
 		}
 	}
+
+	async function loadProviders() {
+		loadingProviders = true;
+		providerError = '';
+		try {
+			linkedProviders = await getLinkedProviders();
+		} catch (err) {
+			console.error('Failed to load providers:', err);
+			providerError = 'Failed to load linked providers';
+		} finally {
+			loadingProviders = false;
+		}
+	}
+
+	async function handleUnlinkProvider(providerId: number, providerName: string) {
+		if (!hasPassword && linkedProviders.length <= 1) {
+			providerError = 'Cannot remove last authentication method. Please set a password first.';
+			return;
+		}
+
+		if (!confirm(`Remove ${providerName} from your account?`)) {
+			return;
+		}
+
+		removingProvider = providerId;
+		providerError = '';
+
+		try {
+			await unlinkProvider(providerId);
+			await loadProviders();
+		} catch (err) {
+			console.error('Failed to unlink provider:', err);
+			providerError =
+				err instanceof Error ? err.message : 'Failed to remove provider. Please try again.';
+		} finally {
+			removingProvider = null;
+		}
+	}
+
+	function handleLinkProvider(provider: string) {
+		providerError = '';
+		initiateOAuthFlow(provider);
+	}
+
+	function getProviderDisplayName(provider: string): string {
+		switch (provider) {
+			case 'google':
+				return 'Google';
+			case 'microsoft':
+				return 'Microsoft';
+			case 'github':
+				return 'GitHub';
+			default:
+				return provider;
+		}
+	}
+
+	function formatDate(dateString: string): string {
+		return new Date(dateString).toLocaleDateString();
+	}
+
+	onMount(async () => {
+		const currentUser = await auth.subscribe((state) => {
+			hasPassword = state.user?.hashed_password !== null;
+		});
+
+		await loadProviders();
+	});
 </script>
 
 <div class="settings-section">
@@ -102,6 +185,89 @@
 			{/if}
 		</div>
 	</form>
+</div>
+
+<!-- Linked Identity Providers Section -->
+<div class="settings-section mt-8">
+	<h2 class="section-title">Linked Accounts</h2>
+	<p class="section-description">
+		Manage identity providers linked to your account
+		{#if !hasPassword && linkedProviders.length > 0}
+			<span class="text-warning">(Passwordless account)</span>
+		{/if}
+	</p>
+
+	{#if loadingProviders}
+		<p class="text-sm" style="color: var(--text-500);">Loading...</p>
+	{:else if linkedProviders.length > 0}
+		<div class="provider-list">
+			{#each linkedProviders as provider}
+				<div class="provider-item">
+					<div class="provider-info">
+						<h3 class="provider-name">{getProviderDisplayName(provider.provider_name)}</h3>
+						<p class="provider-email">{provider.email_at_provider}</p>
+						<p class="provider-meta">
+							Added {formatDate(provider.created_at)}
+							{#if provider.last_used_at}
+								· Last used {formatDate(provider.last_used_at)}
+							{/if}
+						</p>
+					</div>
+					<button
+						type="button"
+						class="btn btn-danger btn-sm"
+						on:click={() =>
+							handleUnlinkProvider(provider.id, getProviderDisplayName(provider.provider_name))}
+						disabled={removingProvider === provider.id}
+					>
+						{removingProvider === provider.id ? 'Removing...' : 'Remove'}
+					</button>
+				</div>
+			{/each}
+		</div>
+	{:else}
+		<p class="text-sm" style="color: var(--text-500);">No identity providers linked</p>
+	{/if}
+
+	{#if providerError}
+		<div class="error-message mt-4">{providerError}</div>
+	{/if}
+
+	<div class="mt-4">
+		<p class="text-sm mb-2" style="color: var(--text-700); font-weight: 500;">
+			Link a new provider:
+		</p>
+		<div class="provider-buttons">
+			<button
+				type="button"
+				class="btn btn-outline"
+				on:click={() => handleLinkProvider('google')}
+			>
+				Link Google
+			</button>
+			<button
+				type="button"
+				class="btn btn-outline"
+				on:click={() => handleLinkProvider('microsoft')}
+			>
+				Link Microsoft
+			</button>
+			<button
+				type="button"
+				class="btn btn-outline"
+				on:click={() => handleLinkProvider('github')}
+			>
+				Link GitHub
+			</button>
+		</div>
+	</div>
+
+	{#if !hasPassword && linkedProviders.length > 0}
+		<div class="warning-box mt-4">
+			<strong>Note:</strong> You cannot remove your last authentication method. Please set a password
+			below before unlinking all providers.
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -181,5 +347,108 @@
 		color: var(--success-600);
 		font-size: 0.875rem;
 		font-weight: 500;
+	}
+
+	.provider-list {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		margin-top: 1rem;
+	}
+
+	.provider-item {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 1rem;
+		border: 1px solid var(--neutral-200);
+		border-radius: var(--radius-md);
+		background: var(--neutral-white);
+	}
+
+	.provider-info {
+		flex: 1;
+	}
+
+	.provider-name {
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--text-900);
+		margin: 0 0 0.25rem 0;
+	}
+
+	.provider-email {
+		font-size: 0.875rem;
+		color: var(--text-600);
+		margin: 0 0 0.25rem 0;
+	}
+
+	.provider-meta {
+		font-size: 0.75rem;
+		color: var(--text-500);
+		margin: 0;
+	}
+
+	.provider-buttons {
+		display: flex;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.warning-box {
+		padding: 0.75rem;
+		background: var(--warning-50, #fff3cd);
+		border: 1px solid var(--warning-200, #ffc107);
+		border-radius: var(--radius-md);
+		color: var(--warning-800, #856404);
+		font-size: 0.875rem;
+	}
+
+	.text-warning {
+		color: var(--warning-600, #f59e0b);
+		font-weight: 500;
+	}
+
+	.mt-4 {
+		margin-top: 1rem;
+	}
+
+	.mt-8 {
+		margin-top: 2rem;
+	}
+
+	.mb-2 {
+		margin-bottom: 0.5rem;
+	}
+
+	.btn-outline {
+		background: white;
+		border: 1px solid var(--neutral-300);
+		color: var(--text-900);
+	}
+
+	.btn-outline:hover {
+		background: var(--neutral-50);
+		border-color: var(--neutral-400);
+	}
+
+	.btn-danger {
+		background: var(--error-600, #dc3545);
+		color: white;
+		border: none;
+	}
+
+	.btn-danger:hover:not(:disabled) {
+		background: var(--error-700, #c82333);
+	}
+
+	.btn-danger:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.btn-sm {
+		padding: 0.5rem 1rem;
+		font-size: 0.875rem;
 	}
 </style>

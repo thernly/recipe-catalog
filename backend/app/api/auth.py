@@ -28,10 +28,17 @@ logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 
 
+def _get_rate_limit(limit: str) -> str:
+    """Return rate limit string or very high limit if testing."""
+    if settings.TESTING:
+        return "10000/hour"  # Effectively unlimited for tests
+    return limit
+
+
 @router.post(
     "/register", response_model=UserSchema, status_code=status.HTTP_201_CREATED
 )
-@limiter.limit("5/hour")
+@limiter.limit(lambda: _get_rate_limit("5/hour"))
 async def register(
     request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)
 ):
@@ -127,7 +134,7 @@ async def register(
 
 
 @router.post("/login", response_model=Token)
-@limiter.limit("10/minute")
+@limiter.limit(lambda: _get_rate_limit("10/minute"))
 async def login(
     request: Request, login_data: UserLogin, db: AsyncSession = Depends(get_db)
 ):
@@ -187,7 +194,7 @@ async def logout():
 
 
 @router.post("/forgot-password")
-@limiter.limit("3/hour")
+@limiter.limit(lambda: _get_rate_limit("3/hour"))
 async def forgot_password(
     req: Request, request: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
 ):
@@ -237,7 +244,7 @@ async def forgot_password(
 
 
 @router.post("/reset-password")
-@limiter.limit("5/hour")
+@limiter.limit(lambda: _get_rate_limit("5/hour"))
 async def reset_password(
     req: Request, request: ResetPasswordRequest, db: AsyncSession = Depends(get_db)
 ):
@@ -330,7 +337,7 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/resend-verification")
-@limiter.limit("3/hour")
+@limiter.limit(lambda: _get_rate_limit("3/hour"))
 async def resend_verification(
     req: Request, request: ResendVerificationRequest, db: AsyncSession = Depends(get_db)
 ):

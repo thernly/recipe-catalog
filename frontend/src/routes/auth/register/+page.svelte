@@ -2,6 +2,7 @@
 	import { auth } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { getAvailableProviders, initiateOAuthFlow, type ProviderInfo } from '$lib/api/oauth';
 
 	let email = '';
 	let password = '';
@@ -9,6 +10,8 @@
 	let displayName = '';
 	let error = '';
 	let loading = false;
+	let providers: ProviderInfo[] = [];
+	let loadingProviders = true;
 
 	async function handleRegister() {
 		error = '';
@@ -52,13 +55,40 @@
 		}
 	}
 
-	onMount(() => {
+	function handleOAuthSignup(provider: string) {
+		error = '';
+		initiateOAuthFlow(provider);
+	}
+
+	function getProviderIcon(provider: string): string {
+		switch (provider) {
+			case 'google':
+				return 'G';
+			case 'microsoft':
+				return 'M';
+			case 'github':
+				return '';
+			default:
+				return '';
+		}
+	}
+
+	onMount(async () => {
 		// If already logged in, redirect to dashboard
 		auth.subscribe((state) => {
 			if (state.user) {
 				goto('/dashboard');
 			}
 		});
+
+		// Load available OAuth providers
+		try {
+			providers = await getAvailableProviders();
+		} catch (err) {
+			console.error('Failed to load OAuth providers:', err);
+		} finally {
+			loadingProviders = false;
+		}
 	});
 </script>
 
@@ -76,6 +106,30 @@
 
 		<!-- Register Form -->
 		<div class="card">
+			<!-- OAuth Providers -->
+			{#if !loadingProviders && providers.length > 0}
+				<div class="space-y-3 mb-6">
+					{#each providers.filter((p) => p.enabled) as provider}
+						<button
+							type="button"
+							on:click={() => handleOAuthSignup(provider.name)}
+							class="w-full px-4 py-3 rounded-md border border-neutral-300 hover:border-neutral-400 transition-colors flex items-center justify-center gap-3 font-medium"
+							style="background: white; color: var(--text-900);"
+						>
+							<span class="text-xl">{getProviderIcon(provider.name)}</span>
+							<span>Sign up with {provider.display_name}</span>
+						</button>
+					{/each}
+				</div>
+
+				<!-- Divider -->
+				<div class="mb-6 flex items-center">
+					<div class="flex-1 border-t" style="border-color: var(--neutral-200);"></div>
+					<span class="px-4 text-sm" style="color: var(--text-500);">OR</span>
+					<div class="flex-1 border-t" style="border-color: var(--neutral-200);"></div>
+				</div>
+			{/if}
+
 			<form on:submit|preventDefault={handleRegister} class="space-y-6">
 				<!-- Display Name -->
 				<div>
@@ -179,13 +233,6 @@
 					{loading ? 'Creating account...' : 'Create Account'}
 				</button>
 			</form>
-
-			<!-- Divider -->
-			<div class="mt-6 flex items-center">
-				<div class="flex-1 border-t" style="border-color: var(--neutral-200);"></div>
-				<span class="px-4 text-sm" style="color: var(--text-500);">OR</span>
-				<div class="flex-1 border-t" style="border-color: var(--neutral-200);"></div>
-			</div>
 
 			<!-- Login Link -->
 			<div class="mt-6 text-center">

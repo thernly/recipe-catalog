@@ -1,15 +1,25 @@
 """Pytest configuration and fixtures."""
 
+import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from app.main import app
 from app.core.database import Base, get_db
+from app.core.config import settings
 
 
 # Test database URL - use in-memory SQLite for testing
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def enable_testing_mode():
+    """Enable testing mode to disable rate limiting for all tests."""
+    settings.TESTING = True
+    yield
+    settings.TESTING = False
 
 
 @pytest_asyncio.fixture
