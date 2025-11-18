@@ -66,6 +66,11 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_SECRET: str = ""
     OAUTH_REDIRECT_URI: str = "http://localhost:8000/api/auth/callback"
 
+    # AI / OpenRouter
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_MODEL: str = "anthropic/claude-3.5-sonnet"
+    AI_RATE_LIMIT_PER_HOUR: int = 50
+
     model_config = SettingsConfigDict(
         env_file=".env", case_sensitive=True, env_parse_none_str="null"
     )
