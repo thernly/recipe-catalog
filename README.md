@@ -5,17 +5,22 @@ A privacy-focused web application for organizing and managing your personal reci
 ## 🎯 Overview
 
 Recipe Catalog allows you to:
-- **Import recipes** from JSON files (browser extension coming soon)
+- **Import recipes** from JSON files or generate with AI
 - **Manually add** family recipes and personal favorites
 - **Organize** recipes into custom collections with icons
 - **Search and filter** your recipe library with advanced filters
-- **Export your data** in JSON, Markdown, or plain text formats
+- **Export your data** in JSON, Markdown, PDF, or plain text formats
+- **Plan meals** with weekly meal planning calendar
+- **Generate shopping lists** from recipes or meal plans
+- **AI-powered features** for recipe generation and menu suggestions
+- **Multi-user households** with invitation system
+- **OAuth sign-in** with Google, Microsoft, or GitHub
 - **Access** your recipes from any device with responsive design
 - **Customize** appearance with two beautiful themes
 
 **Privacy First**: No tracking, no analytics, no third-party data sharing. Your recipes are yours.
 
-**Status**: ✅ MVP Complete and production-ready!
+**Status**: ✅ Production-ready with advanced features!
 
 ## 🏗️ Tech Stack
 
@@ -69,14 +74,26 @@ recipe-catalog/
 ## ✨ Features
 
 ### Core Features (Implemented ✅)
-- **User Authentication** - Register, login, email verification, password reset
+- **User Authentication** - Register, login, email verification, password reset, OAuth/OIDC
+- **OAuth Sign-In** - Google, Microsoft, and GitHub authentication
 - **Recipe Management** - Full CRUD operations with comprehensive forms
 - **Collections** - Organize recipes into custom collections with emoji icons
 - **Search & Filter** - Advanced search with multiple filter criteria
-- **Import/Export** - JSON file import and export in multiple formats
+- **Import/Export** - JSON import and export in JSON, Markdown, PDF, and plain text
 - **Themes** - Two beautiful themes (Classic Minimal & Professional Warm)
 - **Responsive Design** - Works on mobile, tablet, and desktop
 - **Soft Delete** - 30-day recovery period for deleted recipes
+
+### Advanced Features (Implemented ✅)
+- **Multi-User Households** - Share recipes with family members via email invitations
+- **Meal Planning** - Weekly meal planning calendar with drag-and-drop
+- **Shopping Lists** - Generate shopping lists from recipes or meal plans
+- **AI Recipe Generation** - Create recipes from ingredients using AI (OpenRouter)
+- **AI Menu Suggestions** - Get personalized menu plans for multiple days
+- **Custom Categories** - User-defined cuisines and recipe categories
+- **Dietary Preferences** - Track and filter by dietary restrictions
+- **PDF Export** - Professional PDF export for recipes and shopping lists
+- **Rate Limiting** - API rate limiting for security and fair usage
 
 See [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md) for detailed feature list.
 
@@ -84,8 +101,9 @@ See [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md) for detailed feature 
 
 ### Prerequisites
 - Node.js 18+ (for frontend)
-- Python 3.11+ (for backend)
+- Python 3.13+ (for backend)
 - pnpm or npm (package manager)
+- uv (Python package manager) - Install from [astral.sh/uv](https://astral.sh/uv)
 - SQLite (included with Python)
 
 ### Frontend Setup
@@ -119,12 +137,8 @@ Frontend runs on `http://localhost:5173`
 ```bash
 cd backend
 
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies with uv
+uv sync
 
 # Create .env file with secret key
 cat > .env << EOF
@@ -134,13 +148,26 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 DEBUG=True
 ENVIRONMENT=development
+
+# Optional: OAuth providers (get credentials from provider dashboards)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+MICROSOFT_CLIENT_ID=your-microsoft-client-id
+MICROSOFT_CLIENT_SECRET=your-microsoft-client-secret
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+OAUTH_REDIRECT_URI=http://localhost:8000/api/auth/callback
+
+# Optional: AI features (get API key from openrouter.ai)
+OPENROUTER_API_KEY=your-openrouter-api-key
+OPENROUTER_MODEL=anthropic/claude-3.5-sonnet
 EOF
 
 # Run database migrations
-alembic upgrade head
+uv run alembic upgrade head
 
 # Start the server
-uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload
 ```
 
 Backend runs on `http://localhost:8000`
@@ -192,8 +219,27 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASSWORD=your-app-password
-SMTP_FROM_EMAIL=your-email@gmail.com
-SMTP_FROM_NAME=Recipe Catalog
+FROM_EMAIL=your-email@gmail.com
+FROM_NAME=Recipe Catalog
+FRONTEND_URL=http://localhost:5173
+
+# Optional: OAuth/OIDC providers
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+MICROSOFT_CLIENT_ID=your-microsoft-client-id
+MICROSOFT_CLIENT_SECRET=your-microsoft-client-secret
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+OAUTH_REDIRECT_URI=http://localhost:8000/api/auth/callback
+
+# Optional: AI features via OpenRouter
+OPENROUTER_API_KEY=your-openrouter-api-key
+OPENROUTER_MODEL=anthropic/claude-3.5-sonnet
+AI_RATE_LIMIT_PER_HOUR=50
+
+# Optional: Rate limiting
+RATE_LIMIT_PER_MINUTE=60
+RATE_LIMIT_PER_HOUR=1000
 ```
 
 ## 🧪 Testing
@@ -209,8 +255,14 @@ pnpm test:e2e
 ### Backend Tests
 ```bash
 cd backend
-pytest
-pytest --cov=app tests/
+uv run pytest
+uv run pytest --cov=app tests/
+
+# Run specific test file
+uv run pytest tests/test_auth.py
+
+# Run with verbose output
+uv run pytest -v
 ```
 
 ## 📦 Deployment
@@ -280,9 +332,9 @@ Built with ❤️ for home cooks who value privacy and organization.
 
 ---
 
-**Version**: 1.0.0-beta
-**Status**: MVP Complete - Production Ready
-**Last Updated**: November 15, 2025
+**Version**: 1.0.0
+**Status**: Production Ready - Advanced Features Included
+**Last Updated**: November 18, 2025
 
 ## 🚢 Deployment
 
@@ -293,9 +345,10 @@ See [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md#-next-steps-for-produc
 
 ## 🔮 Roadmap
 
-See the [PRD](docs/requirements/Recipe_Catalog_App_PRD_v1.1.md) for planned Phase 2+ features:
+See the [PRD](docs/requirements/Recipe_Catalog_App_PRD_v1.1.md) for planned future features:
 - Browser extension for recipe import
-- Meal planning calendar
-- Shopping list generation
 - Cooking mode (hands-free view)
+- Recipe scaling and unit conversion
+- Nutritional information tracking
 - Recipe sharing and social features
+- Voice control for hands-free cooking
