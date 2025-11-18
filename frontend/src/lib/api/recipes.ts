@@ -181,7 +181,7 @@ export async function importRecipes(
  */
 export async function exportRecipe(
 	id: number,
-	format: 'json' | 'markdown' | 'text'
+	format: 'json' | 'markdown' | 'text' | 'pdf'
 ): Promise<Blob> {
 	const token = localStorage.getItem('auth_token');
 	if (!token) {

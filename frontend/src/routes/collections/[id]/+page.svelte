@@ -5,6 +5,7 @@
 	import {
 		getCollection,
 		getCollectionRecipes,
+		exportCollectionPdf,
 		type CollectionWithCount
 	} from '$lib/api/collections';
 	import { deleteRecipe, type RecipeSummary } from '$lib/api/recipes';
@@ -16,6 +17,7 @@
 	let loading = true;
 	let error: string | null = null;
 	let viewMode: 'grid' | 'list' = 'grid';
+	let exportingPdf = false;
 
 	$: collectionId = parseInt($page.params.id);
 
@@ -72,6 +74,34 @@
 	function toggleViewMode(mode: 'grid' | 'list') {
 		viewMode = mode;
 		localStorage.setItem('recipe-view-mode', mode);
+	}
+
+	async function handleExportPdf() {
+		if (!collection) return;
+
+		exportingPdf = true;
+		try {
+			const blob = await exportCollectionPdf(collection.id);
+
+			// Generate filename
+			const safeName = collection.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+			const filename = `${safeName}.pdf`;
+
+			// Create download
+			const url = window.URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = filename;
+			document.body.appendChild(a);
+			a.click();
+			window.URL.revokeObjectURL(url);
+			document.body.removeChild(a);
+		} catch (err) {
+			alert(`Failed to export collection: ${err instanceof Error ? err.message : 'Unknown error'}`);
+			console.error('Export failed:', err);
+		} finally {
+			exportingPdf = false;
+		}
 	}
 
 	onMount(() => {
@@ -141,6 +171,14 @@
 					</div>
 
 					<div class="flex items-center gap-2">
+						<button
+							on:click={handleExportPdf}
+							class="btn btn-secondary"
+							disabled={exportingPdf || recipes.length === 0}
+							title="Export collection as PDF"
+						>
+							{exportingPdf ? '⏳' : '📄'} Export PDF
+						</button>
 						<button
 							on:click={() => toggleViewMode('grid')}
 							class="view-btn"

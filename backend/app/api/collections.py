@@ -460,3 +460,87 @@ async def get_collection_recipes(
     recipes = result.scalars().all()
 
     return [RecipeSummary.from_orm(r) for r in recipes]
+
+
+@router.get("/{collection_id}/export/pdf")
+async def export_collection_pdf(
+    collection_id: int,
+    current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Export a collection as PDF.
+
+    Args:
+        collection_id: Collection ID
+        current_user: The authenticated user
+        household: The user's household
+        db: Database session
+
+    Returns:
+        Response: The exported PDF file
+
+    Raises:
+        HTTPException: If collection not found or unauthorized
+    """
+    from app.utils.pdf_export import generate_collection_pdf
+    from fastapi import Response
+
+    # Verify collection exists and belongs to household
+    result = await db.execute(
+        select(Collection).where(
+            Collection.id == collection_id, Collection.household_id == household.id
+        )
+    )
+    collection = result.scalar_one_or_none()
+
+    if not collection:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
+        )
+
+    # Get recipes in collection
+    stmt = (
+        select(Recipe)
+        .join(RecipeCollection)
+        .where(
+            RecipeCollection.collection_id == collection_id, Recipe.deleted_at.is_(None)
+        )
+        .order_by(RecipeCollection.added_at.asc())
+    )
+
+    result = await db.execute(stmt)
+    recipes = result.scalars().all()
+
+    if not recipes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Collection has no recipes to export"
+        )
+
+    # Check recipe count limit (max 50 recipes)
+    if len(recipes) > 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Collection has {len(recipes)} recipes. Maximum 50 recipes allowed per PDF export."
+        )
+
+    # Generate PDF
+    pdf_bytes = generate_collection_pdf(
+        collection.name,
+        collection.description or "",
+        recipes
+    )
+
+    # Generate safe filename
+    safe_name = "".join(
+        c if c.isalnum() or c in (" ", "-", "_") else "_" for c in collection.name
+    )
+    safe_name = safe_name.replace(" ", "_").lower()[:50]
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}.pdf"'},
+    )

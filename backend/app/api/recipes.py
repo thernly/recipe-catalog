@@ -485,8 +485,9 @@ async def duplicate_recipe(
 @router.get("/{recipe_id}/export")
 async def export_recipe(
     recipe_id: int,
-    format: Literal["json", "markdown", "text"] = "json",
+    format: Literal["json", "markdown", "text", "pdf"] = "json",
     current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -494,8 +495,9 @@ async def export_recipe(
 
     Args:
         recipe_id: Recipe ID to export
-        format: Export format (json, markdown, or text)
+        format: Export format (json, markdown, text, or pdf)
         current_user: The authenticated user
+        household: The user's household
         db: Database session
 
     Returns:
@@ -508,7 +510,7 @@ async def export_recipe(
     result = await db.execute(
         select(Recipe).where(
             Recipe.id == recipe_id,
-            Recipe.user_id == current_user.id,
+            Recipe.household_id == household.id,
             Recipe.deleted_at.is_(None),
         )
     )
@@ -525,7 +527,19 @@ async def export_recipe(
     )
     safe_name = safe_name.replace(" ", "_").lower()[:50]  # Limit length
 
-    if format == "json":
+    if format == "pdf":
+        # Export as PDF
+        from app.utils.pdf_export import generate_recipe_pdf
+
+        pdf_bytes = generate_recipe_pdf(recipe)
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{safe_name}.pdf"'},
+        )
+
+    elif format == "json":
         # Export as JSON in Schema.org Recipe format
         schema_recipe = convert_to_schema_org(recipe)
 
