@@ -12,6 +12,30 @@
 	let saving = false;
 	let success = false;
 
+	const dietaryOptions = [
+		'Vegetarian',
+		'Vegan',
+		'Gluten-Free',
+		'Dairy-Free',
+		'Nut-Free',
+		'Low-Carb',
+		'Keto',
+		'Paleo',
+		'Halal',
+		'Kosher'
+	];
+
+	function toggleDietary(option: string) {
+		if (!form.dietary_preferences) {
+			form.dietary_preferences = [];
+		}
+		if (form.dietary_preferences.includes(option)) {
+			form.dietary_preferences = form.dietary_preferences.filter((p) => p !== option);
+		} else {
+			form.dietary_preferences = [...form.dietary_preferences, option];
+		}
+	}
+
 	async function savePreferences() {
 		saving = true;
 		success = false;
@@ -103,6 +127,24 @@
 				/>
 				<span>Enable email notifications</span>
 			</label>
+		</div>
+
+		<div class="form-group">
+			<label class="form-label">Dietary Preferences</label>
+			<p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+				Select your dietary preferences to personalize AI-generated menu suggestions
+			</p>
+			<div class="dietary-options">
+				{#each dietaryOptions as option}
+					<button
+						type="button"
+						on:click={() => toggleDietary(option)}
+						class="dietary-option {form.dietary_preferences?.includes(option) ? 'active' : ''}"
+					>
+						{option}
+					</button>
+				{/each}
+			</div>
 		</div>
 
 		<div class="form-actions">
@@ -199,5 +241,33 @@
 		color: var(--success-600);
 		font-size: 0.875rem;
 		font-weight: 500;
+	}
+
+	.dietary-options {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+		gap: 0.5rem;
+	}
+
+	.dietary-option {
+		padding: 0.5rem 1rem;
+		border: 1px solid var(--neutral-200);
+		border-radius: var(--radius-md);
+		background: var(--neutral-white);
+		color: var(--text-700);
+		font-size: 0.875rem;
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+
+	.dietary-option:hover {
+		background: var(--neutral-50);
+		border-color: var(--accent-300);
+	}
+
+	.dietary-option.active {
+		background: var(--accent-500);
+		color: white;
+		border-color: var(--accent-600);
 	}
 </style>

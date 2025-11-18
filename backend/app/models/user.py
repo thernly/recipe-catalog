@@ -67,6 +67,7 @@ class UserPreferences(Base):
     timezone = Column(String(100), default="UTC", nullable=False)
     custom_cuisines = Column(JSON, default=list, nullable=False)
     custom_categories = Column(JSON, default=list, nullable=False)
+    dietary_preferences = Column(JSON, default=list, nullable=False)  # e.g., ["vegetarian", "gluten-free"]
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 

@@ -158,6 +158,7 @@ class UserPreferencesBase(BaseModel):
     timezone: str = "UTC"
     custom_cuisines: List[str] = Field(default_factory=list)
     custom_categories: List[str] = Field(default_factory=list)
+    dietary_preferences: List[str] = Field(default_factory=list)
 
 
 class UserPreferences(UserPreferencesBase):
@@ -182,3 +183,4 @@ class UserPreferencesUpdate(BaseModel):
     timezone: Optional[str] = None
     custom_cuisines: Optional[List[str]] = None
     custom_categories: Optional[List[str]] = None
+    dietary_preferences: Optional[List[str]] = None
