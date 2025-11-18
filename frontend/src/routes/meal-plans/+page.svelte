@@ -160,8 +160,15 @@
 		</div>
 	</div>
 
-	{#if mealPlan && mealPlan.planned_meals.length > 0}
-		<div class="actions-bar" style="text-align: center; margin-bottom: 1rem;">
+	<div class="actions-bar" style="text-align: center; margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+		<button
+			on:click={() => goto('/ai-menu')}
+			class="btn-secondary"
+			style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;"
+		>
+			✨ AI Menu Suggestions
+		</button>
+		{#if mealPlan && mealPlan.planned_meals.length > 0}
 			<button
 				on:click={handleGenerateShoppingList}
 				class="btn-primary"
@@ -169,8 +176,8 @@
 			>
 				{generatingShoppingList ? '⏳ Generating...' : '🛒 Generate Shopping List'}
 			</button>
-		</div>
-	{/if}
+		{/if}
+	</div>
 
 	{#if loading}
 		<div class="loading">Loading meal plan...</div>

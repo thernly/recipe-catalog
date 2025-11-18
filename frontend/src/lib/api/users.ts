@@ -22,6 +22,7 @@ export interface UserPreferences {
 	timezone: string;
 	custom_cuisines: string[];
 	custom_categories: string[];
+	dietary_preferences: string[];
 }
 
 export interface UserStats {
@@ -74,6 +75,13 @@ export async function changePassword(data: PasswordChange): Promise<void> {
  */
 export async function getPreferences(): Promise<UserPreferences> {
 	return apiRequest<UserPreferences>('/api/users/me/preferences');
+}
+
+/**
+ * Get user preferences (alias for consistency)
+ */
+export async function getUserPreferences(): Promise<UserPreferences> {
+	return getPreferences();
 }
 
 /**
