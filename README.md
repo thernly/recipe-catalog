@@ -265,34 +265,339 @@ uv run pytest tests/test_auth.py
 uv run pytest -v
 ```
 
-## 📦 Deployment
+## 🔧 Common Operations
 
-### Cloudflare (Recommended)
+### Database Migrations
 
-**Frontend (Pages)**
-```bash
-cd frontend
-pnpm build
-wrangler pages deploy build
-```
-
-**Backend (Workers)**
+**Create a new migration:**
 ```bash
 cd backend
+uv run alembic revision -m "description of changes"
+# Edit the generated migration file in alembic/versions/
+uv run alembic upgrade head
+```
+
+**Apply migrations:**
+```bash
+cd backend
+# Apply all pending migrations
+uv run alembic upgrade head
+
+# Apply specific migration
+uv run alembic upgrade <revision>
+
+# Rollback one migration
+uv run alembic downgrade -1
+
+# View migration history
+uv run alembic history
+uv run alembic current
+```
+
+### Database Backup & Restore
+
+**SQLite (Development):**
+```bash
+cd backend
+
+# Create backup
+cp recipes.db recipes.db.backup-$(date +%Y%m%d)
+
+# Or use SQLite backup command
+sqlite3 recipes.db ".backup recipes.db.backup"
+
+# Restore from backup
+cp recipes.db.backup recipes.db
+
+# Export to SQL
+sqlite3 recipes.db .dump > backup.sql
+
+# Restore from SQL
+sqlite3 recipes.db < backup.sql
+```
+
+**PostgreSQL (Production):**
+```bash
+# Create backup
+pg_dump -U username -d recipe_catalog > backup.sql
+
+# Create compressed backup
+pg_dump -U username -d recipe_catalog | gzip > backup-$(date +%Y%m%d).sql.gz
+
+# Restore from backup
+psql -U username -d recipe_catalog < backup.sql
+
+# Restore from compressed backup
+gunzip -c backup.sql.gz | psql -U username -d recipe_catalog
+
+# Automated daily backups (add to crontab)
+0 2 * * * pg_dump -U username recipe_catalog | gzip > /backups/recipe-catalog-$(date +\%Y\%m\%d).sql.gz
+```
+
+### Database Maintenance
+
+**Clean up soft-deleted records:**
+```bash
+cd backend
+# Records marked as deleted are kept for 30 days
+# Permanently delete records older than 30 days
+
+sqlite3 recipes.db "DELETE FROM recipes WHERE deleted_at < datetime('now', '-30 days');"
+
+# Or use Python script
+uv run python -c "
+from app.core.database import async_session_maker
+from app.models.recipe import Recipe
+from datetime import datetime, timedelta
+import asyncio
+
+async def cleanup():
+    async with async_session_maker() as session:
+        cutoff = datetime.utcnow() - timedelta(days=30)
+        result = await session.execute(
+            Recipe.__table__.delete().where(Recipe.deleted_at < cutoff)
+        )
+        await session.commit()
+        print(f'Deleted {result.rowcount} old recipes')
+
+asyncio.run(cleanup())
+"
+```
+
+**Optimize database:**
+```bash
+# SQLite
+sqlite3 recipes.db "VACUUM;"
+
+# PostgreSQL
+psql -U username -d recipe_catalog -c "VACUUM ANALYZE;"
+```
+
+### Monitoring & Logs
+
+**View application logs:**
+```bash
+cd backend
+
+# View live logs
+tail -f logs/app.log
+
+# Search for errors
+grep ERROR logs/app.log
+
+# View last 100 lines
+tail -n 100 logs/app.log
+```
+
+**Monitor server health:**
+```bash
+# Check API health
+curl http://localhost:8000/health
+
+# Check with detailed info
+curl http://localhost:8000/
+
+# Monitor database size
+ls -lh backend/recipes.db
+```
+
+### Data Export & Import
+
+**Export all recipes:**
+```bash
+# Via API (requires authentication)
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:8000/api/export/all?format=json > recipes.json
+
+# Direct database export
+sqlite3 recipes.db "SELECT * FROM recipes WHERE deleted_at IS NULL;" \
+  -header -csv > recipes.csv
+```
+
+**Import recipes:**
+```bash
+# Via API
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@recipes.json" \
+  http://localhost:8000/api/import/json
+```
+
+### Troubleshooting
+
+**Reset database (DESTRUCTIVE):**
+```bash
+cd backend
+
+# Backup first!
+cp recipes.db recipes.db.backup
+
+# Drop all tables and recreate
+rm recipes.db
+uv run alembic upgrade head
+
+# Or reset migrations
+rm alembic/versions/*.py
+uv run alembic revision --autogenerate -m "initial"
+uv run alembic upgrade head
+```
+
+**Clear cache and restart:**
+```bash
+# Clear Python cache
+find . -type d -name __pycache__ -exec rm -rf {} +
+find . -type f -name "*.pyc" -delete
+
+# Restart backend
+pkill -f "uvicorn"
+cd backend && uv run uvicorn app.main:app --reload
+
+# Restart frontend
+pkill -f "vite"
+cd frontend && pnpm dev
+```
+
+**Check dependencies:**
+```bash
+# Backend
+cd backend
+uv pip list
+
+# Frontend
+cd frontend
+pnpm list
+```
+
+## 📦 Deployment
+
+### Production Deployment Guide
+
+#### Prerequisites
+- Domain name with DNS configured
+- SSL certificate (automatically handled by Cloudflare or Let's Encrypt)
+- Production database (PostgreSQL recommended for high-traffic deployments)
+- Email service credentials (for password reset and verification)
+- OAuth provider credentials (optional)
+
+#### Option 1: Cloudflare (Recommended)
+
+**Step 1: Database Setup (D1)**
+```bash
+# Create D1 database
+wrangler d1 create recipe-catalog-db
+
+# Run migrations
+wrangler d1 execute recipe-catalog-db --file=./database/schema.sql
+
+# Get database ID and update wrangler.toml
+wrangler d1 list
+```
+
+**Step 2: Backend Deployment (Workers)**
+```bash
+cd backend
+
+# Set production environment variables
+wrangler secret put SECRET_KEY
+wrangler secret put GOOGLE_CLIENT_ID
+wrangler secret put GOOGLE_CLIENT_SECRET
+# ... add other secrets
+
+# Deploy to Cloudflare Workers
 wrangler deploy
 ```
 
-**Database (D1)**
+**Step 3: Frontend Deployment (Pages)**
 ```bash
-wrangler d1 create recipe-catalog-db
-wrangler d1 execute recipe-catalog-db --file=../database/schema.sql
+cd frontend
+
+# Update API URL for production
+echo "VITE_API_URL=https://api.yourdomain.com" > .env.production
+
+# Build and deploy
+pnpm build
+wrangler pages deploy build
+
+# Or use GitHub integration (recommended)
+# Push to GitHub and connect repo in Cloudflare dashboard
 ```
 
-### Docker (Alternative)
+**Step 4: Configure DNS**
+- Point your domain to Cloudflare Pages
+- Add CNAME record for API subdomain
 
+#### Option 2: Self-Hosted (Docker)
+
+**Step 1: Prepare Server**
 ```bash
+# Install Docker and Docker Compose
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
+
+# Install Docker Compose
+sudo apt install docker-compose
+```
+
+**Step 2: Configure Environment**
+```bash
+# Create production .env files
+cd backend
+cp .env.example .env
+# Edit .env with production values
+
+cd ../frontend
+echo "VITE_API_URL=https://api.yourdomain.com" > .env
+```
+
+**Step 3: Deploy with Docker**
+```bash
+# Build and start services
 docker-compose up -d
+
+# Check logs
+docker-compose logs -f
+
+# Run migrations
+docker-compose exec backend alembic upgrade head
 ```
+
+**Step 4: Set Up Reverse Proxy (nginx)**
+```nginx
+# /etc/nginx/sites-available/recipe-catalog
+server {
+    listen 80;
+    server_name yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:5173;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /api {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+**Step 5: SSL Setup (Let's Encrypt)**
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d yourdomain.com
+```
+
+#### Option 3: Traditional Cloud Platforms
+
+**AWS, Google Cloud, Azure, DigitalOcean, etc.**
+
+1. **Backend**: Deploy as containerized application or serverless function
+2. **Frontend**: Deploy to static hosting (S3, Cloud Storage, etc.)
+3. **Database**: Use managed PostgreSQL service (RDS, Cloud SQL, etc.)
+4. **CDN**: CloudFront, Cloud CDN, or Azure CDN
+
+Refer to your platform's documentation for specific deployment steps.
 
 ## 🔒 Security
 
