@@ -28,6 +28,20 @@
 	// Active section
 	let activeSection: 'profile' | 'preferences' | 'security' | 'household' | 'stats' | 'filters' | 'danger' = 'profile';
 
+	// Helper function to apply theme
+	function applyTheme(themeId: string) {
+		let actualTheme = themeId;
+
+		// If system theme is selected, detect the actual theme
+		if (themeId === 'system') {
+			const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+			actualTheme = prefersDark ? 'dark' : 'light';
+		}
+
+		// Apply theme to document
+		document.documentElement.setAttribute('data-theme', actualTheme);
+	}
+
 	// Load user data
 	async function loadUserData() {
 		loading = true;
@@ -45,7 +59,7 @@
 			stats = statsData;
 
 			// Apply current theme
-			document.documentElement.setAttribute('data-theme', prefsData.theme);
+			applyTheme(prefsData.theme);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load user data';
 			console.error('Failed to load user data:', err);

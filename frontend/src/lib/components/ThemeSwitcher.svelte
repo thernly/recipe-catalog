@@ -1,22 +1,46 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 
-	export let currentTheme: 'classic' | 'professional' = 'classic';
+	export let currentTheme: string = 'light';
 
 	const dispatch = createEventDispatcher();
 
 	const themes = [
 		{
-			id: 'classic' as const,
-			name: 'Classic Minimal',
-			description: 'Clean and simple with warm saffron accents',
+			id: 'light' as const,
+			name: 'Light',
+			description: 'Clean and simple light theme',
 			primary: '#3D4451',
 			accent: '#F59E0B',
 			preview: 'Charcoal & Saffron'
 		},
 		{
+			id: 'dark' as const,
+			name: 'Dark',
+			description: 'Easy on the eyes with dark backgrounds',
+			primary: '#1f2937',
+			accent: '#60a5fa',
+			preview: 'Dark Blue'
+		},
+		{
+			id: 'high-contrast' as const,
+			name: 'High Contrast',
+			description: 'Maximum readability with high contrast',
+			primary: '#000000',
+			accent: '#0052cc',
+			preview: 'Black & Blue'
+		},
+		{
+			id: 'system' as const,
+			name: 'System',
+			description: 'Follow your device theme preference',
+			primary: '#6b7280',
+			accent: '#6b7280',
+			preview: 'Auto'
+		},
+		{
 			id: 'professional' as const,
-			name: 'Professional Warm',
+			name: 'Professional',
 			description: 'Bold navy with vibrant apricot highlights',
 			primary: '#1E3A5F',
 			accent: '#F97316',
@@ -24,13 +48,49 @@
 		}
 	];
 
-	function selectTheme(themeId: 'classic' | 'professional') {
+	function getSystemTheme(): 'light' | 'dark' {
+		if (typeof window !== 'undefined' && window.matchMedia) {
+			return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+		}
+		return 'light';
+	}
+
+	function applyTheme(themeId: string) {
+		let actualTheme = themeId;
+
+		// If system theme is selected, detect the actual theme
+		if (themeId === 'system') {
+			actualTheme = getSystemTheme();
+		}
+
+		// Apply theme to document
+		document.documentElement.setAttribute('data-theme', actualTheme);
+	}
+
+	function selectTheme(themeId: string) {
 		currentTheme = themeId;
-		// Apply theme immediately
-		document.documentElement.setAttribute('data-theme', themeId);
-		// Notify parent component
+		applyTheme(themeId);
 		dispatch('change', themeId);
 	}
+
+	// Listen for system theme changes when 'system' is selected
+	onMount(() => {
+		if (typeof window !== 'undefined' && window.matchMedia) {
+			const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+			const handleThemeChange = () => {
+				if (currentTheme === 'system') {
+					applyTheme('system');
+				}
+			};
+
+			// Modern browsers
+			if (mediaQuery.addEventListener) {
+				mediaQuery.addEventListener('change', handleThemeChange);
+				return () => mediaQuery.removeEventListener('change', handleThemeChange);
+			}
+		}
+	});
 </script>
 
 <div class="theme-switcher">
@@ -45,11 +105,15 @@
 				on:click={() => selectTheme(theme.id)}
 			>
 				<!-- Theme Preview -->
-				<div class="theme-preview">
-					<div class="preview-colors">
-						<div class="color-block" style="background-color: {theme.primary};" />
-						<div class="color-block" style="background-color: {theme.accent};" />
-					</div>
+				<div class="theme-preview" class:system={theme.id === 'system'}>
+					{#if theme.id === 'system'}
+						<div class="system-icon">⚙️</div>
+					{:else}
+						<div class="preview-colors">
+							<div class="color-block" style="background-color: {theme.primary};" />
+							<div class="color-block" style="background-color: {theme.accent};" />
+						</div>
+					{/if}
 					{#if currentTheme === theme.id}
 						<div class="active-badge">✓ Active</div>
 					{/if}
@@ -171,5 +235,18 @@
 		color: var(--text-500);
 		font-weight: 500;
 		margin: 0;
+	}
+
+	.system-icon {
+		font-size: 3rem;
+	}
+
+	.theme-preview.system {
+		background: linear-gradient(
+			135deg,
+			var(--neutral-100) 0%,
+			var(--neutral-200) 50%,
+			var(--neutral-300) 100%
+		);
 	}
 </style>
