@@ -24,6 +24,7 @@ dependencies = [
     "slowapi>=0.1.9",
     "sqlalchemy==2.0.44",
     "uvicorn[standard]==0.38.0",
+    "weasyprint>=63.0",
 ]
 
 [dependency-groups]

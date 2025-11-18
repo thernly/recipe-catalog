@@ -107,7 +107,7 @@
 		window.print();
 	}
 
-	async function handleExport(format: 'json' | 'markdown' | 'text') {
+	async function handleExport(format: 'json' | 'markdown' | 'text' | 'pdf') {
 		if (!recipe) return;
 
 		exporting = true;
@@ -117,7 +117,7 @@
 			const blob = await exportRecipe(recipe.id, format);
 
 			// Generate filename
-			const extensions = { json: 'json', markdown: 'md', text: 'txt' };
+			const extensions = { json: 'json', markdown: 'md', text: 'txt', pdf: 'pdf' };
 			const safeName = recipe.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
 			const filename = `${safeName}.${extensions[format]}`;
 
@@ -259,6 +259,9 @@
 								</button>
 								{#if showExportMenu}
 									<div class="export-menu">
+										<button on:click={() => handleExport('pdf')} class="export-menu-item">
+											📄 PDF
+										</button>
 										<button on:click={() => handleExport('json')} class="export-menu-item">
 											JSON
 										</button>
