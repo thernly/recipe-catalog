@@ -7,6 +7,7 @@ from typing import Optional
 from jose import JWTError, jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
+import bleach
 from app.core.config import settings
 
 # Argon2 password hasher
@@ -91,3 +92,23 @@ def decode_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
+
+
+def sanitize_html(text: str) -> str:
+    """
+    Sanitize HTML content to prevent XSS attacks.
+
+    Strips all HTML tags and returns plain text only.
+    This is a simple approach suitable for user-generated content
+    that should not contain any markup.
+
+    Args:
+        text: Text that may contain HTML
+
+    Returns:
+        Sanitized plain text with HTML tags removed
+    """
+    if not text:
+        return text
+    # Strip all HTML tags - allow plain text only
+    return bleach.clean(text, tags=[], strip=True)
