@@ -242,7 +242,7 @@ async def search_recipes(
     total_pages = (total + per_page - 1) // per_page
 
     return RecipeSearchResult(
-        recipes=[RecipeSummary.from_orm(r) for r in recipes],
+        recipes=[RecipeSummary.model_validate(r) for r in recipes],
         total=total,
         page=page,
         per_page=per_page,
@@ -836,4 +836,4 @@ async def list_trashed_recipes(
     )
     recipes = result.scalars().all()
 
-    return [RecipeSummary.from_orm(r) for r in recipes]
+    return [RecipeSummary.model_validate(r) for r in recipes]

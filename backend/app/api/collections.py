@@ -467,7 +467,7 @@ async def get_collection_recipes(
     result = await db.execute(stmt)
     recipes = result.scalars().all()
 
-    return [RecipeSummary.from_orm(r) for r in recipes]
+    return [RecipeSummary.model_validate(r) for r in recipes]
 
 
 @router.get("/{collection_id}/export/pdf")
