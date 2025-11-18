@@ -26,6 +26,7 @@ from app.api import (
     import_recipes,
     households,
     meal_plans,
+    shopping_lists,
 )
 
 # Configure logging
@@ -145,6 +146,7 @@ app.include_router(export.router, prefix="/api/export", tags=["Export"])
 app.include_router(import_recipes.router, prefix="/api/import", tags=["Import"])
 app.include_router(households.router, prefix="/api/households", tags=["Households"])
 app.include_router(meal_plans.router, prefix="/api/meal-plans", tags=["Meal Plans"])
+app.include_router(shopping_lists.router, prefix="/api/shopping-lists", tags=["Shopping Lists"])
 
 
 if __name__ == "__main__":

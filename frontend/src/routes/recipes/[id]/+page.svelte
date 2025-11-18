@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { getRecipe, deleteRecipe, duplicateRecipe, exportRecipe, type Recipe } from '$lib/api/recipes';
+	import { generateFromRecipe, listShoppingLists, type ShoppingListSummary } from '$lib/api/shopping-lists';
 
 	let recipe: Recipe | null = null;
 	let loading = true;
@@ -10,6 +11,9 @@
 	let checkedIngredients = new Set<number>();
 	let showExportMenu = false;
 	let exporting = false;
+	let showAddToShoppingListDialog = false;
+	let shoppingLists: ShoppingListSummary[] = [];
+	let addingToList = false;
 
 	// Get recipe ID from URL
 	$: recipeId = parseInt($page.params.id);
@@ -141,6 +145,25 @@
 		}
 	}
 
+	async function handleAddToShoppingList() {
+		if (!recipe) return;
+
+		addingToList = true;
+		try {
+			const newList = await generateFromRecipe({
+				recipe_id: recipe.id,
+				list_name: `Shopping list for ${recipe.name}`
+			});
+			showAddToShoppingListDialog = false;
+			goto(`/shopping-lists/${newList.id}`);
+		} catch (err) {
+			alert(`Failed to create shopping list: ${err instanceof Error ? err.message : 'Unknown error'}`);
+			console.error('Failed to create shopping list:', err);
+		} finally {
+			addingToList = false;
+		}
+	}
+
 	onMount(() => {
 		loadRecipe();
 		document.addEventListener('click', handleClickOutside);
@@ -217,6 +240,13 @@
 								✏️ Edit
 							</button>
 							<button on:click={handleDuplicate} class="btn btn-secondary">📋 Duplicate</button>
+							<button
+								on:click={handleAddToShoppingList}
+								class="btn btn-secondary"
+								disabled={addingToList}
+							>
+								{addingToList ? '⏳' : '🛒'} Add to Shopping List
+							</button>
 
 							<!-- Export dropdown -->
 							<div class="export-dropdown">

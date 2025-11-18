@@ -7,6 +7,7 @@ from app.models.token import VerificationToken, PasswordResetToken
 from app.models.identity_provider import IdentityProvider
 from app.models.household import Household, HouseholdMember, HouseholdInvitation
 from app.models.meal_plan import MealPlan, PlannedMeal
+from app.models.shopping_list import ShoppingList, ShoppingListItem
 
 __all__ = [
     "User",
@@ -22,4 +23,6 @@ __all__ = [
     "HouseholdInvitation",
     "MealPlan",
     "PlannedMeal",
+    "ShoppingList",
+    "ShoppingListItem",
 ]

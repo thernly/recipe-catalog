@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import {
 		getCurrentWeekMealPlan,
 		addPlannedMeal,
@@ -12,6 +13,7 @@
 		type PlannedMealCreate
 	} from '$lib/api/meal-plans';
 	import { searchRecipes, type RecipeSummary } from '$lib/api/recipes';
+	import { generateFromMealPlan } from '$lib/api/shopping-lists';
 	import AddMealDialog from './AddMealDialog.svelte';
 	import EditMealDialog from './EditMealDialog.svelte';
 
@@ -27,6 +29,9 @@
 	let addDialogMealType: string = 'dinner';
 	let selectedMeal: PlannedMeal | null = null;
 	let showEditDialog = false;
+
+	// Shopping list generation
+	let generatingShoppingList = false;
 
 	const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 	const mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -115,6 +120,27 @@
 		);
 	}
 
+	async function handleGenerateShoppingList() {
+		if (!mealPlan || mealPlan.planned_meals.length === 0) {
+			alert('No meals in this meal plan to generate a shopping list from.');
+			return;
+		}
+
+		generatingShoppingList = true;
+		try {
+			const newList = await generateFromMealPlan({
+				meal_plan_id: mealPlan.id,
+				list_name: `Shopping list for week of ${formatDate(weekDates[0])}`
+			});
+			goto(`/shopping-lists/${newList.id}`);
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to generate shopping list';
+			console.error('Failed to generate shopping list:', err);
+		} finally {
+			generatingShoppingList = false;
+		}
+	}
+
 	onMount(() => {
 		loadMealPlan();
 	});
@@ -133,6 +159,18 @@
 			</button>
 		</div>
 	</div>
+
+	{#if mealPlan && mealPlan.planned_meals.length > 0}
+		<div class="actions-bar" style="text-align: center; margin-bottom: 1rem;">
+			<button
+				on:click={handleGenerateShoppingList}
+				class="btn-primary"
+				disabled={generatingShoppingList}
+			>
+				{generatingShoppingList ? '⏳ Generating...' : '🛒 Generate Shopping List'}
+			</button>
+		</div>
+	{/if}
 
 	{#if loading}
 		<div class="loading">Loading meal plan...</div>
