@@ -8,7 +8,7 @@ from app.core.security import validate_csrf_token
 
 
 async def validate_csrf(
-    x_csrf_token: Optional[str] = Header(None, alias="X-CSRF-Token")
+    x_csrf_token: Optional[str] = Header(None, alias="X-CSRF-Token"),
 ) -> str:
     """
     Validate CSRF token from request header.
