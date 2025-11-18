@@ -38,6 +38,7 @@ class Household(Base):
     )
     recipes = relationship("Recipe", back_populates="household")
     collections = relationship("Collection", back_populates="household")
+    meal_plans = relationship("MealPlan", cascade="all, delete-orphan")
 
 
 class HouseholdMember(Base):

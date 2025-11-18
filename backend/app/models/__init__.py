@@ -6,6 +6,7 @@ from app.models.collection import Collection, RecipeCollection
 from app.models.token import VerificationToken, PasswordResetToken
 from app.models.identity_provider import IdentityProvider
 from app.models.household import Household, HouseholdMember, HouseholdInvitation
+from app.models.meal_plan import MealPlan, PlannedMeal
 
 __all__ = [
     "User",
@@ -19,4 +20,6 @@ __all__ = [
     "Household",
     "HouseholdMember",
     "HouseholdInvitation",
+    "MealPlan",
+    "PlannedMeal",
 ]
