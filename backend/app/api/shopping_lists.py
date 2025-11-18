@@ -130,7 +130,7 @@ async def list_shopping_lists(
             select(func.count(ShoppingListItem.id)).where(
                 and_(
                     ShoppingListItem.list_id == shopping_list.id,
-                    ShoppingListItem.checked == True,
+                    ShoppingListItem.checked,
                 )
             )
         )
