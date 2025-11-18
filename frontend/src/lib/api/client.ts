@@ -3,7 +3,6 @@
  */
 
 import { auth } from '$lib/stores/auth';
-import { get } from 'svelte/store';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -15,11 +14,53 @@ interface RequestOptions extends RequestInit {
 // In-memory CSRF token storage
 let csrfToken: string | null = null;
 
+// Promise cache for refresh token to prevent concurrent refreshes
+let refreshPromise: Promise<boolean> | null = null;
+
+/**
+ * Refresh the access token using the refresh token cookie
+ */
+async function refreshAccessToken(): Promise<boolean> {
+	// Return existing promise if refresh is already in progress
+	if (refreshPromise) {
+		return refreshPromise;
+	}
+
+	refreshPromise = (async () => {
+		try {
+			const response = await fetch(`${API_URL}/api/auth/refresh`, {
+				method: 'POST',
+				credentials: 'include' // Send cookies
+			});
+
+			if (!response.ok) {
+				// Refresh failed - logout user
+				auth.logout();
+				return false;
+			}
+
+			// Refresh successful - cookies are automatically updated
+			return true;
+		} catch (error) {
+			console.error('Token refresh failed:', error);
+			auth.logout();
+			return false;
+		} finally {
+			// Clear the promise cache
+			refreshPromise = null;
+		}
+	})();
+
+	return refreshPromise;
+}
+
 /**
  * Fetch a new CSRF token from the backend
  */
 async function fetchCsrfToken(): Promise<string> {
-	const response = await fetch(`${API_URL}/api/auth/csrf-token`);
+	const response = await fetch(`${API_URL}/api/auth/csrf-token`, {
+		credentials: 'include'
+	});
 	if (!response.ok) {
 		throw new Error('Failed to fetch CSRF token');
 	}
@@ -55,14 +96,6 @@ export async function apiRequest<T>(
 			...fetchOptions.headers
 		};
 
-	// Add authentication token if required
-	if (requireAuth) {
-		const authState = get(auth);
-		if (authState.token) {
-			headers['Authorization'] = `Bearer ${authState.token}`;
-		}
-	}
-
 	// Add CSRF token for state-changing requests
 	const method = (fetchOptions.method || 'GET').toUpperCase();
 	const isStateChanging = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
@@ -82,8 +115,38 @@ export async function apiRequest<T>(
 	try {
 		const response = await fetch(url, {
 			...fetchOptions,
-			headers
+			headers,
+			credentials: 'include' // Always send cookies
 		});
+
+		// Handle 401 Unauthorized - try to refresh token
+		if (response.status === 401 && requireAuth) {
+			// Try to refresh the access token
+			const refreshed = await refreshAccessToken();
+
+			if (refreshed) {
+				// Retry the original request with refreshed token
+				const retryResponse = await fetch(url, {
+					...fetchOptions,
+					headers,
+					credentials: 'include'
+				});
+
+				if (!retryResponse.ok) {
+					const errorData = await retryResponse.json().catch(() => ({}));
+					throw new Error(errorData.detail || `HTTP error! status: ${retryResponse.status}`);
+				}
+
+				if (retryResponse.status === 204) {
+					return {} as T;
+				}
+
+				return await retryResponse.json();
+			}
+
+			// Refresh failed, throw unauthorized error
+			throw new Error('Authentication required');
+		}
 
 		// Handle non-2xx responses
 		if (!response.ok) {
@@ -98,7 +161,8 @@ export async function apiRequest<T>(
 					// Retry the request
 					const retryResponse = await fetch(url, {
 						...fetchOptions,
-						headers
+						headers,
+						credentials: 'include'
 					});
 
 					if (!retryResponse.ok) {

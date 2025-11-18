@@ -3,7 +3,7 @@ Authentication API endpoints.
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from slowapi import Limiter
@@ -142,20 +142,21 @@ async def register(
         )
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login")
 @limiter.limit(lambda: _get_rate_limit("10/minute"))
 async def login(
-    request: Request, login_data: UserLogin, db: AsyncSession = Depends(get_db)
+    request: Request, response: Response, login_data: UserLogin, db: AsyncSession = Depends(get_db)
 ):
     """
-    Authenticate user and return JWT token.
+    Authenticate user and set httpOnly cookies.
 
     Args:
         login_data: Login credentials
+        response: Response object to set cookies
         db: Database session
 
     Returns:
-        Token: JWT access token
+        dict: Success message
 
     Raises:
         HTTPException: If credentials are invalid
@@ -194,39 +195,64 @@ async def login(
     db.add(refresh_token)
     await db.commit()
 
-    return Token(
-        access_token=access_token,
-        token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        refresh_token=refresh_token_value,
+    # Set httpOnly cookies
+    # Access token cookie (15 minutes)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=not settings.TESTING,  # HTTPS only in production
+        samesite="strict",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
+    # Refresh token cookie (7 days)
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token_value,
+        httponly=True,
+        secure=not settings.TESTING,
+        samesite="strict",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
 
-@router.post("/refresh", response_model=Token)
+    return {"message": "Login successful"}
+
+
+@router.post("/refresh")
 @limiter.limit(lambda: _get_rate_limit("20/minute"))
 async def refresh_token(
     request: Request,
-    refresh_request: RefreshTokenRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     """
     Exchange a refresh token for a new access token.
 
     Args:
-        refresh_request: Refresh token
+        request: Request object to read cookies
+        response: Response object to set new cookies
         db: Database session
 
     Returns:
-        Token: New access token and refresh token
+        dict: Success message
 
     Raises:
         HTTPException: If refresh token is invalid, expired, or revoked
     """
     from datetime import datetime, timezone
 
+    # Get refresh token from cookie
+    refresh_token_value = request.cookies.get("refresh_token")
+    if not refresh_token_value:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No refresh token found",
+        )
+
     # Look up the refresh token
     result = await db.execute(
-        select(RefreshToken).where(RefreshToken.token == refresh_request.refresh_token)
+        select(RefreshToken).where(RefreshToken.token == refresh_token_value)
     )
     refresh_token_record = result.scalar_one_or_none()
 
@@ -279,24 +305,40 @@ async def refresh_token(
     db.add(new_refresh_token)
     await db.commit()
 
-    return Token(
-        access_token=access_token,
-        token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        refresh_token=new_refresh_token_value,
+    # Set new httpOnly cookies
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=not settings.TESTING,
+        samesite="strict",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
+
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh_token_value,
+        httponly=True,
+        secure=not settings.TESTING,
+        samesite="strict",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+
+    return {"message": "Token refreshed successfully"}
 
 
 @router.post("/logout")
 async def logout(
-    refresh_request: RefreshTokenRequest | None = None,
+    request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     """
     Logout user and revoke refresh token.
 
     Args:
-        refresh_request: Optional refresh token to revoke
+        request: Request object to read cookies
+        response: Response object to clear cookies
         db: Database session
 
     Returns:
@@ -304,11 +346,14 @@ async def logout(
     """
     from datetime import datetime, timezone
 
-    if refresh_request and refresh_request.refresh_token:
-        # Revoke the specific refresh token
+    # Get refresh token from cookie
+    refresh_token_value = request.cookies.get("refresh_token")
+
+    if refresh_token_value:
+        # Revoke the refresh token
         result = await db.execute(
             select(RefreshToken).where(
-                RefreshToken.token == refresh_request.refresh_token
+                RefreshToken.token == refresh_token_value
             )
         )
         refresh_token_record = result.scalar_one_or_none()
@@ -317,6 +362,10 @@ async def logout(
             refresh_token_record.revoked = True
             refresh_token_record.revoked_at = datetime.now(timezone.utc)
             await db.commit()
+
+    # Clear cookies
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token")
 
     return {"message": "Successfully logged out"}
 

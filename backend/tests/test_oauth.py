@@ -59,16 +59,16 @@ async def test_oauth_callback_invalid_state(client: AsyncClient):
 async def test_list_linked_providers_requires_auth(client: AsyncClient):
     """Test that listing linked providers requires authentication."""
     response = await client.get("/api/auth/me/providers")
-    # 403 Forbidden is returned when no auth token provided
-    assert response.status_code == 403
+    # 401 Unauthorized is returned when no auth cookie provided
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_unlink_provider_requires_auth(client: AsyncClient):
     """Test that unlinking provider requires authentication."""
     response = await client.delete("/api/auth/providers/1")
-    # 403 Forbidden is returned when no auth token provided
-    assert response.status_code == 403
+    # 401 Unauthorized is returned when no auth cookie provided
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
@@ -88,16 +88,14 @@ async def test_list_linked_providers_authenticated(client: AsyncClient):
         },
     )
 
-    login_response = await client.post(
+    # Login (sets cookies automatically)
+    await client.post(
         "/api/auth/login",
         json={"email": email, "password": "TestPassword123"},
     )
-    token = login_response.json()["access_token"]
 
-    # List linked providers
-    response = await client.get(
-        "/api/auth/me/providers", headers={"Authorization": f"Bearer {token}"}
-    )
+    # List linked providers (cookies sent automatically)
+    response = await client.get("/api/auth/me/providers")
 
     assert response.status_code == 200
     data = response.json()
@@ -123,16 +121,14 @@ async def test_unlink_provider_not_found(client: AsyncClient):
         },
     )
 
-    login_response = await client.post(
+    # Login (sets cookies automatically)
+    await client.post(
         "/api/auth/login",
         json={"email": email, "password": "TestPassword123"},
     )
-    token = login_response.json()["access_token"]
 
-    # Try to unlink non-existent provider
-    response = await client.delete(
-        "/api/auth/providers/9999", headers={"Authorization": f"Bearer {token}"}
-    )
+    # Try to unlink non-existent provider (cookies sent automatically)
+    response = await client.delete("/api/auth/providers/9999")
     assert response.status_code == 404
 
 
@@ -293,12 +289,11 @@ async def test_prevent_remove_last_auth_method(client: AsyncClient, test_db):
         },
     )
 
-    # Login to get token
-    login_response = await client.post(
+    # Login (sets cookies automatically)
+    await client.post(
         "/api/auth/login",
         json={"email": email, "password": "TestPassword123"},
     )
-    token = login_response.json()["access_token"]
 
     # Get user from DB and create a provider link
     from sqlalchemy import select
@@ -321,10 +316,8 @@ async def test_prevent_remove_last_auth_method(client: AsyncClient, test_db):
     user.hashed_password = None
     await test_db.commit()
 
-    # Try to unlink the only provider
-    response = await client.delete(
-        f"/api/auth/providers/{idp.id}", headers={"Authorization": f"Bearer {token}"}
-    )
+    # Try to unlink the only provider (cookies sent automatically)
+    response = await client.delete(f"/api/auth/providers/{idp.id}")
 
     # Should reject removal
     assert response.status_code == 400
