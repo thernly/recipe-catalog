@@ -70,7 +70,7 @@ async def test_user(test_db):
     """Create a test user."""
     user = User(
         email="test@example.com",
-        hashed_password="$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY.qoBDfaObjLa6",  # "testpassword"
+        hashed_password="$argon2id$v=19$m=65536,t=3,p=4$YV0apsgMi9zTg238wNnRXw$cUxhIp9ujddyJY06JJ0PtpTnwMunLocdvb+h4LkbrW8",  # "testpassword"
         is_active=True,
         is_verified=True,
         display_name="Test User",
