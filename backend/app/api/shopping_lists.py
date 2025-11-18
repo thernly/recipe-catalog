@@ -5,7 +5,7 @@ Shopping List API endpoints.
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, case
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
@@ -106,48 +106,52 @@ async def list_shopping_lists(
     Returns:
         List[ShoppingListSummary]: List of shopping list summaries
     """
-    query = select(ShoppingList).where(ShoppingList.household_id == household.id)
+    # Use a single query with JOIN and aggregation to avoid N+1 queries
+    query = (
+        select(
+            ShoppingList.id,
+            ShoppingList.household_id,
+            ShoppingList.name,
+            ShoppingList.description,
+            ShoppingList.status,
+            ShoppingList.created_at,
+            func.count(ShoppingListItem.id).label("item_count"),
+            func.sum(case((ShoppingListItem.checked == True, 1), else_=0)).label(
+                "checked_count"
+            ),
+        )
+        .outerjoin(ShoppingListItem, ShoppingList.id == ShoppingListItem.list_id)
+        .where(ShoppingList.household_id == household.id)
+        .group_by(
+            ShoppingList.id,
+            ShoppingList.household_id,
+            ShoppingList.name,
+            ShoppingList.description,
+            ShoppingList.status,
+            ShoppingList.created_at,
+        )
+        .order_by(ShoppingList.created_at.desc())
+    )
 
     if status_filter:
         query = query.where(ShoppingList.status == status_filter)
 
-    query = query.order_by(ShoppingList.created_at.desc())
-
     result = await db.execute(query)
-    shopping_lists = result.scalars().all()
+    rows = result.all()
 
-    # Get item counts for each list
-    summaries = []
-    for shopping_list in shopping_lists:
-        count_result = await db.execute(
-            select(func.count(ShoppingListItem.id)).where(
-                ShoppingListItem.list_id == shopping_list.id
-            )
+    summaries = [
+        ShoppingListSummary(
+            id=row.id,
+            household_id=row.household_id,
+            name=row.name,
+            description=row.description,
+            status=row.status,
+            created_at=row.created_at,
+            item_count=row.item_count or 0,
+            checked_count=row.checked_count or 0,
         )
-        item_count = count_result.scalar() or 0
-
-        checked_count_result = await db.execute(
-            select(func.count(ShoppingListItem.id)).where(
-                and_(
-                    ShoppingListItem.list_id == shopping_list.id,
-                    ShoppingListItem.checked,
-                )
-            )
-        )
-        checked_count = checked_count_result.scalar() or 0
-
-        summaries.append(
-            ShoppingListSummary(
-                id=shopping_list.id,
-                household_id=shopping_list.household_id,
-                name=shopping_list.name,
-                description=shopping_list.description,
-                status=shopping_list.status,
-                created_at=shopping_list.created_at,
-                item_count=item_count,
-                checked_count=checked_count,
-            )
-        )
+        for row in rows
+    ]
 
     return summaries
 

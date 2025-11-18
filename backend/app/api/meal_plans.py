@@ -47,32 +47,39 @@ async def list_meal_plans(
     Returns:
         List[MealPlanSummary]: List of meal plan summaries
     """
-    result = await db.execute(
-        select(MealPlan)
+    # Use a single query with JOIN and aggregation to avoid N+1 queries
+    query = (
+        select(
+            MealPlan.id,
+            MealPlan.household_id,
+            MealPlan.week_start_date,
+            MealPlan.created_at,
+            func.count(PlannedMeal.id).label("meal_count"),
+        )
+        .outerjoin(PlannedMeal, MealPlan.id == PlannedMeal.meal_plan_id)
         .where(MealPlan.household_id == household.id)
+        .group_by(
+            MealPlan.id,
+            MealPlan.household_id,
+            MealPlan.week_start_date,
+            MealPlan.created_at,
+        )
         .order_by(MealPlan.week_start_date.desc())
     )
-    meal_plans = result.scalars().all()
 
-    # Get meal counts for each plan
-    summaries = []
-    for plan in meal_plans:
-        count_result = await db.execute(
-            select(func.count(PlannedMeal.id)).where(
-                PlannedMeal.meal_plan_id == plan.id
-            )
-        )
-        meal_count = count_result.scalar() or 0
+    result = await db.execute(query)
+    rows = result.all()
 
-        summaries.append(
-            MealPlanSummary(
-                id=plan.id,
-                household_id=plan.household_id,
-                week_start_date=plan.week_start_date,
-                created_at=plan.created_at,
-                meal_count=meal_count,
-            )
+    summaries = [
+        MealPlanSummary(
+            id=row.id,
+            household_id=row.household_id,
+            week_start_date=row.week_start_date,
+            created_at=row.created_at,
+            meal_count=row.meal_count or 0,
         )
+        for row in rows
+    ]
 
     return summaries
 
