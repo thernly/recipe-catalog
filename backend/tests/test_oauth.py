@@ -138,7 +138,7 @@ async def test_unlink_provider_not_found(client: AsyncClient):
 
 @pytest.mark.asyncio
 @patch("app.core.oauth.oauth.create_client")
-async def test_oauth_callback_new_user_flow(mock_create_client, client: AsyncClient):
+async def test_oauth_callback_new_user_flow(mock_create_client, client: AsyncClient, test_db):
     """Test OAuth callback creating new user (mocked)."""
     # Mock OAuth client with async methods
     mock_client = AsyncMock()
@@ -154,10 +154,13 @@ async def test_oauth_callback_new_user_flow(mock_create_client, client: AsyncCli
     )
     mock_create_client.return_value = mock_client
 
-    # Mock state storage
-    from app.api.oauth import _state_storage
-
-    _state_storage["test_state"] = {"provider": "google", "link_user_id": None}
+    # Create OAuth state in database
+    from app.models.oauth_state import OAuthState
+    oauth_state = OAuthState.create_state(provider="google", link_user_id=None)
+    # Use a fixed token for testing
+    oauth_state.token = "test_state"
+    test_db.add(oauth_state)
+    await test_db.commit()
 
     # Make callback request
     response = await client.get(
@@ -201,10 +204,12 @@ async def test_oauth_callback_auto_link_existing_user(
     )
     mock_create_client.return_value = mock_client
 
-    # Mock state storage
-    from app.api.oauth import _state_storage
-
-    _state_storage["test_state"] = {"provider": "google", "link_user_id": None}
+    # Create OAuth state in database
+    from app.models.oauth_state import OAuthState
+    oauth_state = OAuthState.create_state(provider="google", link_user_id=None)
+    oauth_state.token = "test_state"
+    test_db.add(oauth_state)
+    await test_db.commit()
 
     response = await client.get(
         "/api/auth/google/callback?code=test_code&state=test_state"
@@ -219,7 +224,7 @@ async def test_oauth_callback_auto_link_existing_user(
 @pytest.mark.asyncio
 @patch("app.core.oauth.oauth.create_client")
 async def test_oauth_callback_unverified_email_rejects_link(
-    mock_create_client, client: AsyncClient
+    mock_create_client, client: AsyncClient, test_db
 ):
     """Test OAuth callback rejects auto-link if email not verified by provider."""
     # Create existing user with unique email
@@ -249,10 +254,12 @@ async def test_oauth_callback_unverified_email_rejects_link(
     )
     mock_create_client.return_value = mock_client
 
-    # Mock state storage
-    from app.api.oauth import _state_storage
-
-    _state_storage["test_state"] = {"provider": "google", "link_user_id": None}
+    # Create OAuth state in database
+    from app.models.oauth_state import OAuthState
+    oauth_state = OAuthState.create_state(provider="google", link_user_id=None)
+    oauth_state.token = "test_state"
+    test_db.add(oauth_state)
+    await test_db.commit()
 
     response = await client.get(
         "/api/auth/google/callback?code=test_code&state=test_state"
@@ -321,12 +328,15 @@ async def test_prevent_remove_last_auth_method(client: AsyncClient, test_db):
 
 
 @pytest.mark.asyncio
-async def test_oauth_callback_state_mismatch(client: AsyncClient):
+async def test_oauth_callback_state_mismatch(client: AsyncClient, test_db):
     """Test OAuth callback with state provider mismatch."""
-    from app.api.oauth import _state_storage
+    from app.models.oauth_state import OAuthState
 
-    # Set state for google
-    _state_storage["test_state"] = {"provider": "google", "link_user_id": None}
+    # Create state for google
+    oauth_state = OAuthState.create_state(provider="google", link_user_id=None)
+    oauth_state.token = "test_state"
+    test_db.add(oauth_state)
+    await test_db.commit()
 
     # Try to use with microsoft (mismatch)
     with patch("app.core.oauth.oauth.create_client") as mock:
