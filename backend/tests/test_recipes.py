@@ -36,9 +36,10 @@ async def test_household(db: AsyncSession, test_user: User):
 
 @pytest_asyncio.fixture
 async def auth_headers(client: AsyncClient, test_household: Household):
-    """Get authentication headers for test user."""
+    """Authenticate test user (sets cookies automatically)."""
     # Login (user already exists from test_user fixture)
-    response = await client.post(
+    # This sets httpOnly cookies that will be sent automatically with subsequent requests
+    await client.post(
         "/api/auth/login",
         json={
             "email": "test@example.com",
@@ -46,8 +47,8 @@ async def auth_headers(client: AsyncClient, test_household: Household):
         },
     )
 
-    token = response.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+    # Return empty dict for backwards compatibility with tests that use headers=auth_headers
+    return {}
 
 
 @pytest.mark.asyncio
@@ -421,8 +422,8 @@ async def test_recipe_isolation_between_households(
     db.add(member2)
     await db.commit()
 
-    # Login as user2
-    login_response = await client.post(
+    # Login as user2 (sets cookies automatically)
+    await client.post(
         "/api/auth/login",
         json={
             "email": "user2@example.com",
@@ -430,11 +431,8 @@ async def test_recipe_isolation_between_households(
         },
     )
 
-    user2_token = login_response.json()["access_token"]
-    user2_headers = {"Authorization": f"Bearer {user2_token}"}
-
-    # User 2 should not see User 1's recipes
-    response = await client.get("/api/recipes/search", headers=user2_headers)
+    # User 2 should not see User 1's recipes (cookies sent automatically)
+    response = await client.get("/api/recipes/search")
 
     assert response.status_code == 200
     assert response.json()["total"] == 0

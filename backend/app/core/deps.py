@@ -3,8 +3,7 @@ Dependency functions for FastAPI routes.
 """
 
 from typing import Optional
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -13,19 +12,16 @@ from app.core.security import decode_token
 from app.models.user import User
 from app.models.household import Household, HouseholdMember
 
-# Security scheme for JWT tokens
-security = HTTPBearer()
-
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """
-    Get the current authenticated user from JWT token.
+    Get the current authenticated user from JWT token in cookie.
 
     Args:
-        credentials: HTTP Authorization credentials with JWT token
+        request: Request object to read cookies
         db: Database session
 
     Returns:
@@ -34,8 +30,13 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or user not found
     """
-    # Extract token from credentials
-    token = credentials.credentials
+    # Get token from cookie
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
 
     # Decode token
     payload = decode_token(token)
@@ -43,7 +44,6 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     # Get user ID from token
@@ -52,7 +52,6 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     # Get user from database
@@ -63,7 +62,6 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     if not user.is_active:
@@ -97,7 +95,7 @@ async def get_current_verified_user(
 
 
 async def get_optional_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> Optional[User]:
     """
@@ -105,17 +103,18 @@ async def get_optional_current_user(
     Useful for endpoints that work for both authenticated and anonymous users.
 
     Args:
-        credentials: HTTP Authorization credentials (optional)
+        request: Request object to read cookies
         db: Database session
 
     Returns:
         Optional[User]: The authenticated user or None
     """
-    if credentials is None:
+    # Check if access token cookie exists
+    if not request.cookies.get("access_token"):
         return None
 
     try:
-        return await get_current_user(credentials, db)
+        return await get_current_user(request, db)
     except HTTPException:
         return None
 

@@ -11,6 +11,7 @@ import json
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
+from app.core.security import sanitize_html
 from app.models.user import User
 from app.models.household import Household
 from app.models.recipe import Recipe
@@ -25,6 +26,37 @@ from app.schemas.recipe import (
 from app.utils.recipe_format import convert_to_schema_org
 
 router = APIRouter()
+
+
+def sanitize_recipe_data(data: dict) -> dict:
+    """
+    Recursively sanitize string values in recipe data dictionary.
+
+    Args:
+        data: Dictionary containing recipe data
+
+    Returns:
+        Dictionary with sanitized string values
+    """
+    if not isinstance(data, dict):
+        return data
+
+    sanitized = {}
+    for key, value in data.items():
+        if isinstance(value, str):
+            sanitized[key] = sanitize_html(value)
+        elif isinstance(value, dict):
+            sanitized[key] = sanitize_recipe_data(value)
+        elif isinstance(value, list):
+            sanitized[key] = [
+                sanitize_recipe_data(item) if isinstance(item, dict)
+                else sanitize_html(item) if isinstance(item, str)
+                else item
+                for item in value
+            ]
+        else:
+            sanitized[key] = value
+    return sanitized
 
 
 @router.post("/", response_model=RecipeSchema, status_code=status.HTTP_201_CREATED)
@@ -46,14 +78,19 @@ async def create_recipe(
     Returns:
         Recipe: The created recipe
     """
+    # Sanitize user input to prevent XSS attacks
+    sanitized_name = sanitize_html(recipe_data.name) if recipe_data.name else None
+    sanitized_description = sanitize_html(recipe_data.description) if recipe_data.description else None
+    sanitized_recipe_data = sanitize_recipe_data(recipe_data.recipe_data)
+
     # Create recipe
     new_recipe = Recipe(
         user_id=current_user.id,
         household_id=household.id,
-        name=recipe_data.name,
-        description=recipe_data.description,
+        name=sanitized_name,
+        description=sanitized_description,
         image_url=recipe_data.image_url,
-        recipe_data=recipe_data.recipe_data,
+        recipe_data=sanitized_recipe_data,
         source_url=recipe_data.source_url,
         source_type=recipe_data.source_type,
         cuisine=recipe_data.cuisine,
@@ -311,10 +348,19 @@ async def update_recipe(
             status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found"
         )
 
-    # Update fields
+    # Update fields with sanitization
     update_data = recipe_update.model_dump(
         exclude_unset=True, exclude={"collection_ids"}
     )
+
+    # Sanitize text fields
+    if "name" in update_data and update_data["name"]:
+        update_data["name"] = sanitize_html(update_data["name"])
+    if "description" in update_data and update_data["description"]:
+        update_data["description"] = sanitize_html(update_data["description"])
+    if "recipe_data" in update_data and update_data["recipe_data"]:
+        update_data["recipe_data"] = sanitize_recipe_data(update_data["recipe_data"])
+
     for field, value in update_data.items():
         setattr(recipe, field, value)
 

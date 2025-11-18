@@ -160,9 +160,11 @@ async def test_login_success(client: AsyncClient):
 
     assert response.status_code == 200
     data = response.json()
-    assert "access_token" in data
-    assert data["token_type"] == "bearer"
-    assert "expires_in" in data
+    assert data["message"] == "Login successful"
+
+    # Check that cookies are set
+    assert "access_token" in response.cookies
+    assert "refresh_token" in response.cookies
 
 
 @pytest.mark.asyncio

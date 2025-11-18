@@ -16,14 +16,12 @@ interface User {
 
 interface AuthState {
 	user: User | null;
-	token: string | null;
 	isLoading: boolean;
 }
 
-// Initialize from localStorage if in browser
+// Initialize with no user (will check cookies on init)
 const initialState: AuthState = {
 	user: null,
-	token: browser ? localStorage.getItem('auth_token') : null,
 	isLoading: false
 };
 
@@ -43,7 +41,8 @@ function createAuthStore() {
 				const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ email, password })
+					body: JSON.stringify({ email, password }),
+					credentials: 'include' // Send and receive cookies
 				});
 
 				if (!response.ok) {
@@ -51,18 +50,10 @@ function createAuthStore() {
 					throw new Error(error.detail || 'Login failed');
 				}
 
-				const data = await response.json();
-
-				// Store token
-				if (browser) {
-					localStorage.setItem('auth_token', data.access_token);
-				}
-
+				// Login successful - cookies are set automatically
 				// Fetch user profile
 				const userResponse = await fetch(`${API_BASE_URL}/api/users/me`, {
-					headers: {
-						Authorization: `Bearer ${data.access_token}`
-					}
+					credentials: 'include' // Send cookies
 				});
 
 				if (!userResponse.ok) {
@@ -74,7 +65,6 @@ function createAuthStore() {
 				update((state) => ({
 					...state,
 					user,
-					token: data.access_token,
 					isLoading: false
 				}));
 			} catch (error) {
@@ -97,7 +87,8 @@ function createAuthStore() {
 						email,
 						password,
 						display_name: displayName || null
-					})
+					}),
+					credentials: 'include'
 				});
 
 				if (!response.ok) {
@@ -116,25 +107,29 @@ function createAuthStore() {
 		/**
 		 * Logout user
 		 */
-		logout() {
-			if (browser) {
-				localStorage.removeItem('auth_token');
+		async logout() {
+			try {
+				// Call backend logout to clear cookies
+				await fetch(`${API_BASE_URL}/api/auth/logout`, {
+					method: 'POST',
+					credentials: 'include'
+				});
+			} catch (error) {
+				console.error('Logout request failed:', error);
+				// Continue with local logout even if backend call fails
 			}
 
 			set({
 				user: null,
-				token: null,
 				isLoading: false
 			});
 		},
 
 		/**
-		 * Initialize auth from stored token
+		 * Initialize auth from cookies
 		 */
 		async init(): Promise<void> {
-			const token = browser ? localStorage.getItem('auth_token') : null;
-
-			if (!token) {
+			if (!browser) {
 				return;
 			}
 
@@ -142,14 +137,16 @@ function createAuthStore() {
 
 			try {
 				const response = await fetch(`${API_BASE_URL}/api/users/me`, {
-					headers: {
-						Authorization: `Bearer ${token}`
-					}
+					credentials: 'include' // Send cookies
 				});
 
 				if (!response.ok) {
-					// Token is invalid, clear it
-					this.logout();
+					// No valid auth cookie, clear user
+					update((state) => ({
+						...state,
+						user: null,
+						isLoading: false
+					}));
 					return;
 				}
 
@@ -158,11 +155,14 @@ function createAuthStore() {
 				update((state) => ({
 					...state,
 					user,
-					token,
 					isLoading: false
 				}));
 			} catch (error) {
-				this.logout();
+				update((state) => ({
+					...state,
+					user: null,
+					isLoading: false
+				}));
 			}
 		}
 	};

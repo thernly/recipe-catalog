@@ -5,7 +5,8 @@ Security utilities for password hashing and JWT tokens.
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import secrets
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 import bleach
@@ -91,7 +92,7 @@ def decode_token(token: str) -> Optional[dict]:
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         return payload
-    except JWTError:
+    except PyJWTError:
         return None
 
 
