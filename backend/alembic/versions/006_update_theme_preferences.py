@@ -1,7 +1,7 @@
 """Update theme preferences to new values
 
 Revision ID: 006_update_theme_preferences
-Revises: 005_add_shopping_lists
+Revises: 005_shopping_lists
 Create Date: 2025-11-18
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '006_update_theme_preferences'
-down_revision = '005_add_shopping_lists'
+down_revision = '005_shopping_lists'
 branch_labels = None
 depends_on = None
 

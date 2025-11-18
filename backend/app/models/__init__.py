@@ -5,6 +5,7 @@ from app.models.recipe import Recipe
 from app.models.collection import Collection, RecipeCollection
 from app.models.token import VerificationToken, PasswordResetToken
 from app.models.identity_provider import IdentityProvider
+from app.models.oauth_state import OAuthState
 from app.models.household import Household, HouseholdMember, HouseholdInvitation
 from app.models.meal_plan import MealPlan, PlannedMeal
 from app.models.shopping_list import ShoppingList, ShoppingListItem
@@ -18,6 +19,7 @@ __all__ = [
     "VerificationToken",
     "PasswordResetToken",
     "IdentityProvider",
+    "OAuthState",
     "Household",
     "HouseholdMember",
     "HouseholdInvitation",

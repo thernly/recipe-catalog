@@ -2,7 +2,8 @@
 
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+from app.core.security import sanitize_html
 
 
 # ============================================
@@ -31,6 +32,14 @@ class ShoppingListItemCreate(BaseModel):
     category: Optional[str] = Field(None, max_length=100)
     notes: Optional[str] = None
 
+    @field_validator("item_name", "notes")
+    @classmethod
+    def sanitize_text_fields(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitize text fields to prevent XSS attacks."""
+        if v is None:
+            return v
+        return sanitize_html(v)
+
 
 class ShoppingListItemUpdate(BaseModel):
     """Schema for updating a shopping list item."""
@@ -42,6 +51,14 @@ class ShoppingListItemUpdate(BaseModel):
     notes: Optional[str] = None
     checked: Optional[bool] = None
     display_order: Optional[int] = None
+
+    @field_validator("item_name", "notes")
+    @classmethod
+    def sanitize_text_fields(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitize text fields to prevent XSS attacks."""
+        if v is None:
+            return v
+        return sanitize_html(v)
 
 
 class ShoppingListItem(ShoppingListItemBase):
@@ -70,7 +87,13 @@ class ShoppingListBase(BaseModel):
 class ShoppingListCreate(ShoppingListBase):
     """Schema for creating a shopping list."""
 
-    pass
+    @field_validator("name", "description")
+    @classmethod
+    def sanitize_text_fields(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitize text fields to prevent XSS attacks."""
+        if v is None:
+            return v
+        return sanitize_html(v)
 
 
 class ShoppingListUpdate(BaseModel):
@@ -79,6 +102,14 @@ class ShoppingListUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     status: Optional[str] = Field(None, pattern="^(active|archived)$")
+
+    @field_validator("name", "description")
+    @classmethod
+    def sanitize_text_fields(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitize text fields to prevent XSS attacks."""
+        if v is None:
+            return v
+        return sanitize_html(v)
 
 
 class ShoppingList(ShoppingListBase):

@@ -2,7 +2,8 @@
 
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+from app.core.security import sanitize_html
 
 
 # ============================================
@@ -21,7 +22,13 @@ class CollectionBase(BaseModel):
 class CollectionCreate(CollectionBase):
     """Schema for creating a collection."""
 
-    pass
+    @field_validator("name", "description")
+    @classmethod
+    def sanitize_text_fields(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitize text fields to prevent XSS attacks."""
+        if v is None:
+            return v
+        return sanitize_html(v)
 
 
 class CollectionUpdate(BaseModel):
@@ -30,6 +37,14 @@ class CollectionUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = None
     icon: Optional[str] = Field(None, max_length=50)
+
+    @field_validator("name", "description")
+    @classmethod
+    def sanitize_text_fields(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitize text fields to prevent XSS attacks."""
+        if v is None:
+            return v
+        return sanitize_html(v)
 
 
 class Collection(CollectionBase):

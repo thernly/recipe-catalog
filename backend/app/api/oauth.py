@@ -20,16 +20,13 @@ from app.core.deps import get_current_user
 from app.core.config import settings
 from app.models.user import User, UserPreferences
 from app.models.identity_provider import IdentityProvider
+from app.models.oauth_state import OAuthState
 from app.schemas.oauth import ProviderInfo, LinkedProviderResponse
 from app.schemas.user import Token
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
-
-# In-memory state storage (for production, use Redis or database)
-# Maps state token to { "provider": str, "link_user_id": int | None }
-_state_storage: dict[str, dict] = {}
 
 
 @router.get("/providers", response_model=list[ProviderInfo])
@@ -43,6 +40,7 @@ async def list_available_providers():
 async def authorize_provider(
     request: Request,
     provider: str,
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Initiate OAuth flow with the specified provider.
@@ -66,15 +64,17 @@ async def authorize_provider(
             detail=f"Provider {provider} not configured",
         )
 
-    # Generate state token for CSRF protection
-    state = generate_state_token()
-    _state_storage[state] = {"provider": provider, "link_user_id": None}
+    # Create OAuth state in database for CSRF protection
+    oauth_state = OAuthState.create_state(provider=provider, link_user_id=None)
+    db.add(oauth_state)
+    await db.commit()
+    await db.refresh(oauth_state)
 
     # Build redirect URI
     redirect_uri = f"{settings.OAUTH_REDIRECT_URI}/{provider}"
 
     # Redirect to provider's authorization URL
-    return await client.authorize_redirect(request, redirect_uri, state=state)
+    return await client.authorize_redirect(request, redirect_uri, state=oauth_state.token)
 
 
 @router.get("/{provider}/callback", response_model=Token)
@@ -109,19 +109,46 @@ async def oauth_callback(
         )
 
     # Get state from query params
-    state = request.query_params.get("state")
-    if not state or state not in _state_storage:
+    state_token = request.query_params.get("state")
+    if not state_token:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or missing state parameter",
         )
 
+    # Retrieve state from database
+    result = await db.execute(
+        select(OAuthState).where(OAuthState.token == state_token)
+    )
+    oauth_state = result.scalar_one_or_none()
+
+    if not oauth_state:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid state token",
+        )
+
+    # Validate state is not expired
+    if not oauth_state.is_valid():
+        await db.delete(oauth_state)
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="State token expired",
+        )
+
     # Validate state matches provider
-    state_data = _state_storage.pop(state)
+    state_data = oauth_state.data
     if state_data["provider"] != provider:
+        await db.delete(oauth_state)
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="State mismatch"
         )
+
+    # Delete state after use (one-time use)
+    await db.delete(oauth_state)
+    await db.commit()
 
     try:
         # Exchange authorization code for token

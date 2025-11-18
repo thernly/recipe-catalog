@@ -2,7 +2,8 @@
 
 from datetime import datetime, date
 from typing import Optional, List
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+from app.core.security import sanitize_html
 
 
 # ============================================
@@ -25,7 +26,13 @@ class PlannedMealBase(BaseModel):
 class PlannedMealCreate(PlannedMealBase):
     """Schema for creating a planned meal."""
 
-    pass
+    @field_validator("notes")
+    @classmethod
+    def sanitize_notes(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitize notes field to prevent XSS attacks."""
+        if v is None:
+            return v
+        return sanitize_html(v)
 
 
 class PlannedMealUpdate(BaseModel):
@@ -38,6 +45,14 @@ class PlannedMealUpdate(BaseModel):
     )
     servings: Optional[int] = Field(None, ge=1)
     notes: Optional[str] = None
+
+    @field_validator("notes")
+    @classmethod
+    def sanitize_notes(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitize notes field to prevent XSS attacks."""
+        if v is None:
+            return v
+        return sanitize_html(v)
 
 
 class PlannedMeal(PlannedMealBase):

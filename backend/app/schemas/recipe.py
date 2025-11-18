@@ -2,7 +2,8 @@
 
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+from app.core.security import sanitize_html
 
 
 # ============================================
@@ -29,6 +30,14 @@ class RecipeCreate(RecipeBase):
     source_type: str = Field("manual", pattern="^(imported|manual|ai-generated)$")
     collection_ids: Optional[List[int]] = Field(default_factory=list)
 
+    @field_validator("name", "description")
+    @classmethod
+    def sanitize_text_fields(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitize text fields to prevent XSS attacks."""
+        if v is None:
+            return v
+        return sanitize_html(v)
+
 
 class RecipeUpdate(BaseModel):
     """Schema for updating a recipe."""
@@ -41,6 +50,14 @@ class RecipeUpdate(BaseModel):
     category: Optional[str] = Field(None, max_length=100)
     total_time_minutes: Optional[int] = Field(None, ge=0)
     collection_ids: Optional[List[int]] = None
+
+    @field_validator("name", "description")
+    @classmethod
+    def sanitize_text_fields(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitize text fields to prevent XSS attacks."""
+        if v is None:
+            return v
+        return sanitize_html(v)
 
 
 class Recipe(RecipeBase):

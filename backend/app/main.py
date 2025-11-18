@@ -43,6 +43,19 @@ async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
     await init_db()
+
+    # Cleanup expired OAuth states on startup
+    from app.core.database import async_session_maker
+    from app.models.oauth_state import OAuthState
+
+    async with async_session_maker() as session:
+        try:
+            deleted_count = await OAuthState.cleanup_expired(session)
+            if deleted_count > 0:
+                logger.info(f"Cleaned up {deleted_count} expired OAuth states")
+        except Exception as e:
+            logger.warning(f"Failed to cleanup expired OAuth states: {e}")
+
     yield
     # Shutdown
     await close_db()
@@ -73,6 +86,18 @@ app.add_middleware(
     allow_methods=settings.ALLOWED_METHODS,
     allow_headers=settings.ALLOWED_HEADERS,
 )
+
+
+# Security headers middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """Add security headers to all responses."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    return response
 
 
 # Exception handlers
