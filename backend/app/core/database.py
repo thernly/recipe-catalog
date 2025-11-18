@@ -58,6 +58,9 @@ async def init_db():
         RecipeCollection,
         VerificationToken,
         PasswordResetToken,
+        Household,
+        HouseholdMember,
+        HouseholdInvitation,
     )
 
     async with engine.begin() as conn:

@@ -16,7 +16,16 @@ from app.core.config import settings
 from app.core.database import init_db, close_db
 
 # Include API routers
-from app.api import auth, oauth, recipes, collections, users, export, import_recipes
+from app.api import (
+    auth,
+    oauth,
+    recipes,
+    collections,
+    users,
+    export,
+    import_recipes,
+    households,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -133,6 +142,7 @@ app.include_router(recipes.router, prefix="/api/recipes", tags=["Recipes"])
 app.include_router(collections.router, prefix="/api/collections", tags=["Collections"])
 app.include_router(export.router, prefix="/api/export", tags=["Export"])
 app.include_router(import_recipes.router, prefix="/api/import", tags=["Import"])
+app.include_router(households.router, prefix="/api/households", tags=["Households"])
 
 
 if __name__ == "__main__":

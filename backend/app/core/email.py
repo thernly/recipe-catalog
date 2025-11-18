@@ -255,6 +255,175 @@ class EmailService:
             text_content=text_content,
         )
 
+    async def send_household_member_removed_email(
+        self, to_email: str, household_name: str, user_name: str
+    ) -> bool:
+        """
+        Send notification when user is removed from household
+
+        Args:
+            to_email: User's email address
+            household_name: Name of the household
+            user_name: User's display name
+
+        Returns:
+            True if email sent successfully
+        """
+        # HTML content
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background-color: #F59E0B; color: white; padding: 20px; text-align: center; }}
+                .content {{ padding: 30px 20px; background-color: #f9f9f9; }}
+                .button {{ display: inline-block; padding: 12px 24px; background-color: #F59E0B;
+                          color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+                .footer {{ text-align: center; padding: 20px; font-size: 12px; color: #666; }}
+                .info-box {{ background: #E0F2FE; padding: 15px; border-left: 4px solid #0EA5E9; margin: 20px 0; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Recipe Catalog</h1>
+                </div>
+                <div class="content">
+                    <h2>Household Membership Update</h2>
+                    <p>Hello {user_name},</p>
+                    <p>You have been removed from the household <strong>"{household_name}"</strong>.</p>
+                    <div class="info-box">
+                        <p><strong>What this means:</strong></p>
+                        <ul>
+                            <li>You no longer have access to recipes and collections shared by this household</li>
+                            <li>Your personal recipes remain safe and accessible</li>
+                            <li>You can create a new household or join another one</li>
+                        </ul>
+                    </div>
+                    <p>If you have questions about this change, please contact the household owner.</p>
+                </div>
+                <div class="footer">
+                    <p>&copy; 2024 Recipe Catalog. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        # Plain text content
+        text_content = f"""
+        Household Membership Update - Recipe Catalog
+
+        Hello {user_name},
+
+        You have been removed from the household "{household_name}".
+
+        What this means:
+        - You no longer have access to recipes and collections shared by this household
+        - Your personal recipes remain safe and accessible
+        - You can create a new household or join another one
+
+        If you have questions about this change, please contact the household owner.
+
+        ---
+        Recipe Catalog
+        """
+
+        return await self.send_email(
+            to_email=to_email,
+            subject=f"Removed from Household - {household_name}",
+            html_content=html_content,
+            text_content=text_content,
+        )
+
+    async def send_household_invitation_accepted_email(
+        self, to_email: str, household_name: str, invitee_name: str, owner_name: str
+    ) -> bool:
+        """
+        Send notification to household owner when invitation is accepted
+
+        Args:
+            to_email: Household owner's email address
+            household_name: Name of the household
+            invitee_name: Name of the user who accepted
+            owner_name: Owner's display name
+
+        Returns:
+            True if email sent successfully
+        """
+        # HTML content
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background-color: #F59E0B; color: white; padding: 20px; text-align: center; }}
+                .content {{ padding: 30px 20px; background-color: #f9f9f9; }}
+                .button {{ display: inline-block; padding: 12px 24px; background-color: #F59E0B;
+                          color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+                .footer {{ text-align: center; padding: 20px; font-size: 12px; color: #666; }}
+                .success-box {{ background: #D1FAE5; padding: 15px; border-left: 4px solid #10B981; margin: 20px 0; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Recipe Catalog</h1>
+                </div>
+                <div class="content">
+                    <h2>New Household Member!</h2>
+                    <p>Hello {owner_name},</p>
+                    <div class="success-box">
+                        <p><strong>{invitee_name}</strong> has joined your household <strong>"{household_name}"</strong>.</p>
+                    </div>
+                    <p>They can now:</p>
+                    <ul>
+                        <li>View and edit shared recipes</li>
+                        <li>Access shared collections</li>
+                        <li>Collaborate on meal planning</li>
+                    </ul>
+                    <p style="text-align: center;">
+                        <a href="{settings.FRONTEND_URL}/settings?section=household" class="button">Manage Household</a>
+                    </p>
+                </div>
+                <div class="footer">
+                    <p>&copy; 2024 Recipe Catalog. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        # Plain text content
+        text_content = f"""
+        New Household Member! - Recipe Catalog
+
+        Hello {owner_name},
+
+        {invitee_name} has joined your household "{household_name}".
+
+        They can now:
+        - View and edit shared recipes
+        - Access shared collections
+        - Collaborate on meal planning
+
+        Manage your household at: {settings.FRONTEND_URL}/settings?section=household
+
+        ---
+        Recipe Catalog
+        """
+
+        return await self.send_email(
+            to_email=to_email,
+            subject=f"New Member Joined - {household_name}",
+            html_content=html_content,
+            text_content=text_content,
+        )
+
 
 # Create singleton instance
 email_service = EmailService()

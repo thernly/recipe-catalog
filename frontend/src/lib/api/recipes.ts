@@ -21,6 +21,7 @@ export interface Recipe {
 	cuisine?: string;
 	category?: string;
 	total_time_minutes?: number;
+	creator_display_name?: string | null;
 }
 
 export interface RecipeSummary {
@@ -33,6 +34,7 @@ export interface RecipeSummary {
 	total_time_minutes?: number;
 	source_type: 'imported' | 'manual';
 	created_at: string;
+	creator_display_name?: string | null;
 }
 
 export interface RecipeSearchResult {

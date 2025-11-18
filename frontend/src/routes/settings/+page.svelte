@@ -14,6 +14,7 @@
 	import ProfileSection from '$lib/components/settings/ProfileSection.svelte';
 	import PreferencesSection from '$lib/components/settings/PreferencesSection.svelte';
 	import SecuritySection from '$lib/components/settings/SecuritySection.svelte';
+	import HouseholdSection from '$lib/components/settings/HouseholdSection.svelte';
 	import StatsSection from '$lib/components/settings/StatsSection.svelte';
 	import FiltersSection from '$lib/components/settings/FiltersSection.svelte';
 	import DangerZoneSection from '$lib/components/settings/DangerZoneSection.svelte';
@@ -25,7 +26,7 @@
 	let error: string | null = null;
 
 	// Active section
-	let activeSection: 'profile' | 'preferences' | 'security' | 'stats' | 'filters' | 'danger' = 'profile';
+	let activeSection: 'profile' | 'preferences' | 'security' | 'household' | 'stats' | 'filters' | 'danger' = 'profile';
 
 	// Load user data
 	async function loadUserData() {
@@ -130,6 +131,13 @@
 					</button>
 					<button
 						class="sidebar-link"
+						class:active={activeSection === 'household'}
+						on:click={() => (activeSection = 'household')}
+					>
+						🏠 Household
+					</button>
+					<button
+						class="sidebar-link"
 						class:active={activeSection === 'stats'}
 						on:click={() => (activeSection = 'stats')}
 					>
@@ -159,6 +167,8 @@
 						<PreferencesSection {preferences} on:update={handlePreferencesUpdate} />
 					{:else if activeSection === 'security'}
 						<SecuritySection />
+					{:else if activeSection === 'household'}
+						<HouseholdSection />
 					{:else if activeSection === 'stats'}
 						<StatsSection {stats} {user} />
 					{:else if activeSection === 'filters'}

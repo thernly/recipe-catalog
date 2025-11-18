@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from app.main import app
 from app.core.database import Base, get_db
 from app.core.config import settings
+from app.models.user import User
 
 
 # Test database URL - use in-memory SQLite for testing
@@ -54,6 +55,28 @@ async def test_db(test_engine):
 
     async with AsyncTestSession() as session:
         yield session
+
+
+@pytest_asyncio.fixture
+async def test_user(test_db):
+    """Create a test user."""
+    user = User(
+        email="test@example.com",
+        hashed_password="$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY.qoBDfaObjLa6",  # "testpassword"
+        is_active=True,
+        is_verified=True,
+        display_name="Test User",
+    )
+    test_db.add(user)
+    await test_db.commit()
+    await test_db.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def db(test_db):
+    """Alias for test_db to match test expectations."""
+    return test_db
 
 
 @pytest_asyncio.fixture

@@ -22,6 +22,9 @@ class Collection(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    household_id = Column(
+        Integer, ForeignKey("households.id"), nullable=True, index=True
+    )
     name = Column(String(100), nullable=False)
     description = Column(Text)
     is_default = Column(Boolean, default=False, nullable=False, index=True)
@@ -31,6 +34,7 @@ class Collection(Base):
 
     # Relationships
     owner = relationship("User", back_populates="collections")
+    household = relationship("Household", back_populates="collections")
     recipes = relationship(
         "RecipeCollection", back_populates="collection", cascade="all, delete-orphan"
     )

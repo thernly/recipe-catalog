@@ -40,6 +40,8 @@ class Collection(CollectionBase):
     is_default: bool
     created_at: datetime
     updated_at: datetime
+    # Creator information for household attribution
+    creator_display_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

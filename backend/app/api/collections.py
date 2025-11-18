@@ -8,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_user_household
 from app.models.user import User
+from app.models.household import Household
 from app.models.collection import Collection, RecipeCollection
 from app.models.recipe import Recipe
 from app.schemas.collection import (
@@ -28,6 +29,7 @@ router = APIRouter()
 async def create_collection(
     collection_data: CollectionCreate,
     current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -36,6 +38,7 @@ async def create_collection(
     Args:
         collection_data: Collection creation data
         current_user: The authenticated user
+        household: The user's household
         db: Database session
 
     Returns:
@@ -44,10 +47,10 @@ async def create_collection(
     Raises:
         HTTPException: If collection name already exists for user
     """
-    # Check if collection name already exists
+    # Check if collection name already exists in the household
     result = await db.execute(
         select(Collection).where(
-            Collection.user_id == current_user.id,
+            Collection.household_id == household.id,
             Collection.name == collection_data.name,
         )
     )
@@ -62,6 +65,7 @@ async def create_collection(
     # Create collection
     new_collection = Collection(
         user_id=current_user.id,
+        household_id=household.id,
         name=collection_data.name,
         description=collection_data.description,
         icon=collection_data.icon,
@@ -72,29 +76,46 @@ async def create_collection(
     await db.commit()
     await db.refresh(new_collection)
 
-    return new_collection
+    # Add creator display name
+    collection_dict = {
+        "id": new_collection.id,
+        "user_id": new_collection.user_id,
+        "name": new_collection.name,
+        "description": new_collection.description,
+        "icon": new_collection.icon,
+        "is_default": new_collection.is_default,
+        "created_at": new_collection.created_at,
+        "updated_at": new_collection.updated_at,
+        "creator_display_name": current_user.display_name,
+    }
+
+    return CollectionSchema(**collection_dict)
 
 
 @router.get("/", response_model=List[CollectionWithCount])
 async def list_collections(
-    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
+    db: AsyncSession = Depends(get_db),
 ):
     """
-    List all collections for the current user.
+    List all collections for the current user's household.
 
     Args:
         current_user: The authenticated user
+        household: The user's household
         db: Database session
 
     Returns:
         List[CollectionWithCount]: List of collections with recipe counts
     """
-    # Get collections with recipe counts
+    # Get collections with recipe counts for the household
     stmt = (
-        select(Collection, func.count(RecipeCollection.recipe_id).label("recipe_count"))
+        select(Collection, func.count(RecipeCollection.recipe_id).label("recipe_count"), User)
         .outerjoin(RecipeCollection)
-        .where(Collection.user_id == current_user.id)
-        .group_by(Collection.id)
+        .join(User, Collection.user_id == User.id)
+        .where(Collection.household_id == household.id)
+        .group_by(Collection.id, User.id)
         .order_by(Collection.is_default.desc(), Collection.created_at.asc())
     )
 
@@ -102,8 +123,12 @@ async def list_collections(
     collections_with_counts = result.all()
 
     return [
-        CollectionWithCount(**collection.__dict__, recipe_count=count)
-        for collection, count in collections_with_counts
+        CollectionWithCount(
+            **collection.__dict__,
+            recipe_count=count,
+            creator_display_name=user.display_name
+        )
+        for collection, count, user in collections_with_counts
     ]
 
 
@@ -111,6 +136,7 @@ async def list_collections(
 async def get_collection(
     collection_id: int,
     current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -119,6 +145,7 @@ async def get_collection(
     Args:
         collection_id: Collection ID
         current_user: The authenticated user
+        household: The user's household
         db: Database session
 
     Returns:
@@ -127,12 +154,13 @@ async def get_collection(
     Raises:
         HTTPException: If collection not found or unauthorized
     """
-    # Get collection with recipe count
+    # Get collection with recipe count and creator info
     stmt = (
-        select(Collection, func.count(RecipeCollection.recipe_id).label("recipe_count"))
+        select(Collection, func.count(RecipeCollection.recipe_id).label("recipe_count"), User)
         .outerjoin(RecipeCollection)
-        .where(Collection.id == collection_id, Collection.user_id == current_user.id)
-        .group_by(Collection.id)
+        .join(User, Collection.user_id == User.id)
+        .where(Collection.id == collection_id, Collection.household_id == household.id)
+        .group_by(Collection.id, User.id)
     )
 
     result = await db.execute(stmt)
@@ -143,9 +171,13 @@ async def get_collection(
             status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
         )
 
-    collection, count = collection_with_count
+    collection, count, user = collection_with_count
 
-    return CollectionWithCount(**collection.__dict__, recipe_count=count)
+    return CollectionWithCount(
+        **collection.__dict__,
+        recipe_count=count,
+        creator_display_name=user.display_name
+    )
 
 
 @router.patch("/{collection_id}", response_model=CollectionSchema)

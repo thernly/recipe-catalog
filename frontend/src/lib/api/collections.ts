@@ -13,6 +13,7 @@ export interface Collection {
 	icon?: string;
 	created_at: string;
 	updated_at: string;
+	creator_display_name?: string | null;
 }
 
 export interface CollectionWithCount extends Collection {

@@ -45,6 +45,9 @@ class User(Base):
     identity_providers = relationship(
         "IdentityProvider", back_populates="user", cascade="all, delete-orphan"
     )
+    household_memberships = relationship(
+        "HouseholdMember", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class UserPreferences(Base):

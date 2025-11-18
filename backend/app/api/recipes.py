@@ -10,8 +10,9 @@ from sqlalchemy import select, func, or_
 import json
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_user_household
 from app.models.user import User
+from app.models.household import Household
 from app.models.recipe import Recipe
 from app.models.collection import RecipeCollection
 from app.schemas.recipe import (
@@ -30,6 +31,7 @@ router = APIRouter()
 async def create_recipe(
     recipe_data: RecipeCreate,
     current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -38,6 +40,7 @@ async def create_recipe(
     Args:
         recipe_data: Recipe creation data
         current_user: The authenticated user
+        household: The user's household
         db: Database session
 
     Returns:
@@ -46,6 +49,7 @@ async def create_recipe(
     # Create recipe
     new_recipe = Recipe(
         user_id=current_user.id,
+        household_id=household.id,
         name=recipe_data.name,
         description=recipe_data.description,
         image_url=recipe_data.image_url,
@@ -74,7 +78,28 @@ async def create_recipe(
     await db.commit()
     await db.refresh(new_recipe)
 
-    return new_recipe
+    # Add creator display name
+    recipe_dict = {
+        "id": new_recipe.id,
+        "user_id": new_recipe.user_id,
+        "name": new_recipe.name,
+        "description": new_recipe.description,
+        "image_url": new_recipe.image_url,
+        "recipe_data": new_recipe.recipe_data,
+        "source_url": new_recipe.source_url,
+        "source_type": new_recipe.source_type,
+        "is_modified": new_recipe.is_modified,
+        "created_at": new_recipe.created_at,
+        "updated_at": new_recipe.updated_at,
+        "imported_at": new_recipe.imported_at,
+        "deleted_at": new_recipe.deleted_at,
+        "cuisine": new_recipe.cuisine,
+        "category": new_recipe.category,
+        "total_time_minutes": new_recipe.total_time_minutes,
+        "creator_display_name": current_user.display_name,
+    }
+
+    return RecipeSchema(**recipe_dict)
 
 
 @router.get("/search", response_model=RecipeSearchResult)
@@ -90,6 +115,7 @@ async def search_recipes(
     page: int = Query(1, ge=1),
     per_page: int = Query(24, ge=1, le=100),
     current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -107,14 +133,15 @@ async def search_recipes(
         page: Page number
         per_page: Results per page
         current_user: The authenticated user
+        household: The user's household
         db: Database session
 
     Returns:
         RecipeSearchResult: Paginated search results
     """
-    # Base query for active recipes
+    # Base query for active recipes in the user's household
     stmt = select(Recipe).where(
-        Recipe.user_id == current_user.id, Recipe.deleted_at.is_(None)
+        Recipe.household_id == household.id, Recipe.deleted_at.is_(None)
     )
 
     # Apply text search
@@ -192,6 +219,7 @@ async def search_recipes(
 async def get_recipe(
     recipe_id: int,
     current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -200,6 +228,7 @@ async def get_recipe(
     Args:
         recipe_id: Recipe ID
         current_user: The authenticated user
+        household: The user's household
         db: Database session
 
     Returns:
@@ -209,7 +238,9 @@ async def get_recipe(
         HTTPException: If recipe not found or unauthorized
     """
     result = await db.execute(
-        select(Recipe).where(Recipe.id == recipe_id, Recipe.user_id == current_user.id)
+        select(Recipe).where(
+            Recipe.id == recipe_id, Recipe.household_id == household.id
+        )
     )
     recipe = result.scalar_one_or_none()
 
@@ -218,9 +249,34 @@ async def get_recipe(
             status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found"
         )
 
+    # Get creator display name
+    user_result = await db.execute(select(User).where(User.id == recipe.user_id))
+    creator = user_result.scalar_one_or_none()
+
+    # Create response with creator info
+    recipe_dict = {
+        "id": recipe.id,
+        "user_id": recipe.user_id,
+        "name": recipe.name,
+        "description": recipe.description,
+        "image_url": recipe.image_url,
+        "recipe_data": recipe.recipe_data,
+        "source_url": recipe.source_url,
+        "source_type": recipe.source_type,
+        "is_modified": recipe.is_modified,
+        "created_at": recipe.created_at,
+        "updated_at": recipe.updated_at,
+        "imported_at": recipe.imported_at,
+        "deleted_at": recipe.deleted_at,
+        "cuisine": recipe.cuisine,
+        "category": recipe.category,
+        "total_time_minutes": recipe.total_time_minutes,
+        "creator_display_name": creator.display_name if creator else None,
+    }
+
     # TODO: Track recipe view for "recently viewed" feature
 
-    return recipe
+    return RecipeSchema(**recipe_dict)
 
 
 @router.patch("/{recipe_id}", response_model=RecipeSchema)

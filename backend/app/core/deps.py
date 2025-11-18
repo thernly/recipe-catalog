@@ -11,6 +11,7 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.security import decode_token
 from app.models.user import User
+from app.models.household import Household, HouseholdMember
 
 # Security scheme for JWT tokens
 security = HTTPBearer()
@@ -117,3 +118,36 @@ async def get_optional_current_user(
         return await get_current_user(credentials, db)
     except HTTPException:
         return None
+
+
+async def get_user_household(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Household:
+    """
+    Get the household that the current user belongs to.
+
+    Args:
+        current_user: The authenticated user
+        db: Database session
+
+    Returns:
+        Household: The user's household
+
+    Raises:
+        HTTPException: If user doesn't belong to a household
+    """
+    result = await db.execute(
+        select(Household)
+        .join(HouseholdMember)
+        .where(HouseholdMember.user_id == current_user.id)
+    )
+    household = result.scalar_one_or_none()
+
+    if not household:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User does not belong to a household",
+        )
+
+    return household

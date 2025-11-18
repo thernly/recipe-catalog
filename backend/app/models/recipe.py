@@ -22,6 +22,9 @@ class Recipe(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    household_id = Column(
+        Integer, ForeignKey("households.id"), nullable=True, index=True
+    )
 
     # Basic info
     name = Column(String(500), nullable=False, index=True)
@@ -53,6 +56,7 @@ class Recipe(Base):
 
     # Relationships
     owner = relationship("User", back_populates="recipes")
+    household = relationship("Household", back_populates="recipes")
     collections = relationship(
         "RecipeCollection", back_populates="recipe", cascade="all, delete-orphan"
     )

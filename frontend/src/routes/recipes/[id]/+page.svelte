@@ -205,6 +205,9 @@
 									<span>• Modified</span>
 								{/if}
 								<span>• Added {new Date(recipe.created_at).toLocaleDateString()}</span>
+								{#if recipe.creator_display_name}
+									<span>• Created by {recipe.creator_display_name}</span>
+								{/if}
 							</div>
 						</div>
 

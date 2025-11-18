@@ -5,6 +5,7 @@ from app.models.recipe import Recipe
 from app.models.collection import Collection, RecipeCollection
 from app.models.token import VerificationToken, PasswordResetToken
 from app.models.identity_provider import IdentityProvider
+from app.models.household import Household, HouseholdMember, HouseholdInvitation
 
 __all__ = [
     "User",
@@ -15,4 +16,7 @@ __all__ = [
     "VerificationToken",
     "PasswordResetToken",
     "IdentityProvider",
+    "Household",
+    "HouseholdMember",
+    "HouseholdInvitation",
 ]

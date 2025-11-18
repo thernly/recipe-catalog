@@ -132,6 +132,11 @@
 									{collection.description}
 								</p>
 							{/if}
+							{#if collection.creator_display_name}
+								<p class="text-xs mt-1" style="color: var(--text-500);">
+									Created by {collection.creator_display_name}
+								</p>
+							{/if}
 						</div>
 					</div>
 

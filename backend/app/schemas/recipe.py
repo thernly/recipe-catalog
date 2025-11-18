@@ -54,6 +54,8 @@ class Recipe(RecipeBase):
     updated_at: datetime
     imported_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
+    # Creator information for household attribution
+    creator_display_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -71,6 +73,8 @@ class RecipeSummary(BaseModel):
     source_type: str
     created_at: datetime
     is_modified: bool
+    # Creator information for household attribution
+    creator_display_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
