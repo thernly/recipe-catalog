@@ -95,7 +95,9 @@ async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Strict-Transport-Security"] = (
+        "max-age=31536000; includeSubDomains"
+    )
     response.headers["Content-Security-Policy"] = "default-src 'self'"
     return response
 
@@ -172,7 +174,9 @@ app.include_router(export.router, prefix="/api/export", tags=["Export"])
 app.include_router(import_recipes.router, prefix="/api/import", tags=["Import"])
 app.include_router(households.router, prefix="/api/households", tags=["Households"])
 app.include_router(meal_plans.router, prefix="/api/meal-plans", tags=["Meal Plans"])
-app.include_router(shopping_lists.router, prefix="/api/shopping-lists", tags=["Shopping Lists"])
+app.include_router(
+    shopping_lists.router, prefix="/api/shopping-lists", tags=["Shopping Lists"]
+)
 app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 
 

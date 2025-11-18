@@ -155,9 +155,7 @@ async def test_get_meal_plan(
     await db.refresh(meal_plan)
 
     # Retrieve meal plan
-    result = await db.execute(
-        select(MealPlan).where(MealPlan.id == meal_plan.id)
-    )
+    result = await db.execute(select(MealPlan).where(MealPlan.id == meal_plan.id))
     retrieved = result.scalar_one()
 
     assert retrieved.id == meal_plan.id
@@ -188,9 +186,7 @@ async def test_delete_meal_plan(
     await db.commit()
 
     # Verify deletion
-    result = await db.execute(
-        select(MealPlan).where(MealPlan.id == meal_plan_id)
-    )
+    result = await db.execute(select(MealPlan).where(MealPlan.id == meal_plan_id))
     deleted = result.scalar_one_or_none()
 
     assert deleted is None

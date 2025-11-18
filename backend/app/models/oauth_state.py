@@ -25,7 +25,9 @@ class OAuthState(Base):
         return secrets.token_urlsafe(32)
 
     @classmethod
-    def create_state(cls, provider: str, link_user_id: int = None, minutes_valid: int = 10):
+    def create_state(
+        cls, provider: str, link_user_id: int = None, minutes_valid: int = 10
+    ):
         """Create a new OAuth state token.
 
         Args:

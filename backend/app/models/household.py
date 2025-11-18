@@ -1,15 +1,12 @@
 """Household models."""
 
 from sqlalchemy import (
-    Boolean,
     Column,
     Integer,
     String,
     DateTime,
-    Text,
     ForeignKey,
     UniqueConstraint,
-    Index,
 )
 from sqlalchemy.orm import relationship
 from app.core.database import Base

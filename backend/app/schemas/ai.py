@@ -1,6 +1,6 @@
 """AI-related Pydantic schemas."""
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -34,19 +34,23 @@ class AIMenuGenerateRequest(BaseModel):
 
     days: int = Field(..., ge=1, le=14, description="Number of days for the menu")
     meals_per_day: List[str] = Field(
-        ..., description="Meal types to include (e.g., ['breakfast', 'lunch', 'dinner'])"
+        ...,
+        description="Meal types to include (e.g., ['breakfast', 'lunch', 'dinner'])",
     )
     dietary_preferences: Optional[List[str]] = Field(
         default=None, description="Dietary preferences (e.g., vegetarian, vegan)"
     )
-    cuisine: Optional[str] = Field(None, max_length=100, description="Cuisine preference")
+    cuisine: Optional[str] = Field(
+        None, max_length=100, description="Cuisine preference"
+    )
     mode: str = Field(
         "catalog-first",
         pattern="^(catalog-first|ai-only)$",
-        description="Generation mode: catalog-first (use existing recipes) or ai-only (generate new suggestions)"
+        description="Generation mode: catalog-first (use existing recipes) or ai-only (generate new suggestions)",
     )
     household_recipe_ids: Optional[List[int]] = Field(
-        default=None, description="Available recipe IDs from household catalog (for catalog-first mode)"
+        default=None,
+        description="Available recipe IDs from household catalog (for catalog-first mode)",
     )
 
 
@@ -54,8 +58,12 @@ class MealSuggestion(BaseModel):
     """Schema for a single meal suggestion."""
 
     day: int = Field(..., ge=1, description="Day number (1-indexed)")
-    meal_type: str = Field(..., description="Meal type (breakfast, lunch, dinner, snack)")
-    recipe_id: Optional[int] = Field(None, description="Recipe ID from catalog (if mode is catalog-first)")
+    meal_type: str = Field(
+        ..., description="Meal type (breakfast, lunch, dinner, snack)"
+    )
+    recipe_id: Optional[int] = Field(
+        None, description="Recipe ID from catalog (if mode is catalog-first)"
+    )
     recipe_name: str = Field(..., description="Recipe name")
     description: Optional[str] = Field(None, description="Brief description")
     prep_time: Optional[str] = Field(None, description="Preparation time")
@@ -65,5 +73,7 @@ class MealSuggestion(BaseModel):
 class AIMenuGenerateResponse(BaseModel):
     """Schema for AI menu suggestion generation response."""
 
-    suggestions: List[MealSuggestion] = Field(..., description="List of meal suggestions")
+    suggestions: List[MealSuggestion] = Field(
+        ..., description="List of meal suggestions"
+    )
     mode: str = Field(..., description="Generation mode used")

@@ -12,7 +12,6 @@ from app.core.database import get_db
 from app.core.oauth import (
     oauth,
     get_available_providers,
-    generate_state_token,
     extract_user_info,
 )
 from app.core.security import create_access_token
@@ -74,7 +73,9 @@ async def authorize_provider(
     redirect_uri = f"{settings.OAUTH_REDIRECT_URI}/{provider}"
 
     # Redirect to provider's authorization URL
-    return await client.authorize_redirect(request, redirect_uri, state=oauth_state.token)
+    return await client.authorize_redirect(
+        request, redirect_uri, state=oauth_state.token
+    )
 
 
 @router.get("/{provider}/callback", response_model=Token)
@@ -117,9 +118,7 @@ async def oauth_callback(
         )
 
     # Retrieve state from database
-    result = await db.execute(
-        select(OAuthState).where(OAuthState.token == state_token)
-    )
+    result = await db.execute(select(OAuthState).where(OAuthState.token == state_token))
     oauth_state = result.scalar_one_or_none()
 
     if not oauth_state:

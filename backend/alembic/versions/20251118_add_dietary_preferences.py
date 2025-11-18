@@ -23,7 +23,9 @@ def upgrade() -> None:
     # Add dietary_preferences column to user_preferences table
     op.add_column(
         "user_preferences",
-        sa.Column("dietary_preferences", sa.JSON(), nullable=False, server_default="[]"),
+        sa.Column(
+            "dietary_preferences", sa.JSON(), nullable=False, server_default="[]"
+        ),
     )
 
 

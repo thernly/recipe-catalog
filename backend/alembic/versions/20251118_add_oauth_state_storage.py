@@ -32,9 +32,7 @@ def upgrade() -> None:
     )
 
     # Create indexes
-    op.create_index(
-        op.f("ix_oauth_states_id"), "oauth_states", ["id"], unique=False
-    )
+    op.create_index(op.f("ix_oauth_states_id"), "oauth_states", ["id"], unique=False)
     op.create_index(
         op.f("ix_oauth_states_token"), "oauth_states", ["token"], unique=True
     )

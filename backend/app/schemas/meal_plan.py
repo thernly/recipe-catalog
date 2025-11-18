@@ -16,9 +16,7 @@ class PlannedMealBase(BaseModel):
 
     recipe_id: int
     day_of_week: int = Field(..., ge=0, le=6, description="0=Monday, 6=Sunday")
-    meal_type: str = Field(
-        ..., pattern="^(breakfast|lunch|dinner|snack|other)$"
-    )
+    meal_type: str = Field(..., pattern="^(breakfast|lunch|dinner|snack|other)$")
     servings: Optional[int] = Field(None, ge=1)
     notes: Optional[str] = None
 

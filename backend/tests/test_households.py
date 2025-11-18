@@ -1,9 +1,8 @@
 """Tests for household functionality."""
 
 import pytest
-from datetime import datetime, UTC, timedelta
+from datetime import datetime, UTC
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.household import Household, HouseholdMember, HouseholdInvitation
 from app.models.user import User
 from app.services import household as household_service
 

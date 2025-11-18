@@ -138,7 +138,9 @@ async def test_unlink_provider_not_found(client: AsyncClient):
 
 @pytest.mark.asyncio
 @patch("app.core.oauth.oauth.create_client")
-async def test_oauth_callback_new_user_flow(mock_create_client, client: AsyncClient, test_db):
+async def test_oauth_callback_new_user_flow(
+    mock_create_client, client: AsyncClient, test_db
+):
     """Test OAuth callback creating new user (mocked)."""
     # Mock OAuth client with async methods
     mock_client = AsyncMock()
@@ -156,6 +158,7 @@ async def test_oauth_callback_new_user_flow(mock_create_client, client: AsyncCli
 
     # Create OAuth state in database
     from app.models.oauth_state import OAuthState
+
     oauth_state = OAuthState.create_state(provider="google", link_user_id=None)
     # Use a fixed token for testing
     oauth_state.token = "test_state"
@@ -206,6 +209,7 @@ async def test_oauth_callback_auto_link_existing_user(
 
     # Create OAuth state in database
     from app.models.oauth_state import OAuthState
+
     oauth_state = OAuthState.create_state(provider="google", link_user_id=None)
     oauth_state.token = "test_state"
     test_db.add(oauth_state)
@@ -256,6 +260,7 @@ async def test_oauth_callback_unverified_email_rejects_link(
 
     # Create OAuth state in database
     from app.models.oauth_state import OAuthState
+
     oauth_state = OAuthState.create_state(provider="google", link_user_id=None)
     oauth_state.token = "test_state"
     test_db.add(oauth_state)

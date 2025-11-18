@@ -7,7 +7,14 @@ from app.schemas.user import UserPreferencesUpdate, UserPreferencesBase
 
 def test_valid_theme_values():
     """Test that all new theme values are accepted."""
-    valid_themes = ["light", "dark", "high-contrast", "system", "classic", "professional"]
+    valid_themes = [
+        "light",
+        "dark",
+        "high-contrast",
+        "system",
+        "classic",
+        "professional",
+    ]
 
     for theme in valid_themes:
         # Should not raise ValidationError

@@ -3,7 +3,6 @@ AI-powered recipe generation API endpoints.
 """
 
 import logging
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -73,9 +72,7 @@ async def generate_recipe(
             equipment=generation_request.equipment,
         )
 
-        return AIRecipeGenerateResponse(
-            recipe=recipe_data, source_type="ai-generated"
-        )
+        return AIRecipeGenerateResponse(recipe=recipe_data, source_type="ai-generated")
 
     except ValueError as e:
         # Configuration error
@@ -148,7 +145,9 @@ async def generate_menu(
                 {
                     "id": recipe.id,
                     "name": recipe.name,
-                    "category": recipe.recipeCategory[0] if recipe.recipeCategory else None,
+                    "category": recipe.recipeCategory[0]
+                    if recipe.recipeCategory
+                    else None,
                 }
                 for recipe in recipes
             ]

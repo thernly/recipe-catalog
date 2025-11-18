@@ -2,7 +2,7 @@
 Meal Planning API endpoints.
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +15,6 @@ from app.models.household import Household
 from app.models.meal_plan import MealPlan, PlannedMeal
 from app.models.recipe import Recipe
 from app.schemas.meal_plan import (
-    MealPlanCreate,
     MealPlan as MealPlanSchema,
     MealPlanSummary,
     PlannedMealCreate,
@@ -81,7 +80,8 @@ async def list_meal_plans(
 @router.get("/current", response_model=MealPlanSchema)
 async def get_current_week_meal_plan(
     week_start: date = Query(
-        None, description="Week start date (Monday). If not provided, uses current week."
+        None,
+        description="Week start date (Monday). If not provided, uses current week.",
     ),
     current_user: User = Depends(get_current_user),
     household: Household = Depends(get_user_household),
@@ -217,7 +217,11 @@ async def delete_meal_plan(
     await db.commit()
 
 
-@router.post("/{meal_plan_id}/meals", response_model=PlannedMealSchema, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{meal_plan_id}/meals",
+    response_model=PlannedMealSchema,
+    status_code=status.HTTP_201_CREATED,
+)
 async def add_planned_meal(
     meal_plan_id: int,
     meal_data: PlannedMealCreate,

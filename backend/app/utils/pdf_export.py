@@ -24,12 +24,16 @@ def generate_recipe_pdf(recipe: Any) -> bytes:
     html_content = _generate_recipe_html(schema_recipe)
 
     # Convert HTML to PDF
-    pdf_bytes = HTML(string=html_content).write_pdf(stylesheets=[CSS(string=_get_pdf_styles())])
+    pdf_bytes = HTML(string=html_content).write_pdf(
+        stylesheets=[CSS(string=_get_pdf_styles())]
+    )
 
     return pdf_bytes
 
 
-def generate_collection_pdf(collection_name: str, collection_description: str, recipes: List[Any]) -> bytes:
+def generate_collection_pdf(
+    collection_name: str, collection_description: str, recipes: List[Any]
+) -> bytes:
     """
     Generate a PDF for a collection of recipes.
 
@@ -61,20 +65,26 @@ def generate_collection_pdf(collection_name: str, collection_description: str, r
         <title>{collection_name}</title>
     </head>
     <body>
-        {''.join(html_parts)}
+        {"".join(html_parts)}
     </body>
     </html>
     """
 
     # Convert HTML to PDF
-    pdf_bytes = HTML(string=html_content).write_pdf(stylesheets=[CSS(string=_get_pdf_styles())])
+    pdf_bytes = HTML(string=html_content).write_pdf(
+        stylesheets=[CSS(string=_get_pdf_styles())]
+    )
 
     return pdf_bytes
 
 
 def _generate_collection_header(name: str, description: str) -> str:
     """Generate HTML for collection cover page."""
-    desc_html = f"<p class='collection-description'>{_escape_html(description)}</p>" if description else ""
+    desc_html = (
+        f"<p class='collection-description'>{_escape_html(description)}</p>"
+        if description
+        else ""
+    )
 
     return f"""
     <div class="collection-cover">
@@ -94,7 +104,7 @@ def _generate_table_of_contents(recipes: List[Any]) -> str:
     <div class="table-of-contents">
         <h2>Table of Contents</h2>
         <ol class="toc-list">
-            {''.join(recipe_items)}
+            {"".join(recipe_items)}
         </ol>
     </div>
     <div class="page-break"></div>
@@ -117,42 +127,70 @@ def _generate_recipe_html(schema_recipe: dict, include_page_break: bool = False)
     # Recipe title and description
     title = _escape_html(schema_recipe.get("name", "Untitled Recipe"))
     description = schema_recipe.get("description", "")
-    description_html = f"<p class='description'>{_escape_html(description)}</p>" if description else ""
+    description_html = (
+        f"<p class='description'>{_escape_html(description)}</p>" if description else ""
+    )
 
     # Metadata section
     metadata_items = []
     if schema_recipe.get("recipeYield"):
-        metadata_items.append(f"<div class='meta-item'><strong>Yield:</strong> {_escape_html(str(schema_recipe['recipeYield']))}</div>")
+        metadata_items.append(
+            f"<div class='meta-item'><strong>Yield:</strong> {_escape_html(str(schema_recipe['recipeYield']))}</div>"
+        )
     if schema_recipe.get("prepTime"):
-        metadata_items.append(f"<div class='meta-item'><strong>Prep Time:</strong> {_escape_html(schema_recipe['prepTime'])}</div>")
+        metadata_items.append(
+            f"<div class='meta-item'><strong>Prep Time:</strong> {_escape_html(schema_recipe['prepTime'])}</div>"
+        )
     if schema_recipe.get("cookTime"):
-        metadata_items.append(f"<div class='meta-item'><strong>Cook Time:</strong> {_escape_html(schema_recipe['cookTime'])}</div>")
+        metadata_items.append(
+            f"<div class='meta-item'><strong>Cook Time:</strong> {_escape_html(schema_recipe['cookTime'])}</div>"
+        )
     if schema_recipe.get("totalTime"):
-        metadata_items.append(f"<div class='meta-item'><strong>Total Time:</strong> {_escape_html(schema_recipe['totalTime'])}</div>")
+        metadata_items.append(
+            f"<div class='meta-item'><strong>Total Time:</strong> {_escape_html(schema_recipe['totalTime'])}</div>"
+        )
     if schema_recipe.get("recipeCategory"):
         categories = schema_recipe["recipeCategory"]
-        category_str = ", ".join(categories) if isinstance(categories, list) else str(categories)
-        metadata_items.append(f"<div class='meta-item'><strong>Category:</strong> {_escape_html(category_str)}</div>")
+        category_str = (
+            ", ".join(categories) if isinstance(categories, list) else str(categories)
+        )
+        metadata_items.append(
+            f"<div class='meta-item'><strong>Category:</strong> {_escape_html(category_str)}</div>"
+        )
     if schema_recipe.get("recipeCuisine"):
         cuisines = schema_recipe["recipeCuisine"]
-        cuisine_str = ", ".join(cuisines) if isinstance(cuisines, list) else str(cuisines)
-        metadata_items.append(f"<div class='meta-item'><strong>Cuisine:</strong> {_escape_html(cuisine_str)}</div>")
+        cuisine_str = (
+            ", ".join(cuisines) if isinstance(cuisines, list) else str(cuisines)
+        )
+        metadata_items.append(
+            f"<div class='meta-item'><strong>Cuisine:</strong> {_escape_html(cuisine_str)}</div>"
+        )
     if schema_recipe.get("keywords"):
-        metadata_items.append(f"<div class='meta-item'><strong>Keywords:</strong> {_escape_html(schema_recipe['keywords'])}</div>")
+        metadata_items.append(
+            f"<div class='meta-item'><strong>Keywords:</strong> {_escape_html(schema_recipe['keywords'])}</div>"
+        )
     if schema_recipe.get("url"):
-        metadata_items.append(f"<div class='meta-item'><strong>Source:</strong> {_escape_html(schema_recipe['url'])}</div>")
+        metadata_items.append(
+            f"<div class='meta-item'><strong>Source:</strong> {_escape_html(schema_recipe['url'])}</div>"
+        )
 
-    metadata_html = f"<div class='metadata'>{''.join(metadata_items)}</div>" if metadata_items else ""
+    metadata_html = (
+        f"<div class='metadata'>{''.join(metadata_items)}</div>"
+        if metadata_items
+        else ""
+    )
 
     # Ingredients
     ingredients_html = ""
     if schema_recipe.get("recipeIngredient"):
-        ingredient_items = [f"<li>{_escape_html(ing)}</li>" for ing in schema_recipe["recipeIngredient"]]
+        ingredient_items = [
+            f"<li>{_escape_html(ing)}</li>" for ing in schema_recipe["recipeIngredient"]
+        ]
         ingredients_html = f"""
         <div class='section'>
             <h2>Ingredients</h2>
             <ul class='ingredients-list'>
-                {''.join(ingredient_items)}
+                {"".join(ingredient_items)}
             </ul>
         </div>
         """
@@ -167,7 +205,7 @@ def _generate_recipe_html(schema_recipe: dict, include_page_break: bool = False)
             <div class='section'>
                 <h2>Equipment</h2>
                 <ul>
-                    {''.join(equipment_items)}
+                    {"".join(equipment_items)}
                 </ul>
             </div>
             """
@@ -197,7 +235,7 @@ def _generate_recipe_html(schema_recipe: dict, include_page_break: bool = False)
             <div class='section'>
                 <h2>Instructions</h2>
                 <ol class='instructions-list'>
-                    {''.join(instruction_items)}
+                    {"".join(instruction_items)}
                 </ol>
             </div>
             """
@@ -215,7 +253,7 @@ def _generate_recipe_html(schema_recipe: dict, include_page_break: bool = False)
         notes_html = f"""
         <div class='section'>
             <h2>Notes</h2>
-            <p>{_escape_html(schema_recipe['notes'])}</p>
+            <p>{_escape_html(schema_recipe["notes"])}</p>
         </div>
         """
 
@@ -227,14 +265,20 @@ def _generate_recipe_html(schema_recipe: dict, include_page_break: bool = False)
             nutrition_items = []
             for key, value in nutrition.items():
                 if value:
-                    label = "".join([" " + c if c.isupper() else c for c in key]).strip().title()
-                    nutrition_items.append(f"<div class='nutrition-item'><strong>{_escape_html(label)}:</strong> {_escape_html(str(value))}</div>")
+                    label = (
+                        "".join([" " + c if c.isupper() else c for c in key])
+                        .strip()
+                        .title()
+                    )
+                    nutrition_items.append(
+                        f"<div class='nutrition-item'><strong>{_escape_html(label)}:</strong> {_escape_html(str(value))}</div>"
+                    )
             if nutrition_items:
                 nutrition_html = f"""
                 <div class='section'>
                     <h2>Nutrition Information</h2>
                     <div class='nutrition-info'>
-                        {''.join(nutrition_items)}
+                        {"".join(nutrition_items)}
                     </div>
                 </div>
                 """

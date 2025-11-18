@@ -29,10 +29,16 @@ def upgrade() -> None:
         sa.Column("created_by_user_id", sa.Integer(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
-        sa.ForeignKeyConstraint(["household_id"], ["households.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["created_by_user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["household_id"], ["households.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["created_by_user_id"], ["users.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("household_id", "week_start_date", name="uq_household_week"),
+        sa.UniqueConstraint(
+            "household_id", "week_start_date", name="uq_household_week"
+        ),
     )
     op.create_index(op.f("ix_meal_plans_id"), "meal_plans", ["id"], unique=False)
     op.create_index(
@@ -57,13 +63,13 @@ def upgrade() -> None:
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
-        sa.ForeignKeyConstraint(["meal_plan_id"], ["meal_plans.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["meal_plan_id"], ["meal_plans.id"], ondelete="CASCADE"
+        ),
         sa.ForeignKeyConstraint(["recipe_id"], ["recipes.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_planned_meals_id"), "planned_meals", ["id"], unique=False
-    )
+    op.create_index(op.f("ix_planned_meals_id"), "planned_meals", ["id"], unique=False)
     op.create_index(
         op.f("ix_planned_meals_meal_plan_id"),
         "planned_meals",
@@ -81,9 +87,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     # Drop planned_meals table
     op.drop_index("ix_planned_meals_day_meal", table_name="planned_meals")
-    op.drop_index(
-        op.f("ix_planned_meals_meal_plan_id"), table_name="planned_meals"
-    )
+    op.drop_index(op.f("ix_planned_meals_meal_plan_id"), table_name="planned_meals")
     op.drop_index(op.f("ix_planned_meals_id"), table_name="planned_meals")
     op.drop_table("planned_meals")
 

@@ -31,13 +31,22 @@ def upgrade() -> None:
         sa.Column("created_by_user_id", sa.Integer(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
-        sa.ForeignKeyConstraint(["household_id"], ["households.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["created_by_user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["household_id"], ["households.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["created_by_user_id"], ["users.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_shopping_lists_id"), "shopping_lists", ["id"], unique=False)
     op.create_index(
-        op.f("ix_shopping_lists_household_id"), "shopping_lists", ["household_id"], unique=False
+        op.f("ix_shopping_lists_id"), "shopping_lists", ["id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_shopping_lists_household_id"),
+        "shopping_lists",
+        ["household_id"],
+        unique=False,
     )
     op.create_index(
         op.f("ix_shopping_lists_status"), "shopping_lists", ["status"], unique=False

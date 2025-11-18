@@ -5,7 +5,7 @@ Shopping List API endpoints.
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
@@ -53,7 +53,9 @@ async def get_categories():
     return CategoryList(categories=DEFAULT_CATEGORIES)
 
 
-@router.post("/", response_model=ShoppingListSchema, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=ShoppingListSchema, status_code=status.HTTP_201_CREATED
+)
 async def create_shopping_list(
     shopping_list_data: ShoppingListCreate,
     current_user: User = Depends(get_current_user),
@@ -171,9 +173,7 @@ async def get_shopping_list(
     """
     result = await db.execute(
         select(ShoppingList).where(
-            and_(
-                ShoppingList.id == list_id, ShoppingList.household_id == household.id
-            )
+            and_(ShoppingList.id == list_id, ShoppingList.household_id == household.id)
         )
     )
     shopping_list = result.scalar_one_or_none()
@@ -217,9 +217,7 @@ async def update_shopping_list(
     """
     result = await db.execute(
         select(ShoppingList).where(
-            and_(
-                ShoppingList.id == list_id, ShoppingList.household_id == household.id
-            )
+            and_(ShoppingList.id == list_id, ShoppingList.household_id == household.id)
         )
     )
     shopping_list = result.scalar_one_or_none()
@@ -269,9 +267,7 @@ async def delete_shopping_list(
     """
     result = await db.execute(
         select(ShoppingList).where(
-            and_(
-                ShoppingList.id == list_id, ShoppingList.household_id == household.id
-            )
+            and_(ShoppingList.id == list_id, ShoppingList.household_id == household.id)
         )
     )
     shopping_list = result.scalar_one_or_none()
@@ -306,9 +302,7 @@ async def archive_shopping_list(
     """
     result = await db.execute(
         select(ShoppingList).where(
-            and_(
-                ShoppingList.id == list_id, ShoppingList.household_id == household.id
-            )
+            and_(ShoppingList.id == list_id, ShoppingList.household_id == household.id)
         )
     )
     shopping_list = result.scalar_one_or_none()
@@ -354,9 +348,7 @@ async def duplicate_shopping_list(
     """
     result = await db.execute(
         select(ShoppingList).where(
-            and_(
-                ShoppingList.id == list_id, ShoppingList.household_id == household.id
-            )
+            and_(ShoppingList.id == list_id, ShoppingList.household_id == household.id)
         )
     )
     original_list = result.scalar_one_or_none()
@@ -438,9 +430,7 @@ async def add_item_to_list(
     # Verify list exists and belongs to household
     result = await db.execute(
         select(ShoppingList).where(
-            and_(
-                ShoppingList.id == list_id, ShoppingList.household_id == household.id
-            )
+            and_(ShoppingList.id == list_id, ShoppingList.household_id == household.id)
         )
     )
     shopping_list = result.scalar_one_or_none()

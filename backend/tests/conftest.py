@@ -3,7 +3,9 @@
 import os
 
 # Set required environment variables before importing app modules
-os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only-min-32-characters-long")
+os.environ.setdefault(
+    "SECRET_KEY", "test-secret-key-for-testing-only-min-32-characters-long"
+)
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 
 import pytest

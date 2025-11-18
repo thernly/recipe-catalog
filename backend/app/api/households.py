@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, get_user_household
+from app.core.deps import get_current_user
 from app.models.user import User
-from app.models.household import Household, HouseholdMember
+from app.models.household import Household
 from app.schemas.household import (
     HouseholdCreate,
     HouseholdUpdate,

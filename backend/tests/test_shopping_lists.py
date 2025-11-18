@@ -9,9 +9,6 @@ from app.models.user import User
 from app.models.household import Household
 from app.models.recipe import Recipe
 from app.models.shopping_list import ShoppingList, ShoppingListItem
-from app.models.meal_plan import MealPlan, PlannedMeal
-from app.api.meal_plans import get_week_start
-from datetime import date
 
 
 @pytest_asyncio.fixture

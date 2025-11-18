@@ -111,7 +111,11 @@ async def list_collections(
     """
     # Get collections with recipe counts for the household
     stmt = (
-        select(Collection, func.count(RecipeCollection.recipe_id).label("recipe_count"), User)
+        select(
+            Collection,
+            func.count(RecipeCollection.recipe_id).label("recipe_count"),
+            User,
+        )
         .outerjoin(RecipeCollection)
         .join(User, Collection.user_id == User.id)
         .where(Collection.household_id == household.id)
@@ -126,7 +130,7 @@ async def list_collections(
         CollectionWithCount(
             **collection.__dict__,
             recipe_count=count,
-            creator_display_name=user.display_name
+            creator_display_name=user.display_name,
         )
         for collection, count, user in collections_with_counts
     ]
@@ -156,7 +160,11 @@ async def get_collection(
     """
     # Get collection with recipe count and creator info
     stmt = (
-        select(Collection, func.count(RecipeCollection.recipe_id).label("recipe_count"), User)
+        select(
+            Collection,
+            func.count(RecipeCollection.recipe_id).label("recipe_count"),
+            User,
+        )
         .outerjoin(RecipeCollection)
         .join(User, Collection.user_id == User.id)
         .where(Collection.id == collection_id, Collection.household_id == household.id)
@@ -176,7 +184,7 @@ async def get_collection(
     return CollectionWithCount(
         **collection.__dict__,
         recipe_count=count,
-        creator_display_name=user.display_name
+        creator_display_name=user.display_name,
     )
 
 
@@ -516,21 +524,19 @@ async def export_collection_pdf(
     if not recipes:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Collection has no recipes to export"
+            detail="Collection has no recipes to export",
         )
 
     # Check recipe count limit (max 50 recipes)
     if len(recipes) > 50:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Collection has {len(recipes)} recipes. Maximum 50 recipes allowed per PDF export."
+            detail=f"Collection has {len(recipes)} recipes. Maximum 50 recipes allowed per PDF export.",
         )
 
     # Generate PDF
     pdf_bytes = generate_collection_pdf(
-        collection.name,
-        collection.description or "",
-        recipes
+        collection.name, collection.description or "", recipes
     )
 
     # Generate safe filename

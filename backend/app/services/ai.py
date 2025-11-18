@@ -93,14 +93,16 @@ class AIService:
                 return recipe_data
 
             except httpx.HTTPStatusError as e:
-                logger.error(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
+                logger.error(
+                    f"OpenRouter API error: {e.response.status_code} - {e.response.text}"
+                )
                 if e.response.status_code == 429:
                     raise Exception("Rate limit exceeded. Please try again later.")
                 elif e.response.status_code == 401:
                     raise Exception("Invalid API key. Please check configuration.")
                 else:
                     raise Exception(f"AI service error: {e.response.text}")
-            except json.JSONDecodeError as e:
+            except json.JSONDecodeError:
                 logger.error(f"Failed to parse AI response: {content}")
                 raise Exception("Failed to parse AI response. Please try again.")
             except Exception as e:
@@ -168,7 +170,6 @@ Important:
 """
 
         return prompt
-
 
     async def generate_menu(
         self,
@@ -247,18 +248,22 @@ Important:
                 return menu_data.get("suggestions", [])
 
             except httpx.HTTPStatusError as e:
-                logger.error(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
+                logger.error(
+                    f"OpenRouter API error: {e.response.status_code} - {e.response.text}"
+                )
                 if e.response.status_code == 429:
                     raise Exception("Rate limit exceeded. Please try again later.")
                 elif e.response.status_code == 401:
                     raise Exception("Invalid API key. Please check configuration.")
                 else:
                     raise Exception(f"AI service error: {e.response.text}")
-            except json.JSONDecodeError as e:
+            except json.JSONDecodeError:
                 logger.error(f"Failed to parse AI response: {content}")
                 raise Exception("Failed to parse AI response. Please try again.")
             except Exception as e:
-                logger.exception(f"Unexpected error during AI menu generation: {str(e)}")
+                logger.exception(
+                    f"Unexpected error during AI menu generation: {str(e)}"
+                )
                 raise Exception(f"AI menu generation failed: {str(e)}")
 
     def _build_menu_prompt(
@@ -271,7 +276,7 @@ Important:
         household_recipes: Optional[List[Dict[str, Any]]],
     ) -> str:
         """Build the prompt for menu generation."""
-        prompt = f"""Generate a menu plan for {days} day(s) with the following meals each day: {', '.join(meals_per_day)}
+        prompt = f"""Generate a menu plan for {days} day(s) with the following meals each day: {", ".join(meals_per_day)}
 
 """
 
@@ -285,7 +290,7 @@ Important:
 
         # Add mode-specific instructions
         if mode == "catalog-first" and household_recipes:
-            prompt += f"\nMode: Catalog-first - Prioritize using recipes from the user's catalog below:\n\n"
+            prompt += "\nMode: Catalog-first - Prioritize using recipes from the user's catalog below:\n\n"
             for recipe in household_recipes[:50]:  # Limit to avoid token overflow
                 prompt += f"- ID: {recipe.get('id')}, Name: {recipe.get('name')}, Category: {recipe.get('category', 'N/A')}\n"
             prompt += "\nIf the catalog doesn't have suitable recipes for some meals, you may suggest new recipe names.\n"

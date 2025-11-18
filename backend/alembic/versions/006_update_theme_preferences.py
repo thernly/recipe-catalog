@@ -5,13 +5,13 @@ Revises: 005_shopping_lists
 Create Date: 2025-11-18
 
 """
+
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '006_update_theme_preferences'
-down_revision = '005_shopping_lists'
+revision = "006_update_theme_preferences"
+down_revision = "005_shopping_lists"
 branch_labels = None
 depends_on = None
 
