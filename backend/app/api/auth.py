@@ -15,14 +15,18 @@ from app.core.security import (
     get_password_hash,
     create_access_token,
     generate_csrf_token,
+    generate_refresh_token,
+    get_refresh_token_expiry,
 )
 from app.core.config import settings
 from app.models.user import User, UserPreferences
+from app.models.refresh_token import RefreshToken
 from app.schemas.user import (
     UserCreate,
     UserLogin,
     User as UserSchema,
     Token,
+    RefreshTokenRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
     ResendVerificationRequest,
@@ -179,22 +183,141 @@ async def login(
     # Create access token
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
 
+    # Generate and store refresh token
+    refresh_token_value = generate_refresh_token()
+    refresh_token = RefreshToken(
+        token=refresh_token_value,
+        user_id=user.id,
+        expires_at=get_refresh_token_expiry(),
+        revoked=False,
+    )
+    db.add(refresh_token)
+    await db.commit()
+
     return Token(
         access_token=access_token,
         token_type="bearer",
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        refresh_token=refresh_token_value,
+    )
+
+
+@router.post("/refresh", response_model=Token)
+@limiter.limit(lambda: _get_rate_limit("20/minute"))
+async def refresh_token(
+    request: Request,
+    refresh_request: RefreshTokenRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Exchange a refresh token for a new access token.
+
+    Args:
+        refresh_request: Refresh token
+        db: Database session
+
+    Returns:
+        Token: New access token and refresh token
+
+    Raises:
+        HTTPException: If refresh token is invalid, expired, or revoked
+    """
+    from datetime import datetime, timezone
+
+    # Look up the refresh token
+    result = await db.execute(
+        select(RefreshToken).where(RefreshToken.token == refresh_request.refresh_token)
+    )
+    refresh_token_record = result.scalar_one_or_none()
+
+    # Validate refresh token exists
+    if not refresh_token_record:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+
+    # Check if token is revoked
+    if refresh_token_record.revoked:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has been revoked",
+        )
+
+    # Check if token is expired
+    if refresh_token_record.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has expired",
+        )
+
+    # Get the user
+    user = await db.get(User, refresh_token_record.user_id)
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive",
+        )
+
+    # Create new access token
+    access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
+
+    # Generate new refresh token (token rotation for security)
+    new_refresh_token_value = generate_refresh_token()
+    new_refresh_token = RefreshToken(
+        token=new_refresh_token_value,
+        user_id=user.id,
+        expires_at=get_refresh_token_expiry(),
+        revoked=False,
+    )
+
+    # Revoke old refresh token
+    refresh_token_record.revoked = True
+    refresh_token_record.revoked_at = datetime.now(timezone.utc)
+
+    # Add new refresh token
+    db.add(new_refresh_token)
+    await db.commit()
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        refresh_token=new_refresh_token_value,
     )
 
 
 @router.post("/logout")
-async def logout():
+async def logout(
+    refresh_request: RefreshTokenRequest | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """
-    Logout user (client-side token removal).
-    Since we're using JWT, actual logout happens on the client side.
+    Logout user and revoke refresh token.
+
+    Args:
+        refresh_request: Optional refresh token to revoke
+        db: Database session
 
     Returns:
         dict: Success message
     """
+    from datetime import datetime, timezone
+
+    if refresh_request and refresh_request.refresh_token:
+        # Revoke the specific refresh token
+        result = await db.execute(
+            select(RefreshToken).where(
+                RefreshToken.token == refresh_request.refresh_token
+            )
+        )
+        refresh_token_record = result.scalar_one_or_none()
+
+        if refresh_token_record and not refresh_token_record.revoked:
+            refresh_token_record.revoked = True
+            refresh_token_record.revoked_at = datetime.now(timezone.utc)
+            await db.commit()
+
     return {"message": "Successfully logged out"}
 
 

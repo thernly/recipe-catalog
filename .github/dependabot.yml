@@ -1,0 +1,66 @@
+version: 2
+updates:
+  # Backend Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "thernly"
+    labels:
+      - "dependencies"
+      - "backend"
+    # Group minor and patch updates together to reduce PR noise
+    groups:
+      development-dependencies:
+        patterns:
+          - "pytest*"
+          - "ruff"
+          - "mypy"
+          - "black"
+        update-types:
+          - "minor"
+          - "patch"
+      production-dependencies:
+        update-types:
+          - "patch"
+
+  # Frontend npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "thernly"
+    labels:
+      - "dependencies"
+      - "frontend"
+    # Group minor and patch updates together
+    groups:
+      development-dependencies:
+        patterns:
+          - "@sveltejs/*"
+          - "vite"
+          - "vitest"
+          - "@types/*"
+        update-types:
+          - "minor"
+          - "patch"
+      production-dependencies:
+        update-types:
+          - "patch"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
