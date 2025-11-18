@@ -26,7 +26,7 @@ class RecipeBase(BaseModel):
 class RecipeCreate(RecipeBase):
     """Schema for creating a recipe."""
 
-    source_type: str = Field("manual", pattern="^(imported|manual)$")
+    source_type: str = Field("manual", pattern="^(imported|manual|ai-generated)$")
     collection_ids: Optional[List[int]] = Field(default_factory=list)
 
 

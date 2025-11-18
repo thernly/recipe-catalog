@@ -67,6 +67,12 @@
 				Recipes
 			</a>
 			<a
+				href="/ai-generate"
+				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-sm"
+			>
+				✨ AI Generate
+			</a>
+			<a
 				href="/meal-plans"
 				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-sm"
 			>

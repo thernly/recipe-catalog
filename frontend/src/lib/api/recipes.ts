@@ -12,7 +12,7 @@ export interface Recipe {
 	image_url?: string;
 	recipe_data: any;
 	source_url?: string;
-	source_type: 'imported' | 'manual';
+	source_type: 'imported' | 'manual' | 'ai-generated';
 	is_modified: boolean;
 	created_at: string;
 	updated_at: string;
@@ -32,7 +32,7 @@ export interface RecipeSummary {
 	cuisine?: string;
 	category?: string;
 	total_time_minutes?: number;
-	source_type: 'imported' | 'manual';
+	source_type: 'imported' | 'manual' | 'ai-generated';
 	created_at: string;
 	creator_display_name?: string | null;
 }
@@ -66,7 +66,7 @@ export interface RecipeCreate {
 	image_url?: string;
 	recipe_data: any;
 	source_url?: string;
-	source_type?: 'imported' | 'manual';
+	source_type?: 'imported' | 'manual' | 'ai-generated';
 	cuisine?: string;
 	category?: string;
 	total_time_minutes?: number;
