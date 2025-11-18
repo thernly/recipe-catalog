@@ -34,8 +34,8 @@ async def test_recipe(db: AsyncSession, test_household: Household, test_user: Us
     recipe = Recipe(
         name="Test Recipe",
         description="A test recipe",
-        ingredients=["1 cup flour", "2 eggs", "1 cup milk"],
         recipe_data={
+            "ingredients": ["1 cup flour", "2 eggs", "1 cup milk"],
             "instructions": ["Mix ingredients", "Cook"],
             "prep_time": 10,
             "cook_time": 20,
@@ -290,8 +290,9 @@ async def test_generate_from_recipe(
     await db.flush()
 
     # Add ingredients as items
-    if test_recipe.ingredients:
-        for idx, ingredient in enumerate(test_recipe.ingredients):
+    ingredients = test_recipe.recipe_data.get("ingredients", [])
+    if ingredients:
+        for idx, ingredient in enumerate(ingredients):
             item = ShoppingListItem(
                 list_id=shopping_list.id,
                 item_name=ingredient,
@@ -309,6 +310,6 @@ async def test_generate_from_recipe(
     )
     items = result.scalars().all()
 
-    assert len(items) == len(test_recipe.ingredients)
+    assert len(items) == len(ingredients)
     assert items[0].item_name == "1 cup flour"
     assert items[1].item_name == "2 eggs"

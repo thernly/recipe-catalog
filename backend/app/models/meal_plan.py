@@ -31,7 +31,7 @@ class MealPlan(Base):
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # Relationships
-    household = relationship("Household")
+    household = relationship("Household", overlaps="meal_plans")
     creator = relationship("User", foreign_keys=[created_by_user_id])
     planned_meals = relationship(
         "PlannedMeal", back_populates="meal_plan", cascade="all, delete-orphan"
