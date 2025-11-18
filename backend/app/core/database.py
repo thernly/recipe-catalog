@@ -61,6 +61,8 @@ async def init_db():
         Household,
         HouseholdMember,
         HouseholdInvitation,
+        ShoppingList,
+        ShoppingListItem,
     )
 
     async with engine.begin() as conn:

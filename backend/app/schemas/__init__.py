@@ -33,6 +33,18 @@ from app.schemas.oauth import (
     LinkedProviderResponse,
     OAuthCallbackRequest,
 )
+from app.schemas.shopping_list import (
+    ShoppingListCreate,
+    ShoppingListUpdate,
+    ShoppingList,
+    ShoppingListSummary,
+    ShoppingListItemCreate,
+    ShoppingListItemUpdate,
+    ShoppingListItem,
+    GenerateFromRecipeRequest,
+    GenerateFromMealPlanRequest,
+    CategoryList,
+)
 
 __all__ = [
     # User
@@ -64,4 +76,15 @@ __all__ = [
     "ProviderInfo",
     "LinkedProviderResponse",
     "OAuthCallbackRequest",
+    # Shopping List
+    "ShoppingListCreate",
+    "ShoppingListUpdate",
+    "ShoppingList",
+    "ShoppingListSummary",
+    "ShoppingListItemCreate",
+    "ShoppingListItemUpdate",
+    "ShoppingListItem",
+    "GenerateFromRecipeRequest",
+    "GenerateFromMealPlanRequest",
+    "CategoryList",
 ]
