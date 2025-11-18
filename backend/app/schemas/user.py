@@ -64,6 +64,7 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int  # seconds
+    refresh_token: str | None = None  # Optional for backwards compatibility
 
 
 class TokenData(BaseModel):
@@ -71,6 +72,12 @@ class TokenData(BaseModel):
 
     user_id: int
     email: str
+
+
+class RefreshTokenRequest(BaseModel):
+    """Schema for refresh token request."""
+
+    refresh_token: str
 
 
 # ============================================

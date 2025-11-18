@@ -9,6 +9,7 @@ from app.models.oauth_state import OAuthState
 from app.models.household import Household, HouseholdMember, HouseholdInvitation
 from app.models.meal_plan import MealPlan, PlannedMeal
 from app.models.shopping_list import ShoppingList, ShoppingListItem
+from app.models.refresh_token import RefreshToken
 
 __all__ = [
     "User",
@@ -27,4 +28,5 @@ __all__ = [
     "PlannedMeal",
     "ShoppingList",
     "ShoppingListItem",
+    "RefreshToken",
 ]

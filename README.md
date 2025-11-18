@@ -297,12 +297,55 @@ docker-compose up -d
 ## 🔒 Security
 
 - Passwords hashed with bcrypt
-- JWT-based authentication
+- JWT-based authentication with CSRF protection
 - HTTPS only in production
 - CORS properly configured
 - SQL injection prevention via ORM
-- XSS protection enabled
+- XSS protection with input sanitization
 - Rate limiting on API endpoints
+- Security headers (X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security, CSP)
+- Automated dependency scanning with Dependabot
+
+### Dependency Security Scanning
+
+We use automated tools to keep dependencies secure and up-to-date:
+
+**Automated Scanning (GitHub Dependabot)**
+- Dependabot is configured to check for vulnerabilities weekly
+- Automatically creates pull requests for security updates
+- See `.github/dependabot.yml` for configuration
+
+**Manual Scanning (Monthly)**
+1. Install pip-audit for backend scanning:
+   ```bash
+   cd backend
+   uv pip install pip-audit
+   ```
+
+2. Run security audit:
+   ```bash
+   uv run pip-audit
+   ```
+
+3. Review and address any vulnerabilities found
+
+4. Update frontend dependencies:
+   ```bash
+   cd frontend
+   pnpm audit
+   pnpm update
+   ```
+
+**Monthly Maintenance Tasks**
+- Review and merge Dependabot PRs
+- Run manual security scans with pip-audit and pnpm audit
+- Test application after updates
+- Update dependency versions in lockfiles
+
+**Known Issues**
+- `ecdsa` (dependency of `python-jose`): Security advisory GHSA-wj6h-64fc-37mp
+  - Future consideration: Replace `python-jose` with `PyJWT` for better security
+  - Tracked in tasks backlog
 
 ## 📖 Documentation
 

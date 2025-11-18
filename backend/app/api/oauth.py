@@ -14,12 +14,17 @@ from app.core.oauth import (
     get_available_providers,
     extract_user_info,
 )
-from app.core.security import create_access_token
+from app.core.security import (
+    create_access_token,
+    generate_refresh_token,
+    get_refresh_token_expiry,
+)
 from app.core.deps import get_current_user
 from app.core.config import settings
 from app.models.user import User, UserPreferences
 from app.models.identity_provider import IdentityProvider
 from app.models.oauth_state import OAuthState
+from app.models.refresh_token import RefreshToken
 from app.schemas.oauth import ProviderInfo, LinkedProviderResponse
 from app.schemas.user import Token
 
@@ -197,10 +202,23 @@ async def oauth_callback(
 
             # Create access token
             access_token = create_access_token(data={"sub": str(user.id)})
+
+            # Generate and store refresh token
+            refresh_token_value = generate_refresh_token()
+            refresh_token = RefreshToken(
+                token=refresh_token_value,
+                user_id=user.id,
+                expires_at=get_refresh_token_expiry(),
+                revoked=False,
+            )
+            db.add(refresh_token)
+            await db.commit()
+
             return {
                 "access_token": access_token,
                 "token_type": "bearer",
                 "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                "refresh_token": refresh_token_value,
             }
 
         # Check if email already exists (for account linking)
@@ -237,10 +255,23 @@ async def oauth_callback(
             logger.info(f"Linked {provider} to existing user {existing_user.id}")
 
             access_token = create_access_token(data={"sub": str(existing_user.id)})
+
+            # Generate and store refresh token
+            refresh_token_value = generate_refresh_token()
+            refresh_token = RefreshToken(
+                token=refresh_token_value,
+                user_id=existing_user.id,
+                expires_at=get_refresh_token_expiry(),
+                revoked=False,
+            )
+            db.add(refresh_token)
+            await db.commit()
+
             return {
                 "access_token": access_token,
                 "token_type": "bearer",
                 "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                "refresh_token": refresh_token_value,
             }
 
         # Create new user account
@@ -291,10 +322,23 @@ async def oauth_callback(
 
         # Create access token
         access_token = create_access_token(data={"sub": str(new_user.id)})
+
+        # Generate and store refresh token
+        refresh_token_value = generate_refresh_token()
+        refresh_token = RefreshToken(
+            token=refresh_token_value,
+            user_id=new_user.id,
+            expires_at=get_refresh_token_expiry(),
+            revoked=False,
+        )
+        db.add(refresh_token)
+        await db.commit()
+
         return {
             "access_token": access_token,
             "token_type": "bearer",
             "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            "refresh_token": refresh_token_value,
         }
 
     except Exception as e:

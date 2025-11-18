@@ -9,6 +9,33 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 interface RequestOptions extends RequestInit {
 	requireAuth?: boolean;
+	skipCsrf?: boolean;
+}
+
+// In-memory CSRF token storage
+let csrfToken: string | null = null;
+
+/**
+ * Fetch a new CSRF token from the backend
+ */
+async function fetchCsrfToken(): Promise<string> {
+	const response = await fetch(`${API_URL}/api/auth/csrf-token`);
+	if (!response.ok) {
+		throw new Error('Failed to fetch CSRF token');
+	}
+	const data = await response.json();
+	csrfToken = data.csrf_token;
+	return csrfToken;
+}
+
+/**
+ * Get the current CSRF token, fetching a new one if needed
+ */
+async function getCsrfToken(): Promise<string> {
+	if (!csrfToken) {
+		await fetchCsrfToken();
+	}
+	return csrfToken!;
 }
 
 /**
@@ -18,7 +45,7 @@ export async function apiRequest<T>(
 	endpoint: string,
 	options: RequestOptions = {}
 ): Promise<T> {
-	const { requireAuth = true, ...fetchOptions } = options;
+	const { requireAuth = true, skipCsrf = false, ...fetchOptions } = options;
 
 	// Don't set Content-Type for FormData - let the browser set it with boundary
 	const headers: HeadersInit = fetchOptions.body instanceof FormData
@@ -36,6 +63,20 @@ export async function apiRequest<T>(
 		}
 	}
 
+	// Add CSRF token for state-changing requests
+	const method = (fetchOptions.method || 'GET').toUpperCase();
+	const isStateChanging = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+
+	if (isStateChanging && !skipCsrf) {
+		try {
+			const token = await getCsrfToken();
+			headers['X-CSRF-Token'] = token;
+		} catch (error) {
+			console.warn('Failed to get CSRF token:', error);
+			// Continue without CSRF token - let backend validation handle it
+		}
+	}
+
 	const url = `${API_URL}${endpoint}`;
 
 	try {
@@ -47,6 +88,35 @@ export async function apiRequest<T>(
 		// Handle non-2xx responses
 		if (!response.ok) {
 			const errorData = await response.json().catch(() => ({}));
+
+			// If CSRF validation failed, try to refresh the token and retry once
+			if (response.status === 403 && errorData.detail?.includes('CSRF') && !skipCsrf) {
+				try {
+					await fetchCsrfToken(); // Get a fresh token
+					headers['X-CSRF-Token'] = csrfToken!;
+
+					// Retry the request
+					const retryResponse = await fetch(url, {
+						...fetchOptions,
+						headers
+					});
+
+					if (!retryResponse.ok) {
+						const retryErrorData = await retryResponse.json().catch(() => ({}));
+						throw new Error(retryErrorData.detail || `HTTP error! status: ${retryResponse.status}`);
+					}
+
+					if (retryResponse.status === 204) {
+						return {} as T;
+					}
+
+					return await retryResponse.json();
+				} catch (retryError) {
+					// If retry fails, throw the original error
+					throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+				}
+			}
+
 			throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
 		}
 

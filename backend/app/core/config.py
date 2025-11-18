@@ -26,8 +26,10 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = (
+        15  # Short-lived for security with refresh tokens
+    )
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # Long-lived for better UX
 
     # CORS
     ALLOWED_ORIGINS: list[str] = ["http://localhost:5173"]

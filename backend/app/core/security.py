@@ -158,3 +158,26 @@ def revoke_csrf_token(token: str) -> None:
         token: The CSRF token to revoke
     """
     _csrf_tokens.discard(token)
+
+
+# Refresh Token Utilities
+def generate_refresh_token() -> str:
+    """
+    Generate a secure random refresh token.
+
+    Returns:
+        A URL-safe random token string
+    """
+    return secrets.token_urlsafe(64)
+
+
+def get_refresh_token_expiry() -> datetime:
+    """
+    Calculate expiry datetime for refresh tokens.
+
+    Returns:
+        Datetime object for configured days from now
+    """
+    return datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
