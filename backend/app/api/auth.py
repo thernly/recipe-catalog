@@ -10,7 +10,12 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.core.database import get_db
-from app.core.security import verify_password, get_password_hash, create_access_token
+from app.core.security import (
+    verify_password,
+    get_password_hash,
+    create_access_token,
+    generate_csrf_token,
+)
 from app.core.config import settings
 from app.models.user import User, UserPreferences
 from app.schemas.user import (
@@ -391,3 +396,20 @@ async def resend_verification(
     )
 
     return {"message": "Verification email sent"}
+
+
+@router.get("/csrf-token")
+async def get_csrf_token():
+    """
+    Generate and return a CSRF token.
+
+    Note: This API primarily uses JWT authentication with tokens in headers,
+    so CSRF protection is less critical. However, this endpoint is provided
+    for defense-in-depth and future compatibility if cookie-based sessions
+    are ever implemented.
+
+    Returns:
+        dict: CSRF token
+    """
+    token = generate_csrf_token()
+    return {"csrf_token": token}

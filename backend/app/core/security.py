@@ -4,6 +4,7 @@ Security utilities for password hashing and JWT tokens.
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+import secrets
 from jose import JWTError, jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
@@ -112,3 +113,48 @@ def sanitize_html(text: str) -> str:
         return text
     # Strip all HTML tags - allow plain text only
     return bleach.clean(text, tags=[], strip=True)
+
+
+# CSRF Protection
+# Note: This API primarily uses JWT tokens in headers (not cookies),
+# so CSRF is less of a concern. However, these utilities are provided
+# for defense-in-depth and future-proofing.
+
+# In-memory store for CSRF tokens (simple approach for stateless API)
+# In production with multiple instances, consider using Redis or database
+_csrf_tokens: set[str] = set()
+
+
+def generate_csrf_token() -> str:
+    """
+    Generate a secure CSRF token.
+
+    Returns:
+        A URL-safe random token string
+    """
+    token = secrets.token_urlsafe(32)
+    _csrf_tokens.add(token)
+    return token
+
+
+def validate_csrf_token(token: str) -> bool:
+    """
+    Validate a CSRF token.
+
+    Args:
+        token: The CSRF token to validate
+
+    Returns:
+        True if token is valid, False otherwise
+    """
+    return token in _csrf_tokens
+
+
+def revoke_csrf_token(token: str) -> None:
+    """
+    Revoke a CSRF token after use.
+
+    Args:
+        token: The CSRF token to revoke
+    """
+    _csrf_tokens.discard(token)

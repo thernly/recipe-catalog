@@ -213,3 +213,42 @@ async def test_logout(client: AsyncClient):
 
     assert response.status_code == 200
     assert response.json()["message"] == "Successfully logged out"
+
+
+@pytest.mark.asyncio
+async def test_csrf_token_generation(client: AsyncClient):
+    """Test CSRF token generation endpoint."""
+    response = await client.get("/api/auth/csrf-token")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "csrf_token" in data
+    assert isinstance(data["csrf_token"], str)
+    assert len(data["csrf_token"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_csrf_token_validation(client: AsyncClient):
+    """Test CSRF token validation using the dependency."""
+    from app.core.dependencies import validate_csrf
+    from fastapi import HTTPException
+
+    # Get a valid token
+    response = await client.get("/api/auth/csrf-token")
+    token = response.json()["csrf_token"]
+
+    # Valid token should not raise exception
+    result = await validate_csrf(x_csrf_token=token)
+    assert result == token
+
+    # Invalid token should raise exception
+    with pytest.raises(HTTPException) as exc_info:
+        await validate_csrf(x_csrf_token="invalid_token")
+    assert exc_info.value.status_code == 403
+    assert "Invalid CSRF token" in str(exc_info.value.detail)
+
+    # Missing token should raise exception
+    with pytest.raises(HTTPException) as exc_info:
+        await validate_csrf(x_csrf_token=None)
+    assert exc_info.value.status_code == 403
+    assert "CSRF token is missing" in str(exc_info.value.detail)
