@@ -7,6 +7,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
@@ -113,9 +114,11 @@ async def get_current_week_meal_plan(
         # Ensure the provided date is a Monday
         week_start = get_week_start(week_start)
 
-    # Try to find existing meal plan
+    # Try to find existing meal plan with eager loading of planned meals
     result = await db.execute(
-        select(MealPlan).where(
+        select(MealPlan)
+        .options(selectinload(MealPlan.planned_meals))
+        .where(
             and_(
                 MealPlan.household_id == household.id,
                 MealPlan.week_start_date == week_start,
@@ -135,11 +138,8 @@ async def get_current_week_meal_plan(
         await db.commit()
         await db.refresh(meal_plan)
 
-    # Load planned meals
-    result = await db.execute(
-        select(PlannedMeal).where(PlannedMeal.meal_plan_id == meal_plan.id)
-    )
-    meal_plan.planned_meals = result.scalars().all()
+        # Explicitly load planned_meals for new meal plan (will be empty)
+        await db.refresh(meal_plan, ["planned_meals"])
 
     return meal_plan
 
@@ -164,7 +164,9 @@ async def get_meal_plan(
         MealPlan: The meal plan
     """
     result = await db.execute(
-        select(MealPlan).where(
+        select(MealPlan)
+        .options(selectinload(MealPlan.planned_meals))
+        .where(
             and_(
                 MealPlan.id == meal_plan_id,
                 MealPlan.household_id == household.id,
@@ -178,12 +180,6 @@ async def get_meal_plan(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Meal plan not found",
         )
-
-    # Load planned meals
-    result = await db.execute(
-        select(PlannedMeal).where(PlannedMeal.meal_plan_id == meal_plan.id)
-    )
-    meal_plan.planned_meals = result.scalars().all()
 
     return meal_plan
 

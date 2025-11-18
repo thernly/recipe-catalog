@@ -46,10 +46,10 @@ async def lifespan(app: FastAPI):
     await init_db()
 
     # Cleanup expired OAuth states on startup
-    from app.core.database import async_session_maker
+    from app.core.database import AsyncSessionLocal
     from app.models.oauth_state import OAuthState
 
-    async with async_session_maker() as session:
+    async with AsyncSessionLocal() as session:
         try:
             deleted_count = await OAuthState.cleanup_expired(session)
             if deleted_count > 0:
@@ -99,9 +99,7 @@ async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Strict-Transport-Security"] = (
-        "max-age=31536000; includeSubDomains"
-    )
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Content-Security-Policy"] = "default-src 'self'"
     return response
 
@@ -120,9 +118,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "type": error.get("type"),
             "loc": error.get("loc"),
             "msg": error.get("msg"),
-            "input": str(error.get("input"))
-            if error.get("input") is not None
-            else None,
+            "input": str(error.get("input")) if error.get("input") is not None else None,
         }
         # Add ctx if present, but convert non-serializable values
         if "ctx" in error:
@@ -178,9 +174,7 @@ app.include_router(export.router, prefix="/api/export", tags=["Export"])
 app.include_router(import_recipes.router, prefix="/api/import", tags=["Import"])
 app.include_router(households.router, prefix="/api/households", tags=["Households"])
 app.include_router(meal_plans.router, prefix="/api/meal-plans", tags=["Meal Plans"])
-app.include_router(
-    shopping_lists.router, prefix="/api/shopping-lists", tags=["Shopping Lists"]
-)
+app.include_router(shopping_lists.router, prefix="/api/shopping-lists", tags=["Shopping Lists"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 
 
