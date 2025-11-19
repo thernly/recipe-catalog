@@ -715,9 +715,22 @@ async def generate_from_meal_plan(
         )
         recipe = recipe_result.scalar_one_or_none()
 
-        if recipe and recipe.ingredients:
-            for ingredient in recipe.ingredients:
-                ingredients_list.append(ingredient)
+        if recipe and recipe.recipe_data:
+            ingredients = recipe.recipe_data.get('ingredients', [])
+            if isinstance(ingredients, list):
+                for ingredient in ingredients:
+                    # Handle both string and dict ingredient formats
+                    if isinstance(ingredient, str):
+                        ingredients_list.append(ingredient)
+                    elif isinstance(ingredient, dict):
+                        # If ingredient is a dict, try to format it nicely
+                        name = ingredient.get('name', ingredient.get('ingredient', ''))
+                        quantity = ingredient.get('quantity', '')
+                        unit = ingredient.get('unit', '')
+                        if quantity and unit:
+                            ingredients_list.append(f"{quantity} {unit} {name}".strip())
+                        elif name:
+                            ingredients_list.append(name)
 
     # Add all ingredients as items (simple approach - no aggregation)
     for idx, ingredient in enumerate(ingredients_list):

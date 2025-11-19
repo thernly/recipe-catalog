@@ -8,6 +8,7 @@ export interface PlannedMeal {
 	id: number;
 	meal_plan_id: number;
 	recipe_id: number;
+	recipe_name?: string;
 	day_of_week: number; // 0=Monday, 6=Sunday
 	meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other';
 	servings?: number;
