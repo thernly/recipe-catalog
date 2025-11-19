@@ -388,3 +388,56 @@ async def test_ingredient_consolidation():
     eggs = next(item for item in consolidated if item["name"].lower() == "eggs")
     assert eggs["quantity"] == "5"
     assert eggs["unit"] is None
+
+
+def test_ingredient_preparation_method_consolidation():
+    """Test that ingredients with different preparation methods are consolidated."""
+    from app.api.shopping_lists import (
+        get_base_ingredient_name,
+        consolidate_ingredients,
+    )
+
+    # Test get_base_ingredient_name helper
+    assert get_base_ingredient_name("garlic (minced)") == "garlic"
+    assert get_base_ingredient_name("garlic (chopped)") == "garlic"
+    assert get_base_ingredient_name("garlic cloves") == "garlic"
+    assert get_base_ingredient_name("garlic, minced") == "garlic"
+    assert get_base_ingredient_name("onion (diced)") == "onion"
+    assert get_base_ingredient_name("butter (melted)") == "butter"
+    assert get_base_ingredient_name("carrots, sliced") == "carrots"
+    assert get_base_ingredient_name("ginger minced") == "ginger"
+    assert get_base_ingredient_name("tomatoes chopped") == "tomatoes"
+
+    # Test consolidation with different preparation methods
+    ingredients = [
+        {"name": "garlic cloves", "quantity": "3", "unit": None},
+        {"name": "garlic (minced)", "quantity": "2", "unit": None},
+        {"name": "garlic (chopped)", "quantity": "1", "unit": None},
+        {"name": "onion (diced)", "quantity": "1", "unit": None},
+        {"name": "onion, sliced", "quantity": "1", "unit": None},
+        {"name": "butter (melted)", "quantity": "1", "unit": "stick"},
+        {"name": "butter", "quantity": "2", "unit": "stick"},
+    ]
+
+    consolidated = consolidate_ingredients(ingredients)
+
+    # Should consolidate to 3 unique items (garlic, onion, butter)
+    assert len(consolidated) == 3
+
+    # Find garlic - all three variations should be combined
+    garlic = next(item for item in consolidated if "garlic" in item["name"].lower())
+    assert garlic["quantity"] == "6"
+    assert garlic["name"].lower() == "garlic"  # Should use base name
+    assert garlic["unit"] is None
+
+    # Find onion - both variations should be combined
+    onion = next(item for item in consolidated if "onion" in item["name"].lower())
+    assert onion["quantity"] == "2"
+    assert onion["name"].lower() == "onion"  # Should use base name
+    assert onion["unit"] is None
+
+    # Find butter - both variations should be combined
+    butter = next(item for item in consolidated if "butter" in item["name"].lower())
+    assert butter["quantity"] == "3"
+    assert butter["name"].lower() == "butter"  # Should use base name
+    assert butter["unit"] == "stick"
