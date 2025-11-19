@@ -164,6 +164,13 @@ function createAuthStore() {
 					isLoading: false
 				}));
 			}
+		},
+
+		/**
+		 * Reset store to initial state (for testing)
+		 */
+		reset(): void {
+			set(initialState);
 		}
 	};
 }

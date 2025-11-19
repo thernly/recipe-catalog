@@ -12,6 +12,8 @@ describe('Auth Store', () => {
 	beforeEach(() => {
 		// Reset fetch mock before each test
 		vi.resetAllMocks();
+		// Reset auth store to initial state
+		auth.reset();
 	});
 
 	it('should initialize with no user', () => {
