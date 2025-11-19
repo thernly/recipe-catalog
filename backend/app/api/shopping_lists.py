@@ -2,7 +2,9 @@
 Shopping List API endpoints.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Tuple
+import re
+from fractions import Fraction
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, case
@@ -41,6 +43,221 @@ DEFAULT_CATEGORIES = [
     "Household",
     "Other",
 ]
+
+
+def parse_quantity(quantity_str: str) -> float:
+    """
+    Parse a quantity string into a float.
+    Handles fractions (1/2, 3/4), mixed numbers (1 1/2), decimals, and ranges (1-2).
+
+    Args:
+        quantity_str: String representation of quantity
+
+    Returns:
+        float: Parsed quantity value
+    """
+    if not quantity_str or not quantity_str.strip():
+        return 0.0
+
+    quantity_str = quantity_str.strip()
+
+    # Handle ranges (e.g., "1-2" -> use the higher value)
+    if '-' in quantity_str and not quantity_str.startswith('-'):
+        parts = quantity_str.split('-')
+        if len(parts) == 2:
+            try:
+                return max(float(Fraction(parts[0].strip())), float(Fraction(parts[1].strip())))
+            except (ValueError, ZeroDivisionError):
+                pass
+
+    # Handle mixed numbers (e.g., "1 1/2")
+    parts = quantity_str.split()
+    if len(parts) == 2:
+        try:
+            whole = float(Fraction(parts[0]))
+            fraction = float(Fraction(parts[1]))
+            return whole + fraction
+        except (ValueError, ZeroDivisionError):
+            pass
+
+    # Handle simple fractions and decimals
+    try:
+        return float(Fraction(quantity_str))
+    except (ValueError, ZeroDivisionError):
+        return 0.0
+
+
+def parse_ingredient_string(ingredient_str: str) -> Tuple[Optional[str], Optional[str], str]:
+    """
+    Parse an ingredient string into quantity, unit, and name.
+
+    Examples:
+        "1 stick butter" -> ("1", "stick", "butter")
+        "2 cups flour" -> ("2", "cups", "flour")
+        "3 eggs" -> ("3", None, "eggs")
+        "salt" -> (None, None, "salt")
+
+    Args:
+        ingredient_str: The ingredient string to parse
+
+    Returns:
+        Tuple of (quantity, unit, name)
+    """
+    ingredient_str = ingredient_str.strip()
+
+    # Pattern to match quantity (including fractions) at the start
+    # Matches: "1", "1.5", "1/2", "1 1/2", "1-2"
+    quantity_pattern = r'^(\d+(?:\s+\d+)?(?:[\/\-\.]\d+)?)\s+'
+    match = re.match(quantity_pattern, ingredient_str)
+
+    if match:
+        quantity = match.group(1).strip()
+        remainder = ingredient_str[match.end():].strip()
+
+        # Common units
+        units = [
+            'cup', 'cups', 'tablespoon', 'tablespoons', 'tbsp', 'teaspoon', 'teaspoons', 'tsp',
+            'ounce', 'ounces', 'oz', 'pound', 'pounds', 'lb', 'lbs', 'gram', 'grams', 'g',
+            'kilogram', 'kilograms', 'kg', 'milliliter', 'milliliters', 'ml', 'liter', 'liters', 'l',
+            'stick', 'sticks', 'clove', 'cloves', 'can', 'cans', 'package', 'packages', 'pkg',
+            'bunch', 'bunches', 'head', 'heads', 'piece', 'pieces', 'slice', 'slices',
+            'pinch', 'dash', 'sprig', 'sprigs', 'whole', 'large', 'medium', 'small'
+        ]
+
+        # Check if the next word is a unit
+        words = remainder.split(None, 1)
+        if words and words[0].lower() in units:
+            unit = words[0]
+            name = words[1] if len(words) > 1 else ''
+            return (quantity, unit, name)
+        else:
+            # No unit found, rest is the name
+            return (quantity, None, remainder)
+    else:
+        # No quantity found
+        return (None, None, ingredient_str)
+
+
+def normalize_unit(unit: Optional[str]) -> Optional[str]:
+    """
+    Normalize unit names for better consolidation.
+
+    Args:
+        unit: The unit string to normalize
+
+    Returns:
+        Normalized unit string or None
+    """
+    if not unit:
+        return None
+
+    unit_lower = unit.lower().strip()
+
+    # Map variations to standard forms
+    unit_map = {
+        'tbsp': 'tablespoon',
+        'tablespoons': 'tablespoon',
+        'tsp': 'teaspoon',
+        'teaspoons': 'teaspoon',
+        'cups': 'cup',
+        'oz': 'ounce',
+        'ounces': 'ounce',
+        'lb': 'pound',
+        'lbs': 'pound',
+        'pounds': 'pound',
+        'g': 'gram',
+        'grams': 'gram',
+        'kg': 'kilogram',
+        'kilograms': 'kilogram',
+        'ml': 'milliliter',
+        'milliliters': 'milliliter',
+        'l': 'liter',
+        'liters': 'liter',
+        'sticks': 'stick',
+        'cloves': 'clove',
+        'cans': 'can',
+        'packages': 'package',
+        'pkg': 'package',
+        'bunches': 'bunch',
+        'heads': 'head',
+        'pieces': 'piece',
+        'slices': 'slice',
+        'sprigs': 'sprig',
+    }
+
+    return unit_map.get(unit_lower, unit_lower)
+
+
+def consolidate_ingredients(ingredients_data: List[Dict[str, Optional[str]]]) -> List[Dict[str, Optional[str]]]:
+    """
+    Consolidate ingredients by name and unit, summing quantities.
+
+    Args:
+        ingredients_data: List of dicts with 'quantity', 'unit', 'name' keys
+
+    Returns:
+        List of consolidated ingredient dicts
+    """
+    # Group by (normalized_name, normalized_unit)
+    consolidated: Dict[Tuple[str, Optional[str]], Dict] = {}
+
+    for ing in ingredients_data:
+        name = ing.get('name', '').strip().lower()
+        if not name:
+            continue
+
+        unit = normalize_unit(ing.get('unit'))
+        quantity_str = ing.get('quantity')
+
+        # Parse quantity
+        quantity_value = parse_quantity(quantity_str) if quantity_str else 0.0
+
+        key = (name, unit)
+
+        if key in consolidated:
+            # Add to existing quantity
+            consolidated[key]['quantity_value'] += quantity_value
+        else:
+            # New ingredient
+            consolidated[key] = {
+                'name': ing.get('name', '').strip(),  # Keep original casing for display
+                'unit': unit,
+                'quantity_value': quantity_value,
+            }
+
+    # Convert back to list with formatted quantities
+    result = []
+    for (name_key, unit_key), data in consolidated.items():
+        qty_value = data['quantity_value']
+
+        # Format quantity nicely
+        if qty_value == 0:
+            qty_str = None
+        elif qty_value == int(qty_value):
+            qty_str = str(int(qty_value))
+        else:
+            # Try to convert to fraction if it's close to a common fraction
+            frac = Fraction(qty_value).limit_denominator(16)
+            if abs(float(frac) - qty_value) < 0.01:
+                if frac.numerator > frac.denominator:
+                    whole = frac.numerator // frac.denominator
+                    remainder = frac.numerator % frac.denominator
+                    if remainder > 0:
+                        qty_str = f"{whole} {remainder}/{frac.denominator}"
+                    else:
+                        qty_str = str(whole)
+                else:
+                    qty_str = f"{frac.numerator}/{frac.denominator}"
+            else:
+                qty_str = f"{qty_value:.2f}".rstrip('0').rstrip('.')
+
+        result.append({
+            'name': data['name'],
+            'unit': data['unit'],
+            'quantity': qty_str,
+        })
+
+    return result
 
 
 @router.get("/categories", response_model=CategoryList)
@@ -721,8 +938,8 @@ async def generate_from_meal_plan(
     db.add(shopping_list)
     await db.flush()
 
-    # Collect all ingredients from all recipes
-    ingredients_list = []
+    # Collect all ingredients from all recipes as structured data
+    ingredients_data = []
     for planned_meal in planned_meals:
         recipe_result = await db.execute(
             select(Recipe).where(Recipe.id == planned_meal.recipe_id)
@@ -739,24 +956,34 @@ async def generate_from_meal_plan(
                 for ingredient in ingredients:
                     # Handle both string and dict ingredient formats
                     if isinstance(ingredient, str):
-                        ingredients_list.append(ingredient)
+                        # Parse string format
+                        quantity, unit, name = parse_ingredient_string(ingredient)
+                        ingredients_data.append({
+                            'quantity': quantity,
+                            'unit': unit,
+                            'name': name,
+                        })
                     elif isinstance(ingredient, dict):
-                        # If ingredient is a dict, try to format it nicely
+                        # Use dict format directly
                         name = ingredient.get("name", ingredient.get("ingredient", ""))
                         quantity = ingredient.get("quantity", "")
                         unit = ingredient.get("unit", "")
-                        if quantity and unit:
-                            ingredients_list.append(f"{quantity} {unit} {name}".strip())
-                        elif name:
-                            ingredients_list.append(name)
+                        ingredients_data.append({
+                            'quantity': quantity if quantity else None,
+                            'unit': unit if unit else None,
+                            'name': name,
+                        })
 
-    # Add all ingredients as items (simple approach - no aggregation)
-    for idx, ingredient in enumerate(ingredients_list):
+    # Consolidate ingredients by name and unit, summing quantities
+    consolidated_ingredients = consolidate_ingredients(ingredients_data)
+
+    # Add consolidated ingredients as shopping list items
+    for idx, ingredient in enumerate(consolidated_ingredients):
         item = ShoppingListItem(
             list_id=shopping_list.id,
-            item_name=ingredient,
-            quantity=None,
-            unit=None,
+            item_name=ingredient['name'],
+            quantity=ingredient['quantity'],
+            unit=ingredient['unit'],
             category=None,
             notes=None,
             checked=False,
