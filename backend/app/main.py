@@ -100,7 +100,36 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    response.headers["Content-Security-Policy"] = "default-src 'self'"
+
+    # Environment-specific Content Security Policy
+    if settings.ENVIRONMENT == "production":
+        # Strict CSP for production - no inline scripts
+        csp_directives = [
+            "default-src 'self'",
+            "script-src 'self'",
+            "style-src 'self'",
+            "img-src 'self' data: https:",
+            "font-src 'self'",
+            "connect-src 'self'",
+            "frame-ancestors 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+        ]
+    else:
+        # Relaxed CSP for development - allow hot reload and dev tools
+        csp_directives = [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",  # Allow dev tools
+            "style-src 'self' 'unsafe-inline'",  # Allow inline styles for dev
+            "img-src 'self' data: https:",
+            "font-src 'self'",
+            "connect-src 'self' ws: wss:",  # Allow WebSocket for hot reload
+            "frame-ancestors 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+        ]
+
+    response.headers["Content-Security-Policy"] = "; ".join(csp_directives)
     return response
 
 
