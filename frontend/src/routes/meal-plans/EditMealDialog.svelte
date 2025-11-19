@@ -3,13 +3,11 @@
 	import {
 		updatePlannedMeal,
 		deletePlannedMeal,
-		type MealPlan,
 		type PlannedMeal,
 		type PlannedMealUpdate
 	} from '$lib/api/meal-plans';
 	import { searchRecipes, type RecipeSummary } from '$lib/api/recipes';
 
-	export let mealPlan: MealPlan;
 	export let meal: PlannedMeal;
 
 	const dispatch = createEventDispatcher();
@@ -118,6 +116,7 @@
 </script>
 
 <div class="modal-overlay" on:click={handleClose} on:keydown={(e) => e.key === 'Escape' && handleClose()} role="button" tabindex="-1">
+	<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 	<div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation role="dialog">
 		<div class="modal-header">
 			<h2>Edit Meal</h2>
