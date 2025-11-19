@@ -232,6 +232,52 @@ def get_base_ingredient_name(name: str) -> str:
     return base_name.strip()
 
 
+def singularize_ingredient(name: str) -> str:
+    """
+    Convert plural ingredient names to singular for better consolidation.
+
+    Examples:
+        "onions" -> "onion"
+        "tomatoes" -> "tomato"
+        "carrots" -> "carrot"
+
+    Args:
+        name: The ingredient name to singularize
+
+    Returns:
+        The singularized ingredient name
+    """
+    name_lower = name.lower()
+
+    # Handle common irregular plurals
+    irregular_plurals = {
+        'tomatoes': 'tomato',
+        'potatoes': 'potato',
+    }
+
+    if name_lower in irregular_plurals:
+        return irregular_plurals[name_lower]
+
+    # Handle regular plurals ending in 's'
+    # Only singularize if it's likely a plural (ends in s but not ss, us, is)
+    if name_lower.endswith('s') and not name_lower.endswith(('ss', 'us', 'is')):
+        # Handle words ending in 'ies' -> 'y'
+        if name_lower.endswith('ies') and len(name_lower) > 3:
+            return name[:-3] + 'y'
+        # Handle words ending in 'es' -> 'e' or just 's'
+        elif name_lower.endswith('es') and len(name_lower) > 2:
+            # For words like "olives" -> "olive", but not "cheese" -> "chees"
+            if name_lower[-3] not in 'aeiou':
+                return name[:-1]
+            else:
+                return name[:-2]
+        # Regular plural: just remove 's'
+        else:
+            return name[:-1]
+
+    return name
+
+
 def consolidate_ingredients(ingredients_data: List[Dict[str, Optional[str]]]) -> List[Dict[str, Optional[str]]]:
     """
     Consolidate ingredients by name and unit, summing quantities.
@@ -254,11 +300,18 @@ def consolidate_ingredients(ingredients_data: List[Dict[str, Optional[str]]]) ->
         if not name:
             continue
 
+        # Filter out section headers (e.g., "Pie Crust:", "filling:", "For the crust:")
+        # These are items with no quantity that end with a colon
+        quantity_str = ing.get('quantity')
+        if not quantity_str and name.endswith(':'):
+            continue
+
         # Get base ingredient name (without preparation methods) for grouping
-        base_name = get_base_ingredient_name(name).lower()
+        base_name = get_base_ingredient_name(name)
+        # Singularize and lowercase for consistent grouping
+        base_name = singularize_ingredient(base_name).lower()
 
         unit = normalize_unit(ing.get('unit'))
-        quantity_str = ing.get('quantity')
 
         # Parse quantity
         quantity_value = parse_quantity(quantity_str) if quantity_str else 0.0
@@ -269,14 +322,16 @@ def consolidate_ingredients(ingredients_data: List[Dict[str, Optional[str]]]) ->
             # Add to existing quantity
             consolidated[key]['quantity_value'] += quantity_value
             # Prefer the simpler name (shorter is usually simpler)
+            # Singularize and use lowercase for consistency
             current_name = consolidated[key]['name']
-            new_name = get_base_ingredient_name(name)
+            new_name = singularize_ingredient(get_base_ingredient_name(name)).lower()
             if len(new_name) < len(current_name):
                 consolidated[key]['name'] = new_name
         else:
             # New ingredient - use base name for display (without preparation methods)
+            # Singularize and use lowercase for case-insensitive consolidation
             consolidated[key] = {
-                'name': get_base_ingredient_name(name),
+                'name': singularize_ingredient(get_base_ingredient_name(name)).lower(),
                 'unit': unit,
                 'quantity_value': quantity_value,
             }
