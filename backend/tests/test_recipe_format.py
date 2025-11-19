@@ -2,7 +2,6 @@
 Tests for recipe format conversion utilities
 """
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
