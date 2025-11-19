@@ -6,6 +6,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, case
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
@@ -176,9 +177,11 @@ async def get_shopping_list(
         ShoppingList: The shopping list with all items
     """
     result = await db.execute(
-        select(ShoppingList).where(
+        select(ShoppingList)
+        .where(
             and_(ShoppingList.id == list_id, ShoppingList.household_id == household.id)
         )
+        .options(selectinload(ShoppingList.items))
     )
     shopping_list = result.scalar_one_or_none()
 
@@ -186,14 +189,6 @@ async def get_shopping_list(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found"
         )
-
-    # Load items
-    items_result = await db.execute(
-        select(ShoppingListItem)
-        .where(ShoppingListItem.list_id == list_id)
-        .order_by(ShoppingListItem.display_order, ShoppingListItem.created_at)
-    )
-    shopping_list.items = list(items_result.scalars().all())
 
     return shopping_list
 
@@ -240,15 +235,14 @@ async def update_shopping_list(
         shopping_list.status = update_data.status
 
     await db.commit()
-    await db.refresh(shopping_list)
 
-    # Load items
-    items_result = await db.execute(
-        select(ShoppingListItem)
-        .where(ShoppingListItem.list_id == list_id)
-        .order_by(ShoppingListItem.display_order, ShoppingListItem.created_at)
+    # Reload shopping list with items eagerly loaded
+    result = await db.execute(
+        select(ShoppingList)
+        .where(ShoppingList.id == list_id)
+        .options(selectinload(ShoppingList.items))
     )
-    shopping_list.items = list(items_result.scalars().all())
+    shopping_list = result.scalar_one()
 
     return shopping_list
 
@@ -318,15 +312,14 @@ async def archive_shopping_list(
 
     shopping_list.status = "archived"
     await db.commit()
-    await db.refresh(shopping_list)
 
-    # Load items
-    items_result = await db.execute(
-        select(ShoppingListItem)
-        .where(ShoppingListItem.list_id == list_id)
-        .order_by(ShoppingListItem.display_order, ShoppingListItem.created_at)
+    # Reload shopping list with items eagerly loaded
+    result = await db.execute(
+        select(ShoppingList)
+        .where(ShoppingList.id == list_id)
+        .options(selectinload(ShoppingList.items))
     )
-    shopping_list.items = list(items_result.scalars().all())
+    shopping_list = result.scalar_one()
 
     return shopping_list
 
@@ -630,15 +623,14 @@ async def generate_from_recipe(
             db.add(item)
 
     await db.commit()
-    await db.refresh(shopping_list)
 
-    # Load items
-    items_result = await db.execute(
-        select(ShoppingListItem)
-        .where(ShoppingListItem.list_id == shopping_list.id)
-        .order_by(ShoppingListItem.display_order)
+    # Reload shopping list with items eagerly loaded
+    result = await db.execute(
+        select(ShoppingList)
+        .where(ShoppingList.id == shopping_list.id)
+        .options(selectinload(ShoppingList.items))
     )
-    shopping_list.items = list(items_result.scalars().all())
+    shopping_list = result.scalar_one()
 
     return shopping_list
 
@@ -747,14 +739,13 @@ async def generate_from_meal_plan(
         db.add(item)
 
     await db.commit()
-    await db.refresh(shopping_list)
 
-    # Load items
-    items_result = await db.execute(
-        select(ShoppingListItem)
-        .where(ShoppingListItem.list_id == shopping_list.id)
-        .order_by(ShoppingListItem.display_order)
+    # Reload shopping list with items eagerly loaded
+    result = await db.execute(
+        select(ShoppingList)
+        .where(ShoppingList.id == shopping_list.id)
+        .options(selectinload(ShoppingList.items))
     )
-    shopping_list.items = list(items_result.scalars().all())
+    shopping_list = result.scalar_one()
 
     return shopping_list
