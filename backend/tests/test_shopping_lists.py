@@ -384,8 +384,8 @@ async def test_ingredient_consolidation():
     assert flour["quantity"] == "3"
     assert flour["unit"] == "cup"
 
-    # Find eggs in consolidated list
-    eggs = next(item for item in consolidated if item["name"].lower() == "eggs")
+    # Find eggs in consolidated list (now singularized to "egg")
+    eggs = next(item for item in consolidated if item["name"].lower() == "egg")
     assert eggs["quantity"] == "5"
     assert eggs["unit"] is None
 
@@ -441,3 +441,105 @@ def test_ingredient_preparation_method_consolidation():
     assert butter["quantity"] == "3"
     assert butter["name"].lower() == "butter"  # Should use base name
     assert butter["unit"] == "stick"
+
+
+def test_section_headers_filtered_out():
+    """Test that section headers (items ending with ':') are filtered out."""
+    from app.api.shopping_lists import consolidate_ingredients
+
+    ingredients = [
+        {"name": "Pie Crust:", "quantity": None, "unit": None},
+        {"name": "filling:", "quantity": None, "unit": None},
+        {"name": "For the crust:", "quantity": None, "unit": None},
+        {"name": "1 cup flour", "quantity": "1", "unit": "cup"},
+        {"name": "2 eggs", "quantity": "2", "unit": None},
+    ]
+
+    # Parse the string-based ingredients
+    from app.api.shopping_lists import parse_ingredient_string
+    ingredients_data = []
+    for ing in ingredients:
+        if ing["quantity"] is None and ing["unit"] is None:
+            # Already parsed
+            ingredients_data.append(ing)
+        else:
+            # Parse string format
+            qty, unit, name = parse_ingredient_string(f"{ing['quantity']} {ing['unit']} {ing['name']}" if ing['unit'] else f"{ing['quantity']} {ing['name']}")
+            ingredients_data.append({"quantity": qty, "unit": unit, "name": name})
+
+    consolidated = consolidate_ingredients(ingredients_data)
+
+    # Section headers should be filtered out
+    names = [item["name"] for item in consolidated]
+    assert "pie crust:" not in [n.lower() for n in names]
+    assert "filling:" not in [n.lower() for n in names]
+    assert "for the crust:" not in [n.lower() for n in names]
+
+    # Only flour and eggs should remain
+    assert len(consolidated) == 2
+    assert any("flour" in item["name"].lower() for item in consolidated)
+    assert any("egg" in item["name"].lower() for item in consolidated)
+
+
+def test_plural_consolidation():
+    """Test that plural and singular forms are consolidated."""
+    from app.api.shopping_lists import (
+        singularize_ingredient,
+        consolidate_ingredients,
+    )
+
+    # Test singularize_ingredient helper
+    assert singularize_ingredient("onions") == "onion"
+    assert singularize_ingredient("Onions") == "Onion"
+    assert singularize_ingredient("tomatoes") == "tomato"
+    assert singularize_ingredient("potatoes") == "potato"
+    assert singularize_ingredient("carrots") == "carrot"
+    assert singularize_ingredient("olives") == "olive"
+    assert singularize_ingredient("berries") == "berry"
+
+    # Test consolidation with plurals and case variations
+    ingredients = [
+        {"name": "onion (diced)", "quantity": "1", "unit": None},
+        {"name": "onion, chopped", "quantity": "1", "unit": None},
+        {"name": "Onions (sliced)", "quantity": "2", "unit": None},
+        {"name": "Tomatoes", "quantity": "3", "unit": None},
+        {"name": "tomato", "quantity": "1", "unit": None},
+    ]
+
+    consolidated = consolidate_ingredients(ingredients)
+
+    # Should consolidate to 2 unique items (onion, tomato)
+    assert len(consolidated) == 2
+
+    # Find onion - all three variations should be combined
+    onion = next(item for item in consolidated if "onion" in item["name"].lower())
+    assert onion["quantity"] == "4"  # 1 + 1 + 2
+    assert onion["name"].lower() == "onion"  # Should use singular form
+    assert onion["unit"] is None
+
+    # Find tomato - both variations should be combined
+    tomato = next(item for item in consolidated if "tomato" in item["name"].lower())
+    assert tomato["quantity"] == "4"  # 3 + 1
+    assert tomato["name"].lower() == "tomato"  # Should use singular form
+    assert tomato["unit"] is None
+
+
+def test_case_insensitive_consolidation():
+    """Test that ingredients with different cases are consolidated."""
+    from app.api.shopping_lists import consolidate_ingredients
+
+    ingredients = [
+        {"name": "Garlic", "quantity": "2", "unit": None},
+        {"name": "garlic", "quantity": "1", "unit": None},
+        {"name": "GARLIC", "quantity": "1", "unit": None},
+    ]
+
+    consolidated = consolidate_ingredients(ingredients)
+
+    # Should consolidate to 1 item
+    assert len(consolidated) == 1
+
+    garlic = consolidated[0]
+    assert garlic["quantity"] == "4"  # 2 + 1 + 1
+    assert garlic["name"].lower() == "garlic"
+    assert garlic["unit"] is None
