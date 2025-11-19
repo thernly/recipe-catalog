@@ -5,7 +5,7 @@ Tests for file validation utilities
 import pytest
 from io import BytesIO
 from PIL import Image
-from fastapi import HTTPException, UploadFile
+from fastapi import HTTPException
 
 from app.utils.file_validation import validate_file_size, validate_image_file
 

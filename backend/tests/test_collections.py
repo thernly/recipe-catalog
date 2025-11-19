@@ -8,7 +8,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.models.collection import Collection, RecipeCollection
+from app.models.collection import Collection
 from app.models.recipe import Recipe
 from app.models.user import User
 from app.models.household import Household, HouseholdMember
@@ -274,19 +274,12 @@ async def test_delete_collection_preserves_recipes(client: AsyncClient, auth_hea
 
 
 @pytest.mark.asyncio
-async def test_cannot_delete_default_collection(client: AsyncClient, auth_headers: dict, test_db):
+async def test_cannot_delete_default_collection(client: AsyncClient, auth_headers: dict, test_db, test_user: User, test_household: Household):
     """Test that default collections cannot be deleted"""
-    # Get or create default collection
-    from app.models.household import Household
-
-    household_result = await test_db.execute(
-        select(Household).where(Household.user_id == test_user.id)
-    )
-    household = household_result.scalar_one()
-
+    # Create default collection
     default_collection = Collection(
         user_id=test_user.id,
-        household_id=household.id,
+        household_id=test_household.id,
         name="All Recipes",
         is_default=True,
     )
@@ -565,7 +558,7 @@ async def test_add_multiple_recipes_mixed_results(client: AsyncClient, auth_head
 
 
 @pytest.mark.asyncio
-async def test_collection_includes_creator_display_name(client: AsyncClient, auth_headers: dict):
+async def test_collection_includes_creator_display_name(client: AsyncClient, auth_headers: dict, test_user: User):
     """Test that collection includes creator display name"""
     response = await client.post("/api/collections/", json={"name": "Test"})
 

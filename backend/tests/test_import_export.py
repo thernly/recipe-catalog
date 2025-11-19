@@ -158,7 +158,6 @@ async def test_import_duplicate_handling_update(client: AsyncClient, test_user, 
     )
     test_db.add(existing_recipe)
     await test_db.commit()
-    recipe_id = existing_recipe.id
 
     # Import with update
     recipe_data = {
