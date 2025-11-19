@@ -139,7 +139,7 @@ class Settings(BaseSettings):
         # In production, reject weak keys
         if environment == "production" and v.lower() in weak_keys:
             raise ValueError(
-                f"SECRET_KEY appears to be a weak/default value. "
+                "SECRET_KEY appears to be a weak/default value. "
                 "Generate a secure key with: openssl rand -hex 32"
             )
 

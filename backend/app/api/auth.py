@@ -25,8 +25,6 @@ from app.schemas.user import (
     UserCreate,
     UserLogin,
     User as UserSchema,
-    Token,
-    RefreshTokenRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
     ResendVerificationRequest,

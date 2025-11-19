@@ -6,8 +6,6 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 from app.models.household import Household, HouseholdMember
-from app.models.recipe import Recipe
-from app.services import household as household_service
 
 
 @pytest_asyncio.fixture
