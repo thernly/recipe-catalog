@@ -20,6 +20,7 @@ from app.models.user import User
 from app.models.recipe import Recipe
 from app.models.collection import Collection, RecipeCollection
 from app.utils.recipe_format import convert_from_schema_org
+from app.utils.file_validation import validate_file_size
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -225,6 +226,9 @@ async def import_recipes(
     Returns:
         Summary of import results
     """
+    # Validate file size
+    await validate_file_size(file)
+
     # Validate file type
     if not file.filename.endswith(".json"):
         raise HTTPException(status_code=400, detail="File must be a JSON file")

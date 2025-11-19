@@ -34,7 +34,12 @@ class Settings(BaseSettings):
     # CORS
     ALLOWED_ORIGINS: list[str] = ["http://localhost:5173"]
     ALLOWED_METHODS: list[str] = ["GET", "POST", "PUT", "DELETE", "PATCH"]
-    ALLOWED_HEADERS: str = "*"
+    ALLOWED_HEADERS: list[str] = [
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "X-CSRF-Token",
+    ]
 
     # Email
     SMTP_HOST: str = "smtp.gmail.com"
@@ -96,6 +101,48 @@ class Settings(BaseSettings):
     def parse_image_types(cls, v):
         if isinstance(v, str):
             return [image_type.strip() for image_type in v.split(",")]
+        return v
+
+    @field_validator("ALLOWED_HEADERS", mode="before")
+    @classmethod
+    def parse_headers(cls, v):
+        if isinstance(v, str):
+            return [header.strip() for header in v.split(",")]
+        return v
+
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def validate_secret_key(cls, v, info):
+        """Validate SECRET_KEY strength in production."""
+        # Known weak/default keys to reject
+        weak_keys = {
+            "secret",
+            "changeme",
+            "default",
+            "test",
+            "password",
+            "secret_key",
+            "your-secret-key",
+            "dev-secret-key",
+        }
+
+        # Check minimum length
+        if len(v) < 32:
+            raise ValueError(
+                f"SECRET_KEY must be at least 32 characters long (got {len(v)}). "
+                "Generate a secure key with: openssl rand -hex 32"
+            )
+
+        # Get environment from info context if available
+        environment = info.data.get("ENVIRONMENT", "production")
+
+        # In production, reject weak keys
+        if environment == "production" and v.lower() in weak_keys:
+            raise ValueError(
+                f"SECRET_KEY appears to be a weak/default value. "
+                "Generate a secure key with: openssl rand -hex 32"
+            )
+
         return v
 
 
