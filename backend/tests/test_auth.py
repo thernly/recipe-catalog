@@ -2,6 +2,7 @@
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio
@@ -254,3 +255,81 @@ async def test_csrf_token_validation(client: AsyncClient):
         await validate_csrf(x_csrf_token=None)
     assert exc_info.value.status_code == 403
     assert "CSRF token is missing" in str(exc_info.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_register_creates_default_household(client: AsyncClient, db: AsyncSession):
+    """Test that user registration automatically creates a default household."""
+    from app.models.household import Household, HouseholdMember
+    from app.models.user import User
+    from sqlalchemy import select
+
+    # Register a new user
+    response = await client.post(
+        "/api/auth/register",
+        json={
+            "email": "newhousehold@example.com",
+            "password": "TestPassword123",
+            "display_name": "John Doe",
+        },
+    )
+
+    assert response.status_code == 201
+    user_data = response.json()
+    user_id = user_data["id"]
+
+    # Verify user exists
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one()
+    assert user.email == "newhousehold@example.com"
+    assert user.display_name == "John Doe"
+
+    # Verify household was created for the user
+    result = await db.execute(
+        select(Household)
+        .join(HouseholdMember)
+        .where(HouseholdMember.user_id == user_id)
+    )
+    household = result.scalar_one()
+    assert household is not None
+    assert household.owner_user_id == user_id
+    assert household.name == "John Doe's Household"  # User-friendly default name
+
+    # Verify user is a member with owner role
+    result = await db.execute(
+        select(HouseholdMember).where(
+            HouseholdMember.user_id == user_id,
+            HouseholdMember.household_id == household.id,
+        )
+    )
+    membership = result.scalar_one()
+    assert membership.role == "owner"
+
+
+@pytest.mark.asyncio
+async def test_register_household_name_from_email(client: AsyncClient, db: AsyncSession):
+    """Test that household name uses email prefix when display name is not provided."""
+    from app.models.household import Household, HouseholdMember
+    from sqlalchemy import select
+
+    # Register a user without display name
+    response = await client.post(
+        "/api/auth/register",
+        json={
+            "email": "johndoe@example.com",
+            "password": "TestPassword123",
+        },
+    )
+
+    assert response.status_code == 201
+    user_data = response.json()
+    user_id = user_data["id"]
+
+    # Verify household was created with email-based name
+    result = await db.execute(
+        select(Household)
+        .join(HouseholdMember)
+        .where(HouseholdMember.user_id == user_id)
+    )
+    household = result.scalar_one()
+    assert household.name == "johndoe's Household"  # Based on email prefix

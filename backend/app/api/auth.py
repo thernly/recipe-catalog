@@ -100,6 +100,15 @@ async def register(
         preferences = UserPreferences(user_id=new_user.id)
         db.add(preferences)
 
+        # Create default household
+        from app.services.household import create_default_household_for_new_user
+
+        logger.debug(f"Creating default household for user {new_user.id}")
+        household = await create_default_household_for_new_user(db, new_user)
+        logger.debug(
+            f"Created household '{household.name}' (ID: {household.id}) for user {new_user.id}"
+        )
+
         # Create default collections
         from app.models.collection import Collection
 

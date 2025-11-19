@@ -17,6 +17,51 @@ from app.core.email import email_service
 # ============================================
 
 
+async def create_default_household_for_new_user(
+    db: AsyncSession, user: User, max_members: int = 10
+) -> Household:
+    """
+    Create a default household for a newly registered user.
+
+    This function is specifically for use during user registration and does not
+    check for existing household membership (since the user is brand new).
+
+    Args:
+        db: Database session
+        user: The newly created user
+        max_members: Maximum number of members allowed (default 10)
+
+    Returns:
+        Created household
+    """
+    # Create a user-friendly default household name
+    # Use display name if available, otherwise use email prefix
+    if user.display_name:
+        household_name = f"{user.display_name}'s Household"
+    else:
+        # Extract name from email (part before @)
+        email_prefix = user.email.split('@')[0]
+        household_name = f"{email_prefix}'s Household"
+
+    # Create household
+    household = Household(
+        name=household_name, owner_user_id=user.id, max_members=max_members
+    )
+    db.add(household)
+    await db.flush()
+
+    # Add owner as a member with owner role
+    member = HouseholdMember(
+        household_id=household.id, user_id=user.id, role="owner"
+    )
+    db.add(member)
+
+    # Note: We don't commit here - let the calling function handle the transaction
+    # This allows the household creation to be part of the larger registration transaction
+
+    return household
+
+
 async def create_household(
     db: AsyncSession, name: str, owner_user_id: int, max_members: int = 10
 ) -> Household:
