@@ -4,7 +4,6 @@
 	import { importRecipes } from '$lib/api/recipes';
 	import { getCollections } from '$lib/api/collections';
 	import type { Collection } from '$lib/api/collections';
-	import Navbar from '$lib/components/Navbar.svelte';
 
 	let loading = false;
 	let error: string | null = null;
@@ -140,9 +139,6 @@
 </svelte:head>
 
 <div class="min-h-screen bg-neutral-50">
-	<!-- Navbar -->
-	<Navbar />
-
 	<div class="container-custom py-8">
 		<div class="max-w-2xl mx-auto">
 			<!-- Header -->
