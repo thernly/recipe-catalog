@@ -106,8 +106,9 @@ function createAuthStore() {
 
 		/**
 		 * Logout user
+		 * @param redirect - If true, redirect to login page after logout
 		 */
-		async logout() {
+		async logout(redirect: boolean = false) {
 			try {
 				// Call backend logout to clear cookies
 				await fetch(`${API_BASE_URL}/api/auth/logout`, {
@@ -123,6 +124,11 @@ function createAuthStore() {
 				user: null,
 				isLoading: false
 			});
+
+			// Redirect to login page if requested and in browser
+			if (redirect && browser) {
+				window.location.href = '/auth/login';
+			}
 		},
 
 		/**

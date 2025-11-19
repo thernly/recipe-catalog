@@ -34,8 +34,8 @@ async function refreshAccessToken(): Promise<boolean> {
 			});
 
 			if (!response.ok) {
-				// Refresh failed - logout user
-				auth.logout();
+				// Refresh failed - logout user and redirect to login
+				auth.logout(true);
 				return false;
 			}
 
@@ -43,7 +43,7 @@ async function refreshAccessToken(): Promise<boolean> {
 			return true;
 		} catch (error) {
 			console.error('Token refresh failed:', error);
-			auth.logout();
+			auth.logout(true);
 			return false;
 		} finally {
 			// Clear the promise cache
