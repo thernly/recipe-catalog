@@ -310,3 +310,81 @@ async def test_generate_from_recipe(
     assert len(items) == len(ingredients)
     assert items[0].item_name == "1 cup flour"
     assert items[1].item_name == "2 eggs"
+
+
+@pytest.mark.asyncio
+async def test_ingredient_consolidation():
+    """Test the ingredient consolidation helper functions."""
+    from app.api.shopping_lists import (
+        parse_ingredient_string,
+        parse_quantity,
+        normalize_unit,
+        consolidate_ingredients,
+    )
+
+    # Test parse_ingredient_string
+    qty, unit, name = parse_ingredient_string("1 stick butter")
+    assert qty == "1"
+    assert unit == "stick"
+    assert name == "butter"
+
+    qty, unit, name = parse_ingredient_string("2 cups flour")
+    assert qty == "2"
+    assert unit == "cups"
+    assert name == "flour"
+
+    qty, unit, name = parse_ingredient_string("3 eggs")
+    assert qty == "3"
+    assert unit is None
+    assert name == "eggs"
+
+    qty, unit, name = parse_ingredient_string("1/2 teaspoon salt")
+    assert qty == "1/2"
+    assert unit == "teaspoon"
+    assert name == "salt"
+
+    # Test parse_quantity
+    assert parse_quantity("1") == 1.0
+    assert parse_quantity("1.5") == 1.5
+    assert parse_quantity("1/2") == 0.5
+    assert parse_quantity("1/4") == 0.25
+    assert parse_quantity("1 1/2") == 1.5
+    assert parse_quantity("2-3") == 3.0  # Takes max of range
+
+    # Test normalize_unit
+    assert normalize_unit("sticks") == "stick"
+    assert normalize_unit("cups") == "cup"
+    assert normalize_unit("tbsp") == "tablespoon"
+    assert normalize_unit("tsp") == "teaspoon"
+    assert normalize_unit("oz") == "ounce"
+
+    # Test consolidate_ingredients - the main feature
+    ingredients = [
+        {"name": "butter", "quantity": "1", "unit": "stick"},
+        {"name": "butter", "quantity": "1", "unit": "stick"},
+        {"name": "butter", "quantity": "1", "unit": "stick"},
+        {"name": "flour", "quantity": "2", "unit": "cup"},
+        {"name": "flour", "quantity": "1", "unit": "cup"},
+        {"name": "eggs", "quantity": "3", "unit": None},
+        {"name": "eggs", "quantity": "2", "unit": None},
+    ]
+
+    consolidated = consolidate_ingredients(ingredients)
+
+    # Should consolidate to 3 unique items
+    assert len(consolidated) == 3
+
+    # Find butter in consolidated list
+    butter = next(item for item in consolidated if item["name"].lower() == "butter")
+    assert butter["quantity"] == "3"
+    assert butter["unit"] == "stick"
+
+    # Find flour in consolidated list
+    flour = next(item for item in consolidated if item["name"].lower() == "flour")
+    assert flour["quantity"] == "3"
+    assert flour["unit"] == "cup"
+
+    # Find eggs in consolidated list
+    eggs = next(item for item in consolidated if item["name"].lower() == "eggs")
+    assert eggs["quantity"] == "5"
+    assert eggs["unit"] is None
