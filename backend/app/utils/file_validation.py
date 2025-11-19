@@ -2,7 +2,8 @@
 File upload validation utilities.
 """
 
-import imghdr
+from io import BytesIO
+from PIL import Image
 from fastapi import HTTPException, UploadFile
 
 from app.core.config import settings
@@ -61,15 +62,22 @@ async def validate_image_file(file: UploadFile) -> str:
     await file.seek(0)
 
     # Detect actual image type from file contents (not just extension)
-    image_type = imghdr.what(None, h=contents)
-
-    if image_type is None:
+    try:
+        image = Image.open(BytesIO(contents))
+        image_format = image.format.lower() if image.format else None
+    except Exception:
         raise HTTPException(
             status_code=400,
             detail="File is not a valid image",
         )
 
-    # Map imghdr types to MIME types
+    if image_format is None:
+        raise HTTPException(
+            status_code=400,
+            detail="File is not a valid image",
+        )
+
+    # Map PIL format names to MIME types
     mime_type_map = {
         "jpeg": "image/jpeg",
         "png": "image/png",
@@ -78,11 +86,11 @@ async def validate_image_file(file: UploadFile) -> str:
         "bmp": "image/bmp",
     }
 
-    mime_type = mime_type_map.get(image_type)
+    mime_type = mime_type_map.get(image_format)
     if not mime_type:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported image type: {image_type}",
+            detail=f"Unsupported image type: {image_format}",
         )
 
     # Check if MIME type is in allowed list
