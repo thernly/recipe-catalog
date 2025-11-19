@@ -58,6 +58,7 @@ class PlannedMeal(PlannedMealBase):
 
     id: int
     meal_plan_id: int
+    recipe_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

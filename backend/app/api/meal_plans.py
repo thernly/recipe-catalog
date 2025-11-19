@@ -7,7 +7,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
@@ -29,6 +29,22 @@ router = APIRouter()
 def get_week_start(input_date: date) -> date:
     """Get the Monday of the week containing the given date."""
     return input_date - timedelta(days=input_date.weekday())
+
+
+def planned_meal_to_schema(planned_meal: PlannedMeal) -> PlannedMealSchema:
+    """Convert PlannedMeal ORM object to schema with recipe_name populated."""
+    return PlannedMealSchema(
+        id=planned_meal.id,
+        meal_plan_id=planned_meal.meal_plan_id,
+        recipe_id=planned_meal.recipe_id,
+        recipe_name=planned_meal.recipe.name if planned_meal.recipe else None,
+        day_of_week=planned_meal.day_of_week,
+        meal_type=planned_meal.meal_type,
+        servings=planned_meal.servings,
+        notes=planned_meal.notes,
+        created_at=planned_meal.created_at,
+        updated_at=planned_meal.updated_at,
+    )
 
 
 @router.get("/", response_model=List[MealPlanSummary])
@@ -114,10 +130,12 @@ async def get_current_week_meal_plan(
         # Ensure the provided date is a Monday
         week_start = get_week_start(week_start)
 
-    # Try to find existing meal plan with eager loading of planned meals
+    # Try to find existing meal plan with eager loading of planned meals and recipes
     result = await db.execute(
         select(MealPlan)
-        .options(selectinload(MealPlan.planned_meals))
+        .options(
+            selectinload(MealPlan.planned_meals).joinedload(PlannedMeal.recipe)
+        )
         .where(
             and_(
                 MealPlan.household_id == household.id,
@@ -141,7 +159,16 @@ async def get_current_week_meal_plan(
         # Explicitly load planned_meals for new meal plan (will be empty)
         await db.refresh(meal_plan, ["planned_meals"])
 
-    return meal_plan
+    # Convert to schema with recipe names
+    return MealPlanSchema(
+        id=meal_plan.id,
+        household_id=meal_plan.household_id,
+        week_start_date=meal_plan.week_start_date,
+        created_by_user_id=meal_plan.created_by_user_id,
+        created_at=meal_plan.created_at,
+        updated_at=meal_plan.updated_at,
+        planned_meals=[planned_meal_to_schema(pm) for pm in meal_plan.planned_meals],
+    )
 
 
 @router.get("/{meal_plan_id}", response_model=MealPlanSchema)
@@ -165,7 +192,9 @@ async def get_meal_plan(
     """
     result = await db.execute(
         select(MealPlan)
-        .options(selectinload(MealPlan.planned_meals))
+        .options(
+            selectinload(MealPlan.planned_meals).joinedload(PlannedMeal.recipe)
+        )
         .where(
             and_(
                 MealPlan.id == meal_plan_id,
@@ -181,7 +210,16 @@ async def get_meal_plan(
             detail="Meal plan not found",
         )
 
-    return meal_plan
+    # Convert to schema with recipe names
+    return MealPlanSchema(
+        id=meal_plan.id,
+        household_id=meal_plan.household_id,
+        week_start_date=meal_plan.week_start_date,
+        created_by_user_id=meal_plan.created_by_user_id,
+        created_at=meal_plan.created_at,
+        updated_at=meal_plan.updated_at,
+        planned_meals=[planned_meal_to_schema(pm) for pm in meal_plan.planned_meals],
+    )
 
 
 @router.delete("/{meal_plan_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -294,7 +332,10 @@ async def add_planned_meal(
     await db.commit()
     await db.refresh(planned_meal)
 
-    return planned_meal
+    # Set recipe relationship for schema conversion
+    planned_meal.recipe = recipe
+
+    return planned_meal_to_schema(planned_meal)
 
 
 @router.patch("/{planned_meal_id}", response_model=PlannedMealSchema)
@@ -372,7 +413,10 @@ async def update_planned_meal(
     await db.commit()
     await db.refresh(planned_meal)
 
-    return planned_meal
+    # Load recipe relationship for schema conversion
+    await db.refresh(planned_meal, ["recipe"])
+
+    return planned_meal_to_schema(planned_meal)
 
 
 @router.delete("/meals/{planned_meal_id}", status_code=status.HTTP_204_NO_CONTENT)

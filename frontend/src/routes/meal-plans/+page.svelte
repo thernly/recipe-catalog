@@ -222,7 +222,7 @@
 								role="button"
 								tabindex="0"
 							>
-								<div class="meal-name">Recipe #{meal.recipe_id}</div>
+								<div class="meal-name">{meal.recipe_name || `Recipe #${meal.recipe_id}`}</div>
 								{#if meal.servings}
 									<div class="meal-servings">{meal.servings} servings</div>
 								{/if}
