@@ -188,9 +188,57 @@ def normalize_unit(unit: Optional[str]) -> Optional[str]:
     return unit_map.get(unit_lower, unit_lower)
 
 
+def get_base_ingredient_name(name: str) -> str:
+    """
+    Extract the base ingredient name by removing preparation methods.
+
+    This removes:
+    - Text in parentheses: "garlic (minced)" -> "garlic"
+    - Text after commas: "garlic, minced" -> "garlic"
+    - Common preparation words at the end
+
+    Args:
+        name: The full ingredient name
+
+    Returns:
+        The base ingredient name without preparation methods
+    """
+    import re
+
+    # Remove text in parentheses
+    base_name = re.sub(r'\s*\([^)]*\)\s*', ' ', name)
+
+    # Remove text after comma
+    base_name = base_name.split(',')[0]
+
+    # Strip common preparation keywords at the end
+    # These are preparation methods you do at home, so they shouldn't affect shopping
+    prep_keywords = [
+        'minced', 'chopped', 'diced', 'sliced', 'grated', 'shredded',
+        'crushed', 'pressed', 'peeled', 'julienned', 'cubed',
+        'halved', 'quartered', 'beaten', 'melted',
+        'finely', 'coarsely', 'roughly', 'thinly', 'thickly',
+        'cloves', 'clove'  # for "garlic cloves" -> "garlic"
+    ]
+
+    # Try to remove preparation keywords from the end
+    words = base_name.strip().split()
+    while words and words[-1].lower() in prep_keywords:
+        words.pop()
+
+    if words:
+        base_name = ' '.join(words)
+
+    return base_name.strip()
+
+
 def consolidate_ingredients(ingredients_data: List[Dict[str, Optional[str]]]) -> List[Dict[str, Optional[str]]]:
     """
     Consolidate ingredients by name and unit, summing quantities.
+
+    Ingredients are grouped by their base name (without preparation methods)
+    and unit. For example, "garlic (minced)", "garlic (chopped)", and "garlic cloves"
+    will all be combined into a single shopping list item.
 
     Args:
         ingredients_data: List of dicts with 'quantity', 'unit', 'name' keys
@@ -198,13 +246,16 @@ def consolidate_ingredients(ingredients_data: List[Dict[str, Optional[str]]]) ->
     Returns:
         List of consolidated ingredient dicts
     """
-    # Group by (normalized_name, normalized_unit)
+    # Group by (base_ingredient_name, normalized_unit)
     consolidated: Dict[Tuple[str, Optional[str]], Dict] = {}
 
     for ing in ingredients_data:
-        name = ing.get('name', '').strip().lower()
+        name = ing.get('name', '').strip()
         if not name:
             continue
+
+        # Get base ingredient name (without preparation methods) for grouping
+        base_name = get_base_ingredient_name(name).lower()
 
         unit = normalize_unit(ing.get('unit'))
         quantity_str = ing.get('quantity')
@@ -212,15 +263,20 @@ def consolidate_ingredients(ingredients_data: List[Dict[str, Optional[str]]]) ->
         # Parse quantity
         quantity_value = parse_quantity(quantity_str) if quantity_str else 0.0
 
-        key = (name, unit)
+        key = (base_name, unit)
 
         if key in consolidated:
             # Add to existing quantity
             consolidated[key]['quantity_value'] += quantity_value
+            # Prefer the simpler name (shorter is usually simpler)
+            current_name = consolidated[key]['name']
+            new_name = get_base_ingredient_name(name)
+            if len(new_name) < len(current_name):
+                consolidated[key]['name'] = new_name
         else:
-            # New ingredient
+            # New ingredient - use base name for display (without preparation methods)
             consolidated[key] = {
-                'name': ing.get('name', '').strip(),  # Keep original casing for display
+                'name': get_base_ingredient_name(name),
                 'unit': unit,
                 'quantity_value': quantity_value,
             }
