@@ -607,20 +607,42 @@ async def generate_from_recipe(
     await db.flush()
 
     # Add ingredients as items
-    if recipe.ingredients:
-        for idx, ingredient in enumerate(recipe.ingredients):
-            # Simple parsing - just use the ingredient text as-is
-            item = ShoppingListItem(
-                list_id=shopping_list.id,
-                item_name=ingredient,
-                quantity=None,
-                unit=None,
-                category=None,
-                notes=None,
-                checked=False,
-                display_order=idx,
-            )
-            db.add(item)
+    if recipe.recipe_data:
+        # Support both 'recipeIngredient' (Schema.org format from frontend)
+        # and 'ingredients' (legacy/test format) for backward compatibility
+        ingredients = recipe.recipe_data.get(
+            "recipeIngredient", recipe.recipe_data.get("ingredients", [])
+        )
+        if isinstance(ingredients, list):
+            for idx, ingredient in enumerate(ingredients):
+                # Handle both string and dict ingredient formats
+                if isinstance(ingredient, str):
+                    item_name = ingredient
+                elif isinstance(ingredient, dict):
+                    # If ingredient is a dict, try to format it nicely
+                    name = ingredient.get("name", ingredient.get("ingredient", ""))
+                    quantity = ingredient.get("quantity", "")
+                    unit = ingredient.get("unit", "")
+                    if quantity and unit:
+                        item_name = f"{quantity} {unit} {name}".strip()
+                    elif name:
+                        item_name = name
+                    else:
+                        continue
+                else:
+                    continue
+
+                item = ShoppingListItem(
+                    list_id=shopping_list.id,
+                    item_name=item_name,
+                    quantity=None,
+                    unit=None,
+                    category=None,
+                    notes=None,
+                    checked=False,
+                    display_order=idx,
+                )
+                db.add(item)
 
     await db.commit()
 
@@ -708,7 +730,11 @@ async def generate_from_meal_plan(
         recipe = recipe_result.scalar_one_or_none()
 
         if recipe and recipe.recipe_data:
-            ingredients = recipe.recipe_data.get("ingredients", [])
+            # Support both 'recipeIngredient' (Schema.org format from frontend)
+            # and 'ingredients' (legacy/test format) for backward compatibility
+            ingredients = recipe.recipe_data.get(
+                "recipeIngredient", recipe.recipe_data.get("ingredients", [])
+            )
             if isinstance(ingredients, list):
                 for ingredient in ingredients:
                     # Handle both string and dict ingredient formats

@@ -13,7 +13,7 @@
 		type PlannedMealCreate
 	} from '$lib/api/meal-plans';
 	import { searchRecipes, type RecipeSummary } from '$lib/api/recipes';
-	import { generateFromMealPlan } from '$lib/api/shopping-lists';
+	import { generateFromMealPlan, createShoppingList } from '$lib/api/shopping-lists';
 	import AddMealDialog from './AddMealDialog.svelte';
 	import EditMealDialog from './EditMealDialog.svelte';
 
@@ -32,6 +32,7 @@
 
 	// Shopping list generation
 	let generatingShoppingList = false;
+	let creatingBlankList = false;
 
 	const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 	const mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -141,6 +142,22 @@
 		}
 	}
 
+	async function handleCreateBlankList() {
+		creatingBlankList = true;
+		try {
+			const newList = await createShoppingList({
+				name: `Shopping list for week of ${formatDate(weekDates[0])}`,
+				description: 'Blank shopping list'
+			});
+			goto(`/shopping-lists/${newList.id}`);
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to create shopping list';
+			console.error('Failed to create shopping list:', err);
+		} finally {
+			creatingBlankList = false;
+		}
+	}
+
 	onMount(() => {
 		loadMealPlan();
 	});
@@ -174,9 +191,16 @@
 				class="btn-primary"
 				disabled={generatingShoppingList}
 			>
-				{generatingShoppingList ? '⏳ Generating...' : '🛒 Generate Shopping List'}
+				{generatingShoppingList ? '⏳ Generating...' : '🛒 Generate Shopping List from Meal Plan'}
 			</button>
 		{/if}
+		<button
+			on:click={handleCreateBlankList}
+			class="btn-secondary"
+			disabled={creatingBlankList}
+		>
+			{creatingBlankList ? '⏳ Creating...' : '📝 Create Blank Shopping List'}
+		</button>
 	</div>
 
 	{#if loading}
