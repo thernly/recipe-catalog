@@ -32,9 +32,9 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # Long-lived for better UX
 
     # CORS
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:5173"]
-    ALLOWED_METHODS: list[str] = ["GET", "POST", "PUT", "DELETE", "PATCH"]
-    ALLOWED_HEADERS: list[str] = [
+    ALLOWED_ORIGINS: str | list[str] = ["http://localhost:5173"]
+    ALLOWED_METHODS: str | list[str] = ["GET", "POST", "PUT", "DELETE", "PATCH"]
+    ALLOWED_HEADERS: str | list[str] = [
         "Authorization",
         "Content-Type",
         "Accept",
@@ -58,7 +58,7 @@ class Settings(BaseSettings):
 
     # File Upload
     MAX_UPLOAD_SIZE_MB: int = 10
-    ALLOWED_IMAGE_TYPES: list[str] = ["image/jpeg", "image/png", "image/webp"]
+    ALLOWED_IMAGE_TYPES: str | list[str] = ["image/jpeg", "image/png", "image/webp"]
 
     # Logging
     LOG_LEVEL: str = "INFO"
@@ -84,31 +84,31 @@ class Settings(BaseSettings):
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
-    def parse_origins(cls, v):
+    def parse_origins(cls, v) -> list[str]:
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v if isinstance(v, list) else [v]
 
     @field_validator("ALLOWED_METHODS", mode="before")
     @classmethod
-    def parse_methods(cls, v):
+    def parse_methods(cls, v) -> list[str]:
         if isinstance(v, str):
-            return [method.strip() for method in v.split(",")]
-        return v
+            return [method.strip() for method in v.split(",") if method.strip()]
+        return v if isinstance(v, list) else [v]
 
     @field_validator("ALLOWED_IMAGE_TYPES", mode="before")
     @classmethod
-    def parse_image_types(cls, v):
+    def parse_image_types(cls, v) -> list[str]:
         if isinstance(v, str):
-            return [image_type.strip() for image_type in v.split(",")]
-        return v
+            return [image_type.strip() for image_type in v.split(",") if image_type.strip()]
+        return v if isinstance(v, list) else [v]
 
     @field_validator("ALLOWED_HEADERS", mode="before")
     @classmethod
-    def parse_headers(cls, v):
+    def parse_headers(cls, v) -> list[str]:
         if isinstance(v, str):
-            return [header.strip() for header in v.split(",")]
-        return v
+            return [header.strip() for header in v.split(",") if header.strip()]
+        return v if isinstance(v, list) else [v]
 
     @field_validator("SECRET_KEY")
     @classmethod

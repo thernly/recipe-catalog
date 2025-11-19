@@ -7,6 +7,10 @@ os.environ.setdefault(
     "SECRET_KEY", "test-secret-key-for-testing-only-min-32-characters-long"
 )
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:5173")
+os.environ.setdefault("ALLOWED_METHODS", "GET,POST,PUT,DELETE,PATCH")
+os.environ.setdefault("ALLOWED_HEADERS", "Authorization,Content-Type,Accept,X-CSRF-Token")
+os.environ.setdefault("ALLOWED_IMAGE_TYPES", "image/jpeg,image/png,image/webp")
 
 import pytest
 import pytest_asyncio
