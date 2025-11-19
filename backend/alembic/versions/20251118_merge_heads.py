@@ -9,10 +9,12 @@ Create Date: 2025-11-18 12:30:00.000000
 from typing import Sequence, Union
 
 
-
 # revision identifiers, used by Alembic.
 revision: str = "20251118_merge_heads"
-down_revision: Union[str, Sequence[str], None] = ("20251118_oauth_state", "20251118_add_refresh_tokens")
+down_revision: Union[str, Sequence[str], None] = (
+    "20251118_oauth_state",
+    "20251118_add_refresh_tokens",
+)
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -143,7 +143,10 @@ async def register(
 @router.post("/login")
 @limiter.limit(lambda: _get_rate_limit("10/minute"))
 async def login(
-    request: Request, response: Response, login_data: UserLogin, db: AsyncSession = Depends(get_db)
+    request: Request,
+    response: Response,
+    login_data: UserLogin,
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Authenticate user and set httpOnly cookies.
@@ -350,9 +353,7 @@ async def logout(
     if refresh_token_value:
         # Revoke the refresh token
         result = await db.execute(
-            select(RefreshToken).where(
-                RefreshToken.token == refresh_token_value
-            )
+            select(RefreshToken).where(RefreshToken.token == refresh_token_value)
         )
         refresh_token_record = result.scalar_one_or_none()
 

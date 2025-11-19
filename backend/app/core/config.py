@@ -100,7 +100,9 @@ class Settings(BaseSettings):
     @classmethod
     def parse_image_types(cls, v) -> list[str]:
         if isinstance(v, str):
-            return [image_type.strip() for image_type in v.split(",") if image_type.strip()]
+            return [
+                image_type.strip() for image_type in v.split(",") if image_type.strip()
+            ]
         return v if isinstance(v, list) else [v]
 
     @field_validator("ALLOWED_HEADERS", mode="before")

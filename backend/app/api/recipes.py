@@ -49,8 +49,10 @@ def sanitize_recipe_data(data: dict) -> dict:
             sanitized[key] = sanitize_recipe_data(value)
         elif isinstance(value, list):
             sanitized[key] = [
-                sanitize_recipe_data(item) if isinstance(item, dict)
-                else sanitize_html(item) if isinstance(item, str)
+                sanitize_recipe_data(item)
+                if isinstance(item, dict)
+                else sanitize_html(item)
+                if isinstance(item, str)
                 else item
                 for item in value
             ]
@@ -80,7 +82,9 @@ async def create_recipe(
     """
     # Sanitize user input to prevent XSS attacks
     sanitized_name = sanitize_html(recipe_data.name) if recipe_data.name else None
-    sanitized_description = sanitize_html(recipe_data.description) if recipe_data.description else None
+    sanitized_description = (
+        sanitize_html(recipe_data.description) if recipe_data.description else None
+    )
     sanitized_recipe_data = sanitize_recipe_data(recipe_data.recipe_data)
 
     # Create recipe

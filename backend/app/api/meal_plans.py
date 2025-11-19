@@ -133,9 +133,7 @@ async def get_current_week_meal_plan(
     # Try to find existing meal plan with eager loading of planned meals and recipes
     result = await db.execute(
         select(MealPlan)
-        .options(
-            selectinload(MealPlan.planned_meals).joinedload(PlannedMeal.recipe)
-        )
+        .options(selectinload(MealPlan.planned_meals).joinedload(PlannedMeal.recipe))
         .where(
             and_(
                 MealPlan.household_id == household.id,
@@ -192,9 +190,7 @@ async def get_meal_plan(
     """
     result = await db.execute(
         select(MealPlan)
-        .options(
-            selectinload(MealPlan.planned_meals).joinedload(PlannedMeal.recipe)
-        )
+        .options(selectinload(MealPlan.planned_meals).joinedload(PlannedMeal.recipe))
         .where(
             and_(
                 MealPlan.id == meal_plan_id,

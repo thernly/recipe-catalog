@@ -116,7 +116,7 @@ async def list_shopping_lists(
             ShoppingList.status,
             ShoppingList.created_at,
             func.count(ShoppingListItem.id).label("item_count"),
-            func.sum(case((ShoppingListItem.checked == True, 1), else_=0)).label(
+            func.sum(case((ShoppingListItem.checked, 1), else_=0)).label(
                 "checked_count"
             ),
         )
@@ -716,7 +716,7 @@ async def generate_from_meal_plan(
         recipe = recipe_result.scalar_one_or_none()
 
         if recipe and recipe.recipe_data:
-            ingredients = recipe.recipe_data.get('ingredients', [])
+            ingredients = recipe.recipe_data.get("ingredients", [])
             if isinstance(ingredients, list):
                 for ingredient in ingredients:
                     # Handle both string and dict ingredient formats
@@ -724,9 +724,9 @@ async def generate_from_meal_plan(
                         ingredients_list.append(ingredient)
                     elif isinstance(ingredient, dict):
                         # If ingredient is a dict, try to format it nicely
-                        name = ingredient.get('name', ingredient.get('ingredient', ''))
-                        quantity = ingredient.get('quantity', '')
-                        unit = ingredient.get('unit', '')
+                        name = ingredient.get("name", ingredient.get("ingredient", ""))
+                        quantity = ingredient.get("quantity", "")
+                        unit = ingredient.get("unit", "")
                         if quantity and unit:
                             ingredients_list.append(f"{quantity} {unit} {name}".strip())
                         elif name:
