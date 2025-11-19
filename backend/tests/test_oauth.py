@@ -346,3 +346,72 @@ async def test_oauth_callback_state_mismatch(client: AsyncClient, test_db):
         # Should reject due to state mismatch (if provider is configured)
         # or return 503 if not configured
         assert response.status_code in [400, 503]
+
+
+@pytest.mark.asyncio
+@patch("app.core.oauth.oauth.create_client")
+async def test_oauth_creates_default_household(
+    mock_create_client, client: AsyncClient, test_db
+):
+    """Test that OAuth registration automatically creates a default household."""
+    from app.models.household import Household, HouseholdMember
+    from sqlalchemy import select
+
+    # Mock OAuth client
+    mock_client = AsyncMock()
+    mock_client.authorize_access_token = AsyncMock(
+        return_value={
+            "userinfo": {
+                "sub": "google_newhousehold",
+                "email": "oauth_household@example.com",
+                "email_verified": True,
+                "name": "OAuth User",
+            }
+        }
+    )
+    mock_create_client.return_value = mock_client
+
+    # Create OAuth state in database
+    from app.models.oauth_state import OAuthState
+
+    oauth_state = OAuthState.create_state(provider="google", link_user_id=None)
+    oauth_state.token = "test_state_household"
+    test_db.add(oauth_state)
+    await test_db.commit()
+
+    # Make callback request (creates new user via OAuth)
+    response = await client.get(
+        "/api/auth/google/callback?code=test_code&state=test_state_household"
+    )
+
+    # Should successfully create user and return token
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+
+    # Find the created user
+    result = await test_db.execute(
+        select(User).where(User.email == "oauth_household@example.com")
+    )
+    user = result.scalar_one()
+
+    # Verify household was created for the user
+    result = await test_db.execute(
+        select(Household)
+        .join(HouseholdMember)
+        .where(HouseholdMember.user_id == user.id)
+    )
+    household = result.scalar_one()
+    assert household is not None
+    assert household.owner_user_id == user.id
+    assert household.name == "OAuth User's Household"  # User-friendly default name
+
+    # Verify user is a member with owner role
+    result = await test_db.execute(
+        select(HouseholdMember).where(
+            HouseholdMember.user_id == user.id,
+            HouseholdMember.household_id == household.id,
+        )
+    )
+    membership = result.scalar_one()
+    assert membership.role == "owner"
