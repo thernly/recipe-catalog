@@ -1,7 +1,8 @@
 """Identity Provider model for OAuth/OIDC authentication."""
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 from app.models._utils import utc_now
 
@@ -15,9 +16,7 @@ class IdentityProvider(Base):
     user_id = Column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    provider_name = Column(
-        String(50), nullable=False
-    )  # 'google', 'microsoft', 'github'
+    provider_name = Column(String(50), nullable=False)  # 'google', 'microsoft', 'github'
     provider_subject = Column(String(255), nullable=False)  # Unique ID from provider
     email_at_provider = Column(String(255), nullable=False)  # Email from provider
     created_at = Column(DateTime, default=utc_now, nullable=False)

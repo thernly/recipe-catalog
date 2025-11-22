@@ -2,16 +2,18 @@
 Tests for collection management API endpoints
 """
 
+from datetime import UTC
+
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.collection import Collection
+from app.models.household import Household, HouseholdMember
 from app.models.recipe import Recipe
 from app.models.user import User
-from app.models.household import Household, HouseholdMember
 
 
 @pytest_asyncio.fixture
@@ -114,7 +116,9 @@ async def test_list_collections(client: AsyncClient, auth_headers: dict, test_db
 
 
 @pytest.mark.asyncio
-async def test_list_collections_includes_recipe_count(client: AsyncClient, auth_headers: dict, test_db):
+async def test_list_collections_includes_recipe_count(
+    client: AsyncClient, auth_headers: dict, test_db
+):
     """Test that collection list includes recipe counts"""
     # Create collection
     response = await client.post("/api/collections/", json={"name": "Test Collection"})
@@ -127,9 +131,7 @@ async def test_list_collections_includes_recipe_count(client: AsyncClient, auth_
     )
     recipe_id = recipe_response.json()["id"]
 
-    await client.post(
-        f"/api/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]}
-    )
+    await client.post(f"/api/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
 
     # List collections
     response = await client.get("/api/collections/")
@@ -201,9 +203,7 @@ async def test_update_collection_partial(client: AsyncClient, auth_headers: dict
     collection_id = create_response.json()["id"]
 
     # Update only name
-    response = await client.patch(
-        f"/api/collections/{collection_id}", json={"name": "New Name"}
-    )
+    response = await client.patch(f"/api/collections/{collection_id}", json={"name": "New Name"})
 
     assert response.status_code == 200
     data = response.json()
@@ -233,9 +233,7 @@ async def test_update_collection_duplicate_name(client: AsyncClient, auth_header
 async def test_delete_collection(client: AsyncClient, auth_headers: dict, test_db):
     """Test deleting a collection"""
     # Create collection
-    create_response = await client.post(
-        "/api/collections/", json={"name": "To Delete"}
-    )
+    create_response = await client.post("/api/collections/", json={"name": "To Delete"})
     collection_id = create_response.json()["id"]
 
     # Delete collection
@@ -249,21 +247,19 @@ async def test_delete_collection(client: AsyncClient, auth_headers: dict, test_d
 
 
 @pytest.mark.asyncio
-async def test_delete_collection_preserves_recipes(client: AsyncClient, auth_headers: dict, test_db):
+async def test_delete_collection_preserves_recipes(
+    client: AsyncClient, auth_headers: dict, test_db
+):
     """Test that deleting a collection doesn't delete recipes"""
     # Create collection
     coll_response = await client.post("/api/collections/", json={"name": "Delete Me"})
     collection_id = coll_response.json()["id"]
 
     # Create and add recipe
-    recipe_response = await client.post(
-        "/api/recipes", json={"name": "Keep This Recipe"}
-    )
+    recipe_response = await client.post("/api/recipes", json={"name": "Keep This Recipe"})
     recipe_id = recipe_response.json()["id"]
 
-    await client.post(
-        f"/api/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]}
-    )
+    await client.post(f"/api/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
 
     # Delete collection
     await client.delete(f"/api/collections/{collection_id}")
@@ -274,7 +270,9 @@ async def test_delete_collection_preserves_recipes(client: AsyncClient, auth_hea
 
 
 @pytest.mark.asyncio
-async def test_cannot_delete_default_collection(client: AsyncClient, auth_headers: dict, test_db, test_user: User, test_household: Household):
+async def test_cannot_delete_default_collection(
+    client: AsyncClient, auth_headers: dict, test_db, test_user: User, test_household: Household
+):
     """Test that default collections cannot be deleted"""
     # Create default collection
     default_collection = Collection(
@@ -332,9 +330,7 @@ async def test_add_duplicate_recipe_to_collection_skips(client: AsyncClient, aut
     recipe_id = recipe_response.json()["id"]
 
     # Add recipe first time
-    await client.post(
-        f"/api/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]}
-    )
+    await client.post(f"/api/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
 
     # Add same recipe again
     response = await client.post(
@@ -374,9 +370,7 @@ async def test_remove_recipes_from_collection(client: AsyncClient, auth_headers:
     recipe_id = recipe_response.json()["id"]
 
     # Add recipe
-    await client.post(
-        f"/api/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]}
-    )
+    await client.post(f"/api/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
 
     # Remove recipe
     response = await client.request(
@@ -425,9 +419,11 @@ async def test_get_collection_recipes(client: AsyncClient, auth_headers: dict):
 
 
 @pytest.mark.asyncio
-async def test_get_collection_recipes_excludes_deleted(client: AsyncClient, auth_headers: dict, test_db):
+async def test_get_collection_recipes_excludes_deleted(
+    client: AsyncClient, auth_headers: dict, test_db
+):
     """Test that getting collection recipes excludes soft-deleted recipes"""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     # Create collection
     coll_response = await client.post("/api/collections/", json={"name": "Collection"})
@@ -448,11 +444,9 @@ async def test_get_collection_recipes_excludes_deleted(client: AsyncClient, auth
     )
 
     # Soft delete second recipe
-    deleted_recipe = await test_db.execute(
-        select(Recipe).where(Recipe.id == recipe2_id)
-    )
+    deleted_recipe = await test_db.execute(select(Recipe).where(Recipe.id == recipe2_id))
     recipe_to_delete = deleted_recipe.scalar_one()
-    recipe_to_delete.deleted_at = datetime.now(timezone.utc)
+    recipe_to_delete.deleted_at = datetime.now(UTC)
     await test_db.commit()
 
     # Get collection recipes
@@ -467,9 +461,7 @@ async def test_get_collection_recipes_excludes_deleted(client: AsyncClient, auth
 @pytest.mark.asyncio
 async def test_collection_not_found_when_adding_recipes(client: AsyncClient, auth_headers: dict):
     """Test adding recipes to non-existent collection"""
-    response = await client.post(
-        "/api/collections/99999/recipes", json={"recipe_ids": [1]}
-    )
+    response = await client.post("/api/collections/99999/recipes", json={"recipe_ids": [1]})
 
     assert response.status_code == 404
 
@@ -558,7 +550,9 @@ async def test_add_multiple_recipes_mixed_results(client: AsyncClient, auth_head
 
 
 @pytest.mark.asyncio
-async def test_collection_includes_creator_display_name(client: AsyncClient, auth_headers: dict, test_user: User):
+async def test_collection_includes_creator_display_name(
+    client: AsyncClient, auth_headers: dict, test_user: User
+):
     """Test that collection includes creator display name"""
     response = await client.post("/api/collections/", json={"name": "Test"})
 

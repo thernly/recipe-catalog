@@ -2,7 +2,8 @@
 
 import pytest
 from pydantic import ValidationError
-from app.schemas.user import UserPreferencesUpdate, UserPreferencesBase
+
+from app.schemas.user import UserPreferencesBase, UserPreferencesUpdate
 
 
 def test_valid_theme_values():

@@ -1,8 +1,9 @@
 """OAuth state storage model for CSRF protection."""
 
-from sqlalchemy import Column, Integer, String, DateTime, JSON
-from datetime import datetime, timedelta, timezone
 import secrets
+from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import JSON, Column, DateTime, Integer, String
 
 from app.core.database import Base
 from app.models._utils import utc_now
@@ -25,9 +26,7 @@ class OAuthState(Base):
         return secrets.token_urlsafe(32)
 
     @classmethod
-    def create_state(
-        cls, provider: str, link_user_id: int = None, minutes_valid: int = 10
-    ):
+    def create_state(cls, provider: str, link_user_id: int = None, minutes_valid: int = 10):
         """Create a new OAuth state token.
 
         Args:
@@ -36,7 +35,7 @@ class OAuthState(Base):
             minutes_valid: Token validity period in minutes (default: 10)
         """
         token = cls.generate_token()
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=minutes_valid)
+        expires_at = datetime.now(UTC) + timedelta(minutes=minutes_valid)
         data = {"provider": provider, "link_user_id": link_user_id}
 
         return cls(
@@ -47,7 +46,7 @@ class OAuthState(Base):
 
     def is_valid(self) -> bool:
         """Check if state token is still valid."""
-        return self.expires_at > datetime.now(timezone.utc)
+        return self.expires_at > datetime.now(UTC)
 
     @classmethod
     async def cleanup_expired(cls, db_session):
@@ -58,7 +57,7 @@ class OAuthState(Base):
         """
         from sqlalchemy import delete
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         stmt = delete(cls).where(cls.expires_at < now)
         result = await db_session.execute(stmt)
         await db_session.commit()

@@ -1,10 +1,12 @@
 """Tests for OAuth/OIDC authentication endpoints."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch, AsyncMock
-from app.models.user import User
+
 from app.models.identity_provider import IdentityProvider
+from app.models.user import User
 
 
 @pytest.mark.asyncio
@@ -48,9 +50,7 @@ async def test_oauth_callback_missing_state(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_oauth_callback_invalid_state(client: AsyncClient):
     """Test OAuth callback with invalid state."""
-    response = await client.get(
-        "/api/auth/google/callback?code=test_code&state=invalid_state"
-    )
+    response = await client.get("/api/auth/google/callback?code=test_code&state=invalid_state")
 
     assert response.status_code in [400, 503]
 
@@ -134,9 +134,7 @@ async def test_unlink_provider_not_found(client: AsyncClient):
 
 @pytest.mark.asyncio
 @patch("app.core.oauth.oauth.create_client")
-async def test_oauth_callback_new_user_flow(
-    mock_create_client, client: AsyncClient, test_db
-):
+async def test_oauth_callback_new_user_flow(mock_create_client, client: AsyncClient, test_db):
     """Test OAuth callback creating new user (mocked)."""
     # Mock OAuth client with async methods
     mock_client = AsyncMock()
@@ -162,9 +160,7 @@ async def test_oauth_callback_new_user_flow(
     await test_db.commit()
 
     # Make callback request
-    response = await client.get(
-        "/api/auth/google/callback?code=test_code&state=test_state"
-    )
+    response = await client.get("/api/auth/google/callback?code=test_code&state=test_state")
 
     # Should successfully create user and return token
     assert response.status_code == 200
@@ -211,9 +207,7 @@ async def test_oauth_callback_auto_link_existing_user(
     test_db.add(oauth_state)
     await test_db.commit()
 
-    response = await client.get(
-        "/api/auth/google/callback?code=test_code&state=test_state"
-    )
+    response = await client.get("/api/auth/google/callback?code=test_code&state=test_state")
 
     # Should successfully link and return token
     assert response.status_code == 200
@@ -262,9 +256,7 @@ async def test_oauth_callback_unverified_email_rejects_link(
     test_db.add(oauth_state)
     await test_db.commit()
 
-    response = await client.get(
-        "/api/auth/google/callback?code=test_code&state=test_state"
-    )
+    response = await client.get("/api/auth/google/callback?code=test_code&state=test_state")
 
     # Should reject auto-linking
     assert response.status_code == 400
@@ -339,9 +331,7 @@ async def test_oauth_callback_state_mismatch(client: AsyncClient, test_db):
     # Try to use with microsoft (mismatch)
     with patch("app.core.oauth.oauth.create_client") as mock:
         mock.return_value = AsyncMock()
-        response = await client.get(
-            "/api/auth/microsoft/callback?code=test_code&state=test_state"
-        )
+        response = await client.get("/api/auth/microsoft/callback?code=test_code&state=test_state")
 
         # Should reject due to state mismatch (if provider is configured)
         # or return 503 if not configured
@@ -350,12 +340,11 @@ async def test_oauth_callback_state_mismatch(client: AsyncClient, test_db):
 
 @pytest.mark.asyncio
 @patch("app.core.oauth.oauth.create_client")
-async def test_oauth_creates_default_household(
-    mock_create_client, client: AsyncClient, test_db
-):
+async def test_oauth_creates_default_household(mock_create_client, client: AsyncClient, test_db):
     """Test that OAuth registration automatically creates a default household."""
-    from app.models.household import Household, HouseholdMember
     from sqlalchemy import select
+
+    from app.models.household import Household, HouseholdMember
 
     # Mock OAuth client
     mock_client = AsyncMock()
@@ -390,16 +379,12 @@ async def test_oauth_creates_default_household(
     assert "access_token" in data
 
     # Find the created user
-    result = await test_db.execute(
-        select(User).where(User.email == "oauth_household@example.com")
-    )
+    result = await test_db.execute(select(User).where(User.email == "oauth_household@example.com"))
     user = result.scalar_one()
 
     # Verify household was created for the user
     result = await test_db.execute(
-        select(Household)
-        .join(HouseholdMember)
-        .where(HouseholdMember.user_id == user.id)
+        select(Household).join(HouseholdMember).where(HouseholdMember.user_id == user.id)
     )
     household = result.scalar_one()
     assert household is not None

@@ -2,10 +2,13 @@
 Database configuration and session management.
 """
 
-from typing import AsyncGenerator
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from collections.abc import AsyncGenerator
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
+
 from app.core.config import settings
+
 
 # Create base class for models
 Base = declarative_base()
@@ -27,7 +30,7 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db() -> AsyncGenerator[AsyncSession]:
     """
     Dependency function that yields database sessions.
 
@@ -51,18 +54,18 @@ async def init_db():
     """Initialize database tables."""
     # Import all models to ensure they're registered with SQLAlchemy
     from app.models import (  # noqa: F401
-        User,
-        UserPreferences,
-        Recipe,
         Collection,
-        RecipeCollection,
-        VerificationToken,
-        PasswordResetToken,
         Household,
-        HouseholdMember,
         HouseholdInvitation,
+        HouseholdMember,
+        PasswordResetToken,
+        Recipe,
+        RecipeCollection,
         ShoppingList,
         ShoppingListItem,
+        User,
+        UserPreferences,
+        VerificationToken,
     )
 
     async with engine.begin() as conn:

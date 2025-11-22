@@ -9,6 +9,7 @@ Run this script from the backend directory:
 import sqlite3
 from pathlib import Path
 
+
 # Find the database file
 db_path = Path(__file__).parent.parent / "backend" / "recipes.db"
 

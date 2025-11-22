@@ -1,8 +1,8 @@
 """Household-related Pydantic schemas."""
 
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 # ============================================
@@ -25,7 +25,7 @@ class HouseholdCreate(HouseholdBase):
 class HouseholdUpdate(BaseModel):
     """Schema for updating a household."""
 
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    name: str | None = Field(None, min_length=1, max_length=100)
 
 
 class Household(HouseholdBase):
@@ -59,8 +59,8 @@ class HouseholdMember(HouseholdMemberBase):
     household_id: int
     joined_at: datetime
     # Include user details for convenience
-    user_email: Optional[str] = None
-    user_display_name: Optional[str] = None
+    user_email: str | None = None
+    user_display_name: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -85,11 +85,11 @@ class HouseholdInvitation(BaseModel):
     invitee_email: str
     token: str
     expires_at: datetime
-    accepted_at: Optional[datetime] = None
+    accepted_at: datetime | None = None
     created_at: datetime
     # Include related entity details for convenience
-    household_name: Optional[str] = None
-    inviter_display_name: Optional[str] = None
+    household_name: str | None = None
+    inviter_display_name: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

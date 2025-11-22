@@ -2,10 +2,11 @@
 Tests for file validation utilities
 """
 
-import pytest
 from io import BytesIO
-from PIL import Image
+
+import pytest
 from fastapi import HTTPException
+from PIL import Image
 
 from app.utils.file_validation import validate_file_size, validate_image_file
 
@@ -13,7 +14,9 @@ from app.utils.file_validation import validate_file_size, validate_image_file
 class MockUploadFile:
     """Mock UploadFile for testing"""
 
-    def __init__(self, content: bytes, filename: str, content_type: str = "application/octet-stream"):
+    def __init__(
+        self, content: bytes, filename: str, content_type: str = "application/octet-stream"
+    ):
         self.content = content
         self.filename = filename
         self.content_type = content_type
@@ -21,11 +24,11 @@ class MockUploadFile:
 
     async def read(self, size: int = -1):
         if size == -1:
-            data = self.content[self._position:]
+            data = self.content[self._position :]
             self._position = len(self.content)
             return data
         else:
-            data = self.content[self._position:self._position + size]
+            data = self.content[self._position : self._position + size]
             self._position += size
             return data
 
@@ -151,7 +154,9 @@ async def test_validate_image_file_unsupported_format():
         await validate_image_file(file)
 
     assert exc_info.value.status_code == 400
-    assert "not allowed" in exc_info.value.detail or "Unsupported image type" in exc_info.value.detail
+    assert (
+        "not allowed" in exc_info.value.detail or "Unsupported image type" in exc_info.value.detail
+    )
 
 
 @pytest.mark.asyncio

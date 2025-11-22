@@ -2,16 +2,17 @@
 
 from sqlalchemy import (
     Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
     Integer,
     String,
-    DateTime,
-    Date,
     Text,
-    ForeignKey,
     UniqueConstraint,
-    Index,
 )
 from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 from app.models._utils import utc_now
 
@@ -22,9 +23,7 @@ class MealPlan(Base):
     __tablename__ = "meal_plans"
 
     id = Column(Integer, primary_key=True, index=True)
-    household_id = Column(
-        Integer, ForeignKey("households.id"), nullable=False, index=True
-    )
+    household_id = Column(Integer, ForeignKey("households.id"), nullable=False, index=True)
     week_start_date = Column(Date, nullable=False, index=True)
     created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
@@ -49,14 +48,10 @@ class PlannedMeal(Base):
     __tablename__ = "planned_meals"
 
     id = Column(Integer, primary_key=True, index=True)
-    meal_plan_id = Column(
-        Integer, ForeignKey("meal_plans.id"), nullable=False, index=True
-    )
+    meal_plan_id = Column(Integer, ForeignKey("meal_plans.id"), nullable=False, index=True)
     recipe_id = Column(Integer, ForeignKey("recipes.id"), nullable=False)
     day_of_week = Column(Integer, nullable=False)  # 0-6 (Monday-Sunday)
-    meal_type = Column(
-        String(20), nullable=False
-    )  # breakfast, lunch, dinner, snack, other
+    meal_type = Column(String(20), nullable=False)  # breakfast, lunch, dinner, snack, other
     servings = Column(Integer, nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utc_now, nullable=False)

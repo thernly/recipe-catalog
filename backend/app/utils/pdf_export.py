@@ -2,8 +2,10 @@
 PDF export utility for recipes and collections.
 """
 
-from typing import List, Any
-from weasyprint import HTML, CSS
+from typing import Any
+
+from weasyprint import CSS, HTML
+
 from app.utils.recipe_format import convert_to_schema_org
 
 
@@ -24,15 +26,13 @@ def generate_recipe_pdf(recipe: Any) -> bytes:
     html_content = _generate_recipe_html(schema_recipe)
 
     # Convert HTML to PDF
-    pdf_bytes = HTML(string=html_content).write_pdf(
-        stylesheets=[CSS(string=_get_pdf_styles())]
-    )
+    pdf_bytes = HTML(string=html_content).write_pdf(stylesheets=[CSS(string=_get_pdf_styles())])
 
     return pdf_bytes
 
 
 def generate_collection_pdf(
-    collection_name: str, collection_description: str, recipes: List[Any]
+    collection_name: str, collection_description: str, recipes: list[Any]
 ) -> bytes:
     """
     Generate a PDF for a collection of recipes.
@@ -71,9 +71,7 @@ def generate_collection_pdf(
     """
 
     # Convert HTML to PDF
-    pdf_bytes = HTML(string=html_content).write_pdf(
-        stylesheets=[CSS(string=_get_pdf_styles())]
-    )
+    pdf_bytes = HTML(string=html_content).write_pdf(stylesheets=[CSS(string=_get_pdf_styles())])
 
     return pdf_bytes
 
@@ -81,9 +79,7 @@ def generate_collection_pdf(
 def _generate_collection_header(name: str, description: str) -> str:
     """Generate HTML for collection cover page."""
     desc_html = (
-        f"<p class='collection-description'>{_escape_html(description)}</p>"
-        if description
-        else ""
+        f"<p class='collection-description'>{_escape_html(description)}</p>" if description else ""
     )
 
     return f"""
@@ -94,7 +90,7 @@ def _generate_collection_header(name: str, description: str) -> str:
     """
 
 
-def _generate_table_of_contents(recipes: List[Any]) -> str:
+def _generate_table_of_contents(recipes: list[Any]) -> str:
     """Generate HTML for table of contents."""
     recipe_items = []
     for i, recipe in enumerate(recipes, 1):
@@ -151,17 +147,13 @@ def _generate_recipe_html(schema_recipe: dict, include_page_break: bool = False)
         )
     if schema_recipe.get("recipeCategory"):
         categories = schema_recipe["recipeCategory"]
-        category_str = (
-            ", ".join(categories) if isinstance(categories, list) else str(categories)
-        )
+        category_str = ", ".join(categories) if isinstance(categories, list) else str(categories)
         metadata_items.append(
             f"<div class='meta-item'><strong>Category:</strong> {_escape_html(category_str)}</div>"
         )
     if schema_recipe.get("recipeCuisine"):
         cuisines = schema_recipe["recipeCuisine"]
-        cuisine_str = (
-            ", ".join(cuisines) if isinstance(cuisines, list) else str(cuisines)
-        )
+        cuisine_str = ", ".join(cuisines) if isinstance(cuisines, list) else str(cuisines)
         metadata_items.append(
             f"<div class='meta-item'><strong>Cuisine:</strong> {_escape_html(cuisine_str)}</div>"
         )
@@ -175,9 +167,7 @@ def _generate_recipe_html(schema_recipe: dict, include_page_break: bool = False)
         )
 
     metadata_html = (
-        f"<div class='metadata'>{''.join(metadata_items)}</div>"
-        if metadata_items
-        else ""
+        f"<div class='metadata'>{''.join(metadata_items)}</div>" if metadata_items else ""
     )
 
     # Ingredients
@@ -265,11 +255,7 @@ def _generate_recipe_html(schema_recipe: dict, include_page_break: bool = False)
             nutrition_items = []
             for key, value in nutrition.items():
                 if value:
-                    label = (
-                        "".join([" " + c if c.isupper() else c for c in key])
-                        .strip()
-                        .title()
-                    )
+                    label = "".join([" " + c if c.isupper() else c for c in key]).strip().title()
                     nutrition_items.append(
                         f"<div class='nutrition-item'><strong>{_escape_html(label)}:</strong> {_escape_html(str(value))}</div>"
                     )

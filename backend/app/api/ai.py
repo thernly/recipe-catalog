@@ -3,26 +3,28 @@ AI-powered recipe generation API endpoints.
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
 
-from app.core.deps import get_current_user, get_user_household
-from app.core.database import get_db
 from app.core.config import settings
-from app.models.user import User
+from app.core.database import get_db
+from app.core.deps import get_current_user, get_user_household
 from app.models.household import Household
 from app.models.recipe import Recipe
+from app.models.user import User
 from app.schemas.ai import (
-    AIRecipeGenerateRequest,
-    AIRecipeGenerateResponse,
     AIMenuGenerateRequest,
     AIMenuGenerateResponse,
+    AIRecipeGenerateRequest,
+    AIRecipeGenerateResponse,
     MealSuggestion,
 )
 from app.services.ai import ai_service
+
 
 logger = logging.getLogger(__name__)
 
@@ -145,9 +147,7 @@ async def generate_menu(
                 {
                     "id": recipe.id,
                     "name": recipe.name,
-                    "category": recipe.recipeCategory[0]
-                    if recipe.recipeCategory
-                    else None,
+                    "category": recipe.recipeCategory[0] if recipe.recipeCategory else None,
                 }
                 for recipe in recipes
             ]

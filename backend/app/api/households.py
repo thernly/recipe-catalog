@@ -1,26 +1,33 @@
 """Household API endpoints."""
 
-from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models.user import User
 from app.models.household import Household
+from app.models.user import User
+from app.schemas.household import (
+    Household as HouseholdSchema,
+)
 from app.schemas.household import (
     HouseholdCreate,
-    HouseholdUpdate,
-    Household as HouseholdSchema,
-    HouseholdWithMembers,
-    HouseholdMember as HouseholdMemberSchema,
     HouseholdInvitationCreate,
-    HouseholdInvitation as HouseholdInvitationSchema,
+    HouseholdUpdate,
+    HouseholdWithMembers,
     InvitationAcceptRequest,
     InvitationDeclineRequest,
 )
+from app.schemas.household import (
+    HouseholdInvitation as HouseholdInvitationSchema,
+)
+from app.schemas.household import (
+    HouseholdMember as HouseholdMemberSchema,
+)
 from app.services import household as household_service
+
 
 router = APIRouter()
 
@@ -47,9 +54,7 @@ async def create_household(
     Returns:
         Created household
     """
-    household = await household_service.create_household(
-        db, household_data.name, current_user.id
-    )
+    household = await household_service.create_household(db, household_data.name, current_user.id)
     return household
 
 
@@ -157,7 +162,7 @@ async def delete_household(
 # ============================================
 
 
-@router.get("/{household_id}/members", response_model=List[HouseholdMemberSchema])
+@router.get("/{household_id}/members", response_model=list[HouseholdMemberSchema])
 async def get_household_members(
     household_id: int,
     current_user: User = Depends(get_current_user),
@@ -175,9 +180,7 @@ async def get_household_members(
         List of household members
     """
     # Verify user has access to this household
-    if not await household_service.check_user_household_access(
-        db, current_user.id, household_id
-    ):
+    if not await household_service.check_user_household_access(db, current_user.id, household_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User does not have access to this household",
@@ -205,9 +208,7 @@ async def get_household_members(
     return members_with_details
 
 
-@router.delete(
-    "/{household_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT
-)
+@router.delete("/{household_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_household_member(
     household_id: int,
     user_id: int,
@@ -223,9 +224,7 @@ async def remove_household_member(
         current_user: The authenticated user
         db: Database session
     """
-    await household_service.remove_household_member(
-        db, household_id, user_id, current_user.id
-    )
+    await household_service.remove_household_member(db, household_id, user_id, current_user.id)
 
 
 # ============================================
@@ -262,9 +261,7 @@ async def create_invitation(
     return invitation
 
 
-@router.get(
-    "/{household_id}/invitations", response_model=List[HouseholdInvitationSchema]
-)
+@router.get("/{household_id}/invitations", response_model=list[HouseholdInvitationSchema])
 async def get_pending_invitations(
     household_id: int,
     current_user: User = Depends(get_current_user),
@@ -282,9 +279,7 @@ async def get_pending_invitations(
         List of pending invitations
     """
     # Verify user has access to this household
-    if not await household_service.check_user_household_access(
-        db, current_user.id, household_id
-    ):
+    if not await household_service.check_user_household_access(db, current_user.id, household_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User does not have access to this household",
@@ -324,9 +319,7 @@ async def get_invitation_by_token(
     household = household_result.scalar_one_or_none()
 
     # Get inviter details
-    inviter_result = await db.execute(
-        select(User).where(User.id == invitation.inviter_user_id)
-    )
+    inviter_result = await db.execute(select(User).where(User.id == invitation.inviter_user_id))
     inviter = inviter_result.scalar_one_or_none()
 
     return HouseholdInvitationSchema(
@@ -360,9 +353,7 @@ async def accept_invitation(
     Returns:
         Created household member
     """
-    member = await household_service.accept_invitation(
-        db, request.token, current_user.id
-    )
+    member = await household_service.accept_invitation(db, request.token, current_user.id)
 
     # Get user details
     user_result = await db.execute(select(User).where(User.id == member.user_id))

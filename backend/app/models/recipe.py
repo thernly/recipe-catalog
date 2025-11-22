@@ -1,16 +1,17 @@
 """Recipe model."""
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Column,
+    DateTime,
+    ForeignKey,
     Integer,
     String,
-    DateTime,
     Text,
-    JSON,
-    ForeignKey,
 )
 from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 from app.models._utils import utc_now
 
@@ -22,9 +23,7 @@ class Recipe(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    household_id = Column(
-        Integer, ForeignKey("households.id"), nullable=True, index=True
-    )
+    household_id = Column(Integer, ForeignKey("households.id"), nullable=True, index=True)
 
     # Basic info
     name = Column(String(500), nullable=False, index=True)
@@ -36,9 +35,7 @@ class Recipe(Base):
 
     # Metadata
     source_url = Column(Text, index=True)
-    source_type = Column(
-        String(20), default="manual", nullable=False
-    )  # 'imported' or 'manual'
+    source_type = Column(String(20), default="manual", nullable=False)  # 'imported' or 'manual'
     is_modified = Column(Boolean, default=False, nullable=False)
 
     # Timestamps

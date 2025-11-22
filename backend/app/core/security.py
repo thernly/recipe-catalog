@@ -2,15 +2,17 @@
 Security utilities for password hashing and JWT tokens.
 """
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional
 import secrets
+from datetime import UTC, datetime, timedelta
+
+import bleach
 import jwt
-from jwt.exceptions import PyJWTError
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-import bleach
+from jwt.exceptions import PyJWTError
+
 from app.core.config import settings
+
 
 # Argon2 password hasher
 # Argon2 is the modern standard (won Password Hashing Competition 2015)
@@ -49,7 +51,7 @@ def get_password_hash(password: str) -> str:
     return ph.hash(password)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """
     Create a JWT access token.
 
@@ -63,21 +65,19 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode = data.copy()
 
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(
+        expire = datetime.now(UTC) + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
 
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(
-        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
-    )
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
     return encoded_jwt
 
 
-def decode_token(token: str) -> Optional[dict]:
+def decode_token(token: str) -> dict | None:
     """
     Decode a JWT token.
 
@@ -88,9 +88,7 @@ def decode_token(token: str) -> Optional[dict]:
         Decoded token payload or None if invalid
     """
     try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
     except PyJWTError:
         return None
@@ -116,51 +114,6 @@ def sanitize_html(text: str) -> str:
     return bleach.clean(text, tags=[], strip=True)
 
 
-# CSRF Protection
-# Note: This API primarily uses JWT tokens in headers (not cookies),
-# so CSRF is less of a concern. However, these utilities are provided
-# for defense-in-depth and future-proofing.
-
-# In-memory store for CSRF tokens (simple approach for stateless API)
-# In production with multiple instances, consider using Redis or database
-_csrf_tokens: set[str] = set()
-
-
-def generate_csrf_token() -> str:
-    """
-    Generate a secure CSRF token.
-
-    Returns:
-        A URL-safe random token string
-    """
-    token = secrets.token_urlsafe(32)
-    _csrf_tokens.add(token)
-    return token
-
-
-def validate_csrf_token(token: str) -> bool:
-    """
-    Validate a CSRF token.
-
-    Args:
-        token: The CSRF token to validate
-
-    Returns:
-        True if token is valid, False otherwise
-    """
-    return token in _csrf_tokens
-
-
-def revoke_csrf_token(token: str) -> None:
-    """
-    Revoke a CSRF token after use.
-
-    Args:
-        token: The CSRF token to revoke
-    """
-    _csrf_tokens.discard(token)
-
-
 # Refresh Token Utilities
 def generate_refresh_token() -> str:
     """
@@ -179,6 +132,4 @@ def get_refresh_token_expiry() -> datetime:
     Returns:
         Datetime object for configured days from now
     """
-    return datetime.now(timezone.utc) + timedelta(
-        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
-    )
+    return datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)

@@ -2,25 +2,28 @@
 Collection management API endpoints.
 """
 
-from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
-from app.models.user import User
-from app.models.household import Household
 from app.models.collection import Collection, RecipeCollection
+from app.models.household import Household
 from app.models.recipe import Recipe
+from app.models.user import User
+from app.schemas.collection import (
+    Collection as CollectionSchema,
+)
 from app.schemas.collection import (
     CollectionCreate,
-    CollectionUpdate,
-    Collection as CollectionSchema,
-    CollectionWithCount,
     CollectionRecipeAdd,
     CollectionRecipeRemove,
+    CollectionUpdate,
+    CollectionWithCount,
 )
+
 
 router = APIRouter()
 
@@ -92,7 +95,7 @@ async def create_collection(
     return CollectionSchema(**collection_dict)
 
 
-@router.get("/", response_model=List[CollectionWithCount])
+@router.get("/", response_model=list[CollectionWithCount])
 async def list_collections(
     current_user: User = Depends(get_current_user),
     household: Household = Depends(get_user_household),
@@ -175,9 +178,7 @@ async def get_collection(
     collection_with_count = result.first()
 
     if not collection_with_count:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
 
     collection, count, user = collection_with_count
 
@@ -218,9 +219,7 @@ async def update_collection(
     collection = result.scalar_one_or_none()
 
     if not collection:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
 
     # Check if updating name and it already exists
     if collection_update.name is not None:
@@ -275,9 +274,7 @@ async def delete_collection(
     collection = result.scalar_one_or_none()
 
     if not collection:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
 
     if collection.is_default:
         raise HTTPException(
@@ -320,9 +317,7 @@ async def add_recipes_to_collection(
     collection = result.scalar_one_or_none()
 
     if not collection:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
 
     # Track results
     added = []
@@ -333,9 +328,7 @@ async def add_recipes_to_collection(
     for recipe_id in recipe_data.recipe_ids:
         # Verify recipe belongs to user
         result = await db.execute(
-            select(Recipe).where(
-                Recipe.id == recipe_id, Recipe.user_id == current_user.id
-            )
+            select(Recipe).where(Recipe.id == recipe_id, Recipe.user_id == current_user.id)
         )
         recipe = result.scalar_one_or_none()
 
@@ -355,9 +348,7 @@ async def add_recipes_to_collection(
         if existing:
             skipped.append(recipe_id)
         else:
-            recipe_collection = RecipeCollection(
-                recipe_id=recipe_id, collection_id=collection_id
-            )
+            recipe_collection = RecipeCollection(recipe_id=recipe_id, collection_id=collection_id)
             db.add(recipe_collection)
             added.append(recipe_id)
 
@@ -399,9 +390,7 @@ async def remove_recipes_from_collection(
     collection = result.scalar_one_or_none()
 
     if not collection:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
 
     # Remove recipes from collection
     for recipe_id in recipe_data.recipe_ids:
@@ -450,17 +439,13 @@ async def get_collection_recipes(
     collection = result.scalar_one_or_none()
 
     if not collection:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
 
     # Get recipes in collection
     stmt = (
         select(Recipe)
         .join(RecipeCollection)
-        .where(
-            RecipeCollection.collection_id == collection_id, Recipe.deleted_at.is_(None)
-        )
+        .where(RecipeCollection.collection_id == collection_id, Recipe.deleted_at.is_(None))
         .order_by(RecipeCollection.added_at.desc())
     )
 
@@ -492,8 +477,9 @@ async def export_collection_pdf(
     Raises:
         HTTPException: If collection not found or unauthorized
     """
-    from app.utils.pdf_export import generate_collection_pdf
     from fastapi import Response
+
+    from app.utils.pdf_export import generate_collection_pdf
 
     # Verify collection exists and belongs to household
     result = await db.execute(
@@ -504,17 +490,13 @@ async def export_collection_pdf(
     collection = result.scalar_one_or_none()
 
     if not collection:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
 
     # Get recipes in collection
     stmt = (
         select(Recipe)
         .join(RecipeCollection)
-        .where(
-            RecipeCollection.collection_id == collection_id, Recipe.deleted_at.is_(None)
-        )
+        .where(RecipeCollection.collection_id == collection_id, Recipe.deleted_at.is_(None))
         .order_by(RecipeCollection.added_at.asc())
     )
 
@@ -535,14 +517,10 @@ async def export_collection_pdf(
         )
 
     # Generate PDF
-    pdf_bytes = generate_collection_pdf(
-        collection.name, collection.description or "", recipes
-    )
+    pdf_bytes = generate_collection_pdf(collection.name, collection.description or "", recipes)
 
     # Generate safe filename
-    safe_name = "".join(
-        c if c.isalnum() or c in (" ", "-", "_") else "_" for c in collection.name
-    )
+    safe_name = "".join(c if c.isalnum() or c in (" ", "-", "_") else "_" for c in collection.name)
     safe_name = safe_name.replace(" ", "_").lower()[:50]
 
     return Response(

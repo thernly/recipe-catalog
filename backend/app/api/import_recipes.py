@@ -5,22 +5,23 @@ Allows users to import recipes from JSON files in Schema.org format
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import List, Dict, Any, Literal
+from datetime import UTC, datetime
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models.user import User
-from app.models.recipe import Recipe
 from app.models.collection import Collection, RecipeCollection
-from app.utils.recipe_format import convert_from_schema_org
+from app.models.recipe import Recipe
+from app.models.user import User
 from app.utils.file_validation import validate_file_size
+from app.utils.recipe_format import convert_from_schema_org
+
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -79,12 +80,12 @@ async def _commit_import_results(db: AsyncSession) -> None:
 
 
 async def _import_recipes_internal(
-    recipes_data: List[Dict[str, Any]],
+    recipes_data: list[dict[str, Any]],
     user_id: int,
     duplicate_handling: Literal["skip", "update", "create"],
     collection: Collection | None,
     db: AsyncSession,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Internal helper function to import recipes from data.
 
@@ -137,11 +138,9 @@ async def _import_recipes_internal(
                     existing_recipe.source_url = recipe_dict["source_url"]
                     existing_recipe.cuisine = recipe_dict["cuisine"]
                     existing_recipe.category = recipe_dict["category"]
-                    existing_recipe.total_time_minutes = recipe_dict[
-                        "total_time_minutes"
-                    ]
+                    existing_recipe.total_time_minutes = recipe_dict["total_time_minutes"]
                     existing_recipe.is_modified = True
-                    existing_recipe.updated_at = datetime.now(timezone.utc)
+                    existing_recipe.updated_at = datetime.now(UTC)
 
                     results["updated"] += 1
                     recipe_to_add = existing_recipe
@@ -158,7 +157,7 @@ async def _import_recipes_internal(
                     cuisine=recipe_dict["cuisine"],
                     category=recipe_dict["category"],
                     total_time_minutes=recipe_dict["total_time_minutes"],
-                    imported_at=datetime.now(timezone.utc),
+                    imported_at=datetime.now(UTC),
                 )
                 db.add(new_recipe)
                 results["created"] += 1
@@ -177,9 +176,7 @@ async def _import_recipes_internal(
                 )
                 if not existing_link.scalar_one_or_none():
                     db.add(
-                        RecipeCollection(
-                            recipe_id=recipe_to_add.id, collection_id=collection.id
-                        )
+                        RecipeCollection(recipe_id=recipe_to_add.id, collection_id=collection.id)
                     )
 
         except (ValueError, KeyError, TypeError) as e:
@@ -278,7 +275,7 @@ async def import_recipes(
 @limiter.limit("20000/hour")
 async def import_recipes_json(
     request: Request,
-    recipes: List[Dict[str, Any]],
+    recipes: list[dict[str, Any]],
     duplicate_handling: Literal["skip", "update", "create"] = "skip",
     collection_id: int = None,
     current_user: User = Depends(get_current_user),

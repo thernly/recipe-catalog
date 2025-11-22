@@ -3,25 +3,30 @@ Meal Planning API endpoints.
 """
 
 from datetime import date, timedelta
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
-from app.models.user import User
 from app.models.household import Household
 from app.models.meal_plan import MealPlan, PlannedMeal
 from app.models.recipe import Recipe
+from app.models.user import User
 from app.schemas.meal_plan import (
     MealPlan as MealPlanSchema,
+)
+from app.schemas.meal_plan import (
     MealPlanSummary,
     PlannedMealCreate,
     PlannedMealUpdate,
+)
+from app.schemas.meal_plan import (
     PlannedMeal as PlannedMealSchema,
 )
+
 
 router = APIRouter()
 
@@ -47,7 +52,7 @@ def planned_meal_to_schema(planned_meal: PlannedMeal) -> PlannedMealSchema:
     )
 
 
-@router.get("/", response_model=List[MealPlanSummary])
+@router.get("/", response_model=list[MealPlanSummary])
 async def list_meal_plans(
     current_user: User = Depends(get_current_user),
     household: Household = Depends(get_user_household),

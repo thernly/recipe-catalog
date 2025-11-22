@@ -2,13 +2,13 @@
 
 import pytest
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User
 from app.models.household import Household
 from app.models.recipe import Recipe
 from app.models.shopping_list import ShoppingList, ShoppingListItem
+from app.models.user import User
 
 
 @pytest_asyncio.fixture
@@ -48,9 +48,7 @@ async def test_recipe(db: AsyncSession, test_household: Household, test_user: Us
 
 
 @pytest_asyncio.fixture
-async def test_shopping_list(
-    db: AsyncSession, test_user: User, test_household: Household
-):
+async def test_shopping_list(db: AsyncSession, test_user: User, test_household: Household):
     """Create a test shopping list."""
     shopping_list = ShoppingList(
         household_id=test_household.id,
@@ -71,9 +69,7 @@ async def test_shopping_list(
 
 
 @pytest.mark.asyncio
-async def test_create_shopping_list(
-    db: AsyncSession, test_user: User, test_household: Household
-):
+async def test_create_shopping_list(db: AsyncSession, test_user: User, test_household: Household):
     """Test creating a shopping list."""
     shopping_list = ShoppingList(
         household_id=test_household.id,
@@ -94,9 +90,7 @@ async def test_create_shopping_list(
 
 
 @pytest.mark.asyncio
-async def test_create_shopping_list_item(
-    db: AsyncSession, test_shopping_list: ShoppingList
-):
+async def test_create_shopping_list_item(db: AsyncSession, test_shopping_list: ShoppingList):
     """Test creating a shopping list item."""
     item = ShoppingListItem(
         list_id=test_shopping_list.id,
@@ -121,9 +115,7 @@ async def test_create_shopping_list_item(
 
 
 @pytest.mark.asyncio
-async def test_shopping_list_items_relationship(
-    db: AsyncSession, test_shopping_list: ShoppingList
-):
+async def test_shopping_list_items_relationship(db: AsyncSession, test_shopping_list: ShoppingList):
     """Test that shopping list items are accessible via relationship."""
     # Add some items
     items = [
@@ -145,9 +137,7 @@ async def test_shopping_list_items_relationship(
 
     # Check items via relationship
     result = await db.execute(
-        select(ShoppingListItem).where(
-            ShoppingListItem.list_id == test_shopping_list.id
-        )
+        select(ShoppingListItem).where(ShoppingListItem.list_id == test_shopping_list.id)
     )
     loaded_items = result.scalars().all()
 
@@ -180,9 +170,7 @@ async def test_toggle_item_checked(db: AsyncSession, test_shopping_list: Shoppin
 
 
 @pytest.mark.asyncio
-async def test_archive_shopping_list(
-    db: AsyncSession, test_shopping_list: ShoppingList
-):
+async def test_archive_shopping_list(db: AsyncSession, test_shopping_list: ShoppingList):
     """Test archiving a shopping list."""
     assert test_shopping_list.status == "active"
 
@@ -220,18 +208,14 @@ async def test_delete_shopping_list_cascades_items(
     await db.commit()
 
     # Verify items are also deleted
-    result = await db.execute(
-        select(ShoppingListItem).where(ShoppingListItem.list_id == list_id)
-    )
+    result = await db.execute(select(ShoppingListItem).where(ShoppingListItem.list_id == list_id))
     remaining_items = result.scalars().all()
 
     assert len(remaining_items) == 0
 
 
 @pytest.mark.asyncio
-async def test_household_scoping(
-    db: AsyncSession, test_user: User, test_household: Household
-):
+async def test_household_scoping(db: AsyncSession, test_user: User, test_household: Household):
     """Test that shopping lists are scoped to households."""
     # Create another household
     other_household = Household(
@@ -316,10 +300,10 @@ async def test_generate_from_recipe(
 async def test_ingredient_consolidation():
     """Test the ingredient consolidation helper functions."""
     from app.api.shopping_lists import (
+        consolidate_ingredients,
+        normalize_unit,
         parse_ingredient_string,
         parse_quantity,
-        normalize_unit,
-        consolidate_ingredients,
     )
 
     # Test parse_ingredient_string
@@ -393,8 +377,8 @@ async def test_ingredient_consolidation():
 def test_ingredient_preparation_method_consolidation():
     """Test that ingredients with different preparation methods are consolidated."""
     from app.api.shopping_lists import (
-        get_base_ingredient_name,
         consolidate_ingredients,
+        get_base_ingredient_name,
     )
 
     # Test get_base_ingredient_name helper
@@ -457,6 +441,7 @@ def test_section_headers_filtered_out():
 
     # Parse the string-based ingredients
     from app.api.shopping_lists import parse_ingredient_string
+
     ingredients_data = []
     for ing in ingredients:
         if ing["quantity"] is None and ing["unit"] is None:
@@ -464,7 +449,11 @@ def test_section_headers_filtered_out():
             ingredients_data.append(ing)
         else:
             # Parse string format
-            qty, unit, name = parse_ingredient_string(f"{ing['quantity']} {ing['unit']} {ing['name']}" if ing['unit'] else f"{ing['quantity']} {ing['name']}")
+            qty, unit, name = parse_ingredient_string(
+                f"{ing['quantity']} {ing['unit']} {ing['name']}"
+                if ing["unit"]
+                else f"{ing['quantity']} {ing['name']}"
+            )
             ingredients_data.append({"quantity": qty, "unit": unit, "name": name})
 
     consolidated = consolidate_ingredients(ingredients_data)
@@ -484,8 +473,8 @@ def test_section_headers_filtered_out():
 def test_plural_consolidation():
     """Test that plural and singular forms are consolidated."""
     from app.api.shopping_lists import (
-        singularize_ingredient,
         consolidate_ingredients,
+        singularize_ingredient,
     )
 
     # Test singularize_ingredient helper

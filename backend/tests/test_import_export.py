@@ -3,17 +3,19 @@ Tests for import and export endpoints
 """
 
 import json
+from datetime import UTC
+from io import BytesIO
+
 import pytest
 import pytest_asyncio
-from io import BytesIO
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.recipe import Recipe
 from app.models.collection import Collection
-from app.models.user import User
 from app.models.household import Household, HouseholdMember
+from app.models.recipe import Recipe
+from app.models.user import User
 
 
 @pytest_asyncio.fixture
@@ -60,16 +62,13 @@ async def test_import_single_recipe_from_file(client: AsyncClient, auth_headers:
         "name": "Test Recipe",
         "description": "A test recipe",
         "recipeIngredient": ["1 cup flour", "2 eggs"],
-        "recipeInstructions": [
-            {"text": "Mix ingredients"},
-            {"text": "Bake at 350F"}
-        ],
+        "recipeInstructions": [{"text": "Mix ingredients"}, {"text": "Bake at 350F"}],
         "recipeYield": "4 servings",
         "prepTime": "PT15M",
         "cookTime": "PT30M",
         "totalTime": "PT45M",
         "recipeCategory": "Dessert",
-        "recipeCuisine": "American"
+        "recipeCuisine": "American",
     }
 
     json_content = json.dumps(recipe_data)
@@ -93,14 +92,14 @@ async def test_import_multiple_recipes_from_file(client: AsyncClient, auth_heade
             "name": "Recipe 1",
             "description": "First recipe",
             "recipeIngredient": ["ingredient 1"],
-            "recipeInstructions": [{"text": "step 1"}]
+            "recipeInstructions": [{"text": "step 1"}],
         },
         {
             "name": "Recipe 2",
             "description": "Second recipe",
             "recipeIngredient": ["ingredient 2"],
-            "recipeInstructions": [{"text": "step 2"}]
-        }
+            "recipeInstructions": [{"text": "step 2"}],
+        },
     ]
 
     json_content = json.dumps(recipes_data)
@@ -122,7 +121,7 @@ async def test_import_duplicate_handling_skip(client: AsyncClient, test_user, te
         user_id=test_user.id,
         name="Existing Recipe",
         description="Already exists",
-        recipe_data={"recipeIngredient": ["old ingredient"]}
+        recipe_data={"recipeIngredient": ["old ingredient"]},
     )
     test_db.add(existing_recipe)
     await test_db.commit()
@@ -131,7 +130,7 @@ async def test_import_duplicate_handling_skip(client: AsyncClient, test_user, te
     recipe_data = {
         "name": "Existing Recipe",
         "description": "New description",
-        "recipeIngredient": ["new ingredient"]
+        "recipeIngredient": ["new ingredient"],
     }
 
     json_content = json.dumps(recipe_data)
@@ -154,7 +153,7 @@ async def test_import_duplicate_handling_update(client: AsyncClient, test_user, 
         user_id=test_user.id,
         name="Recipe to Update",
         description="Old description",
-        recipe_data={"recipeIngredient": ["old ingredient"]}
+        recipe_data={"recipeIngredient": ["old ingredient"]},
     )
     test_db.add(existing_recipe)
     await test_db.commit()
@@ -164,7 +163,7 @@ async def test_import_duplicate_handling_update(client: AsyncClient, test_user, 
         "name": "Recipe to Update",
         "description": "New description",
         "recipeIngredient": ["new ingredient"],
-        "recipeInstructions": [{"text": "new step"}]
+        "recipeInstructions": [{"text": "new step"}],
     }
 
     json_content = json.dumps(recipe_data)
@@ -188,11 +187,7 @@ async def test_import_duplicate_handling_update(client: AsyncClient, test_user, 
 async def test_import_duplicate_handling_create(client: AsyncClient, test_user, test_db):
     """Test duplicate handling with 'create' option (allows duplicates)"""
     # Create existing recipe
-    existing_recipe = Recipe(
-        user_id=test_user.id,
-        name="Duplicate Name",
-        description="First one"
-    )
+    existing_recipe = Recipe(user_id=test_user.id, name="Duplicate Name", description="First one")
     test_db.add(existing_recipe)
     await test_db.commit()
 
@@ -200,7 +195,7 @@ async def test_import_duplicate_handling_create(client: AsyncClient, test_user, 
     recipe_data = {
         "name": "Duplicate Name",
         "description": "Second one",
-        "recipeIngredient": ["ingredient"]
+        "recipeIngredient": ["ingredient"],
     }
 
     json_content = json.dumps(recipe_data)
@@ -225,26 +220,19 @@ async def test_import_duplicate_handling_create(client: AsyncClient, test_user, 
 async def test_import_to_collection(client: AsyncClient, test_user, test_db):
     """Test importing recipes directly into a collection"""
     # Create collection
-    collection = Collection(
-        user_id=test_user.id,
-        name="Test Collection",
-        description="For imports"
-    )
+    collection = Collection(user_id=test_user.id, name="Test Collection", description="For imports")
     test_db.add(collection)
     await test_db.commit()
 
     recipe_data = {
         "name": "Recipe for Collection",
         "description": "Goes into collection",
-        "recipeIngredient": ["ingredient"]
+        "recipeIngredient": ["ingredient"],
     }
 
     json_content = json.dumps(recipe_data)
     files = {"file": ("recipe.json", BytesIO(json_content.encode()), "application/json")}
-    data = {
-        "duplicate_handling": "skip",
-        "collection_id": str(collection.id)
-    }
+    data = {"duplicate_handling": "skip", "collection_id": str(collection.id)}
 
     response = await client.post("/api/import/recipes", data=data, files=files)
 
@@ -286,24 +274,16 @@ async def test_import_non_json_file(client: AsyncClient, auth_headers: dict):
 async def test_import_recipes_json_endpoint(client: AsyncClient, auth_headers: dict):
     """Test importing recipes via JSON API endpoint (not file upload)"""
     recipes = [
-        {
-            "name": "API Recipe 1",
-            "description": "From API",
-            "recipeIngredient": ["ingredient 1"]
-        },
+        {"name": "API Recipe 1", "description": "From API", "recipeIngredient": ["ingredient 1"]},
         {
             "name": "API Recipe 2",
             "description": "Also from API",
-            "recipeIngredient": ["ingredient 2"]
-        }
+            "recipeIngredient": ["ingredient 2"],
+        },
     ]
 
     response = await client.post(
-        "/api/import/recipes/json",
-        json={
-            "recipes": recipes,
-            "duplicate_handling": "skip"
-        }
+        "/api/import/recipes/json", json={"recipes": recipes, "duplicate_handling": "skip"}
     )
 
     assert response.status_code == 200
@@ -321,16 +301,14 @@ async def test_export_recipes_json(client: AsyncClient, test_user, test_db):
         description="First export",
         recipe_data={
             "recipeIngredient": ["ingredient 1"],
-            "recipeInstructions": [{"text": "step 1"}]
-        }
+            "recipeInstructions": [{"text": "step 1"}],
+        },
     )
     recipe2 = Recipe(
         user_id=test_user.id,
         name="Export Recipe 2",
         description="Second export",
-        recipe_data={
-            "recipeIngredient": ["ingredient 2"]
-        }
+        recipe_data={"recipeIngredient": ["ingredient 2"]},
     )
     test_db.add_all([recipe1, recipe2])
     await test_db.commit()
@@ -357,12 +335,9 @@ async def test_export_recipes_markdown(client: AsyncClient, test_user, test_db):
         description="For markdown export",
         recipe_data={
             "recipeIngredient": ["1 cup flour", "2 eggs"],
-            "recipeInstructions": [
-                {"text": "Mix ingredients"},
-                {"text": "Bake"}
-            ],
-            "recipeYield": "4 servings"
-        }
+            "recipeInstructions": [{"text": "Mix ingredients"}, {"text": "Bake"}],
+            "recipeYield": "4 servings",
+        },
     )
     test_db.add(recipe)
     await test_db.commit()
@@ -388,8 +363,8 @@ async def test_export_recipes_text(client: AsyncClient, test_user, test_db):
         description="For text export",
         recipe_data={
             "recipeIngredient": ["ingredient"],
-            "recipeInstructions": [{"text": "do something"}]
-        }
+            "recipeInstructions": [{"text": "do something"}],
+        },
     )
     test_db.add(recipe)
     await test_db.commit()
@@ -409,18 +384,13 @@ async def test_export_collections_json(client: AsyncClient, test_user, test_db):
     """Test exporting collections as JSON"""
     # Create collection with recipes
     collection = Collection(
-        user_id=test_user.id,
-        name="Export Collection",
-        description="Collection for export"
+        user_id=test_user.id, name="Export Collection", description="Collection for export"
     )
     test_db.add(collection)
     await test_db.commit()
 
     # Add recipe to collection
-    recipe_data = {
-        "name": "Collection Recipe",
-        "description": "In collection"
-    }
+    recipe_data = {"name": "Collection Recipe", "description": "In collection"}
     response = await client.post("/api/recipes", json=recipe_data)
     recipe_id = response.json()["id"]
 
@@ -439,9 +409,7 @@ async def test_export_collections_json(client: AsyncClient, test_user, test_db):
 async def test_export_collections_markdown(client: AsyncClient, test_user, test_db):
     """Test exporting collections as Markdown"""
     collection = Collection(
-        user_id=test_user.id,
-        name="Markdown Collection",
-        description="For markdown"
+        user_id=test_user.id, name="Markdown Collection", description="For markdown"
     )
     test_db.add(collection)
     await test_db.commit()
@@ -460,14 +428,9 @@ async def test_export_all_data(client: AsyncClient, test_user, test_db):
     """Test exporting all user data"""
     # Create some data
     recipe = Recipe(
-        user_id=test_user.id,
-        name="Complete Export Recipe",
-        description="For complete export"
+        user_id=test_user.id, name="Complete Export Recipe", description="For complete export"
     )
-    collection = Collection(
-        user_id=test_user.id,
-        name="Complete Export Collection"
-    )
+    collection = Collection(user_id=test_user.id, name="Complete Export Collection")
     test_db.add_all([recipe, collection])
     await test_db.commit()
 
@@ -487,20 +450,16 @@ async def test_export_all_data(client: AsyncClient, test_user, test_db):
 @pytest.mark.asyncio
 async def test_export_excludes_deleted_recipes(client: AsyncClient, test_user, test_db):
     """Test that export excludes soft-deleted recipes"""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     # Create normal recipe
-    recipe1 = Recipe(
-        user_id=test_user.id,
-        name="Active Recipe",
-        description="Should be exported"
-    )
+    recipe1 = Recipe(user_id=test_user.id, name="Active Recipe", description="Should be exported")
     # Create deleted recipe
     recipe2 = Recipe(
         user_id=test_user.id,
         name="Deleted Recipe",
         description="Should not be exported",
-        deleted_at=datetime.now(timezone.utc)
+        deleted_at=datetime.now(UTC),
     )
     test_db.add_all([recipe1, recipe2])
     await test_db.commit()
@@ -517,16 +476,13 @@ async def test_export_excludes_deleted_recipes(client: AsyncClient, test_user, t
 @pytest.mark.asyncio
 async def test_import_with_invalid_collection_id(client: AsyncClient, auth_headers: dict):
     """Test import fails with invalid collection ID"""
-    recipe_data = {
-        "name": "Test Recipe",
-        "recipeIngredient": ["ingredient"]
-    }
+    recipe_data = {"name": "Test Recipe", "recipeIngredient": ["ingredient"]}
 
     json_content = json.dumps(recipe_data)
     files = {"file": ("recipe.json", BytesIO(json_content.encode()), "application/json")}
     data = {
         "duplicate_handling": "skip",
-        "collection_id": "99999"  # Non-existent collection
+        "collection_id": "99999",  # Non-existent collection
     }
 
     response = await client.post("/api/import/recipes", data=data, files=files)
@@ -542,16 +498,13 @@ async def test_import_handles_partial_failures(client: AsyncClient, auth_headers
         {
             "name": "Valid Recipe",
             "recipeIngredient": ["ingredient"],
-            "recipeInstructions": [{"text": "step"}]
+            "recipeInstructions": [{"text": "step"}],
         },
         {
             # Missing name - should fail validation
             "recipeIngredient": ["ingredient"]
         },
-        {
-            "name": "Another Valid Recipe",
-            "recipeIngredient": ["ingredient"]
-        }
+        {"name": "Another Valid Recipe", "recipeIngredient": ["ingredient"]},
     ]
 
     json_content = json.dumps(recipes_data)

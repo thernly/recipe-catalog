@@ -27,9 +27,7 @@ def upgrade():
         # SQLite approach: recreate the table
         # Note: This will preserve data
         with op.batch_alter_table("user_preferences") as batch_op:
-            batch_op.create_foreign_key(
-                "fk_user_preferences_user_id", "users", ["user_id"], ["id"]
-            )
+            batch_op.create_foreign_key("fk_user_preferences_user_id", "users", ["user_id"], ["id"])
     else:
         # PostgreSQL/MySQL approach: directly add foreign key
         op.create_foreign_key(

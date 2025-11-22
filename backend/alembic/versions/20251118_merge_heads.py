@@ -6,17 +6,17 @@ Create Date: 2025-11-18 12:30:00.000000
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 
 # revision identifiers, used by Alembic.
 revision: str = "20251118_merge_heads"
-down_revision: Union[str, Sequence[str], None] = (
+down_revision: str | Sequence[str] | None = (
     "20251118_oauth_state",
     "20251118_add_refresh_tokens",
 )
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

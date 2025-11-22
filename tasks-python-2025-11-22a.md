@@ -26,19 +26,19 @@ Tasks are organized by priority and grouped into logical work units. Each task i
 Configure ruff and mypy in pyproject.toml to enforce code quality standards.
 
 **Actions:**
-- [ ] Add `[tool.ruff]` section to pyproject.toml
+- [x] Add `[tool.ruff]` section to pyproject.toml
   - Set line-length = 100
   - Set target-version = "py313"
   - Configure select rules: ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
   - Add ignore patterns for migrations
-- [ ] Add `[tool.ruff.lint.isort]` section
+- [x] Add `[tool.ruff.lint.isort]` section
   - Configure import sorting
-- [ ] Add `[tool.mypy]` section
+- [x] Add `[tool.mypy]` section
   - Set python_version = "3.13"
   - Enable strict mode
   - Add SQLAlchemy plugin: `plugins = ["sqlalchemy.ext.mypy.plugin"]`
   - Configure per-module overrides if needed
-- [ ] Install SQLAlchemy mypy support: `uv pip install sqlalchemy[mypy]`
+- [x] Install SQLAlchemy mypy support: `uv pip install sqlalchemy[mypy]`
 
 **Files:**
 - `pyproject.toml`
@@ -59,11 +59,11 @@ Configure ruff and mypy in pyproject.toml to enforce code quality standards.
 Format all Python code to establish consistent style baseline.
 
 **Actions:**
-- [ ] Run ruff formatter: `uv run ruff format .`
-- [ ] Run ruff linter with auto-fix: `uv run ruff check --fix .`
-- [ ] Review changes for any breaking modifications
-- [ ] Run test suite to ensure formatting didn't break anything
-- [ ] Commit formatted code with message: "Apply ruff formatting and auto-fixes"
+- [x] Run ruff formatter: `uv run ruff format .`
+- [x] Run ruff linter with auto-fix: `uv run ruff check --fix .`
+- [x] Review changes for any breaking modifications
+- [x] Run test suite to ensure formatting didn't break anything
+- [x] Commit formatted code with message: "Apply ruff formatting and auto-fixes"
 
 **Files:**
 - All Python files in app/, tests/, and scripts/
@@ -84,14 +84,14 @@ Format all Python code to establish consistent style baseline.
 Remove over-engineered CSRF protection that isn't needed for JWT-in-headers authentication.
 
 **Actions:**
-- [ ] Remove CSRF token generation and validation functions from `app/core/security.py:119-162`
+- [x] Remove CSRF token generation and validation functions from `app/core/security.py:119-162`
   - Delete `generate_csrf_token()`
   - Delete `validate_csrf_token()`
   - Delete `_csrf_tokens` set
-- [ ] Search for any CSRF imports and remove them
-- [ ] Check if any endpoints use CSRF validation and remove those calls
-- [ ] Remove any CSRF-related tests
-- [ ] Update any documentation that mentions CSRF
+- [x] Search for any CSRF imports and remove them
+- [x] Check if any endpoints use CSRF validation and remove those calls
+- [x] Remove any CSRF-related tests
+- [x] Update any documentation that mentions CSRF
 
 **Files:**
 - `app/core/security.py`
@@ -114,22 +114,22 @@ Remove over-engineered CSRF protection that isn't needed for JWT-in-headers auth
 Eliminate 200+ lines of duplicate code by creating a RecipeExporter service class.
 
 **Actions:**
-- [ ] Create new file: `app/services/recipe_export.py`
-- [ ] Design RecipeExporter class with methods:
+- [x] Create new file: `app/services/recipe_export.py`
+- [x] Design RecipeExporter class with methods:
   - `export_json(recipe) -> dict`
   - `export_markdown(recipe) -> str`
   - `export_text(recipe) -> str`
   - `export_pdf(recipe) -> bytes`
-- [ ] Extract common metadata formatting logic to private method:
+- [x] Extract common metadata formatting logic to private method:
   - `_format_metadata(schema_recipe) -> dict`
-- [ ] Extract Schema.org conversion to method:
+- [x] Extract Schema.org conversion to method:
   - `_to_schema_org(recipe) -> dict`
-- [ ] Move HTML escaping logic from pdf_export.py to use stdlib `html.escape()`
-- [ ] Update `app/api/recipes.py:536-819` to use new RecipeExporter service
+- [x] Move HTML escaping logic from pdf_export.py to use stdlib `html.escape()`
+- [x] Update `app/api/recipes.py:536-819` to use new RecipeExporter service
   - Inject RecipeExporter via dependency injection
   - Replace 4 export code paths with service calls
-- [ ] Add unit tests for RecipeExporter class
-- [ ] Remove duplicate code from recipes.py
+- [x] Add unit tests for RecipeExporter class
+- [x] Remove duplicate code from recipes.py
 
 **Files:**
 - NEW: `app/services/recipe_export.py`

@@ -2,8 +2,8 @@
 Application configuration settings.
 """
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -26,9 +26,7 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = (
-        15  # Short-lived for security with refresh tokens
-    )
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # Short-lived for security with refresh tokens
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # Long-lived for better UX
 
     # CORS
@@ -100,9 +98,7 @@ class Settings(BaseSettings):
     @classmethod
     def parse_image_types(cls, v) -> list[str]:
         if isinstance(v, str):
-            return [
-                image_type.strip() for image_type in v.split(",") if image_type.strip()
-            ]
+            return [image_type.strip() for image_type in v.split(",") if image_type.strip()]
         return v if isinstance(v, list) else [v]
 
     @field_validator("ALLOWED_HEADERS", mode="before")

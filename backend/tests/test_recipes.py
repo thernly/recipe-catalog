@@ -4,8 +4,9 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.user import User
+
 from app.models.household import Household, HouseholdMember
+from app.models.user import User
 
 
 @pytest_asyncio.fixture
@@ -181,9 +182,7 @@ async def test_search_recipes_by_cuisine(client: AsyncClient, auth_headers: dict
     )
 
     # Filter by Italian cuisine
-    response = await client.get(
-        "/api/recipes/search?cuisine=Italian", headers=auth_headers
-    )
+    response = await client.get("/api/recipes/search?cuisine=Italian", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -206,9 +205,7 @@ async def test_search_recipes_with_pagination(client: AsyncClient, auth_headers:
         )
 
     # Get first page with 2 items
-    response = await client.get(
-        "/api/recipes/search?page=1&per_page=2", headers=auth_headers
-    )
+    response = await client.get("/api/recipes/search?page=1&per_page=2", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -361,9 +358,7 @@ async def test_restore_deleted_recipe(client: AsyncClient, auth_headers: dict):
     await client.delete(f"/api/recipes/{recipe_id}", headers=auth_headers)
 
     # Restore the recipe
-    response = await client.post(
-        f"/api/recipes/{recipe_id}/restore", headers=auth_headers
-    )
+    response = await client.post(f"/api/recipes/{recipe_id}/restore", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()

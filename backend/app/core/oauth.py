@@ -1,9 +1,11 @@
 """OAuth/OIDC provider configuration and utilities."""
 
 import secrets
-from typing import Optional
+
 from authlib.integrations.starlette_client import OAuth
+
 from app.core.config import settings
+
 
 # Initialize OAuth registry with httpx client
 oauth = OAuth()
@@ -56,9 +58,7 @@ def get_available_providers() -> list[dict[str, str]]:
         providers.append({"name": "google", "display_name": "Google", "icon": "google"})
 
     if settings.MICROSOFT_CLIENT_ID and settings.MICROSOFT_CLIENT_SECRET:
-        providers.append(
-            {"name": "microsoft", "display_name": "Microsoft", "icon": "microsoft"}
-        )
+        providers.append({"name": "microsoft", "display_name": "Microsoft", "icon": "microsoft"})
 
     if settings.GITHUB_CLIENT_ID and settings.GITHUB_CLIENT_SECRET:
         providers.append({"name": "github", "display_name": "GitHub", "icon": "github"})
@@ -71,7 +71,7 @@ def generate_state_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def extract_user_info(provider_name: str, userinfo: dict) -> dict[str, Optional[str]]:
+def extract_user_info(provider_name: str, userinfo: dict) -> dict[str, str | None]:
     """
     Extract standardized user information from provider-specific userinfo.
 

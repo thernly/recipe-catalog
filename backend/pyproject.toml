@@ -37,8 +37,18 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
 ignore = ["E501"]  # Line too long (handled by formatter)
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+force-single-line = false
+lines-after-imports = 2
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/versions/*.py" = ["N999"]  # Ignore naming conventions in migrations
 
 [tool.ruff.format]
 quote-style = "double"
@@ -49,7 +59,13 @@ python_version = "3.13"
 plugins = ["sqlalchemy.ext.mypy.plugin"]
 warn_return_any = true
 warn_unused_configs = true
-disallow_untyped_defs = false  # Set to true when ready for strict mode
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_equality = true
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_untyped_defs = false  # Will enable gradually
+no_implicit_optional = true
 ignore_missing_imports = false
 
 [[tool.mypy.overrides]]

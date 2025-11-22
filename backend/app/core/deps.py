@@ -2,15 +2,15 @@
 Dependency functions for FastAPI routes.
 """
 
-from typing import Optional
-from fastapi import Depends, HTTPException, status, Request
-from sqlalchemy.ext.asyncio import AsyncSession
+
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import decode_token
-from app.models.user import User
 from app.models.household import Household, HouseholdMember
+from app.models.user import User
 
 
 async def get_current_user(
@@ -47,7 +47,7 @@ async def get_current_user(
         )
 
     # Get user ID from token
-    user_id: Optional[int] = payload.get("sub")
+    user_id: int | None = payload.get("sub")
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -65,9 +65,7 @@ async def get_current_user(
         )
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
 
     return user
 
@@ -88,16 +86,14 @@ async def get_current_verified_user(
         HTTPException: If user is not verified
     """
     if not current_user.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Email not verified"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email not verified")
     return current_user
 
 
 async def get_optional_current_user(
     request: Request,
     db: AsyncSession = Depends(get_db),
-) -> Optional[User]:
+) -> User | None:
     """
     Get the current user if authenticated, None otherwise.
     Useful for endpoints that work for both authenticated and anonymous users.
@@ -137,9 +133,7 @@ async def get_user_household(
         HTTPException: If user doesn't belong to a household
     """
     result = await db.execute(
-        select(Household)
-        .join(HouseholdMember)
-        .where(HouseholdMember.user_id == current_user.id)
+        select(Household).join(HouseholdMember).where(HouseholdMember.user_id == current_user.id)
     )
     household = result.scalar_one_or_none()
 

@@ -1,7 +1,8 @@
 """Refresh token model for secure token rotation."""
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Index
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 from app.models._utils import utc_now
 
@@ -23,6 +24,4 @@ class RefreshToken(Base):
     user = relationship("User", back_populates="refresh_tokens")
 
     # Composite index for efficient queries
-    __table_args__ = (
-        Index("ix_refresh_tokens_user_active", "user_id", "revoked", "expires_at"),
-    )
+    __table_args__ = (Index("ix_refresh_tokens_user_active", "user_id", "revoked", "expires_at"),)
