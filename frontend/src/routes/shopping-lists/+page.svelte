@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import {
 		listShoppingLists,
@@ -71,16 +70,7 @@
 		newListDescription = '';
 	}
 
-	$: {
-		statusFilter;
-		if (!loading) {
-			loadShoppingLists();
-		}
-	}
-
-	onMount(() => {
-		loadShoppingLists();
-	});
+	$: statusFilter, loadShoppingLists();
 </script>
 
 <svelte:head>
