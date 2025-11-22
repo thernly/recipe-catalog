@@ -188,7 +188,9 @@ async def test_import_duplicate_handling_update(
 
 
 @pytest.mark.asyncio
-async def test_import_duplicate_handling_create(client: AsyncClient, test_user, test_db):
+async def test_import_duplicate_handling_create(
+    client: AsyncClient, test_user, test_db, auth_headers: dict
+):
     """Test duplicate handling with 'create' option (allows duplicates)"""
     # Create existing recipe
     existing_recipe = Recipe(
@@ -211,7 +213,7 @@ async def test_import_duplicate_handling_create(client: AsyncClient, test_user, 
     files = {"file": ("recipe.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "create"}
 
-    response = await client.post("/api/import/recipes", data=data, files=files)
+    response = await client.post("/api/import/recipes", data=data, files=files, headers=auth_headers)
 
     assert response.status_code == 200
     result = response.json()
@@ -292,7 +294,9 @@ async def test_import_recipes_json_endpoint(client: AsyncClient, auth_headers: d
     ]
 
     response = await client.post(
-        "/api/import/recipes/json", json={"recipes": recipes, "duplicate_handling": "skip"}
+        "/api/import/recipes/json?duplicate_handling=skip",
+        json=recipes,
+        headers=auth_headers,
     )
 
     assert response.status_code == 200
@@ -354,7 +358,7 @@ async def test_export_recipes_markdown(client: AsyncClient, test_user, test_db, 
     response = await client.get("/api/export/recipes?format=markdown")
 
     assert response.status_code == 200
-    assert response.headers["content-type"] == "text/markdown"
+    assert response.headers["content-type"].startswith("text/markdown")
 
     content = response.content.decode()
     assert "Markdown Recipe" in content
@@ -381,7 +385,7 @@ async def test_export_recipes_text(client: AsyncClient, test_user, test_db, auth
     response = await client.get("/api/export/recipes?format=text")
 
     assert response.status_code == 200
-    assert response.headers["content-type"] == "text/plain"
+    assert response.headers["content-type"].startswith("text/plain")
 
     content = response.content.decode()
     assert "TEXT RECIPE" in content
@@ -389,7 +393,7 @@ async def test_export_recipes_text(client: AsyncClient, test_user, test_db, auth
 
 
 @pytest.mark.asyncio
-async def test_export_collections_json(client: AsyncClient, test_user, test_db):
+async def test_export_collections_json(client: AsyncClient, test_user, test_db, auth_headers: dict):
     """Test exporting collections as JSON"""
     # Create collection with recipes
     collection = Collection(
@@ -399,14 +403,16 @@ async def test_export_collections_json(client: AsyncClient, test_user, test_db):
     await test_db.commit()
 
     # Add recipe to collection
-    recipe_data = {"name": "Collection Recipe", "description": "In collection"}
-    response = await client.post("/api/recipes", json=recipe_data)
+    recipe_data = {"name": "Collection Recipe", "description": "In collection", "recipe_data": {}}
+    response = await client.post("/api/recipes/", json=recipe_data, headers=auth_headers)
     recipe_id = response.json()["id"]
 
-    await client.post(f"/api/collections/{collection.id}/recipes", json={"recipe_id": recipe_id})
+    await client.post(
+        f"/api/collections/{collection.id}/recipes", json={"recipe_id": recipe_id}, headers=auth_headers
+    )
 
     # Export collections
-    response = await client.get("/api/export/collections?format=json")
+    response = await client.get("/api/export/collections?format=json", headers=auth_headers)
 
     assert response.status_code == 200
     data = json.loads(response.content)
@@ -428,14 +434,14 @@ async def test_export_collections_markdown(
     response = await client.get("/api/export/collections?format=markdown")
 
     assert response.status_code == 200
-    assert response.headers["content-type"] == "text/markdown"
+    assert response.headers["content-type"].startswith("text/markdown")
 
     content = response.content.decode()
     assert "Markdown Collection" in content
 
 
 @pytest.mark.asyncio
-async def test_export_all_data(client: AsyncClient, test_user, test_db):
+async def test_export_all_data(client: AsyncClient, test_user, test_db, auth_headers: dict):
     """Test exporting all user data"""
     # Create some data
     recipe = Recipe(
@@ -462,7 +468,9 @@ async def test_export_all_data(client: AsyncClient, test_user, test_db):
 
 
 @pytest.mark.asyncio
-async def test_export_excludes_deleted_recipes(client: AsyncClient, test_user, test_db):
+async def test_export_excludes_deleted_recipes(
+    client: AsyncClient, test_user, test_db, auth_headers: dict
+):
     """Test that export excludes soft-deleted recipes"""
     from datetime import datetime
 
@@ -484,7 +492,7 @@ async def test_export_excludes_deleted_recipes(client: AsyncClient, test_user, t
     test_db.add_all([recipe1, recipe2])
     await test_db.commit()
 
-    response = await client.get("/api/export/recipes?format=json")
+    response = await client.get("/api/export/recipes?format=json", headers=auth_headers)
 
     assert response.status_code == 200
     data = json.loads(response.content)

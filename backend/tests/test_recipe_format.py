@@ -5,6 +5,8 @@ Tests for recipe format conversion utilities
 from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
+import pytest
+
 from app.utils.recipe_format import (
     _ensure_array,
     _fetch_and_encode_image,
@@ -373,14 +375,13 @@ def test_convert_from_schema_org_with_keywords():
 
 
 def test_convert_from_schema_org_missing_name():
-    """Test conversion with missing name defaults to 'Untitled Recipe'"""
+    """Test conversion with missing name raises ValueError"""
     schema_recipe = {
         "description": "A recipe without a name",
     }
 
-    result = convert_from_schema_org(schema_recipe)
-
-    assert result["name"] == "Untitled Recipe"
+    with pytest.raises(ValueError, match="Recipe name is required"):
+        convert_from_schema_org(schema_recipe)
 
 
 def test_convert_to_schema_org_preserves_all_fields():

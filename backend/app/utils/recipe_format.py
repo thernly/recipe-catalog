@@ -142,9 +142,14 @@ def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, Any]:
         cook_min = _parse_duration_to_minutes(schema_recipe.get("cookTime", ""))
         total_time_minutes = (prep_min or 0) + (cook_min or 0) or None
 
+    # Validate required fields
+    recipe_name = schema_recipe.get("name", "").strip()
+    if not recipe_name:
+        raise ValueError("Recipe name is required")
+
     # Build recipe_data object (full recipe details)
     recipe_data = {
-        "name": schema_recipe.get("name", ""),
+        "name": recipe_name,
         "author": schema_recipe.get("author", []),
         "datePublished": schema_recipe.get("datePublished", ""),
         "recipeYield": schema_recipe.get("recipeYield", ""),
@@ -164,7 +169,7 @@ def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, Any]:
     }
 
     return {
-        "name": schema_recipe.get("name", "Untitled Recipe"),
+        "name": recipe_name,
         "description": schema_recipe.get("description", ""),
         "image_url": image_url,
         "recipe_data": recipe_data,
