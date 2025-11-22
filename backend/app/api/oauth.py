@@ -3,7 +3,7 @@
 import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import select
@@ -27,7 +27,6 @@ from app.models.oauth_state import OAuthState
 from app.models.refresh_token import RefreshToken
 from app.models.user import User, UserPreferences
 from app.schemas.oauth import LinkedProviderResponse, ProviderInfo
-from app.schemas.user import Token
 
 
 router = APIRouter()
@@ -83,15 +82,16 @@ async def authorize_provider(
     return await client.authorize_redirect(request, redirect_uri, state=oauth_state.token)
 
 
-@router.get("/{provider}/callback", response_model=Token)
+@router.get("/{provider}/callback")
 @limiter.limit("10/minute")
 async def oauth_callback(
     request: Request,
+    response: Response,
     provider: str,
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Handle OAuth callback from provider.
+    Handle OAuth callback from provider and set httpOnly cookies.
 
     Args:
         provider: Provider name
@@ -212,17 +212,28 @@ async def oauth_callback(
             db.add(refresh_token)
             await db.commit()
 
-            return {
-                "access_token": access_token,
-                "token_type": "bearer",
-                "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                "refresh_token": refresh_token_value,
-            }
+            # Set httpOnly cookies (same as app login)
+            response.set_cookie(
+                key="access_token",
+                value=access_token,
+                httponly=True,
+                secure=not settings.TESTING,
+                samesite="strict",
+                max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            )
+            response.set_cookie(
+                key="refresh_token",
+                value=refresh_token_value,
+                httponly=True,
+                secure=not settings.TESTING,
+                samesite="strict",
+                max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+            )
+
+            return {"message": "Login successful"}
 
         # Check if email already exists (for account linking)
-        email_result = await db.execute(
-            select(User).where(User.email == user_data["email"].lower())
-        )
+        email_result = await db.execute(select(User).where(User.email == user_data["email"].lower()))
         existing_user = email_result.scalar_one_or_none()
 
         if existing_user:
@@ -265,12 +276,25 @@ async def oauth_callback(
             db.add(refresh_token)
             await db.commit()
 
-            return {
-                "access_token": access_token,
-                "token_type": "bearer",
-                "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                "refresh_token": refresh_token_value,
-            }
+            # Set httpOnly cookies (same as app login)
+            response.set_cookie(
+                key="access_token",
+                value=access_token,
+                httponly=True,
+                secure=not settings.TESTING,
+                samesite="strict",
+                max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            )
+            response.set_cookie(
+                key="refresh_token",
+                value=refresh_token_value,
+                httponly=True,
+                secure=not settings.TESTING,
+                samesite="strict",
+                max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+            )
+
+            return {"message": "Login successful"}
 
         # Create new user account
         new_user = User(
@@ -302,9 +326,7 @@ async def oauth_callback(
         from app.services.household import create_default_household_for_new_user
 
         household = await create_default_household_for_new_user(db, new_user)
-        logger.info(
-            f"Created household '{household.name}' (ID: {household.id}) for user {new_user.id}"
-        )
+        logger.info(f"Created household '{household.name}' (ID: {household.id}) for user {new_user.id}")
 
         # Create default collections
         from app.models.collection import Collection
@@ -338,12 +360,25 @@ async def oauth_callback(
         db.add(refresh_token)
         await db.commit()
 
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            "refresh_token": refresh_token_value,
-        }
+        # Set httpOnly cookies (same as app login)
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=not settings.TESTING,
+            samesite="strict",
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token_value,
+            httponly=True,
+            secure=not settings.TESTING,
+            samesite="strict",
+            max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        )
+
+        return {"message": "Login successful"}
 
     except Exception as e:
         logger.error(f"OAuth callback error: {str(e)}")
@@ -359,9 +394,7 @@ async def list_linked_providers(
     db: AsyncSession = Depends(get_db),
 ):
     """Get list of identity providers linked to current user."""
-    result = await db.execute(
-        select(IdentityProvider).where(IdentityProvider.user_id == current_user.id)
-    )
+    result = await db.execute(select(IdentityProvider).where(IdentityProvider.user_id == current_user.id))
     providers = result.scalars().all()
     return providers
 
@@ -383,9 +416,7 @@ async def unlink_provider(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
 
     # Check if user has password or other providers
-    result = await db.execute(
-        select(IdentityProvider).where(IdentityProvider.user_id == current_user.id)
-    )
+    result = await db.execute(select(IdentityProvider).where(IdentityProvider.user_id == current_user.id))
     all_providers = result.scalars().all()
 
     has_password = current_user.hashed_password is not None

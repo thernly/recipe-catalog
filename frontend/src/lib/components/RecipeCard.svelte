@@ -1,11 +1,12 @@
 <script lang="ts">
 	import type { RecipeSummary } from '$lib/api/recipes';
-	import { createEventDispatcher } from 'svelte';
 
 	export let recipe: RecipeSummary;
 	export let showActions: boolean = true;
-
-	const dispatch = createEventDispatcher();
+	export let onview: ((recipe: RecipeSummary) => void) | undefined = undefined;
+	export let onedit: ((recipe: RecipeSummary) => void) | undefined = undefined;
+	export let ondelete: ((recipe: RecipeSummary) => void) | undefined = undefined;
+	export let onfavorite: ((recipe: RecipeSummary) => void) | undefined = undefined;
 
 	function formatTime(minutes: number | undefined): string {
 		if (!minutes) return '';
@@ -16,19 +17,19 @@
 	}
 
 	function handleView() {
-		dispatch('view', recipe);
+		onview?.(recipe);
 	}
 
 	function handleEdit() {
-		dispatch('edit', recipe);
+		onedit?.(recipe);
 	}
 
 	function handleDelete() {
-		dispatch('delete', recipe);
+		ondelete?.(recipe);
 	}
 
 	function handleFavorite() {
-		dispatch('favorite', recipe);
+		onfavorite?.(recipe);
 	}
 </script>
 

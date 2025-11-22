@@ -304,10 +304,10 @@
 					{#each searchResult.recipes as recipe (recipe.id)}
 						<RecipeCard
 							{recipe}
-							on:view={handleViewRecipe}
-							on:edit={handleEditRecipe}
-							on:delete={handleDeleteRecipe}
-							on:favorite={handleFavoriteRecipe}
+							onview={(r) => handleViewRecipe({ detail: r } as CustomEvent)}
+							onedit={(r) => handleEditRecipe({ detail: r } as CustomEvent)}
+							ondelete={(r) => handleDeleteRecipe({ detail: r } as CustomEvent)}
+							onfavorite={(r) => handleFavoriteRecipe({ detail: r } as CustomEvent)}
 						/>
 					{/each}
 				</div>
@@ -316,10 +316,10 @@
 					{#each searchResult.recipes as recipe (recipe.id)}
 						<RecipeListItem
 							{recipe}
-							on:view={handleViewRecipe}
-							on:edit={handleEditRecipe}
-							on:delete={handleDeleteRecipe}
-							on:favorite={handleFavoriteRecipe}
+							onview={(r) => handleViewRecipe({ detail: r } as CustomEvent)}
+							onedit={(r) => handleEditRecipe({ detail: r } as CustomEvent)}
+							ondelete={(r) => handleDeleteRecipe({ detail: r } as CustomEvent)}
+							onfavorite={(r) => handleFavoriteRecipe({ detail: r } as CustomEvent)}
 						/>
 					{/each}
 				</div>

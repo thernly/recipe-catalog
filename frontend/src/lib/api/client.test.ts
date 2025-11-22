@@ -183,16 +183,11 @@ describe('apiRequest', () => {
 		const postData = { name: 'New Item' };
 		const mockResponse = { id: 1, ...postData };
 
+		// Mock the POST request
 		(global.fetch as any).mockResolvedValueOnce({
 			ok: true,
 			status: 200,
 			json: async () => mockResponse
-		});
-
-		// Mock CSRF token fetch
-		(global.fetch as any).mockResolvedValueOnce({
-			ok: true,
-			json: async () => ({ csrf_token: 'test-token' })
 		});
 
 		const result = await apiRequest('/api/test', {
@@ -204,9 +199,11 @@ describe('apiRequest', () => {
 	});
 
 	it('should handle 204 No Content response', async () => {
+		// Mock DELETE request
 		(global.fetch as any).mockResolvedValueOnce({
 			ok: true,
-			status: 204
+			status: 204,
+			json: async () => ({})
 		});
 
 		const result = await apiRequest('/api/test', {
@@ -227,6 +224,7 @@ describe('apiRequest', () => {
 	});
 
 	it('should include Content-Type header for JSON', async () => {
+		// Mock actual request
 		(global.fetch as any).mockResolvedValueOnce({
 			ok: true,
 			status: 200,
@@ -238,9 +236,7 @@ describe('apiRequest', () => {
 			body: JSON.stringify({ test: 'data' })
 		});
 
-		const fetchCall = (global.fetch as any).mock.calls.find(
-			(call: any) => call[0].includes('/api/test')
-		);
+		const fetchCall = (global.fetch as any).mock.calls[0];
 
 		expect(fetchCall[1].headers['Content-Type']).toBe('application/json');
 	});
@@ -249,6 +245,7 @@ describe('apiRequest', () => {
 		const formData = new FormData();
 		formData.append('file', new Blob(['test']), 'test.txt');
 
+		// Mock actual request
 		(global.fetch as any).mockResolvedValueOnce({
 			ok: true,
 			status: 200,
@@ -260,9 +257,7 @@ describe('apiRequest', () => {
 			body: formData
 		});
 
-		const fetchCall = (global.fetch as any).mock.calls.find(
-			(call: any) => call[0].includes('/api/test')
-		);
+		const fetchCall = (global.fetch as any).mock.calls[0];
 
 		expect(fetchCall[1].headers['Content-Type']).toBeUndefined();
 	});

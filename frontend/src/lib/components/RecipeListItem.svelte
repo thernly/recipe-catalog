@@ -1,10 +1,11 @@
 <script lang="ts">
 	import type { RecipeSummary } from '$lib/api/recipes';
-	import { createEventDispatcher } from 'svelte';
 
 	export let recipe: RecipeSummary;
-
-	const dispatch = createEventDispatcher();
+	export let onview: ((recipe: RecipeSummary) => void) | undefined = undefined;
+	export let onedit: ((recipe: RecipeSummary) => void) | undefined = undefined;
+	export let ondelete: ((recipe: RecipeSummary) => void) | undefined = undefined;
+	export let onfavorite: ((recipe: RecipeSummary) => void) | undefined = undefined;
 
 	function formatTime(minutes: number | undefined): string {
 		if (!minutes) return '';
@@ -15,26 +16,26 @@
 	}
 
 	function handleView() {
-		dispatch('view', recipe);
+		onview?.(recipe);
 	}
 
 	function handleEdit() {
-		dispatch('edit', recipe);
+		onedit?.(recipe);
 	}
 
 	function handleDelete() {
-		dispatch('delete', recipe);
+		ondelete?.(recipe);
 	}
 
 	function handleFavorite() {
-		dispatch('favorite', recipe);
+		onfavorite?.(recipe);
 	}
 </script>
 
 <article class="recipe-list-item group">
-	<button on:click={handleView} class="flex items-center gap-4 w-full text-left p-4">
+	<div class="flex items-center gap-4 p-4">
 		<!-- Thumbnail -->
-		<div class="recipe-list-thumbnail">
+		<button on:click={handleView} class="recipe-list-thumbnail flex-shrink-0">
 			{#if recipe.recipe_data?.images?.[0]?.data}
 				<img
 					src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
@@ -51,10 +52,10 @@
 					🍽️
 				</div>
 			{/if}
-		</div>
+		</button>
 
-		<!-- Content -->
-		<div class="flex-1 min-w-0">
+		<!-- Content (clickable) -->
+		<button on:click={handleView} class="flex-1 min-w-0 text-left">
 			<h3 class="recipe-list-title">{recipe.name}</h3>
 			{#if recipe.description}
 				<p class="recipe-list-description">{recipe.description}</p>
@@ -77,29 +78,29 @@
 					• {recipe.source_type === 'imported' ? '📥 Imported' : '✏️ Manual'}
 				</span>
 			</div>
-		</div>
+		</button>
 
 		<!-- Actions -->
-		<div class="flex items-center gap-2">
+		<div class="flex items-center gap-2 flex-shrink-0">
 			<button
-				on:click|stopPropagation={handleFavorite}
+				on:click={handleFavorite}
 				class="action-btn-small"
 				title="Add to favorites"
 			>
 				⭐
 			</button>
-			<button on:click|stopPropagation={handleEdit} class="action-btn-small" title="Edit recipe">
+			<button on:click={handleEdit} class="action-btn-small" title="Edit recipe">
 				✏️
 			</button>
 			<button
-				on:click|stopPropagation={handleDelete}
+				on:click={handleDelete}
 				class="action-btn-small"
 				title="Delete recipe"
 			>
 				🗑️
 			</button>
 		</div>
-	</button>
+	</div>
 </article>
 
 <style>
@@ -122,6 +123,14 @@
 		overflow: hidden;
 		flex-shrink: 0;
 		background: var(--neutral-100);
+		border: none;
+		padding: 0;
+		cursor: pointer;
+		transition: opacity var(--transition-fast);
+	}
+
+	.recipe-list-thumbnail:hover {
+		opacity: 0.9;
 	}
 
 	.recipe-list-title {

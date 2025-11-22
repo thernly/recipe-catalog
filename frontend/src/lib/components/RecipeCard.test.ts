@@ -2,7 +2,7 @@
  * Tests for RecipeCard component
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/svelte';
+import { render, fireEvent } from '@testing-library/svelte/svelte5';
 import RecipeCard from './RecipeCard.svelte';
 import type { RecipeSummary } from '$lib/api/recipes';
 
@@ -188,63 +188,55 @@ describe('RecipeCard', () => {
 	});
 
 	it('should dispatch view event when card is clicked', async () => {
-		const { component, container } = render(RecipeCard, {
-			props: { recipe: mockRecipe }
-		});
-
 		const viewHandler = vi.fn();
-		component.$on('view', viewHandler);
+		const { container } = render(RecipeCard, {
+			props: { recipe: mockRecipe, onview: viewHandler }
+		});
 
 		const button = container.querySelector('button');
 		await fireEvent.click(button!);
 
 		expect(viewHandler).toHaveBeenCalled();
-		expect(viewHandler.mock.calls[0][0].detail).toEqual(mockRecipe);
+		expect(viewHandler.mock.calls[0][0]).toEqual(mockRecipe);
 	});
 
 	it('should dispatch edit event when edit button clicked', async () => {
-		const { component, getByTitle } = render(RecipeCard, {
-			props: { recipe: mockRecipe }
-		});
-
 		const editHandler = vi.fn();
-		component.$on('edit', editHandler);
+		const { getByTitle } = render(RecipeCard, {
+			props: { recipe: mockRecipe, onedit: editHandler }
+		});
 
 		const editButton = getByTitle('Edit recipe');
 		await fireEvent.click(editButton);
 
 		expect(editHandler).toHaveBeenCalled();
-		expect(editHandler.mock.calls[0][0].detail).toEqual(mockRecipe);
+		expect(editHandler.mock.calls[0][0]).toEqual(mockRecipe);
 	});
 
 	it('should dispatch delete event when delete button clicked', async () => {
-		const { component, getByTitle } = render(RecipeCard, {
-			props: { recipe: mockRecipe }
-		});
-
 		const deleteHandler = vi.fn();
-		component.$on('delete', deleteHandler);
+		const { getByTitle } = render(RecipeCard, {
+			props: { recipe: mockRecipe, ondelete: deleteHandler }
+		});
 
 		const deleteButton = getByTitle('Delete recipe');
 		await fireEvent.click(deleteButton);
 
 		expect(deleteHandler).toHaveBeenCalled();
-		expect(deleteHandler.mock.calls[0][0].detail).toEqual(mockRecipe);
+		expect(deleteHandler.mock.calls[0][0]).toEqual(mockRecipe);
 	});
 
 	it('should dispatch favorite event when favorite button clicked', async () => {
-		const { component, getByTitle } = render(RecipeCard, {
-			props: { recipe: mockRecipe }
-		});
-
 		const favoriteHandler = vi.fn();
-		component.$on('favorite', favoriteHandler);
+		const { getByTitle } = render(RecipeCard, {
+			props: { recipe: mockRecipe, onfavorite: favoriteHandler }
+		});
 
 		const favoriteButton = getByTitle('Add to favorites');
 		await fireEvent.click(favoriteButton);
 
 		expect(favoriteHandler).toHaveBeenCalled();
-		expect(favoriteHandler.mock.calls[0][0].detail).toEqual(mockRecipe);
+		expect(favoriteHandler.mock.calls[0][0]).toEqual(mockRecipe);
 	});
 
 	it('should show action buttons by default', () => {
@@ -268,14 +260,11 @@ describe('RecipeCard', () => {
 	});
 
 	it('should prevent card click when action button is clicked', async () => {
-		const { component, getByTitle, container } = render(RecipeCard, {
-			props: { recipe: mockRecipe }
-		});
-
 		const viewHandler = vi.fn();
 		const editHandler = vi.fn();
-		component.$on('view', viewHandler);
-		component.$on('edit', editHandler);
+		const { getByTitle } = render(RecipeCard, {
+			props: { recipe: mockRecipe, onview: viewHandler, onedit: editHandler }
+		});
 
 		const editButton = getByTitle('Edit recipe');
 		await fireEvent.click(editButton);

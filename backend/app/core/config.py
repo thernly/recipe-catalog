@@ -36,7 +36,6 @@ class Settings(BaseSettings):
         "Authorization",
         "Content-Type",
         "Accept",
-        "X-CSRF-Token",
     ]
 
     # Email
@@ -76,9 +75,7 @@ class Settings(BaseSettings):
     OPENROUTER_MODEL: str = "anthropic/claude-3.5-sonnet"
     AI_RATE_LIMIT_PER_HOUR: int = 50
 
-    model_config = SettingsConfigDict(
-        env_file=".env", case_sensitive=True, env_parse_none_str="null"
-    )
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, env_parse_none_str="null")
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
@@ -137,8 +134,7 @@ class Settings(BaseSettings):
         # In production, reject weak keys
         if environment == "production" and v.lower() in weak_keys:
             raise ValueError(
-                "SECRET_KEY appears to be a weak/default value. "
-                "Generate a secure key with: openssl rand -hex 32"
+                "SECRET_KEY appears to be a weak/default value. Generate a secure key with: openssl rand -hex 32"
             )
 
         return v
