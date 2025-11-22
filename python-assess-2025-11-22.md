@@ -323,8 +323,32 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 def generate_recipe_pdf(recipe: Any) -> bytes:  # Should be Recipe
 ```
 
+**Known Issue - SQLAlchemy Type Checking:**
+```python
+# app/api/shopping_lists.py:447
+func.count(ShoppingListItem.id).label("item_count")
+# ❌ mypy error: "func.count is not callable"
+```
+
+This is because SQLAlchemy's `func` uses dynamic attribute access (`__getattr__`), which mypy can't understand.
+
+**Solution - Add SQLAlchemy plugin to pyproject.toml:**
+```toml
+[tool.mypy]
+python_version = "3.13"
+plugins = ["sqlalchemy.ext.mypy.plugin"]
+ignore_missing_imports = false
+strict = true
+```
+
+Then install the stubs:
+```bash
+uv pip install sqlalchemy[mypy]
+```
+
 **Recommendation:**
 - Run `mypy` in strict mode
+- Add SQLAlchemy mypy plugin (fixes `func.count` errors)
 - Replace `Any` with proper types
 - Add return type hints everywhere
 
