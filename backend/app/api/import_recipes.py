@@ -15,8 +15,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_user_household
 from app.models.collection import Collection, RecipeCollection
+from app.models.household import Household
 from app.models.recipe import Recipe
 from app.models.user import User
 from app.utils.file_validation import validate_file_size
@@ -51,9 +52,7 @@ async def _validate_collection(
         return None
 
     result = await db.execute(
-        select(Collection)
-        .where(Collection.id == collection_id)
-        .where(Collection.user_id == user_id)
+        select(Collection).where(Collection.id == collection_id).where(Collection.user_id == user_id)
     )
     collection = result.scalar_one_or_none()
     if not collection:
@@ -82,6 +81,7 @@ async def _commit_import_results(db: AsyncSession) -> None:
 async def _import_recipes_internal(
     recipes_data: list[dict[str, Any]],
     user_id: int,
+    household_id: int,
     duplicate_handling: Literal["skip", "update", "create"],
     collection: Collection | None,
     db: AsyncSession,
@@ -92,6 +92,7 @@ async def _import_recipes_internal(
     Args:
         recipes_data: List of recipe dictionaries in Schema.org format
         user_id: ID of the user importing recipes
+        household_id: ID of the user's household
         duplicate_handling: How to handle duplicates ("skip", "update", or "create")
         collection: Optional collection to add recipes to
         db: Database session
@@ -148,6 +149,7 @@ async def _import_recipes_internal(
                 # Create new recipe
                 new_recipe = Recipe(
                     user_id=user_id,
+                    household_id=household_id,
                     name=recipe_dict["name"],
                     description=recipe_dict["description"],
                     image_url=recipe_dict["image_url"],
@@ -175,9 +177,7 @@ async def _import_recipes_internal(
                     .where(RecipeCollection.collection_id == collection.id)
                 )
                 if not existing_link.scalar_one_or_none():
-                    db.add(
-                        RecipeCollection(recipe_id=recipe_to_add.id, collection_id=collection.id)
-                    )
+                    db.add(RecipeCollection(recipe_id=recipe_to_add.id, collection_id=collection.id))
 
         except (ValueError, KeyError, TypeError) as e:
             # Handle expected validation and format errors
@@ -205,6 +205,7 @@ async def import_recipes(
     duplicate_handling: Literal["skip", "update", "create"] = Form("skip"),
     collection_id: int = Form(None),
     current_user: User = Depends(get_current_user),
+    household: "Household" = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -245,9 +246,7 @@ async def import_recipes(
         # Array of recipes
         recipes_data = data
     else:
-        raise HTTPException(
-            status_code=400, detail="JSON must be a recipe object or array of recipes"
-        )
+        raise HTTPException(status_code=400, detail="JSON must be a recipe object or array of recipes")
 
     # Validate collection if specified
     collection = await _validate_collection(collection_id, current_user.id, db)
@@ -256,6 +255,7 @@ async def import_recipes(
     results = await _import_recipes_internal(
         recipes_data=recipes_data,
         user_id=current_user.id,
+        household_id=household.id,
         duplicate_handling=duplicate_handling,
         collection=collection,
         db=db,
@@ -279,6 +279,7 @@ async def import_recipes_json(
     duplicate_handling: Literal["skip", "update", "create"] = "skip",
     collection_id: int = None,
     current_user: User = Depends(get_current_user),
+    household: "Household" = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -301,6 +302,7 @@ async def import_recipes_json(
     results = await _import_recipes_internal(
         recipes_data=recipes,
         user_id=current_user.id,
+        household_id=household.id,
         duplicate_handling=duplicate_handling,
         collection=collection,
         db=db,
