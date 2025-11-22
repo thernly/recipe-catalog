@@ -6,7 +6,6 @@ import json
 from typing import Any
 
 from app.models.recipe import Recipe
-from app.utils.pdf_export import generate_recipe_pdf
 from app.utils.recipe_format import convert_to_schema_org
 
 
@@ -164,6 +163,9 @@ class RecipeExporter:
         Returns:
             PDF file as bytes
         """
+        # Lazy import to avoid requiring WeasyPrint dependencies when not using PDF export
+        from app.utils.pdf_export import generate_recipe_pdf
+
         return generate_recipe_pdf(recipe)
 
     def _format_metadata(self, schema_recipe: dict[str, Any], markdown: bool = False) -> list[str]:
