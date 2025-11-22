@@ -183,16 +183,10 @@ export async function exportRecipe(
 	id: number,
 	format: 'json' | 'markdown' | 'text' | 'pdf'
 ): Promise<Blob> {
-	const token = localStorage.getItem('auth_token');
-	if (!token) {
-		throw new Error('Not authenticated');
-	}
-
-	const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-	const response = await fetch(`${API_BASE_URL}/api/recipes/${id}/export?format=${format}`, {
-		headers: {
-			Authorization: `Bearer ${token}`
-		}
+	const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+	
+	const response = await fetch(`${API_URL}/api/recipes/${id}/export?format=${format}`, {
+		credentials: 'include' // Send cookies for authentication
 	});
 
 	if (!response.ok) {
