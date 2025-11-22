@@ -4,6 +4,7 @@ Security utilities for password hashing and JWT tokens.
 
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import bleach
 import jwt
@@ -51,7 +52,7 @@ def get_password_hash(password: str) -> str:
     return ph.hash(password)
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     """
     Create a JWT access token.
 
@@ -77,7 +78,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     return encoded_jwt
 
 
-def decode_token(token: str) -> dict | None:
+def decode_token(token: str) -> dict[str, Any] | None:
     """
     Decode a JWT token.
 
@@ -88,7 +89,7 @@ def decode_token(token: str) -> dict | None:
         Decoded token payload or None if invalid
     """
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload: dict[str, Any] = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
     except PyJWTError:
         return None

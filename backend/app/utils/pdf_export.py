@@ -3,11 +3,14 @@ PDF export utility for recipes and collections using fpdf2.
 """
 
 import html
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fpdf import FPDF
 
 from app.utils.recipe_format import convert_to_schema_org
+
+if TYPE_CHECKING:
+    from app.models.recipe import Recipe
 
 
 class RecipePDF(FPDF):
@@ -25,7 +28,7 @@ class RecipePDF(FPDF):
         self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
 
-def generate_recipe_pdf(recipe: Any) -> bytes:
+def generate_recipe_pdf(recipe: "Recipe") -> bytes:
     """
     Generate a PDF for a single recipe.
 
@@ -47,11 +50,12 @@ def generate_recipe_pdf(recipe: Any) -> bytes:
     _add_recipe_to_pdf(pdf, schema_recipe)
 
     # Return PDF as bytes
-    return pdf.output()
+    output = pdf.output()
+    return bytes(output) if not isinstance(output, bytes) else output
 
 
 def generate_collection_pdf(
-    collection_name: str, collection_description: str, recipes: list[Any]
+    collection_name: str, collection_description: str, recipes: list["Recipe"]
 ) -> bytes:
     """
     Generate a PDF for a collection of recipes.
@@ -82,7 +86,8 @@ def generate_collection_pdf(
         schema_recipe = convert_to_schema_org(recipe)
         _add_recipe_to_pdf(pdf, schema_recipe)
 
-    return pdf.output()
+    output = pdf.output()
+    return bytes(output) if not isinstance(output, bytes) else output
 
 
 def _add_collection_cover(pdf: FPDF, name: str, description: str):
@@ -103,7 +108,7 @@ def _add_collection_cover(pdf: FPDF, name: str, description: str):
         pdf.multi_cell(0, 8, _clean_text(description), align="C")
 
 
-def _add_table_of_contents(pdf: FPDF, recipes: list[Any]):
+def _add_table_of_contents(pdf: FPDF, recipes: list["Recipe"]):
     """Add table of contents page."""
     pdf.set_font("Arial", "B", 20)
     pdf.set_text_color(44, 62, 80)
@@ -124,7 +129,7 @@ def _add_table_of_contents(pdf: FPDF, recipes: list[Any]):
         pdf.multi_cell(0, 8, _clean_text(recipe.name))
 
 
-def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict):
+def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
     """Add a single recipe to the PDF."""
     # Recipe title
     pdf.set_font("Arial", "B", 20)
@@ -257,7 +262,7 @@ def _add_metadata_box(pdf: FPDF, items: list[tuple[str, str]]):
     pdf.set_xy(x, y + box_height)
 
 
-def _collect_metadata(schema_recipe: dict) -> list[tuple[str, str]]:
+def _collect_metadata(schema_recipe: dict[str, Any]) -> list[tuple[str, str]]:
     """Collect metadata items from recipe."""
     items = []
 

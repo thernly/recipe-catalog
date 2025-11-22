@@ -1,6 +1,7 @@
 """OAuth/OIDC provider configuration and utilities."""
 
 import secrets
+from typing import Any
 
 from authlib.integrations.starlette_client import OAuth
 
@@ -71,7 +72,7 @@ def generate_state_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def extract_user_info(provider_name: str, userinfo: dict) -> dict[str, str | None]:
+def extract_user_info(provider_name: str, userinfo: dict[str, Any]) -> dict[str, str | bool | None]:
     """
     Extract standardized user information from provider-specific userinfo.
 

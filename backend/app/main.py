@@ -31,6 +31,7 @@ from app.api import (
 )
 from app.core.config import settings
 from app.core.database import close_db, init_db
+from app.core.exceptions import AppException
 
 
 # Configure logging
@@ -136,6 +137,24 @@ async def add_security_headers(request: Request, call_next):
 
 
 # Exception handlers
+@app.exception_handler(AppException)
+async def app_exception_handler(request: Request, exc: AppException):
+    """Handle custom application exceptions."""
+    logger.error(
+        f"Application error on {request.url}: {exc.error_code} - {exc.message}",
+        extra={"error_code": exc.error_code, "details": exc.details},
+    )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error_code": exc.error_code,
+            "message": exc.message,
+            "details": exc.details,
+        },
+    )
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors and return JSON response."""

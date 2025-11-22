@@ -157,24 +157,24 @@ Eliminate 200+ lines of duplicate code by creating a RecipeExporter service clas
 Break up 844-line recipes.py into smaller, focused modules.
 
 **Actions:**
-- [ ] Create new directory: `app/api/recipes/`
-- [ ] Create `app/api/recipes/__init__.py` with router
-- [ ] Create `app/api/recipes/crud.py` for CRUD operations:
+- [x] Create new directory: `app/api/recipes/`
+- [x] Create `app/api/recipes/__init__.py` with router
+- [x] Create `app/api/recipes/crud.py` for CRUD operations:
   - create_recipe
   - get_recipe
   - update_recipe
   - delete_recipe
   - list_recipes
-- [ ] Create `app/api/recipes/search.py` for search operations:
+- [x] Create `app/api/recipes/search.py` for search operations:
   - search_recipes
   - filter_by_tags
   - filter_by_ingredients
-- [ ] Create `app/api/recipes/export.py` for export operations:
+- [x] Create `app/api/recipes/export.py` for export operations:
   - export_recipe (using RecipeExporter service)
   - bulk_export
-- [ ] Update imports in `app/main.py`
-- [ ] Move tests to `tests/api/recipes/` directory structure
-- [ ] Update test imports
+- [x] Update imports in `app/main.py`
+- [x] Move tests to `tests/api/recipes/` directory structure
+- [x] Update test imports
 
 **Files:**
 - NEW: `app/api/recipes/__init__.py`
@@ -202,16 +202,16 @@ Break up 844-line recipes.py into smaller, focused modules.
 Improve type hint coverage from ~70% to >90%, replacing all `Any` types.
 
 **Actions:**
-- [ ] Run mypy in strict mode to find missing type hints: `uv run mypy app/`
-- [ ] Fix all type errors in priority order:
+- [x] Run mypy in strict mode to find missing type hints: `uv run mypy app/`
+- [x] Fix all type errors in priority order:
   1. `app/utils/pdf_export.py` - Replace `Any` with `Recipe` model
   2. `app/services/ai.py` - Add return types to all methods
   3. `app/api/` endpoints - Ensure all endpoints have return types
   4. `app/core/` utilities - Add complete type coverage
-- [ ] Add missing return type hints to all functions
-- [ ] Fix SQLAlchemy `func.count` mypy errors using plugin
-- [ ] Add type hints to test files (use `pytest` types)
-- [ ] Run mypy again and ensure no errors
+- [x] Add missing return type hints to all functions
+- [x] Fix SQLAlchemy `func.count` mypy errors using plugin
+- [x] Add type hints to test files (use `pytest` types)
+- [x] Run mypy again and ensure no errors
 
 **Files:**
 - `app/utils/pdf_export.py`
@@ -237,14 +237,14 @@ Add pytest-cov and establish coverage baseline, targeting 80%+ coverage.
 
 **Actions:**
 - [ ] Add pytest-cov to dev dependencies if not present
-- [ ] Create `.coveragerc` configuration file:
+- [x] Create `.coveragerc` configuration file:
   - Exclude migrations, tests, and __init__.py
   - Set minimum coverage threshold
-- [ ] Run coverage: `uv run pytest --cov=app --cov-report=html --cov-report=term-missing`
-- [ ] Review coverage report in htmlcov/index.html
-- [ ] Identify files with <80% coverage
-- [ ] Add coverage badge/report to CI/CD
-- [ ] Document coverage in README
+- [x] Run coverage: `uv run pytest --cov=app --cov-report=html --cov-report=term-missing`
+- [x] Review coverage report in htmlcov/index.html
+- [x] Identify files with <80% coverage
+- [x] Add coverage badge/report to CI/CD
+- [x] Document coverage in README
 
 **Files:**
 - NEW: `.coveragerc`
@@ -268,17 +268,17 @@ Add pytest-cov and establish coverage baseline, targeting 80%+ coverage.
 Replace manual dictionary construction with Pydantic's model_validate().
 
 **Actions:**
-- [ ] Identify all manual dict construction patterns:
+- [x] Identify all manual dict construction patterns:
   - `app/api/recipes.py:123-141` (18 lines of manual mapping)
   - Search for similar patterns in other files
-- [ ] Create Pydantic response schemas if missing
-- [ ] Replace manual dict construction with:
+- [x] Create Pydantic response schemas if missing
+- [x] Replace manual dict construction with:
   ```python
   return RecipeSchema.model_validate(new_recipe)
   ```
-- [ ] Configure Pydantic ORM mode if needed
-- [ ] Update tests to verify response schemas
-- [ ] Remove old dict construction code
+- [x] Configure Pydantic ORM mode if needed
+- [x] Update tests to verify response schemas
+- [x] Remove old dict construction code
 
 **Files:**
 - `app/api/recipes.py`
@@ -305,34 +305,34 @@ Replace manual dictionary construction with Pydantic's model_validate().
 Create custom exception classes and standardize error response format.
 
 **Actions:**
-- [ ] Create `app/core/exceptions.py` with custom exceptions:
+- [x] Create `app/core/exceptions.py` with custom exceptions:
   - `RecipeNotFoundError`
   - `UnauthorizedAccessError`
   - `InvalidInputError`
   - `RateLimitExceededError`
   - `ExternalServiceError`
-- [ ] Add error codes enum:
+- [x] Add error codes enum:
   ```python
   class ErrorCode(str, Enum):
       RECIPE_NOT_FOUND = "RECIPE_NOT_FOUND"
       UNAUTHORIZED = "UNAUTHORIZED"
       # ... etc
   ```
-- [ ] Create standardized error response schema:
+- [x] Create standardized error response schema:
   ```python
   class ErrorResponse(BaseModel):
       error_code: str
       message: str
       details: Optional[dict] = None
   ```
-- [ ] Update exception handlers in `app/main.py`
-- [ ] Replace generic `HTTPException` with custom exceptions throughout codebase
-- [ ] Update error handling in:
+- [x] Update exception handlers in `app/main.py`
+- [x] Replace generic `HTTPException` with custom exceptions throughout codebase
+- [x] Update error handling in:
   - `app/api/auth.py:139-152`
   - `app/services/ai.py:95-160`
   - All other API endpoints
-- [ ] Add tests for error handling
-- [ ] Document error codes in API documentation
+- [x] Add tests for error handling
+- [x] Document error codes in API documentation
 
 **Files:**
 - NEW: `app/core/exceptions.py`
