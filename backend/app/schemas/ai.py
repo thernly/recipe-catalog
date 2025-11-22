@@ -1,5 +1,6 @@
 """AI-related Pydantic schemas."""
 
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -21,7 +22,7 @@ class AIRecipeGenerateRequest(BaseModel):
 class AIRecipeGenerateResponse(BaseModel):
     """Schema for AI recipe generation response."""
 
-    recipe: dict = Field(..., description="Generated recipe data")
+    recipe: dict[str, Any] = Field(..., description="Generated recipe data")
     source_type: str = Field(default="ai-generated", description="Recipe source type")
 
 

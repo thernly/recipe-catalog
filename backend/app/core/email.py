@@ -30,7 +30,7 @@ class EmailService:
         to_email: str,
         subject: str,
         html_content: str,
-        text_content: str = None,
+        text_content: str | None = None,
     ) -> bool:
         """
         Send an email via SMTP asynchronously
