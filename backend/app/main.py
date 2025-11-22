@@ -30,8 +30,11 @@ from app.api import (
     users,
 )
 from app.core.config import settings
-from app.core.database import close_db, init_db
+
+# Cleanup expired OAuth states on startup
+from app.core.database import AsyncSessionLocal, close_db, init_db
 from app.core.exceptions import AppException
+from app.models.oauth_state import OAuthState
 
 
 # Configure logging
@@ -48,17 +51,13 @@ async def lifespan(app: FastAPI):
     # Startup
     await init_db()
 
-    # Cleanup expired OAuth states on startup
-    from app.core.database import AsyncSessionLocal
-    from app.models.oauth_state import OAuthState
-
     async with AsyncSessionLocal() as session:
         try:
             deleted_count = await OAuthState.cleanup_expired(session)
             if deleted_count > 0:
-                logger.info(f"Cleaned up {deleted_count} expired OAuth states")
+                logger.info("Cleaned up %s expired OAuth states", deleted_count)
         except Exception as e:
-            logger.warning(f"Failed to cleanup expired OAuth states: {e}")
+            logger.warning("Failed to cleanup expired OAuth states: %s", str(e))
 
     yield
     # Shutdown
@@ -141,7 +140,10 @@ async def add_security_headers(request: Request, call_next):
 async def app_exception_handler(request: Request, exc: AppException):
     """Handle custom application exceptions."""
     logger.error(
-        f"Application error on {request.url}: {exc.error_code} - {exc.message}",
+        "Application error on %s: %s - %s",
+        request.url,
+        exc.error_code,
+        exc.message,
         extra={"error_code": exc.error_code, "details": exc.details},
     )
 
@@ -158,7 +160,7 @@ async def app_exception_handler(request: Request, exc: AppException):
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors and return JSON response."""
-    logger.error(f"Validation error on {request.url}: {exc.errors()}")
+    logger.error("Validation error on %s: %s", request.url, exc.errors())
 
     # Convert Pydantic errors to JSON-serializable format
     errors = []
@@ -186,7 +188,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle uncaught exceptions and return JSON response."""
-    logger.exception(f"Unhandled exception on {request.url}: {str(exc)}")
+    logger.exception("Unhandled exception on %s: %s", request.url, str(exc))
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={

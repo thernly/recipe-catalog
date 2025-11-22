@@ -74,9 +74,7 @@ class RecipeNotFoundError(AppException):
 class CollectionNotFoundError(AppException):
     """Raised when a collection cannot be found."""
 
-    def __init__(
-        self, collection_id: int | None = None, details: dict[str, Any] | None = None
-    ):
+    def __init__(self, collection_id: int | None = None, details: dict[str, Any] | None = None):
         message = (
             f"Collection {collection_id} not found" if collection_id else "Collection not found"
         )
@@ -103,9 +101,7 @@ class UnauthorizedAccessError(AppException):
 class InvalidCredentialsError(AppException):
     """Raised when authentication credentials are invalid."""
 
-    def __init__(
-        self, message: str = "Invalid credentials", details: dict[str, Any] | None = None
-    ):
+    def __init__(self, message: str = "Invalid credentials", details: dict[str, Any] | None = None):
         super().__init__(
             message=message,
             error_code=ErrorCode.INVALID_CREDENTIALS,
@@ -117,9 +113,7 @@ class InvalidCredentialsError(AppException):
 class InvalidInputError(AppException):
     """Raised when input validation fails."""
 
-    def __init__(
-        self, message: str = "Invalid input", details: dict[str, Any] | None = None
-    ):
+    def __init__(self, message: str = "Invalid input", details: dict[str, Any] | None = None):
         super().__init__(
             message=message,
             error_code=ErrorCode.INVALID_INPUT,
@@ -131,9 +125,7 @@ class InvalidInputError(AppException):
 class RateLimitExceededError(AppException):
     """Raised when rate limit is exceeded."""
 
-    def __init__(
-        self, message: str = "Rate limit exceeded", details: dict[str, Any] | None = None
-    ):
+    def __init__(self, message: str = "Rate limit exceeded", details: dict[str, Any] | None = None):
         super().__init__(
             message=message,
             error_code=ErrorCode.RATE_LIMIT_EXCEEDED,

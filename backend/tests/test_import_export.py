@@ -213,7 +213,9 @@ async def test_import_duplicate_handling_create(
     files = {"file": ("recipe.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "create"}
 
-    response = await client.post("/api/import/recipes", data=data, files=files, headers=auth_headers)
+    response = await client.post(
+        "/api/import/recipes", data=data, files=files, headers=auth_headers
+    )
 
     assert response.status_code == 200
     result = response.json()
@@ -408,7 +410,9 @@ async def test_export_collections_json(client: AsyncClient, test_user, test_db, 
     recipe_id = response.json()["id"]
 
     await client.post(
-        f"/api/collections/{collection.id}/recipes", json={"recipe_id": recipe_id}, headers=auth_headers
+        f"/api/collections/{collection.id}/recipes",
+        json={"recipe_id": recipe_id},
+        headers=auth_headers,
     )
 
     # Export collections

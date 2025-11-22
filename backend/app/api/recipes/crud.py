@@ -356,5 +356,3 @@ async def duplicate_recipe(
     await db.refresh(duplicate)
 
     return duplicate
-
-
