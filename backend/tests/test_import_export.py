@@ -114,7 +114,9 @@ async def test_import_multiple_recipes_from_file(client: AsyncClient, auth_heade
 
 
 @pytest.mark.asyncio
-async def test_import_duplicate_handling_skip(client: AsyncClient, test_user, test_db):
+async def test_import_duplicate_handling_skip(
+    client: AsyncClient, test_user, test_db, auth_headers: dict
+):
     """Test duplicate handling with 'skip' option"""
     # Create existing recipe
     existing_recipe = Recipe(
@@ -146,7 +148,9 @@ async def test_import_duplicate_handling_skip(client: AsyncClient, test_user, te
 
 
 @pytest.mark.asyncio
-async def test_import_duplicate_handling_update(client: AsyncClient, test_user, test_db):
+async def test_import_duplicate_handling_update(
+    client: AsyncClient, test_user, test_db, auth_headers: dict
+):
     """Test duplicate handling with 'update' option"""
     # Create existing recipe
     existing_recipe = Recipe(
@@ -187,7 +191,12 @@ async def test_import_duplicate_handling_update(client: AsyncClient, test_user, 
 async def test_import_duplicate_handling_create(client: AsyncClient, test_user, test_db):
     """Test duplicate handling with 'create' option (allows duplicates)"""
     # Create existing recipe
-    existing_recipe = Recipe(user_id=test_user.id, name="Duplicate Name", description="First one")
+    existing_recipe = Recipe(
+        user_id=test_user.id,
+        name="Duplicate Name",
+        description="First one",
+        recipe_data={},
+    )
     test_db.add(existing_recipe)
     await test_db.commit()
 
@@ -217,7 +226,7 @@ async def test_import_duplicate_handling_create(client: AsyncClient, test_user, 
 
 
 @pytest.mark.asyncio
-async def test_import_to_collection(client: AsyncClient, test_user, test_db):
+async def test_import_to_collection(client: AsyncClient, test_user, test_db, auth_headers: dict):
     """Test importing recipes directly into a collection"""
     # Create collection
     collection = Collection(user_id=test_user.id, name="Test Collection", description="For imports")
@@ -292,7 +301,7 @@ async def test_import_recipes_json_endpoint(client: AsyncClient, auth_headers: d
 
 
 @pytest.mark.asyncio
-async def test_export_recipes_json(client: AsyncClient, test_user, test_db):
+async def test_export_recipes_json(client: AsyncClient, test_user, test_db, auth_headers: dict):
     """Test exporting recipes as JSON"""
     # Create test recipes
     recipe1 = Recipe(
@@ -327,7 +336,7 @@ async def test_export_recipes_json(client: AsyncClient, test_user, test_db):
 
 
 @pytest.mark.asyncio
-async def test_export_recipes_markdown(client: AsyncClient, test_user, test_db):
+async def test_export_recipes_markdown(client: AsyncClient, test_user, test_db, auth_headers: dict):
     """Test exporting recipes as Markdown"""
     recipe = Recipe(
         user_id=test_user.id,
@@ -355,7 +364,7 @@ async def test_export_recipes_markdown(client: AsyncClient, test_user, test_db):
 
 
 @pytest.mark.asyncio
-async def test_export_recipes_text(client: AsyncClient, test_user, test_db):
+async def test_export_recipes_text(client: AsyncClient, test_user, test_db, auth_headers: dict):
     """Test exporting recipes as plain text"""
     recipe = Recipe(
         user_id=test_user.id,
@@ -406,7 +415,9 @@ async def test_export_collections_json(client: AsyncClient, test_user, test_db):
 
 
 @pytest.mark.asyncio
-async def test_export_collections_markdown(client: AsyncClient, test_user, test_db):
+async def test_export_collections_markdown(
+    client: AsyncClient, test_user, test_db, auth_headers: dict
+):
     """Test exporting collections as Markdown"""
     collection = Collection(
         user_id=test_user.id, name="Markdown Collection", description="For markdown"
@@ -428,7 +439,10 @@ async def test_export_all_data(client: AsyncClient, test_user, test_db):
     """Test exporting all user data"""
     # Create some data
     recipe = Recipe(
-        user_id=test_user.id, name="Complete Export Recipe", description="For complete export"
+        user_id=test_user.id,
+        name="Complete Export Recipe",
+        description="For complete export",
+        recipe_data={},
     )
     collection = Collection(user_id=test_user.id, name="Complete Export Collection")
     test_db.add_all([recipe, collection])
@@ -453,13 +467,19 @@ async def test_export_excludes_deleted_recipes(client: AsyncClient, test_user, t
     from datetime import datetime
 
     # Create normal recipe
-    recipe1 = Recipe(user_id=test_user.id, name="Active Recipe", description="Should be exported")
+    recipe1 = Recipe(
+        user_id=test_user.id,
+        name="Active Recipe",
+        description="Should be exported",
+        recipe_data={},
+    )
     # Create deleted recipe
     recipe2 = Recipe(
         user_id=test_user.id,
         name="Deleted Recipe",
         description="Should not be exported",
         deleted_at=datetime.now(UTC),
+        recipe_data={},
     )
     test_db.add_all([recipe1, recipe2])
     await test_db.commit()
