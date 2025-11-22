@@ -1,15 +1,15 @@
 """Household service functions."""
 
 import secrets
-from datetime import datetime, timedelta, UTC
-from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
-from fastapi import HTTPException, status
+from datetime import UTC, datetime, timedelta
 
-from app.models.household import Household, HouseholdMember, HouseholdInvitation
-from app.models.user import User
+from fastapi import HTTPException, status
+from sqlalchemy import and_, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.email import email_service
+from app.models.household import Household, HouseholdInvitation, HouseholdMember
+from app.models.user import User
 
 
 # ============================================
@@ -40,20 +40,16 @@ async def create_default_household_for_new_user(
         household_name = f"{user.display_name}'s Household"
     else:
         # Extract name from email (part before @)
-        email_prefix = user.email.split('@')[0]
+        email_prefix = user.email.split("@")[0]
         household_name = f"{email_prefix}'s Household"
 
     # Create household
-    household = Household(
-        name=household_name, owner_user_id=user.id, max_members=max_members
-    )
+    household = Household(name=household_name, owner_user_id=user.id, max_members=max_members)
     db.add(household)
     await db.flush()
 
     # Add owner as a member with owner role
-    member = HouseholdMember(
-        household_id=household.id, user_id=user.id, role="owner"
-    )
+    member = HouseholdMember(household_id=household.id, user_id=user.id, role="owner")
     db.add(member)
 
     # Note: We don't commit here - let the calling function handle the transaction
@@ -91,16 +87,12 @@ async def create_household(
         )
 
     # Create household
-    household = Household(
-        name=name, owner_user_id=owner_user_id, max_members=max_members
-    )
+    household = Household(name=name, owner_user_id=owner_user_id, max_members=max_members)
     db.add(household)
     await db.flush()
 
     # Add owner as a member with owner role
-    member = HouseholdMember(
-        household_id=household.id, user_id=owner_user_id, role="owner"
-    )
+    member = HouseholdMember(household_id=household.id, user_id=owner_user_id, role="owner")
     db.add(member)
     await db.commit()
     await db.refresh(household)
@@ -108,7 +100,7 @@ async def create_household(
     return household
 
 
-async def get_household(db: AsyncSession, household_id: int) -> Optional[Household]:
+async def get_household(db: AsyncSession, household_id: int) -> Household | None:
     """
     Get household by ID.
 
@@ -123,7 +115,7 @@ async def get_household(db: AsyncSession, household_id: int) -> Optional[Househo
     return result.scalar_one_or_none()
 
 
-async def get_user_household(db: AsyncSession, user_id: int) -> Optional[Household]:
+async def get_user_household(db: AsyncSession, user_id: int) -> Household | None:
     """
     Get the household that a user belongs to.
 
@@ -135,9 +127,7 @@ async def get_user_household(db: AsyncSession, user_id: int) -> Optional[Househo
         Household or None
     """
     result = await db.execute(
-        select(Household)
-        .join(HouseholdMember)
-        .where(HouseholdMember.user_id == user_id)
+        select(Household).join(HouseholdMember).where(HouseholdMember.user_id == user_id)
     )
     return result.scalar_one_or_none()
 
@@ -162,9 +152,7 @@ async def update_household(
     """
     household = await get_household(db, household_id)
     if not household:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Household not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Household not found")
 
     if household.owner_user_id != user_id:
         raise HTTPException(
@@ -193,9 +181,7 @@ async def delete_household(db: AsyncSession, household_id: int, user_id: int) ->
     """
     household = await get_household(db, household_id)
     if not household:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Household not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Household not found")
 
     if household.owner_user_id != user_id:
         raise HTTPException(
@@ -212,9 +198,7 @@ async def delete_household(db: AsyncSession, household_id: int, user_id: int) ->
 # ============================================
 
 
-async def get_household_members(
-    db: AsyncSession, household_id: int
-) -> list[HouseholdMember]:
+async def get_household_members(db: AsyncSession, household_id: int) -> list[HouseholdMember]:
     """
     Get all members of a household.
 
@@ -248,9 +232,7 @@ async def remove_household_member(
     """
     household = await get_household(db, household_id)
     if not household:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Household not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Household not found")
 
     if household.owner_user_id != requester_user_id:
         raise HTTPException(
@@ -276,9 +258,7 @@ async def remove_household_member(
     member = result.scalar_one_or_none()
 
     if not member:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Member not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
 
     await db.delete(member)
     await db.commit()
@@ -300,9 +280,7 @@ async def check_household_size_limit(db: AsyncSession, household_id: int) -> boo
         return False
 
     result = await db.execute(
-        select(func.count(HouseholdMember.id)).where(
-            HouseholdMember.household_id == household_id
-        )
+        select(func.count(HouseholdMember.id)).where(HouseholdMember.household_id == household_id)
     )
     current_size = result.scalar_one()
 
@@ -344,9 +322,7 @@ async def create_invitation(
     """
     household = await get_household(db, household_id)
     if not household:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Household not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Household not found")
 
     if household.owner_user_id != inviter_user_id:
         raise HTTPException(
@@ -419,9 +395,7 @@ async def create_invitation(
     return invitation
 
 
-async def send_invitation_email(
-    db: AsyncSession, invitation: HouseholdInvitation
-) -> None:
+async def send_invitation_email(db: AsyncSession, invitation: HouseholdInvitation) -> None:
     """
     Send invitation email to invitee.
 
@@ -430,16 +404,12 @@ async def send_invitation_email(
         invitation: Invitation to send
     """
     household = await get_household(db, invitation.household_id)
-    inviter_result = await db.execute(
-        select(User).where(User.id == invitation.inviter_user_id)
-    )
+    inviter_result = await db.execute(select(User).where(User.id == invitation.inviter_user_id))
     inviter = inviter_result.scalar_one()
 
     # Construct invitation URL (this would be your frontend URL)
     # For now, we'll just use a placeholder
-    invitation_url = (
-        f"http://localhost:5173/invitations/accept?token={invitation.token}"
-    )
+    invitation_url = f"http://localhost:5173/invitations/accept?token={invitation.token}"
 
     subject = f"You've been invited to join {household.name}"
     body = f"""
@@ -502,9 +472,7 @@ async def send_invitation_email(
     await email_service.send_email(invitation.invitee_email, subject, html_body, body)
 
 
-async def get_pending_invitations(
-    db: AsyncSession, household_id: int
-) -> list[HouseholdInvitation]:
+async def get_pending_invitations(db: AsyncSession, household_id: int) -> list[HouseholdInvitation]:
     """
     Get pending invitations for a household.
 
@@ -530,9 +498,7 @@ async def get_pending_invitations(
     active_invitations = []
     for inv in invitations:
         expires_at_utc = (
-            inv.expires_at.replace(tzinfo=UTC)
-            if inv.expires_at.tzinfo is None
-            else inv.expires_at
+            inv.expires_at.replace(tzinfo=UTC) if inv.expires_at.tzinfo is None else inv.expires_at
         )
         if expires_at_utc > now_utc:
             active_invitations.append(inv)
@@ -540,9 +506,7 @@ async def get_pending_invitations(
     return active_invitations
 
 
-async def get_invitation_by_token(
-    db: AsyncSession, token: str
-) -> Optional[HouseholdInvitation]:
+async def get_invitation_by_token(db: AsyncSession, token: str) -> HouseholdInvitation | None:
     """
     Get invitation by token (for public invitation landing page).
 
@@ -553,9 +517,7 @@ async def get_invitation_by_token(
     Returns:
         Invitation if found and not expired, None otherwise
     """
-    result = await db.execute(
-        select(HouseholdInvitation).where(HouseholdInvitation.token == token)
-    )
+    result = await db.execute(select(HouseholdInvitation).where(HouseholdInvitation.token == token))
     invitation = result.scalar_one_or_none()
 
     if not invitation:
@@ -575,9 +537,7 @@ async def get_invitation_by_token(
     return invitation
 
 
-async def accept_invitation(
-    db: AsyncSession, token: str, user_id: int
-) -> HouseholdMember:
+async def accept_invitation(db: AsyncSession, token: str, user_id: int) -> HouseholdMember:
     """
     Accept a household invitation.
 
@@ -593,15 +553,11 @@ async def accept_invitation(
         HTTPException: If invitation not found, expired, or user already in a household
     """
     # Find invitation
-    result = await db.execute(
-        select(HouseholdInvitation).where(HouseholdInvitation.token == token)
-    )
+    result = await db.execute(select(HouseholdInvitation).where(HouseholdInvitation.token == token))
     invitation = result.scalar_one_or_none()
 
     if not invitation:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
 
     # Check if already accepted
     if invitation.accepted_at:
@@ -650,9 +606,7 @@ async def accept_invitation(
         )
 
     # Create household member
-    member = HouseholdMember(
-        household_id=invitation.household_id, user_id=user_id, role="member"
-    )
+    member = HouseholdMember(household_id=invitation.household_id, user_id=user_id, role="member")
     db.add(member)
 
     # Mark invitation as accepted
@@ -676,15 +630,11 @@ async def decline_invitation(db: AsyncSession, token: str, user_id: int) -> None
     Raises:
         HTTPException: If invitation not found
     """
-    result = await db.execute(
-        select(HouseholdInvitation).where(HouseholdInvitation.token == token)
-    )
+    result = await db.execute(select(HouseholdInvitation).where(HouseholdInvitation.token == token))
     invitation = result.scalar_one_or_none()
 
     if not invitation:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
 
     # Verify user has permission to decline (invitee or household owner)
     user_result = await db.execute(select(User).where(User.id == user_id))
@@ -702,9 +652,7 @@ async def decline_invitation(db: AsyncSession, token: str, user_id: int) -> None
     await db.commit()
 
 
-async def check_user_household_access(
-    db: AsyncSession, user_id: int, household_id: int
-) -> bool:
+async def check_user_household_access(db: AsyncSession, user_id: int, household_id: int) -> bool:
     """
     Check if a user has access to a household.
 

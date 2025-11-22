@@ -2,33 +2,38 @@
 Shopping List API endpoints.
 """
 
-from typing import List, Optional, Dict, Tuple
 import re
 from fractions import Fraction
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, case
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
-from app.models.user import User
 from app.models.household import Household
-from app.models.shopping_list import ShoppingList, ShoppingListItem
-from app.models.recipe import Recipe
 from app.models.meal_plan import MealPlan, PlannedMeal
+from app.models.recipe import Recipe
+from app.models.shopping_list import ShoppingList, ShoppingListItem
+from app.models.user import User
 from app.schemas.shopping_list import (
+    CategoryList,
+    GenerateFromMealPlanRequest,
+    GenerateFromRecipeRequest,
     ShoppingListCreate,
-    ShoppingListUpdate,
-    ShoppingList as ShoppingListSchema,
-    ShoppingListSummary,
     ShoppingListItemCreate,
     ShoppingListItemUpdate,
-    ShoppingListItem as ShoppingListItemSchema,
-    GenerateFromRecipeRequest,
-    GenerateFromMealPlanRequest,
-    CategoryList,
+    ShoppingListSummary,
+    ShoppingListUpdate,
 )
+from app.schemas.shopping_list import (
+    ShoppingList as ShoppingListSchema,
+)
+from app.schemas.shopping_list import (
+    ShoppingListItem as ShoppingListItemSchema,
+)
+
 
 router = APIRouter()
 
@@ -62,8 +67,8 @@ def parse_quantity(quantity_str: str) -> float:
     quantity_str = quantity_str.strip()
 
     # Handle ranges (e.g., "1-2" -> use the higher value)
-    if '-' in quantity_str and not quantity_str.startswith('-'):
-        parts = quantity_str.split('-')
+    if "-" in quantity_str and not quantity_str.startswith("-"):
+        parts = quantity_str.split("-")
         if len(parts) == 2:
             try:
                 return max(float(Fraction(parts[0].strip())), float(Fraction(parts[1].strip())))
@@ -87,7 +92,7 @@ def parse_quantity(quantity_str: str) -> float:
         return 0.0
 
 
-def parse_ingredient_string(ingredient_str: str) -> Tuple[Optional[str], Optional[str], str]:
+def parse_ingredient_string(ingredient_str: str) -> tuple[str | None, str | None, str]:
     """
     Parse an ingredient string into quantity, unit, and name.
 
@@ -107,28 +112,74 @@ def parse_ingredient_string(ingredient_str: str) -> Tuple[Optional[str], Optiona
 
     # Pattern to match quantity (including fractions) at the start
     # Matches: "1", "1.5", "1/2", "1 1/2", "1-2"
-    quantity_pattern = r'^(\d+(?:\s+\d+)?(?:[\/\-\.]\d+)?)\s+'
+    quantity_pattern = r"^(\d+(?:\s+\d+)?(?:[\/\-\.]\d+)?)\s+"
     match = re.match(quantity_pattern, ingredient_str)
 
     if match:
         quantity = match.group(1).strip()
-        remainder = ingredient_str[match.end():].strip()
+        remainder = ingredient_str[match.end() :].strip()
 
         # Common units
         units = [
-            'cup', 'cups', 'tablespoon', 'tablespoons', 'tbsp', 'teaspoon', 'teaspoons', 'tsp',
-            'ounce', 'ounces', 'oz', 'pound', 'pounds', 'lb', 'lbs', 'gram', 'grams', 'g',
-            'kilogram', 'kilograms', 'kg', 'milliliter', 'milliliters', 'ml', 'liter', 'liters', 'l',
-            'stick', 'sticks', 'clove', 'cloves', 'can', 'cans', 'package', 'packages', 'pkg',
-            'bunch', 'bunches', 'head', 'heads', 'piece', 'pieces', 'slice', 'slices',
-            'pinch', 'dash', 'sprig', 'sprigs', 'whole', 'large', 'medium', 'small'
+            "cup",
+            "cups",
+            "tablespoon",
+            "tablespoons",
+            "tbsp",
+            "teaspoon",
+            "teaspoons",
+            "tsp",
+            "ounce",
+            "ounces",
+            "oz",
+            "pound",
+            "pounds",
+            "lb",
+            "lbs",
+            "gram",
+            "grams",
+            "g",
+            "kilogram",
+            "kilograms",
+            "kg",
+            "milliliter",
+            "milliliters",
+            "ml",
+            "liter",
+            "liters",
+            "l",
+            "stick",
+            "sticks",
+            "clove",
+            "cloves",
+            "can",
+            "cans",
+            "package",
+            "packages",
+            "pkg",
+            "bunch",
+            "bunches",
+            "head",
+            "heads",
+            "piece",
+            "pieces",
+            "slice",
+            "slices",
+            "pinch",
+            "dash",
+            "sprig",
+            "sprigs",
+            "whole",
+            "large",
+            "medium",
+            "small",
         ]
 
         # Check if the next word is a unit
         words = remainder.split(None, 1)
         if words and words[0].lower() in units:
             unit = words[0]
-            name = words[1] if len(words) > 1 else ''
+            name = words[1] if len(words) > 1 else ""
             return (quantity, unit, name)
         else:
             # No unit found, rest is the name
@@ -138,7 +189,7 @@ def parse_ingredient_string(ingredient_str: str) -> Tuple[Optional[str], Optiona
         return (None, None, ingredient_str)
 
 
-def normalize_unit(unit: Optional[str]) -> Optional[str]:
+def normalize_unit(unit: str | None) -> str | None:
     """
     Normalize unit names for better consolidation.
 
@@ -155,34 +206,34 @@ def normalize_unit(unit: Optional[str]) -> Optional[str]:
 
     # Map variations to standard forms
     unit_map = {
-        'tbsp': 'tablespoon',
-        'tablespoons': 'tablespoon',
-        'tsp': 'teaspoon',
-        'teaspoons': 'teaspoon',
-        'cups': 'cup',
-        'oz': 'ounce',
-        'ounces': 'ounce',
-        'lb': 'pound',
-        'lbs': 'pound',
-        'pounds': 'pound',
-        'g': 'gram',
-        'grams': 'gram',
-        'kg': 'kilogram',
-        'kilograms': 'kilogram',
-        'ml': 'milliliter',
-        'milliliters': 'milliliter',
-        'l': 'liter',
-        'liters': 'liter',
-        'sticks': 'stick',
-        'cloves': 'clove',
-        'cans': 'can',
-        'packages': 'package',
-        'pkg': 'package',
-        'bunches': 'bunch',
-        'heads': 'head',
-        'pieces': 'piece',
-        'slices': 'slice',
-        'sprigs': 'sprig',
+        "tbsp": "tablespoon",
+        "tablespoons": "tablespoon",
+        "tsp": "teaspoon",
+        "teaspoons": "teaspoon",
+        "cups": "cup",
+        "oz": "ounce",
+        "ounces": "ounce",
+        "lb": "pound",
+        "lbs": "pound",
+        "pounds": "pound",
+        "g": "gram",
+        "grams": "gram",
+        "kg": "kilogram",
+        "kilograms": "kilogram",
+        "ml": "milliliter",
+        "milliliters": "milliliter",
+        "l": "liter",
+        "liters": "liter",
+        "sticks": "stick",
+        "cloves": "clove",
+        "cans": "can",
+        "packages": "package",
+        "pkg": "package",
+        "bunches": "bunch",
+        "heads": "head",
+        "pieces": "piece",
+        "slices": "slice",
+        "sprigs": "sprig",
     }
 
     return unit_map.get(unit_lower, unit_lower)
@@ -206,19 +257,36 @@ def get_base_ingredient_name(name: str) -> str:
     import re
 
     # Remove text in parentheses
-    base_name = re.sub(r'\s*\([^)]*\)\s*', ' ', name)
+    base_name = re.sub(r"\s*\([^)]*\)\s*", " ", name)
 
     # Remove text after comma
-    base_name = base_name.split(',')[0]
+    base_name = base_name.split(",")[0]
 
     # Strip common preparation keywords at the end
     # These are preparation methods you do at home, so they shouldn't affect shopping
     prep_keywords = [
-        'minced', 'chopped', 'diced', 'sliced', 'grated', 'shredded',
-        'crushed', 'pressed', 'peeled', 'julienned', 'cubed',
-        'halved', 'quartered', 'beaten', 'melted',
-        'finely', 'coarsely', 'roughly', 'thinly', 'thickly',
-        'cloves', 'clove'  # for "garlic cloves" -> "garlic"
+        "minced",
+        "chopped",
+        "diced",
+        "sliced",
+        "grated",
+        "shredded",
+        "crushed",
+        "pressed",
+        "peeled",
+        "julienned",
+        "cubed",
+        "halved",
+        "quartered",
+        "beaten",
+        "melted",
+        "finely",
+        "coarsely",
+        "roughly",
+        "thinly",
+        "thickly",
+        "cloves",
+        "clove",  # for "garlic cloves" -> "garlic"
     ]
 
     # Try to remove preparation keywords from the end
@@ -227,7 +295,7 @@ def get_base_ingredient_name(name: str) -> str:
         words.pop()
 
     if words:
-        base_name = ' '.join(words)
+        base_name = " ".join(words)
 
     return base_name.strip()
 
@@ -251,8 +319,8 @@ def singularize_ingredient(name: str) -> str:
 
     # Handle common irregular plurals
     irregular_plurals = {
-        'tomatoes': 'tomato',
-        'potatoes': 'potato',
+        "tomatoes": "tomato",
+        "potatoes": "potato",
     }
 
     if name_lower in irregular_plurals:
@@ -260,14 +328,14 @@ def singularize_ingredient(name: str) -> str:
 
     # Handle regular plurals ending in 's'
     # Only singularize if it's likely a plural (ends in s but not ss, us, is)
-    if name_lower.endswith('s') and not name_lower.endswith(('ss', 'us', 'is')):
+    if name_lower.endswith("s") and not name_lower.endswith(("ss", "us", "is")):
         # Handle words ending in 'ies' -> 'y'
-        if name_lower.endswith('ies') and len(name_lower) > 3:
-            return name[:-3] + 'y'
+        if name_lower.endswith("ies") and len(name_lower) > 3:
+            return name[:-3] + "y"
         # Handle words ending in 'es' -> 'e' or just 's'
-        elif name_lower.endswith('es') and len(name_lower) > 2:
+        elif name_lower.endswith("es") and len(name_lower) > 2:
             # For words like "olives" -> "olive", but not "cheese" -> "chees"
-            if name_lower[-3] not in 'aeiou':
+            if name_lower[-3] not in "aeiou":
                 return name[:-1]
             else:
                 return name[:-2]
@@ -278,7 +346,9 @@ def singularize_ingredient(name: str) -> str:
     return name
 
 
-def consolidate_ingredients(ingredients_data: List[Dict[str, Optional[str]]]) -> List[Dict[str, Optional[str]]]:
+def consolidate_ingredients(
+    ingredients_data: list[dict[str, str | None]],
+) -> list[dict[str, str | None]]:
     """
     Consolidate ingredients by name and unit, summing quantities.
 
@@ -293,17 +363,17 @@ def consolidate_ingredients(ingredients_data: List[Dict[str, Optional[str]]]) ->
         List of consolidated ingredient dicts
     """
     # Group by (base_ingredient_name, normalized_unit)
-    consolidated: Dict[Tuple[str, Optional[str]], Dict] = {}
+    consolidated: dict[tuple[str, str | None], dict] = {}
 
     for ing in ingredients_data:
-        name = ing.get('name', '').strip()
+        name = ing.get("name", "").strip()
         if not name:
             continue
 
         # Filter out section headers (e.g., "Pie Crust:", "filling:", "For the crust:")
         # These are items with no quantity that end with a colon
-        quantity_str = ing.get('quantity')
-        if not quantity_str and name.endswith(':'):
+        quantity_str = ing.get("quantity")
+        if not quantity_str and name.endswith(":"):
             continue
 
         # Get base ingredient name (without preparation methods) for grouping
@@ -311,7 +381,7 @@ def consolidate_ingredients(ingredients_data: List[Dict[str, Optional[str]]]) ->
         # Singularize and lowercase for consistent grouping
         base_name = singularize_ingredient(base_name).lower()
 
-        unit = normalize_unit(ing.get('unit'))
+        unit = normalize_unit(ing.get("unit"))
 
         # Parse quantity
         quantity_value = parse_quantity(quantity_str) if quantity_str else 0.0
@@ -320,26 +390,26 @@ def consolidate_ingredients(ingredients_data: List[Dict[str, Optional[str]]]) ->
 
         if key in consolidated:
             # Add to existing quantity
-            consolidated[key]['quantity_value'] += quantity_value
+            consolidated[key]["quantity_value"] += quantity_value
             # Prefer the simpler name (shorter is usually simpler)
             # Singularize and use lowercase for consistency
-            current_name = consolidated[key]['name']
+            current_name = consolidated[key]["name"]
             new_name = singularize_ingredient(get_base_ingredient_name(name)).lower()
             if len(new_name) < len(current_name):
-                consolidated[key]['name'] = new_name
+                consolidated[key]["name"] = new_name
         else:
             # New ingredient - use base name for display (without preparation methods)
             # Singularize and use lowercase for case-insensitive consolidation
             consolidated[key] = {
-                'name': singularize_ingredient(get_base_ingredient_name(name)).lower(),
-                'unit': unit,
-                'quantity_value': quantity_value,
+                "name": singularize_ingredient(get_base_ingredient_name(name)).lower(),
+                "unit": unit,
+                "quantity_value": quantity_value,
             }
 
     # Convert back to list with formatted quantities
     result = []
     for (name_key, unit_key), data in consolidated.items():
-        qty_value = data['quantity_value']
+        qty_value = data["quantity_value"]
 
         # Format quantity nicely
         if qty_value == 0:
@@ -360,13 +430,15 @@ def consolidate_ingredients(ingredients_data: List[Dict[str, Optional[str]]]) ->
                 else:
                     qty_str = f"{frac.numerator}/{frac.denominator}"
             else:
-                qty_str = f"{qty_value:.2f}".rstrip('0').rstrip('.')
+                qty_str = f"{qty_value:.2f}".rstrip("0").rstrip(".")
 
-        result.append({
-            'name': data['name'],
-            'unit': data['unit'],
-            'quantity': qty_str,
-        })
+        result.append(
+            {
+                "name": data["name"],
+                "unit": data["unit"],
+                "quantity": qty_str,
+            }
+        )
 
     return result
 
@@ -382,9 +454,7 @@ async def get_categories():
     return CategoryList(categories=DEFAULT_CATEGORIES)
 
 
-@router.post(
-    "/", response_model=ShoppingListSchema, status_code=status.HTTP_201_CREATED
-)
+@router.post("/", response_model=ShoppingListSchema, status_code=status.HTTP_201_CREATED)
 async def create_shopping_list(
     shopping_list_data: ShoppingListCreate,
     current_user: User = Depends(get_current_user),
@@ -416,9 +486,9 @@ async def create_shopping_list(
     return shopping_list
 
 
-@router.get("/", response_model=List[ShoppingListSummary])
+@router.get("/", response_model=list[ShoppingListSummary])
 async def list_shopping_lists(
-    status_filter: Optional[str] = None,
+    status_filter: str | None = None,
     current_user: User = Depends(get_current_user),
     household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
@@ -445,9 +515,7 @@ async def list_shopping_lists(
             ShoppingList.status,
             ShoppingList.created_at,
             func.count(ShoppingListItem.id).label("item_count"),
-            func.sum(case((ShoppingListItem.checked, 1), else_=0)).label(
-                "checked_count"
-            ),
+            func.sum(case((ShoppingListItem.checked, 1), else_=0)).label("checked_count"),
         )
         .outerjoin(ShoppingListItem, ShoppingList.id == ShoppingListItem.list_id)
         .where(ShoppingList.household_id == household.id)
@@ -506,17 +574,13 @@ async def get_shopping_list(
     """
     result = await db.execute(
         select(ShoppingList)
-        .where(
-            and_(ShoppingList.id == list_id, ShoppingList.household_id == household.id)
-        )
+        .where(and_(ShoppingList.id == list_id, ShoppingList.household_id == household.id))
         .options(selectinload(ShoppingList.items))
     )
     shopping_list = result.scalar_one_or_none()
 
     if not shopping_list:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found")
 
     return shopping_list
 
@@ -550,9 +614,7 @@ async def update_shopping_list(
     shopping_list = result.scalar_one_or_none()
 
     if not shopping_list:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found")
 
     # Update fields
     if update_data.name is not None:
@@ -599,9 +661,7 @@ async def delete_shopping_list(
     shopping_list = result.scalar_one_or_none()
 
     if not shopping_list:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found")
 
     await db.delete(shopping_list)
     await db.commit()
@@ -634,9 +694,7 @@ async def archive_shopping_list(
     shopping_list = result.scalar_one_or_none()
 
     if not shopping_list:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found")
 
     shopping_list.status = "archived"
     await db.commit()
@@ -679,9 +737,7 @@ async def duplicate_shopping_list(
     original_list = result.scalar_one_or_none()
 
     if not original_list:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found")
 
     # Create new list
     new_list = ShoppingList(
@@ -761,15 +817,11 @@ async def add_item_to_list(
     shopping_list = result.scalar_one_or_none()
 
     if not shopping_list:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found")
 
     # Get max display order
     max_order_result = await db.execute(
-        select(func.max(ShoppingListItem.display_order)).where(
-            ShoppingListItem.list_id == list_id
-        )
+        select(func.max(ShoppingListItem.display_order)).where(ShoppingListItem.list_id == list_id)
     )
     max_order = max_order_result.scalar() or 0
 
@@ -824,9 +876,7 @@ async def update_shopping_list_item(
     item = result.scalar_one_or_none()
 
     if not item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Item not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
 
     # Update fields
     if update_data.item_name is not None:
@@ -879,9 +929,7 @@ async def delete_shopping_list_item(
     item = result.scalar_one_or_none()
 
     if not item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Item not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
 
     await db.delete(item)
     await db.commit()
@@ -918,9 +966,7 @@ async def generate_from_recipe(
     recipe = result.scalar_one_or_none()
 
     if not recipe:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
 
     # Create shopping list
     list_name = request_data.list_name or f"Shopping list for {recipe.name}"
@@ -1016,9 +1062,7 @@ async def generate_from_meal_plan(
     meal_plan = result.scalar_one_or_none()
 
     if not meal_plan:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Meal plan not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meal plan not found")
 
     # Get planned meals
     query = select(PlannedMeal).where(PlannedMeal.meal_plan_id == meal_plan.id)
@@ -1030,15 +1074,10 @@ async def generate_from_meal_plan(
     planned_meals = planned_meals_result.scalars().all()
 
     if not planned_meals:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="No meals selected"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No meals selected")
 
     # Create shopping list
-    list_name = (
-        request_data.list_name
-        or f"Shopping list for week of {meal_plan.week_start_date}"
-    )
+    list_name = request_data.list_name or f"Shopping list for week of {meal_plan.week_start_date}"
     shopping_list = ShoppingList(
         household_id=household.id,
         name=list_name,
@@ -1052,9 +1091,7 @@ async def generate_from_meal_plan(
     # Collect all ingredients from all recipes as structured data
     ingredients_data = []
     for planned_meal in planned_meals:
-        recipe_result = await db.execute(
-            select(Recipe).where(Recipe.id == planned_meal.recipe_id)
-        )
+        recipe_result = await db.execute(select(Recipe).where(Recipe.id == planned_meal.recipe_id))
         recipe = recipe_result.scalar_one_or_none()
 
         if recipe and recipe.recipe_data:
@@ -1069,21 +1106,25 @@ async def generate_from_meal_plan(
                     if isinstance(ingredient, str):
                         # Parse string format
                         quantity, unit, name = parse_ingredient_string(ingredient)
-                        ingredients_data.append({
-                            'quantity': quantity,
-                            'unit': unit,
-                            'name': name,
-                        })
+                        ingredients_data.append(
+                            {
+                                "quantity": quantity,
+                                "unit": unit,
+                                "name": name,
+                            }
+                        )
                     elif isinstance(ingredient, dict):
                         # Use dict format directly
                         name = ingredient.get("name", ingredient.get("ingredient", ""))
                         quantity = ingredient.get("quantity", "")
                         unit = ingredient.get("unit", "")
-                        ingredients_data.append({
-                            'quantity': quantity if quantity else None,
-                            'unit': unit if unit else None,
-                            'name': name,
-                        })
+                        ingredients_data.append(
+                            {
+                                "quantity": quantity if quantity else None,
+                                "unit": unit if unit else None,
+                                "name": name,
+                            }
+                        )
 
     # Consolidate ingredients by name and unit, summing quantities
     consolidated_ingredients = consolidate_ingredients(ingredients_data)
@@ -1092,9 +1133,9 @@ async def generate_from_meal_plan(
     for idx, ingredient in enumerate(consolidated_ingredients):
         item = ShoppingListItem(
             list_id=shopping_list.id,
-            item_name=ingredient['name'],
-            quantity=ingredient['quantity'],
-            unit=ingredient['unit'],
+            item_name=ingredient["name"],
+            quantity=ingredient["quantity"],
+            unit=ingredient["unit"],
             category=None,
             notes=None,
             checked=False,

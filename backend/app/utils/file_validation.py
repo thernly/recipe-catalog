@@ -3,8 +3,9 @@ File upload validation utilities.
 """
 
 from io import BytesIO
-from PIL import Image
+
 from fastapi import HTTPException, UploadFile
+from PIL import Image
 
 from app.core.config import settings
 

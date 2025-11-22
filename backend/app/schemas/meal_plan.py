@@ -1,8 +1,9 @@
 """Meal planning related Pydantic schemas."""
 
-from datetime import datetime, date
-from typing import Optional, List
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from datetime import date, datetime
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 from app.core.security import sanitize_html
 
 
@@ -17,8 +18,8 @@ class PlannedMealBase(BaseModel):
     recipe_id: int
     day_of_week: int = Field(..., ge=0, le=6, description="0=Monday, 6=Sunday")
     meal_type: str = Field(..., pattern="^(breakfast|lunch|dinner|snack|other)$")
-    servings: Optional[int] = Field(None, ge=1)
-    notes: Optional[str] = None
+    servings: int | None = Field(None, ge=1)
+    notes: str | None = None
 
 
 class PlannedMealCreate(PlannedMealBase):
@@ -26,7 +27,7 @@ class PlannedMealCreate(PlannedMealBase):
 
     @field_validator("notes")
     @classmethod
-    def sanitize_notes(cls, v: Optional[str]) -> Optional[str]:
+    def sanitize_notes(cls, v: str | None) -> str | None:
         """Sanitize notes field to prevent XSS attacks."""
         if v is None:
             return v
@@ -36,17 +37,15 @@ class PlannedMealCreate(PlannedMealBase):
 class PlannedMealUpdate(BaseModel):
     """Schema for updating a planned meal."""
 
-    recipe_id: Optional[int] = None
-    day_of_week: Optional[int] = Field(None, ge=0, le=6)
-    meal_type: Optional[str] = Field(
-        None, pattern="^(breakfast|lunch|dinner|snack|other)$"
-    )
-    servings: Optional[int] = Field(None, ge=1)
-    notes: Optional[str] = None
+    recipe_id: int | None = None
+    day_of_week: int | None = Field(None, ge=0, le=6)
+    meal_type: str | None = Field(None, pattern="^(breakfast|lunch|dinner|snack|other)$")
+    servings: int | None = Field(None, ge=1)
+    notes: str | None = None
 
     @field_validator("notes")
     @classmethod
-    def sanitize_notes(cls, v: Optional[str]) -> Optional[str]:
+    def sanitize_notes(cls, v: str | None) -> str | None:
         """Sanitize notes field to prevent XSS attacks."""
         if v is None:
             return v
@@ -58,7 +57,7 @@ class PlannedMeal(PlannedMealBase):
 
     id: int
     meal_plan_id: int
-    recipe_name: Optional[str] = None
+    recipe_name: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -90,7 +89,7 @@ class MealPlan(MealPlanBase):
     created_by_user_id: int
     created_at: datetime
     updated_at: datetime
-    planned_meals: List[PlannedMeal] = []
+    planned_meals: list[PlannedMeal] = []
 
     model_config = ConfigDict(from_attributes=True)
 

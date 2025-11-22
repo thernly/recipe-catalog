@@ -1,10 +1,28 @@
 """
-PDF export utility for recipes and collections.
+PDF export utility for recipes and collections using fpdf2.
 """
 
-from typing import List, Any
-from weasyprint import HTML, CSS
+import html
+from typing import Any
+
+from fpdf import FPDF
+
 from app.utils.recipe_format import convert_to_schema_org
+
+
+class RecipePDF(FPDF):
+    """Custom PDF class for recipe formatting."""
+
+    def header(self):
+        """Add header to each page (empty for now)."""
+        pass
+
+    def footer(self):
+        """Add page numbers to footer."""
+        self.set_y(-15)
+        self.set_font("Arial", "I", 8)
+        self.set_text_color(128, 128, 128)
+        self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
 
 def generate_recipe_pdf(recipe: Any) -> bytes:
@@ -20,19 +38,20 @@ def generate_recipe_pdf(recipe: Any) -> bytes:
     # Convert recipe to schema.org format
     schema_recipe = convert_to_schema_org(recipe)
 
-    # Generate HTML content
-    html_content = _generate_recipe_html(schema_recipe)
+    # Create PDF
+    pdf = RecipePDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
 
-    # Convert HTML to PDF
-    pdf_bytes = HTML(string=html_content).write_pdf(
-        stylesheets=[CSS(string=_get_pdf_styles())]
-    )
+    # Add recipe content
+    _add_recipe_to_pdf(pdf, schema_recipe)
 
-    return pdf_bytes
+    # Return PDF as bytes
+    return pdf.output()
 
 
 def generate_collection_pdf(
-    collection_name: str, collection_description: str, recipes: List[Any]
+    collection_name: str, collection_description: str, recipes: list[Any]
 ) -> bytes:
     """
     Generate a PDF for a collection of recipes.
@@ -45,398 +64,252 @@ def generate_collection_pdf(
     Returns:
         bytes: PDF file content
     """
-    # Generate HTML content for all recipes
-    html_parts = [_generate_collection_header(collection_name, collection_description)]
+    pdf = RecipePDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    # Add cover page
+    pdf.add_page()
+    _add_collection_cover(pdf, collection_name, collection_description)
 
     # Add table of contents
     if len(recipes) > 1:
-        html_parts.append(_generate_table_of_contents(recipes))
+        pdf.add_page()
+        _add_table_of_contents(pdf, recipes)
 
     # Add each recipe
     for recipe in recipes:
+        pdf.add_page()
         schema_recipe = convert_to_schema_org(recipe)
-        html_parts.append(_generate_recipe_html(schema_recipe, include_page_break=True))
+        _add_recipe_to_pdf(pdf, schema_recipe)
 
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>{collection_name}</title>
-    </head>
-    <body>
-        {"".join(html_parts)}
-    </body>
-    </html>
-    """
-
-    # Convert HTML to PDF
-    pdf_bytes = HTML(string=html_content).write_pdf(
-        stylesheets=[CSS(string=_get_pdf_styles())]
-    )
-
-    return pdf_bytes
+    return pdf.output()
 
 
-def _generate_collection_header(name: str, description: str) -> str:
-    """Generate HTML for collection cover page."""
-    desc_html = (
-        f"<p class='collection-description'>{_escape_html(description)}</p>"
-        if description
-        else ""
-    )
+def _add_collection_cover(pdf: FPDF, name: str, description: str):
+    """Add collection cover page."""
+    # Center vertically
+    pdf.set_y(80)
 
-    return f"""
-    <div class="collection-cover">
-        <h1 class="collection-title">{_escape_html(name)}</h1>
-        {desc_html}
-    </div>
-    """
+    # Collection title
+    pdf.set_font("Arial", "B", 32)
+    pdf.set_text_color(44, 62, 80)
+    pdf.multi_cell(0, 15, _clean_text(name), align="C")
+
+    # Description
+    if description:
+        pdf.ln(10)
+        pdf.set_font("Arial", "", 12)
+        pdf.set_text_color(85, 85, 85)
+        pdf.multi_cell(0, 8, _clean_text(description), align="C")
 
 
-def _generate_table_of_contents(recipes: List[Any]) -> str:
-    """Generate HTML for table of contents."""
-    recipe_items = []
+def _add_table_of_contents(pdf: FPDF, recipes: list[Any]):
+    """Add table of contents page."""
+    pdf.set_font("Arial", "B", 20)
+    pdf.set_text_color(44, 62, 80)
+    pdf.cell(0, 12, "Table of Contents", ln=True)
+    pdf.ln(5)
+
+    # Draw underline
+    pdf.set_draw_color(224, 224, 224)
+    pdf.set_line_width(0.5)
+    pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + 180, pdf.get_y())
+    pdf.ln(8)
+
+    # List recipes
+    pdf.set_font("Arial", "", 11)
+    pdf.set_text_color(51, 51, 51)
     for i, recipe in enumerate(recipes, 1):
-        recipe_items.append(f"<li>{i}. {_escape_html(recipe.name)}</li>")
-
-    return f"""
-    <div class="table-of-contents">
-        <h2>Table of Contents</h2>
-        <ol class="toc-list">
-            {"".join(recipe_items)}
-        </ol>
-    </div>
-    <div class="page-break"></div>
-    """
+        pdf.cell(10, 8, f"{i}.")
+        pdf.multi_cell(0, 8, _clean_text(recipe.name))
 
 
-def _generate_recipe_html(schema_recipe: dict, include_page_break: bool = False) -> str:
-    """
-    Generate HTML for a single recipe.
+def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict):
+    """Add a single recipe to the PDF."""
+    # Recipe title
+    pdf.set_font("Arial", "B", 20)
+    pdf.set_text_color(44, 62, 80)
+    pdf.multi_cell(0, 10, _clean_text(schema_recipe.get("name", "Untitled Recipe")))
 
-    Args:
-        schema_recipe: Recipe in schema.org format
-        include_page_break: Whether to add a page break before the recipe
+    # Underline
+    pdf.set_draw_color(224, 224, 224)
+    pdf.set_line_width(0.5)
+    pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + 180, pdf.get_y())
+    pdf.ln(5)
 
-    Returns:
-        str: HTML content
-    """
-    page_break = '<div class="page-break"></div>' if include_page_break else ""
+    # Description
+    if schema_recipe.get("description"):
+        pdf.set_font("Arial", "I", 11)
+        pdf.set_text_color(85, 85, 85)
+        pdf.multi_cell(0, 6, _clean_text(schema_recipe["description"]))
+        pdf.ln(3)
 
-    # Recipe title and description
-    title = _escape_html(schema_recipe.get("name", "Untitled Recipe"))
-    description = schema_recipe.get("description", "")
-    description_html = (
-        f"<p class='description'>{_escape_html(description)}</p>" if description else ""
-    )
-
-    # Metadata section
-    metadata_items = []
-    if schema_recipe.get("recipeYield"):
-        metadata_items.append(
-            f"<div class='meta-item'><strong>Yield:</strong> {_escape_html(str(schema_recipe['recipeYield']))}</div>"
-        )
-    if schema_recipe.get("prepTime"):
-        metadata_items.append(
-            f"<div class='meta-item'><strong>Prep Time:</strong> {_escape_html(schema_recipe['prepTime'])}</div>"
-        )
-    if schema_recipe.get("cookTime"):
-        metadata_items.append(
-            f"<div class='meta-item'><strong>Cook Time:</strong> {_escape_html(schema_recipe['cookTime'])}</div>"
-        )
-    if schema_recipe.get("totalTime"):
-        metadata_items.append(
-            f"<div class='meta-item'><strong>Total Time:</strong> {_escape_html(schema_recipe['totalTime'])}</div>"
-        )
-    if schema_recipe.get("recipeCategory"):
-        categories = schema_recipe["recipeCategory"]
-        category_str = (
-            ", ".join(categories) if isinstance(categories, list) else str(categories)
-        )
-        metadata_items.append(
-            f"<div class='meta-item'><strong>Category:</strong> {_escape_html(category_str)}</div>"
-        )
-    if schema_recipe.get("recipeCuisine"):
-        cuisines = schema_recipe["recipeCuisine"]
-        cuisine_str = (
-            ", ".join(cuisines) if isinstance(cuisines, list) else str(cuisines)
-        )
-        metadata_items.append(
-            f"<div class='meta-item'><strong>Cuisine:</strong> {_escape_html(cuisine_str)}</div>"
-        )
-    if schema_recipe.get("keywords"):
-        metadata_items.append(
-            f"<div class='meta-item'><strong>Keywords:</strong> {_escape_html(schema_recipe['keywords'])}</div>"
-        )
-    if schema_recipe.get("url"):
-        metadata_items.append(
-            f"<div class='meta-item'><strong>Source:</strong> {_escape_html(schema_recipe['url'])}</div>"
-        )
-
-    metadata_html = (
-        f"<div class='metadata'>{''.join(metadata_items)}</div>"
-        if metadata_items
-        else ""
-    )
+    # Metadata box
+    metadata_items = _collect_metadata(schema_recipe)
+    if metadata_items:
+        _add_metadata_box(pdf, metadata_items)
+        pdf.ln(5)
 
     # Ingredients
-    ingredients_html = ""
     if schema_recipe.get("recipeIngredient"):
-        ingredient_items = [
-            f"<li>{_escape_html(ing)}</li>" for ing in schema_recipe["recipeIngredient"]
-        ]
-        ingredients_html = f"""
-        <div class='section'>
-            <h2>Ingredients</h2>
-            <ul class='ingredients-list'>
-                {"".join(ingredient_items)}
-            </ul>
-        </div>
-        """
+        _add_section_header(pdf, "Ingredients")
+        pdf.set_font("Arial", "", 10)
+        pdf.set_text_color(51, 51, 51)
+        for ingredient in schema_recipe["recipeIngredient"]:
+            pdf.cell(5, 6, "\u2022")  # Bullet point
+            pdf.multi_cell(0, 6, _clean_text(ingredient))
+        pdf.ln(3)
 
     # Equipment
-    equipment_html = ""
     if schema_recipe.get("equipment"):
         equipment = schema_recipe["equipment"]
-        if isinstance(equipment, list):
-            equipment_items = [f"<li>{_escape_html(item)}</li>" for item in equipment]
-            equipment_html = f"""
-            <div class='section'>
-                <h2>Equipment</h2>
-                <ul>
-                    {"".join(equipment_items)}
-                </ul>
-            </div>
-            """
-        elif isinstance(equipment, str):
-            equipment_html = f"""
-            <div class='section'>
-                <h2>Equipment</h2>
-                <ul>
-                    <li>{_escape_html(equipment)}</li>
-                </ul>
-            </div>
-            """
+        equipment_list = equipment if isinstance(equipment, list) else [equipment]
+
+        _add_section_header(pdf, "Equipment")
+        pdf.set_font("Arial", "", 10)
+        pdf.set_text_color(51, 51, 51)
+        for item in equipment_list:
+            pdf.cell(5, 6, "\u2022")  # Bullet point
+            pdf.multi_cell(0, 6, _clean_text(item))
+        pdf.ln(3)
 
     # Instructions
-    instructions_html = ""
     if schema_recipe.get("recipeInstructions"):
+        _add_section_header(pdf, "Instructions")
         instructions = schema_recipe["recipeInstructions"]
+
         if isinstance(instructions, list):
-            instruction_items = []
+            pdf.set_font("Arial", "", 10)
+            pdf.set_text_color(51, 51, 51)
             for i, step in enumerate(instructions, 1):
-                if isinstance(step, dict):
-                    step_text = step.get("text", str(step))
-                else:
-                    step_text = str(step)
-                instruction_items.append(f"<li>{_escape_html(step_text)}</li>")
-            instructions_html = f"""
-            <div class='section'>
-                <h2>Instructions</h2>
-                <ol class='instructions-list'>
-                    {"".join(instruction_items)}
-                </ol>
-            </div>
-            """
+                step_text = step.get("text", str(step)) if isinstance(step, dict) else str(step)
+                pdf.cell(10, 6, f"{i}.")
+                pdf.multi_cell(0, 6, _clean_text(step_text))
         elif isinstance(instructions, str):
-            instructions_html = f"""
-            <div class='section'>
-                <h2>Instructions</h2>
-                <p>{_escape_html(instructions)}</p>
-            </div>
-            """
+            pdf.set_font("Arial", "", 10)
+            pdf.multi_cell(0, 6, _clean_text(instructions))
+
+        pdf.ln(3)
 
     # Notes
-    notes_html = ""
     if schema_recipe.get("notes"):
-        notes_html = f"""
-        <div class='section'>
-            <h2>Notes</h2>
-            <p>{_escape_html(schema_recipe["notes"])}</p>
-        </div>
-        """
+        _add_section_header(pdf, "Notes")
+        pdf.set_font("Arial", "", 10)
+        pdf.set_text_color(51, 51, 51)
+        pdf.multi_cell(0, 6, _clean_text(schema_recipe["notes"]))
+        pdf.ln(3)
 
     # Nutrition
-    nutrition_html = ""
-    if schema_recipe.get("nutrition"):
-        nutrition = schema_recipe["nutrition"]
-        if isinstance(nutrition, dict) and nutrition:
-            nutrition_items = []
-            for key, value in nutrition.items():
-                if value:
-                    label = (
-                        "".join([" " + c if c.isupper() else c for c in key])
-                        .strip()
-                        .title()
-                    )
-                    nutrition_items.append(
-                        f"<div class='nutrition-item'><strong>{_escape_html(label)}:</strong> {_escape_html(str(value))}</div>"
-                    )
-            if nutrition_items:
-                nutrition_html = f"""
-                <div class='section'>
-                    <h2>Nutrition Information</h2>
-                    <div class='nutrition-info'>
-                        {"".join(nutrition_items)}
-                    </div>
-                </div>
-                """
+    nutrition = schema_recipe.get("nutrition")
+    if nutrition and isinstance(nutrition, dict):
+        nutrition_items = [(key, value) for key, value in nutrition.items() if value]
+        if nutrition_items:
+            _add_section_header(pdf, "Nutrition Information")
+            pdf.set_font("Arial", "", 10)
+            pdf.set_text_color(51, 51, 51)
 
-    # Assemble complete recipe HTML
-    return f"""
-    {page_break}
-    <div class="recipe">
-        <h1 class="recipe-title">{title}</h1>
-        {description_html}
-        {metadata_html}
-        {ingredients_html}
-        {equipment_html}
-        {instructions_html}
-        {notes_html}
-        {nutrition_html}
-    </div>
+            # Display in two columns
+            col_width = 90
+            for key, value in nutrition_items:
+                label = "".join([" " + c if c.isupper() else c for c in key]).strip().title()
+                pdf.cell(col_width, 6, f"{label}: {_clean_text(str(value))}")
+                pdf.ln(6)
+
+
+def _add_section_header(pdf: FPDF, title: str):
+    """Add a section header."""
+    pdf.set_font("Arial", "B", 14)
+    pdf.set_text_color(44, 62, 80)
+    pdf.cell(0, 8, title, ln=True)
+    pdf.ln(2)
+
+
+def _add_metadata_box(pdf: FPDF, items: list[tuple[str, str]]):
+    """Add metadata box with light background."""
+    # Save position
+    x = pdf.get_x()
+    y = pdf.get_y()
+
+    # Calculate box height
+    line_height = 6
+    padding = 5
+    box_height = len(items) * line_height + 2 * padding
+
+    # Draw background box
+    pdf.set_fill_color(248, 249, 250)
+    pdf.set_draw_color(52, 152, 219)
+    pdf.set_line_width(1)
+    pdf.rect(x, y, 180, box_height, "DF")
+
+    # Add text
+    pdf.set_xy(x + padding + 2, y + padding)
+    pdf.set_font("Arial", "", 10)
+    pdf.set_text_color(51, 51, 51)
+
+    for label, value in items:
+        pdf.set_font("Arial", "B", 10)
+        pdf.cell(30, line_height, f"{label}:")
+        pdf.set_font("Arial", "", 10)
+        pdf.cell(0, line_height, _clean_text(value), ln=True)
+        pdf.set_x(x + padding + 2)
+
+    # Move cursor below box
+    pdf.set_xy(x, y + box_height)
+
+
+def _collect_metadata(schema_recipe: dict) -> list[tuple[str, str]]:
+    """Collect metadata items from recipe."""
+    items = []
+
+    if schema_recipe.get("recipeYield"):
+        items.append(("Yield", str(schema_recipe["recipeYield"])))
+
+    if schema_recipe.get("prepTime"):
+        items.append(("Prep Time", schema_recipe["prepTime"]))
+
+    if schema_recipe.get("cookTime"):
+        items.append(("Cook Time", schema_recipe["cookTime"]))
+
+    if schema_recipe.get("totalTime"):
+        items.append(("Total Time", schema_recipe["totalTime"]))
+
+    if schema_recipe.get("recipeCategory"):
+        categories = schema_recipe["recipeCategory"]
+        category_str = ", ".join(categories) if isinstance(categories, list) else str(categories)
+        items.append(("Category", category_str))
+
+    if schema_recipe.get("recipeCuisine"):
+        cuisines = schema_recipe["recipeCuisine"]
+        cuisine_str = ", ".join(cuisines) if isinstance(cuisines, list) else str(cuisines)
+        items.append(("Cuisine", cuisine_str))
+
+    if schema_recipe.get("keywords"):
+        items.append(("Keywords", schema_recipe["keywords"]))
+
+    if schema_recipe.get("url"):
+        items.append(("Source", schema_recipe["url"]))
+
+    return items
+
+
+def _clean_text(text: str) -> str:
     """
+    Clean and unescape HTML entities in text for PDF output.
 
+    Args:
+        text: Text that may contain HTML entities
 
-def _get_pdf_styles() -> str:
-    """Get CSS styles for PDF output."""
-    return """
-    @page {
-        size: Letter;
-        margin: 1in;
-    }
-
-    body {
-        font-family: Georgia, serif;
-        font-size: 11pt;
-        line-height: 1.6;
-        color: #333;
-    }
-
-    .page-break {
-        page-break-before: always;
-    }
-
-    .collection-cover {
-        text-align: center;
-        padding: 3in 1in;
-        page-break-after: always;
-    }
-
-    .collection-title {
-        font-size: 36pt;
-        margin-bottom: 0.5in;
-        color: #2c3e50;
-    }
-
-    .collection-description {
-        font-size: 14pt;
-        color: #555;
-        max-width: 5in;
-        margin: 0 auto;
-    }
-
-    .table-of-contents {
-        margin: 2em 0;
-    }
-
-    .table-of-contents h2 {
-        font-size: 24pt;
-        margin-bottom: 1em;
-        color: #2c3e50;
-        border-bottom: 2px solid #e0e0e0;
-        padding-bottom: 0.25em;
-    }
-
-    .toc-list {
-        list-style: none;
-        padding-left: 0;
-    }
-
-    .toc-list li {
-        padding: 0.5em 0;
-        font-size: 12pt;
-    }
-
-    .recipe {
-        margin-bottom: 2em;
-    }
-
-    .recipe-title {
-        font-size: 24pt;
-        margin-bottom: 0.5em;
-        color: #2c3e50;
-        border-bottom: 2px solid #e0e0e0;
-        padding-bottom: 0.25em;
-    }
-
-    .description {
-        font-style: italic;
-        color: #555;
-        margin: 1em 0;
-    }
-
-    .metadata {
-        background: #f8f9fa;
-        border-left: 4px solid #3498db;
-        padding: 1em;
-        margin: 1em 0;
-    }
-
-    .meta-item {
-        margin: 0.25em 0;
-    }
-
-    .section {
-        margin: 1.5em 0;
-    }
-
-    .section h2 {
-        font-size: 16pt;
-        margin-bottom: 0.75em;
-        color: #2c3e50;
-    }
-
-    .ingredients-list,
-    .instructions-list {
-        margin: 0;
-        padding-left: 1.5em;
-    }
-
-    .ingredients-list li,
-    .instructions-list li {
-        margin: 0.5em 0;
-    }
-
-    .nutrition-info {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.5em;
-    }
-
-    .nutrition-item {
-        padding: 0.25em 0;
-    }
-
-    ul {
-        list-style-type: disc;
-    }
-
-    ol {
-        list-style-type: decimal;
-    }
+    Returns:
+        Cleaned text safe for PDF
     """
-
-
-def _escape_html(text: str) -> str:
-    """Escape HTML special characters."""
     if not isinstance(text, str):
         text = str(text)
-    return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-        .replace("'", "&#39;")
-    )
+
+    # Unescape HTML entities
+    text = html.unescape(text)
+
+    # Remove any remaining problematic characters
+    # fpdf2 handles most characters well, but we'll strip control chars
+    text = "".join(char for char in text if ord(char) >= 32 or char in "\n\r\t")
+
+    return text

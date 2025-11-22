@@ -6,17 +6,18 @@ Create Date: 2025-11-18 12:00:00.000000
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
+
+import sqlalchemy as sa
 
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
 revision: str = "20251118_add_refresh_tokens"
-down_revision: Union[str, None] = "006_update_theme_preferences"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "006_update_theme_preferences"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -39,15 +40,9 @@ def upgrade() -> None:
     )
 
     # Create indexes
-    op.create_index(
-        op.f("ix_refresh_tokens_id"), "refresh_tokens", ["id"], unique=False
-    )
-    op.create_index(
-        op.f("ix_refresh_tokens_token"), "refresh_tokens", ["token"], unique=True
-    )
-    op.create_index(
-        op.f("ix_refresh_tokens_user_id"), "refresh_tokens", ["user_id"], unique=False
-    )
+    op.create_index(op.f("ix_refresh_tokens_id"), "refresh_tokens", ["id"], unique=False)
+    op.create_index(op.f("ix_refresh_tokens_token"), "refresh_tokens", ["token"], unique=True)
+    op.create_index(op.f("ix_refresh_tokens_user_id"), "refresh_tokens", ["user_id"], unique=False)
     op.create_index(
         op.f("ix_refresh_tokens_expires_at"),
         "refresh_tokens",

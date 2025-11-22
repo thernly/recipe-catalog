@@ -1,16 +1,17 @@
 """Tests for meal planning functionality."""
 
+from datetime import date, timedelta
+
 import pytest
 import pytest_asyncio
-from datetime import date, timedelta
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User
+from app.api.meal_plans import get_week_start
 from app.models.household import Household
 from app.models.meal_plan import MealPlan, PlannedMeal
 from app.models.recipe import Recipe
-from app.api.meal_plans import get_week_start
+from app.models.user import User
 
 
 @pytest_asyncio.fixture
@@ -84,9 +85,7 @@ def test_get_week_start_sunday():
 
 
 @pytest.mark.asyncio
-async def test_create_meal_plan(
-    db: AsyncSession, test_user: User, test_household: Household
-):
+async def test_create_meal_plan(db: AsyncSession, test_user: User, test_household: Household):
     """Test creating a meal plan."""
     week_start = get_week_start(date.today())
 
@@ -138,9 +137,7 @@ async def test_unique_meal_plan_per_household_week(
 
 
 @pytest.mark.asyncio
-async def test_get_meal_plan(
-    db: AsyncSession, test_user: User, test_household: Household
-):
+async def test_get_meal_plan(db: AsyncSession, test_user: User, test_household: Household):
     """Test retrieving a meal plan."""
     week_start = get_week_start(date.today())
 
@@ -163,9 +160,7 @@ async def test_get_meal_plan(
 
 
 @pytest.mark.asyncio
-async def test_delete_meal_plan(
-    db: AsyncSession, test_user: User, test_household: Household
-):
+async def test_delete_meal_plan(db: AsyncSession, test_user: User, test_household: Household):
     """Test deleting a meal plan."""
     week_start = get_week_start(date.today())
 
@@ -193,9 +188,7 @@ async def test_delete_meal_plan(
 
 
 @pytest.mark.asyncio
-async def test_list_meal_plans(
-    db: AsyncSession, test_user: User, test_household: Household
-):
+async def test_list_meal_plans(db: AsyncSession, test_user: User, test_household: Household):
     """Test listing meal plans for a household."""
     # Create multiple meal plans for different weeks
     week1 = get_week_start(date.today())
@@ -356,9 +349,7 @@ async def test_delete_planned_meal(
     await db.commit()
 
     # Verify deletion
-    result = await db.execute(
-        select(PlannedMeal).where(PlannedMeal.id == planned_meal_id)
-    )
+    result = await db.execute(select(PlannedMeal).where(PlannedMeal.id == planned_meal_id))
     deleted = result.scalar_one_or_none()
 
     assert deleted is None
@@ -481,9 +472,7 @@ async def test_cascade_delete_planned_meals(
     await db.commit()
 
     # Verify planned meals exist
-    result = await db.execute(
-        select(PlannedMeal).where(PlannedMeal.meal_plan_id == meal_plan.id)
-    )
+    result = await db.execute(select(PlannedMeal).where(PlannedMeal.meal_plan_id == meal_plan.id))
     meals_before = result.scalars().all()
     assert len(meals_before) == 3
 
@@ -492,9 +481,7 @@ async def test_cascade_delete_planned_meals(
     await db.commit()
 
     # Verify planned meals are also deleted
-    result = await db.execute(
-        select(PlannedMeal).where(PlannedMeal.meal_plan_id == meal_plan.id)
-    )
+    result = await db.execute(select(PlannedMeal).where(PlannedMeal.meal_plan_id == meal_plan.id))
     meals_after = result.scalars().all()
     assert len(meals_after) == 0
 
@@ -556,16 +543,12 @@ async def test_household_scoping(db: AsyncSession, test_user: User):
     await db.commit()
 
     # Verify each household has only its own meal plan
-    result = await db.execute(
-        select(MealPlan).where(MealPlan.household_id == household1.id)
-    )
+    result = await db.execute(select(MealPlan).where(MealPlan.household_id == household1.id))
     household1_plans = result.scalars().all()
     assert len(household1_plans) == 1
     assert household1_plans[0].id == meal_plan1.id
 
-    result = await db.execute(
-        select(MealPlan).where(MealPlan.household_id == household2.id)
-    )
+    result = await db.execute(select(MealPlan).where(MealPlan.household_id == household2.id))
     household2_plans = result.scalars().all()
     assert len(household2_plans) == 1
     assert household2_plans[0].id == meal_plan2.id
@@ -577,9 +560,7 @@ async def test_household_scoping(db: AsyncSession, test_user: User):
 
 
 @pytest.mark.asyncio
-async def test_week_navigation(
-    db: AsyncSession, test_user: User, test_household: Household
-):
+async def test_week_navigation(db: AsyncSession, test_user: User, test_household: Household):
     """Test navigating between different weeks."""
     today = date.today()
     current_week = get_week_start(today)
@@ -647,8 +628,6 @@ async def test_planned_meal_day_of_week_validation(
     await db.commit()
 
     # Verify all 7 meals were created
-    result = await db.execute(
-        select(PlannedMeal).where(PlannedMeal.meal_plan_id == meal_plan.id)
-    )
+    result = await db.execute(select(PlannedMeal).where(PlannedMeal.meal_plan_id == meal_plan.id))
     meals = result.scalars().all()
     assert len(meals) == 7

@@ -1,6 +1,6 @@
 """Shared utilities for SQLAlchemy models."""
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 
 def utc_now():

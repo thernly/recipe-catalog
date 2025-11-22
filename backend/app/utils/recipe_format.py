@@ -5,14 +5,15 @@ Utilities for converting between internal recipe format and Schema.org Recipe JS
 import base64
 import logging
 import re
-from typing import Dict, Any, List, Optional
+from typing import Any
 
 import httpx
+
 
 logger = logging.getLogger(__name__)
 
 
-def convert_to_schema_org(recipe_db: Any) -> Dict[str, Any]:
+def convert_to_schema_org(recipe_db: Any) -> dict[str, Any]:
     """
     Convert internal recipe format to Schema.org Recipe JSON-LD format.
 
@@ -46,12 +47,8 @@ def convert_to_schema_org(recipe_db: Any) -> Dict[str, Any]:
         "prepTime": recipe_data.get("prepTime", ""),
         "cookTime": recipe_data.get("cookTime", ""),
         "totalTime": recipe_data.get("totalTime", ""),
-        "recipeCategory": _ensure_array(
-            recipe_data.get("recipeCategory") or recipe_db.category
-        ),
-        "recipeCuisine": _ensure_array(
-            recipe_data.get("recipeCuisine") or recipe_db.cuisine
-        ),
+        "recipeCategory": _ensure_array(recipe_data.get("recipeCategory") or recipe_db.category),
+        "recipeCuisine": _ensure_array(recipe_data.get("recipeCuisine") or recipe_db.cuisine),
         "keywords": recipe_data.get("keywords", ""),
         "recipeIngredient": recipe_data.get("recipeIngredient", []),
         "recipeInstructions": recipe_data.get("recipeInstructions", []),
@@ -65,7 +62,7 @@ def convert_to_schema_org(recipe_db: Any) -> Dict[str, Any]:
     return schema_recipe
 
 
-def convert_from_schema_org(schema_recipe: Dict[str, Any]) -> Dict[str, Any]:
+def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, Any]:
     """
     Convert Schema.org Recipe JSON-LD format to internal recipe format.
 
@@ -145,9 +142,14 @@ def convert_from_schema_org(schema_recipe: Dict[str, Any]) -> Dict[str, Any]:
         cook_min = _parse_duration_to_minutes(schema_recipe.get("cookTime", ""))
         total_time_minutes = (prep_min or 0) + (cook_min or 0) or None
 
+    # Validate required fields
+    recipe_name = schema_recipe.get("name", "").strip()
+    if not recipe_name:
+        raise ValueError("Recipe name is required")
+
     # Build recipe_data object (full recipe details)
     recipe_data = {
-        "name": schema_recipe.get("name", ""),
+        "name": recipe_name,
         "author": schema_recipe.get("author", []),
         "datePublished": schema_recipe.get("datePublished", ""),
         "recipeYield": schema_recipe.get("recipeYield", ""),
@@ -167,7 +169,7 @@ def convert_from_schema_org(schema_recipe: Dict[str, Any]) -> Dict[str, Any]:
     }
 
     return {
-        "name": schema_recipe.get("name", "Untitled Recipe"),
+        "name": recipe_name,
         "description": schema_recipe.get("description", ""),
         "image_url": image_url,
         "recipe_data": recipe_data,
@@ -179,7 +181,7 @@ def convert_from_schema_org(schema_recipe: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _fetch_and_encode_image(image_url: str) -> Optional[Dict[str, str]]:
+def _fetch_and_encode_image(image_url: str) -> dict[str, str] | None:
     """
     Fetch an image from URL and encode it to base64.
 
@@ -217,7 +219,7 @@ def _fetch_and_encode_image(image_url: str) -> Optional[Dict[str, str]]:
         return None
 
 
-def _convert_images_to_schema(image_url: Optional[str]) -> List[Dict[str, str]]:
+def _convert_images_to_schema(image_url: str | None) -> list[dict[str, str]]:
     """
     Convert image URL to Schema.org image format with base64 data.
     Legacy function for backward compatibility.
@@ -239,7 +241,7 @@ def _convert_images_to_schema(image_url: Optional[str]) -> List[Dict[str, str]]:
     return [{"url": image_url, "data": "", "mimeType": "image/jpeg"}]
 
 
-def _ensure_array(value: Any) -> List[str]:
+def _ensure_array(value: Any) -> list[str]:
     """Convert value to array format."""
     if value is None:
         return []
@@ -250,7 +252,7 @@ def _ensure_array(value: Any) -> List[str]:
     return []
 
 
-def _parse_duration_to_minutes(duration: str) -> Optional[int]:
+def _parse_duration_to_minutes(duration: str) -> int | None:
     """
     Parse ISO 8601 duration or simple time string to minutes.
 

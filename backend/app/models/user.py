@@ -1,7 +1,8 @@
 """User model."""
 
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, JSON
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 from app.models._utils import utc_now
 
@@ -13,9 +14,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
-    hashed_password = Column(
-        String(255), nullable=True
-    )  # Nullable for IdP-only accounts
+    hashed_password = Column(String(255), nullable=True)  # Nullable for IdP-only accounts
     display_name = Column(String(100))
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
@@ -24,12 +23,8 @@ class User(Base):
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # Relationships
-    recipes = relationship(
-        "Recipe", back_populates="owner", cascade="all, delete-orphan"
-    )
-    collections = relationship(
-        "Collection", back_populates="owner", cascade="all, delete-orphan"
-    )
+    recipes = relationship("Recipe", back_populates="owner", cascade="all, delete-orphan")
+    collections = relationship("Collection", back_populates="owner", cascade="all, delete-orphan")
     preferences = relationship(
         "UserPreferences",
         back_populates="user",
@@ -59,9 +54,7 @@ class UserPreferences(Base):
     __tablename__ = "user_preferences"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(
-        Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True
-    )
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
     theme = Column(String(50), default="light", nullable=False)
     default_view = Column(String(20), default="grid", nullable=False)
     default_sort = Column(String(50), default="recently_added", nullable=False)

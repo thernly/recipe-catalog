@@ -3,32 +3,36 @@ Authentication API endpoints.
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from datetime import UTC
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import (
-    verify_password,
-    get_password_hash,
     create_access_token,
-    generate_csrf_token,
     generate_refresh_token,
+    get_password_hash,
     get_refresh_token_expiry,
+    verify_password,
 )
-from app.core.config import settings
-from app.models.user import User, UserPreferences
 from app.models.refresh_token import RefreshToken
+from app.models.user import User, UserPreferences
 from app.schemas.user import (
+    ForgotPasswordRequest,
+    ResendVerificationRequest,
+    ResetPasswordRequest,
     UserCreate,
     UserLogin,
-    User as UserSchema,
-    ForgotPasswordRequest,
-    ResetPasswordRequest,
-    ResendVerificationRequest,
 )
+from app.schemas.user import (
+    User as UserSchema,
+)
+
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -42,13 +46,9 @@ def _get_rate_limit(limit: str) -> str:
     return limit
 
 
-@router.post(
-    "/register", response_model=UserSchema, status_code=status.HTTP_201_CREATED
-)
+@router.post("/register", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
 @limiter.limit(lambda: _get_rate_limit("5/hour"))
-async def register(
-    request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)
-):
+async def register(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     """
     Register a new user account.
 
@@ -66,15 +66,11 @@ async def register(
 
     try:
         # Check if email already exists
-        result = await db.execute(
-            select(User).where(User.email == user_data.email.lower())
-        )
+        result = await db.execute(select(User).where(User.email == user_data.email.lower()))
         existing_user = result.scalar_one_or_none()
 
         if existing_user:
-            logger.warning(
-                f"Registration failed - email already exists: {user_data.email}"
-            )
+            logger.warning(f"Registration failed - email already exists: {user_data.email}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered",
@@ -129,9 +125,7 @@ async def register(
         await db.commit()
         await db.refresh(new_user)
 
-        logger.info(
-            f"User registered successfully: {new_user.email} (ID: {new_user.id})"
-        )
+        logger.info(f"User registered successfully: {new_user.email} (ID: {new_user.id})")
 
         # TODO: Send verification email
 
@@ -172,9 +166,7 @@ async def login(
         HTTPException: If credentials are invalid
     """
     # Get user by email
-    result = await db.execute(
-        select(User).where(User.email == login_data.email.lower())
-    )
+    result = await db.execute(select(User).where(User.email == login_data.email.lower()))
     user = result.scalar_one_or_none()
 
     # Verify user exists and password is correct
@@ -187,9 +179,7 @@ async def login(
 
     # Check if user is active
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
 
     # Create access token
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
@@ -250,7 +240,7 @@ async def refresh_token(
     Raises:
         HTTPException: If refresh token is invalid, expired, or revoked
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     # Get refresh token from cookie
     refresh_token_value = request.cookies.get("refresh_token")
@@ -261,9 +251,7 @@ async def refresh_token(
         )
 
     # Look up the refresh token
-    result = await db.execute(
-        select(RefreshToken).where(RefreshToken.token == refresh_token_value)
-    )
+    result = await db.execute(select(RefreshToken).where(RefreshToken.token == refresh_token_value))
     refresh_token_record = result.scalar_one_or_none()
 
     # Validate refresh token exists
@@ -281,7 +269,7 @@ async def refresh_token(
         )
 
     # Check if token is expired
-    if refresh_token_record.expires_at < datetime.now(timezone.utc):
+    if refresh_token_record.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token has expired",
@@ -309,7 +297,7 @@ async def refresh_token(
 
     # Revoke old refresh token
     refresh_token_record.revoked = True
-    refresh_token_record.revoked_at = datetime.now(timezone.utc)
+    refresh_token_record.revoked_at = datetime.now(UTC)
 
     # Add new refresh token
     db.add(new_refresh_token)
@@ -354,7 +342,7 @@ async def logout(
     Returns:
         dict: Success message
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     # Get refresh token from cookie
     refresh_token_value = request.cookies.get("refresh_token")
@@ -368,7 +356,7 @@ async def logout(
 
         if refresh_token_record and not refresh_token_record.revoked:
             refresh_token_record.revoked = True
-            refresh_token_record.revoked_at = datetime.now(timezone.utc)
+            refresh_token_record.revoked_at = datetime.now(UTC)
             await db.commit()
 
     # Clear cookies
@@ -394,8 +382,9 @@ async def forgot_password(
         dict: Success message (always returns success to prevent email enumeration)
     """
     from sqlalchemy import select
-    from app.models.token import PasswordResetToken
+
     from app.core.email import email_service
+    from app.models.token import PasswordResetToken
 
     # Always return success to prevent email enumeration
     # Find user by email
@@ -447,6 +436,7 @@ async def reset_password(
         HTTPException: If token is invalid or expired
     """
     from sqlalchemy import select
+
     from app.models.token import PasswordResetToken
 
     # Find token
@@ -490,23 +480,18 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
         HTTPException: If token is invalid or expired
     """
     from sqlalchemy import select
+
     from app.models.token import VerificationToken
 
     # Find token
-    result = await db.execute(
-        select(VerificationToken).where(VerificationToken.token == token)
-    )
+    result = await db.execute(select(VerificationToken).where(VerificationToken.token == token))
     verification_token = result.scalar_one_or_none()
 
     if not verification_token or not verification_token.is_valid():
-        raise HTTPException(
-            status_code=400, detail="Invalid or expired verification token"
-        )
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
 
     # Get user
-    user_result = await db.execute(
-        select(User).where(User.id == verification_token.user_id)
-    )
+    user_result = await db.execute(select(User).where(User.id == verification_token.user_id))
     user = user_result.scalar_one_or_none()
 
     if not user:
@@ -540,8 +525,9 @@ async def resend_verification(
         HTTPException: If user not found or already verified
     """
     from sqlalchemy import select
-    from app.models.token import VerificationToken
+
     from app.core.email import email_service
+    from app.models.token import VerificationToken
 
     # Find user
     result = await db.execute(select(User).where(User.email == request.email))
@@ -576,20 +562,3 @@ async def resend_verification(
     )
 
     return {"message": "Verification email sent"}
-
-
-@router.get("/csrf-token")
-async def get_csrf_token():
-    """
-    Generate and return a CSRF token.
-
-    Note: This API primarily uses JWT authentication with tokens in headers,
-    so CSRF protection is less critical. However, this endpoint is provided
-    for defense-in-depth and future compatibility if cookie-based sessions
-    are ever implemented.
-
-    Returns:
-        dict: CSRF token
-    """
-    token = generate_csrf_token()
-    return {"csrf_token": token}

@@ -3,9 +3,12 @@ AI service for recipe generation using OpenRouter API.
 """
 
 import logging
+from typing import Any
+
 import httpx
-from typing import Dict, Any, List, Optional
+
 from app.core.config import settings
+
 
 logger = logging.getLogger(__name__)
 
@@ -20,12 +23,12 @@ class AIService:
 
     async def generate_recipe(
         self,
-        ingredients: List[str],
-        cuisine: Optional[str] = None,
-        time_limit: Optional[int] = None,
-        dietary_preferences: Optional[List[str]] = None,
-        equipment: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        ingredients: list[str],
+        cuisine: str | None = None,
+        time_limit: int | None = None,
+        dietary_preferences: list[str] | None = None,
+        equipment: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Generate a recipe from ingredients using AI.
 
@@ -93,9 +96,7 @@ class AIService:
                 return recipe_data
 
             except httpx.HTTPStatusError as e:
-                logger.error(
-                    f"OpenRouter API error: {e.response.status_code} - {e.response.text}"
-                )
+                logger.error(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
                 if e.response.status_code == 429:
                     raise Exception("Rate limit exceeded. Please try again later.")
                 elif e.response.status_code == 401:
@@ -111,11 +112,11 @@ class AIService:
 
     def _build_prompt(
         self,
-        ingredients: List[str],
-        cuisine: Optional[str],
-        time_limit: Optional[int],
-        dietary_preferences: Optional[List[str]],
-        equipment: Optional[List[str]],
+        ingredients: list[str],
+        cuisine: str | None,
+        time_limit: int | None,
+        dietary_preferences: list[str] | None,
+        equipment: list[str] | None,
     ) -> str:
         """Build the prompt for recipe generation."""
         ingredients_str = ", ".join(ingredients)
@@ -174,12 +175,12 @@ Important:
     async def generate_menu(
         self,
         days: int,
-        meals_per_day: List[str],
-        dietary_preferences: Optional[List[str]] = None,
-        cuisine: Optional[str] = None,
+        meals_per_day: list[str],
+        dietary_preferences: list[str] | None = None,
+        cuisine: str | None = None,
         mode: str = "catalog-first",
-        household_recipes: Optional[List[Dict[str, Any]]] = None,
-    ) -> List[Dict[str, Any]]:
+        household_recipes: list[dict[str, Any]] | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Generate menu suggestions for multiple days using AI.
 
@@ -248,9 +249,7 @@ Important:
                 return menu_data.get("suggestions", [])
 
             except httpx.HTTPStatusError as e:
-                logger.error(
-                    f"OpenRouter API error: {e.response.status_code} - {e.response.text}"
-                )
+                logger.error(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
                 if e.response.status_code == 429:
                     raise Exception("Rate limit exceeded. Please try again later.")
                 elif e.response.status_code == 401:
@@ -261,19 +260,17 @@ Important:
                 logger.error(f"Failed to parse AI response: {content}")
                 raise Exception("Failed to parse AI response. Please try again.")
             except Exception as e:
-                logger.exception(
-                    f"Unexpected error during AI menu generation: {str(e)}"
-                )
+                logger.exception(f"Unexpected error during AI menu generation: {str(e)}")
                 raise Exception(f"AI menu generation failed: {str(e)}")
 
     def _build_menu_prompt(
         self,
         days: int,
-        meals_per_day: List[str],
-        dietary_preferences: Optional[List[str]],
-        cuisine: Optional[str],
+        meals_per_day: list[str],
+        dietary_preferences: list[str] | None,
+        cuisine: str | None,
         mode: str,
-        household_recipes: Optional[List[Dict[str, Any]]],
+        household_recipes: list[dict[str, Any]] | None,
     ) -> str:
         """Build the prompt for menu generation."""
         prompt = f"""Generate a menu plan for {days} day(s) with the following meals each day: {", ".join(meals_per_day)}

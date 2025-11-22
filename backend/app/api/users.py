@@ -3,22 +3,26 @@ User profile and preferences API endpoints.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.core.security import verify_password, get_password_hash
-from app.models.user import User, UserPreferences as UserPrefsModel
-from app.models.recipe import Recipe
+from app.core.security import get_password_hash, verify_password
 from app.models.collection import Collection
+from app.models.recipe import Recipe
+from app.models.user import User
+from app.models.user import UserPreferences as UserPrefsModel
 from app.schemas.user import (
-    User as UserSchema,
-    UserUpdate,
     PasswordChange,
     UserPreferences,
     UserPreferencesUpdate,
+    UserUpdate,
 )
+from app.schemas.user import (
+    User as UserSchema,
+)
+
 
 router = APIRouter()
 
@@ -60,9 +64,7 @@ async def update_user_profile(
     if user_update.email is not None:
         # Check if new email is already in use
         result = await db.execute(
-            select(User).where(
-                User.email == user_update.email.lower(), User.id != current_user.id
-            )
+            select(User).where(User.email == user_update.email.lower(), User.id != current_user.id)
         )
         existing_user = result.scalar_one_or_none()
 
@@ -99,9 +101,7 @@ async def change_password(
         dict: Success message
     """
     # Verify current password
-    if not verify_password(
-        password_change.current_password, current_user.hashed_password
-    ):
+    if not verify_password(password_change.current_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect",

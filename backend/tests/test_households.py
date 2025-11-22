@@ -1,8 +1,10 @@
 """Tests for household functionality."""
 
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, UTC
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.user import User
 from app.services import household as household_service
 
@@ -10,9 +12,7 @@ from app.services import household as household_service
 @pytest.mark.asyncio
 async def test_create_household(db: AsyncSession, test_user: User):
     """Test creating a household."""
-    household = await household_service.create_household(
-        db, "Test Household", test_user.id
-    )
+    household = await household_service.create_household(db, "Test Household", test_user.id)
 
     assert household.id is not None
     assert household.name == "Test Household"
@@ -27,9 +27,7 @@ async def test_create_household(db: AsyncSession, test_user: User):
 
 
 @pytest.mark.asyncio
-async def test_create_household_user_already_in_household(
-    db: AsyncSession, test_user: User
-):
+async def test_create_household_user_already_in_household(db: AsyncSession, test_user: User):
     """Test that a user cannot create multiple households."""
     # Create first household
     await household_service.create_household(db, "First Household", test_user.id)
@@ -44,9 +42,7 @@ async def test_create_household_user_already_in_household(
 @pytest.mark.asyncio
 async def test_get_user_household(db: AsyncSession, test_user: User):
     """Test getting a user's household."""
-    created_household = await household_service.create_household(
-        db, "Test Household", test_user.id
-    )
+    created_household = await household_service.create_household(db, "Test Household", test_user.id)
 
     household = await household_service.get_user_household(db, test_user.id)
 
@@ -58,9 +54,7 @@ async def test_get_user_household(db: AsyncSession, test_user: User):
 @pytest.mark.asyncio
 async def test_update_household(db: AsyncSession, test_user: User):
     """Test updating household name."""
-    household = await household_service.create_household(
-        db, "Original Name", test_user.id
-    )
+    household = await household_service.create_household(db, "Original Name", test_user.id)
 
     updated = await household_service.update_household(
         db, household.id, test_user.id, "Updated Name"
@@ -72,9 +66,7 @@ async def test_update_household(db: AsyncSession, test_user: User):
 @pytest.mark.asyncio
 async def test_update_household_non_owner(db: AsyncSession, test_user: User):
     """Test that non-owners cannot update household."""
-    household = await household_service.create_household(
-        db, "Test Household", test_user.id
-    )
+    household = await household_service.create_household(db, "Test Household", test_user.id)
 
     # Create another user
     other_user = User(
@@ -89,9 +81,7 @@ async def test_update_household_non_owner(db: AsyncSession, test_user: User):
 
     # Attempt to update as non-owner should fail
     with pytest.raises(Exception) as exc_info:
-        await household_service.update_household(
-            db, household.id, other_user.id, "New Name"
-        )
+        await household_service.update_household(db, household.id, other_user.id, "New Name")
 
     assert "owner" in str(exc_info.value).lower()
 
@@ -99,9 +89,7 @@ async def test_update_household_non_owner(db: AsyncSession, test_user: User):
 @pytest.mark.asyncio
 async def test_create_invitation(db: AsyncSession, test_user: User):
     """Test creating a household invitation."""
-    household = await household_service.create_household(
-        db, "Test Household", test_user.id
-    )
+    household = await household_service.create_household(db, "Test Household", test_user.id)
 
     invitation = await household_service.create_invitation(
         db, household.id, test_user.id, "invitee@example.com"
@@ -126,9 +114,7 @@ async def test_create_invitation(db: AsyncSession, test_user: User):
 async def test_accept_invitation(db: AsyncSession, test_user: User):
     """Test accepting a household invitation."""
     # Create household
-    household = await household_service.create_household(
-        db, "Test Household", test_user.id
-    )
+    household = await household_service.create_household(db, "Test Household", test_user.id)
 
     # Create invitee user
     invitee = User(
@@ -165,9 +151,7 @@ async def test_accept_invitation(db: AsyncSession, test_user: User):
 @pytest.mark.asyncio
 async def test_accept_invitation_wrong_email(db: AsyncSession, test_user: User):
     """Test that invitation cannot be accepted by wrong email."""
-    household = await household_service.create_household(
-        db, "Test Household", test_user.id
-    )
+    household = await household_service.create_household(db, "Test Household", test_user.id)
 
     # Create invitation for specific email
     invitation = await household_service.create_invitation(
@@ -195,9 +179,7 @@ async def test_accept_invitation_wrong_email(db: AsyncSession, test_user: User):
 @pytest.mark.asyncio
 async def test_remove_household_member(db: AsyncSession, test_user: User):
     """Test removing a member from household."""
-    household = await household_service.create_household(
-        db, "Test Household", test_user.id
-    )
+    household = await household_service.create_household(db, "Test Household", test_user.id)
 
     # Add a member
     member_user = User(
@@ -220,9 +202,7 @@ async def test_remove_household_member(db: AsyncSession, test_user: User):
     assert len(members) == 2
 
     # Remove the member
-    await household_service.remove_household_member(
-        db, household.id, member_user.id, test_user.id
-    )
+    await household_service.remove_household_member(db, household.id, member_user.id, test_user.id)
 
     # Verify back to 1 member
     members = await household_service.get_household_members(db, household.id)
@@ -233,9 +213,7 @@ async def test_remove_household_member(db: AsyncSession, test_user: User):
 @pytest.mark.asyncio
 async def test_cannot_remove_owner(db: AsyncSession, test_user: User):
     """Test that household owner cannot be removed."""
-    household = await household_service.create_household(
-        db, "Test Household", test_user.id
-    )
+    household = await household_service.create_household(db, "Test Household", test_user.id)
 
     # Attempt to remove owner should fail
     with pytest.raises(Exception) as exc_info:
@@ -282,14 +260,10 @@ async def test_household_size_limit(db: AsyncSession, test_user: User):
 @pytest.mark.asyncio
 async def test_check_household_access(db: AsyncSession, test_user: User):
     """Test checking user household access."""
-    household = await household_service.create_household(
-        db, "Test Household", test_user.id
-    )
+    household = await household_service.create_household(db, "Test Household", test_user.id)
 
     # User should have access to their household
-    has_access = await household_service.check_user_household_access(
-        db, test_user.id, household.id
-    )
+    has_access = await household_service.check_user_household_access(db, test_user.id, household.id)
     assert has_access is True
 
     # Other user should not have access
@@ -312,9 +286,7 @@ async def test_check_household_access(db: AsyncSession, test_user: User):
 @pytest.mark.asyncio
 async def test_decline_invitation(db: AsyncSession, test_user: User):
     """Test declining an invitation."""
-    household = await household_service.create_household(
-        db, "Test Household", test_user.id
-    )
+    household = await household_service.create_household(db, "Test Household", test_user.id)
 
     # Create invitee user
     invitee = User(

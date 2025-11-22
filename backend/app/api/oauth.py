@@ -1,32 +1,34 @@
 """OAuth/OIDC authentication API endpoints."""
 
 import logging
-from datetime import datetime, UTC
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
+from app.core.deps import get_current_user
 from app.core.oauth import (
-    oauth,
-    get_available_providers,
     extract_user_info,
+    get_available_providers,
+    oauth,
 )
 from app.core.security import (
     create_access_token,
     generate_refresh_token,
     get_refresh_token_expiry,
 )
-from app.core.deps import get_current_user
-from app.core.config import settings
-from app.models.user import User, UserPreferences
 from app.models.identity_provider import IdentityProvider
 from app.models.oauth_state import OAuthState
 from app.models.refresh_token import RefreshToken
-from app.schemas.oauth import ProviderInfo, LinkedProviderResponse
+from app.models.user import User, UserPreferences
+from app.schemas.oauth import LinkedProviderResponse, ProviderInfo
 from app.schemas.user import Token
+
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -78,9 +80,7 @@ async def authorize_provider(
     redirect_uri = f"{settings.OAUTH_REDIRECT_URI}/{provider}"
 
     # Redirect to provider's authorization URL
-    return await client.authorize_redirect(
-        request, redirect_uri, state=oauth_state.token
-    )
+    return await client.authorize_redirect(request, redirect_uri, state=oauth_state.token)
 
 
 @router.get("/{provider}/callback", response_model=Token)
@@ -146,9 +146,7 @@ async def oauth_callback(
     if state_data["provider"] != provider:
         await db.delete(oauth_state)
         await db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="State mismatch"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="State mismatch")
 
     # Delete state after use (one-time use)
     await db.delete(oauth_state)
@@ -281,9 +279,7 @@ async def oauth_callback(
             display_name=user_data["display_name"],
             is_active=True,
             is_verified=user_data["email_verified"],
-            email_verified_at=datetime.now(UTC)
-            if user_data["email_verified"]
-            else None,
+            email_verified_at=datetime.now(UTC) if user_data["email_verified"] else None,
         )
 
         db.add(new_user)
@@ -384,9 +380,7 @@ async def unlink_provider(
     # Get the provider to delete
     idp = await db.get(IdentityProvider, provider_id)
     if not idp or idp.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
 
     # Check if user has password or other providers
     result = await db.execute(

@@ -1,8 +1,8 @@
 """User-related Pydantic schemas."""
 
 from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 # ============================================
@@ -42,7 +42,7 @@ class UserCreate(BaseModel):
 
     email: EmailStr
     password: str = Field(..., min_length=12)
-    display_name: Optional[str] = Field(None, max_length=100)
+    display_name: str | None = Field(None, max_length=100)
 
     @field_validator("password")
     @classmethod
@@ -89,7 +89,7 @@ class UserBase(BaseModel):
     """Base user schema."""
 
     email: EmailStr
-    display_name: Optional[str] = None
+    display_name: str | None = None
 
 
 class User(UserBase):
@@ -107,8 +107,8 @@ class User(UserBase):
 class UserUpdate(BaseModel):
     """Schema for updating user profile."""
 
-    display_name: Optional[str] = Field(None, max_length=100)
-    email: Optional[EmailStr] = None
+    display_name: str | None = Field(None, max_length=100)
+    email: EmailStr | None = None
 
 
 class PasswordChange(BaseModel):
@@ -157,17 +157,15 @@ class ResendVerificationRequest(BaseModel):
 class UserPreferencesBase(BaseModel):
     """Base user preferences schema."""
 
-    theme: str = Field(
-        "light", pattern="^(light|dark|high-contrast|system|classic|professional)$"
-    )
+    theme: str = Field("light", pattern="^(light|dark|high-contrast|system|classic|professional)$")
     default_view: str = Field("grid", pattern="^(grid|list)$")
     default_sort: str = "recently_added"
     recipes_per_page: int = Field(24, ge=12, le=100)
     email_notifications: bool = False
     timezone: str = "UTC"
-    custom_cuisines: List[str] = Field(default_factory=list)
-    custom_categories: List[str] = Field(default_factory=list)
-    dietary_preferences: List[str] = Field(default_factory=list)
+    custom_cuisines: list[str] = Field(default_factory=list)
+    custom_categories: list[str] = Field(default_factory=list)
+    dietary_preferences: list[str] = Field(default_factory=list)
 
 
 class UserPreferences(UserPreferencesBase):
@@ -184,14 +182,14 @@ class UserPreferences(UserPreferencesBase):
 class UserPreferencesUpdate(BaseModel):
     """Schema for updating user preferences."""
 
-    theme: Optional[str] = Field(
+    theme: str | None = Field(
         None, pattern="^(light|dark|high-contrast|system|classic|professional)$"
     )
-    default_view: Optional[str] = Field(None, pattern="^(grid|list)$")
-    default_sort: Optional[str] = None
-    recipes_per_page: Optional[int] = Field(None, ge=12, le=100)
-    email_notifications: Optional[bool] = None
-    timezone: Optional[str] = None
-    custom_cuisines: Optional[List[str]] = None
-    custom_categories: Optional[List[str]] = None
-    dietary_preferences: Optional[List[str]] = None
+    default_view: str | None = Field(None, pattern="^(grid|list)$")
+    default_sort: str | None = None
+    recipes_per_page: int | None = Field(None, ge=12, le=100)
+    email_notifications: bool | None = None
+    timezone: str | None = None
+    custom_cuisines: list[str] | None = None
+    custom_categories: list[str] | None = None
+    dietary_preferences: list[str] | None = None

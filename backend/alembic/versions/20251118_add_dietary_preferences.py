@@ -6,26 +6,25 @@ Create Date: 2025-11-18 00:00:00.000000+00:00
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
+
+import sqlalchemy as sa
 
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
 revision: str = "20251118_dietary"
-down_revision: Union[str, None] = "006_update_theme_preferences"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "006_update_theme_preferences"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
     # Add dietary_preferences column to user_preferences table
     op.add_column(
         "user_preferences",
-        sa.Column(
-            "dietary_preferences", sa.JSON(), nullable=False, server_default="[]"
-        ),
+        sa.Column("dietary_preferences", sa.JSON(), nullable=False, server_default="[]"),
     )
 
 

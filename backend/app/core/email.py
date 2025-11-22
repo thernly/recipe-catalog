@@ -3,12 +3,13 @@ Email service for sending verification and password reset emails
 """
 
 import logging
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 import aiosmtplib
 
 from app.core.config import settings
+
 
 logger = logging.getLogger(__name__)
 
@@ -97,9 +98,7 @@ class EmailService:
             True if email sent successfully
         """
         # Build verification URL
-        verification_url = (
-            f"{settings.FRONTEND_URL}/auth/verify-email/{verification_token}"
-        )
+        verification_url = f"{settings.FRONTEND_URL}/auth/verify-email/{verification_token}"
 
         # HTML content
         html_content = f"""

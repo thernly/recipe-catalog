@@ -2,26 +2,23 @@
 
 import os
 
+
 # Set required environment variables before importing app modules
-os.environ.setdefault(
-    "SECRET_KEY", "test-secret-key-for-testing-only-min-32-characters-long"
-)
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only-min-32-characters-long")
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:5173")
 os.environ.setdefault("ALLOWED_METHODS", "GET,POST,PUT,DELETE,PATCH")
-os.environ.setdefault(
-    "ALLOWED_HEADERS", "Authorization,Content-Type,Accept,X-CSRF-Token"
-)
+os.environ.setdefault("ALLOWED_HEADERS", "Authorization,Content-Type,Accept,X-CSRF-Token")
 os.environ.setdefault("ALLOWED_IMAGE_TYPES", "image/jpeg,image/png,image/webp")
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.main import app
-from app.core.database import Base, get_db
 from app.core.config import settings
+from app.core.database import Base, get_db
+from app.main import app
 from app.models.user import User
 
 
@@ -102,9 +99,7 @@ async def client(test_db):
 
     app.dependency_overrides[get_db] = override_get_db
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
     app.dependency_overrides.clear()

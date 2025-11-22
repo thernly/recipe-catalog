@@ -1,8 +1,10 @@
 """Recipe-related Pydantic schemas."""
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 from app.core.security import sanitize_html
 
 
@@ -15,24 +17,24 @@ class RecipeBase(BaseModel):
     """Base recipe schema."""
 
     name: str = Field(..., min_length=1, max_length=500)
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    recipe_data: Dict[str, Any]  # Full recipe JSON
-    source_url: Optional[str] = None
-    cuisine: Optional[str] = Field(None, max_length=100)
-    category: Optional[str] = Field(None, max_length=100)
-    total_time_minutes: Optional[int] = Field(None, ge=0)
+    description: str | None = None
+    image_url: str | None = None
+    recipe_data: dict[str, Any]  # Full recipe JSON
+    source_url: str | None = None
+    cuisine: str | None = Field(None, max_length=100)
+    category: str | None = Field(None, max_length=100)
+    total_time_minutes: int | None = Field(None, ge=0)
 
 
 class RecipeCreate(RecipeBase):
     """Schema for creating a recipe."""
 
     source_type: str = Field("manual", pattern="^(imported|manual|ai-generated)$")
-    collection_ids: Optional[List[int]] = Field(default_factory=list)
+    collection_ids: list[int] | None = Field(default_factory=list)
 
     @field_validator("name", "description")
     @classmethod
-    def sanitize_text_fields(cls, v: Optional[str]) -> Optional[str]:
+    def sanitize_text_fields(cls, v: str | None) -> str | None:
         """Sanitize text fields to prevent XSS attacks."""
         if v is None:
             return v
@@ -42,18 +44,18 @@ class RecipeCreate(RecipeBase):
 class RecipeUpdate(BaseModel):
     """Schema for updating a recipe."""
 
-    name: Optional[str] = Field(None, min_length=1, max_length=500)
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    recipe_data: Optional[Dict[str, Any]] = None
-    cuisine: Optional[str] = Field(None, max_length=100)
-    category: Optional[str] = Field(None, max_length=100)
-    total_time_minutes: Optional[int] = Field(None, ge=0)
-    collection_ids: Optional[List[int]] = None
+    name: str | None = Field(None, min_length=1, max_length=500)
+    description: str | None = None
+    image_url: str | None = None
+    recipe_data: dict[str, Any] | None = None
+    cuisine: str | None = Field(None, max_length=100)
+    category: str | None = Field(None, max_length=100)
+    total_time_minutes: int | None = Field(None, ge=0)
+    collection_ids: list[int] | None = None
 
     @field_validator("name", "description")
     @classmethod
-    def sanitize_text_fields(cls, v: Optional[str]) -> Optional[str]:
+    def sanitize_text_fields(cls, v: str | None) -> str | None:
         """Sanitize text fields to prevent XSS attacks."""
         if v is None:
             return v
@@ -69,10 +71,10 @@ class Recipe(RecipeBase):
     is_modified: bool
     created_at: datetime
     updated_at: datetime
-    imported_at: Optional[datetime] = None
-    deleted_at: Optional[datetime] = None
+    imported_at: datetime | None = None
+    deleted_at: datetime | None = None
     # Creator information for household attribution
-    creator_display_name: Optional[str] = None
+    creator_display_name: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -82,16 +84,16 @@ class RecipeSummary(BaseModel):
 
     id: int
     name: str
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    cuisine: Optional[str] = None
-    category: Optional[str] = None
-    total_time_minutes: Optional[int] = None
+    description: str | None = None
+    image_url: str | None = None
+    cuisine: str | None = None
+    category: str | None = None
+    total_time_minutes: int | None = None
     source_type: str
     created_at: datetime
     is_modified: bool
     # Creator information for household attribution
-    creator_display_name: Optional[str] = None
+    creator_display_name: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -99,9 +101,9 @@ class RecipeSummary(BaseModel):
 class RecipeImport(BaseModel):
     """Schema for importing recipes from browser extension."""
 
-    recipes: List[Dict[str, Any]]
+    recipes: list[dict[str, Any]]
     duplicate_handling: str = Field("skip", pattern="^(skip|update|create)$")
-    collection_id: Optional[int] = None
+    collection_id: int | None = None
 
 
 # ============================================
@@ -112,13 +114,13 @@ class RecipeImport(BaseModel):
 class RecipeSearchParams(BaseModel):
     """Search and filter parameters."""
 
-    query: Optional[str] = None
-    cuisine: Optional[List[str]] = None
-    category: Optional[List[str]] = None
-    source_type: Optional[List[str]] = None
-    collection_ids: Optional[List[int]] = None
-    max_time_minutes: Optional[int] = None
-    min_time_minutes: Optional[int] = None
+    query: str | None = None
+    cuisine: list[str] | None = None
+    category: list[str] | None = None
+    source_type: list[str] | None = None
+    collection_ids: list[int] | None = None
+    max_time_minutes: int | None = None
+    min_time_minutes: int | None = None
     sort_by: str = Field(
         "recently_added",
         pattern="^(recently_added|alphabetical|time_asc|time_desc|recently_viewed)$",
@@ -130,7 +132,7 @@ class RecipeSearchParams(BaseModel):
 class RecipeSearchResult(BaseModel):
     """Recipe search results with pagination."""
 
-    recipes: List[RecipeSummary]
+    recipes: list[RecipeSummary]
     total: int
     page: int
     per_page: int

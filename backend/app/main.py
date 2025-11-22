@@ -5,31 +5,33 @@ FastAPI backend for recipe management.
 
 import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from app.core.config import settings
-from app.core.database import init_db, close_db
+from slowapi.util import get_remote_address
 
 # Include API routers
 from app.api import (
+    ai,
     auth,
+    collections,
+    export,
+    households,
+    import_recipes,
+    meal_plans,
     oauth,
     recipes,
-    collections,
-    users,
-    export,
-    import_recipes,
-    households,
-    meal_plans,
     shopping_lists,
-    ai,
+    users,
 )
+from app.core.config import settings
+from app.core.database import close_db, init_db
+
 
 # Configure logging
 logging.basicConfig(
@@ -99,9 +101,7 @@ async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Strict-Transport-Security"] = (
-        "max-age=31536000; includeSubDomains"
-    )
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
     # Environment-specific Content Security Policy
     if settings.ENVIRONMENT == "production":
@@ -149,9 +149,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "type": error.get("type"),
             "loc": error.get("loc"),
             "msg": error.get("msg"),
-            "input": str(error.get("input"))
-            if error.get("input") is not None
-            else None,
+            "input": str(error.get("input")) if error.get("input") is not None else None,
         }
         # Add ctx if present, but convert non-serializable values
         if "ctx" in error:
@@ -207,9 +205,7 @@ app.include_router(export.router, prefix="/api/export", tags=["Export"])
 app.include_router(import_recipes.router, prefix="/api/import", tags=["Import"])
 app.include_router(households.router, prefix="/api/households", tags=["Households"])
 app.include_router(meal_plans.router, prefix="/api/meal-plans", tags=["Meal Plans"])
-app.include_router(
-    shopping_lists.router, prefix="/api/shopping-lists", tags=["Shopping Lists"]
-)
+app.include_router(shopping_lists.router, prefix="/api/shopping-lists", tags=["Shopping Lists"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 
 

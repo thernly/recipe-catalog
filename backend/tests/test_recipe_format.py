@@ -2,15 +2,17 @@
 Tests for recipe format conversion utilities
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
+import pytest
+
 from app.utils.recipe_format import (
-    convert_to_schema_org,
-    convert_from_schema_org,
-    _parse_duration_to_minutes,
     _ensure_array,
     _fetch_and_encode_image,
+    _parse_duration_to_minutes,
+    convert_from_schema_org,
+    convert_to_schema_org,
 )
 
 
@@ -21,14 +23,14 @@ class MockRecipe:
         self.id = kwargs.get("id", 1)
         self.name = kwargs.get("name", "Test Recipe")
         self.description = kwargs.get("description", "Test description")
-        self.image_url = kwargs.get("image_url", None)
+        self.image_url = kwargs.get("image_url")
         self.recipe_data = kwargs.get("recipe_data", {})
-        self.source_url = kwargs.get("source_url", None)
+        self.source_url = kwargs.get("source_url")
         self.source_type = kwargs.get("source_type", "manual")
-        self.cuisine = kwargs.get("cuisine", None)
-        self.category = kwargs.get("category", None)
-        self.total_time_minutes = kwargs.get("total_time_minutes", None)
-        self.created_at = kwargs.get("created_at", datetime.now(timezone.utc))
+        self.cuisine = kwargs.get("cuisine")
+        self.category = kwargs.get("category")
+        self.total_time_minutes = kwargs.get("total_time_minutes")
+        self.created_at = kwargs.get("created_at", datetime.now(UTC))
 
 
 def test_convert_to_schema_org_basic():
@@ -108,9 +110,7 @@ def test_convert_to_schema_org_with_rating():
     """Test conversion with aggregate rating"""
     recipe = MockRecipe(
         name="Popular Recipe",
-        recipe_data={
-            "aggregateRating": {"ratingValue": "4.5", "ratingCount": "100"}
-        },
+        recipe_data={"aggregateRating": {"ratingValue": "4.5", "ratingCount": "100"}},
     )
 
     result = convert_to_schema_org(recipe)
@@ -375,14 +375,13 @@ def test_convert_from_schema_org_with_keywords():
 
 
 def test_convert_from_schema_org_missing_name():
-    """Test conversion with missing name defaults to 'Untitled Recipe'"""
+    """Test conversion with missing name raises ValueError"""
     schema_recipe = {
         "description": "A recipe without a name",
     }
 
-    result = convert_from_schema_org(schema_recipe)
-
-    assert result["name"] == "Untitled Recipe"
+    with pytest.raises(ValueError, match="Recipe name is required"):
+        convert_from_schema_org(schema_recipe)
 
 
 def test_convert_to_schema_org_preserves_all_fields():
