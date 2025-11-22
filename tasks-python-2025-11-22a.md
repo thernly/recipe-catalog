@@ -1,4 +1,5 @@
 # Python Code Quality Improvement Tasks
+
 **Date:** 2025-11-22
 **Project:** Recipe Catalog Backend
 **Based on:** python-assess-2025-11-22.md
@@ -8,6 +9,7 @@
 ## Task Organization
 
 Tasks are organized by priority and grouped into logical work units. Each task includes:
+
 - **Priority Level**: Critical, High, Medium, Low
 - **Estimated Effort**: S (Small), M (Medium), L (Large)
 - **Dependencies**: What must be completed first
@@ -18,6 +20,7 @@ Tasks are organized by priority and grouped into logical work units. Each task i
 ## Critical Priority - Do Immediately
 
 ### Task 1: Add Linting and Formatting Configuration
+
 **Priority:** Critical
 **Effort:** S
 **Dependencies:** None
@@ -26,6 +29,7 @@ Tasks are organized by priority and grouped into logical work units. Each task i
 Configure ruff and mypy in pyproject.toml to enforce code quality standards.
 
 **Actions:**
+
 - [x] Add `[tool.ruff]` section to pyproject.toml
   - Set line-length = 100
   - Set target-version = "py313"
@@ -41,9 +45,11 @@ Configure ruff and mypy in pyproject.toml to enforce code quality standards.
 - [x] Install SQLAlchemy mypy support: `uv pip install sqlalchemy[mypy]`
 
 **Files:**
+
 - `pyproject.toml`
 
 **Success Criteria:**
+
 - ruff and mypy configurations present in pyproject.toml
 - No configuration errors when running `uv run ruff check .`
 - No configuration errors when running `uv run mypy .`
@@ -51,6 +57,7 @@ Configure ruff and mypy in pyproject.toml to enforce code quality standards.
 ---
 
 ### Task 2: Run Code Formatters
+
 **Priority:** Critical
 **Effort:** M
 **Dependencies:** Task 1
@@ -59,6 +66,7 @@ Configure ruff and mypy in pyproject.toml to enforce code quality standards.
 Format all Python code to establish consistent style baseline.
 
 **Actions:**
+
 - [x] Run ruff formatter: `uv run ruff format .`
 - [x] Run ruff linter with auto-fix: `uv run ruff check --fix .`
 - [x] Review changes for any breaking modifications
@@ -66,9 +74,11 @@ Format all Python code to establish consistent style baseline.
 - [x] Commit formatted code with message: "Apply ruff formatting and auto-fixes"
 
 **Files:**
+
 - All Python files in app/, tests/, and scripts/
 
 **Success Criteria:**
+
 - `uv run ruff format --check .` passes
 - `uv run ruff check .` shows no fixable issues
 - All tests still pass
@@ -76,6 +86,7 @@ Format all Python code to establish consistent style baseline.
 ---
 
 ### Task 3: Remove Unused CSRF Protection Code
+
 **Priority:** Critical
 **Effort:** S
 **Dependencies:** None
@@ -84,6 +95,7 @@ Format all Python code to establish consistent style baseline.
 Remove over-engineered CSRF protection that isn't needed for JWT-in-headers authentication.
 
 **Actions:**
+
 - [x] Remove CSRF token generation and validation functions from `app/core/security.py:119-162`
   - Delete `generate_csrf_token()`
   - Delete `validate_csrf_token()`
@@ -94,11 +106,13 @@ Remove over-engineered CSRF protection that isn't needed for JWT-in-headers auth
 - [x] Update any documentation that mentions CSRF
 
 **Files:**
+
 - `app/core/security.py`
 - Any files importing CSRF functions
 - Test files
 
 **Success Criteria:**
+
 - No CSRF-related code in codebase
 - All tests pass
 - No unused imports
@@ -106,6 +120,7 @@ Remove over-engineered CSRF protection that isn't needed for JWT-in-headers auth
 ---
 
 ### Task 4: Extract Recipe Export Logic to Service
+
 **Priority:** Critical
 **Effort:** L
 **Dependencies:** None
@@ -114,6 +129,7 @@ Remove over-engineered CSRF protection that isn't needed for JWT-in-headers auth
 Eliminate 200+ lines of duplicate code by creating a RecipeExporter service class.
 
 **Actions:**
+
 - [x] Create new file: `app/services/recipe_export.py`
 - [x] Design RecipeExporter class with methods:
   - `export_json(recipe) -> dict`
@@ -132,12 +148,14 @@ Eliminate 200+ lines of duplicate code by creating a RecipeExporter service clas
 - [x] Remove duplicate code from recipes.py
 
 **Files:**
+
 - NEW: `app/services/recipe_export.py`
 - MODIFY: `app/api/recipes.py`
 - MODIFY: `app/utils/pdf_export.py`
 - NEW: `tests/services/test_recipe_export.py`
 
 **Success Criteria:**
+
 - RecipeExporter service created and tested
 - recipes.py export endpoint reduced from 284 lines to <50 lines
 - All export formats still work correctly
@@ -149,6 +167,7 @@ Eliminate 200+ lines of duplicate code by creating a RecipeExporter service clas
 ## High Priority
 
 ### Task 5: Split Large Recipe API File
+
 **Priority:** High
 **Effort:** L
 **Dependencies:** Task 4
@@ -157,6 +176,7 @@ Eliminate 200+ lines of duplicate code by creating a RecipeExporter service clas
 Break up 844-line recipes.py into smaller, focused modules.
 
 **Actions:**
+
 - [x] Create new directory: `app/api/recipes/`
 - [x] Create `app/api/recipes/__init__.py` with router
 - [x] Create `app/api/recipes/crud.py` for CRUD operations:
@@ -177,6 +197,7 @@ Break up 844-line recipes.py into smaller, focused modules.
 - [x] Update test imports
 
 **Files:**
+
 - NEW: `app/api/recipes/__init__.py`
 - NEW: `app/api/recipes/crud.py`
 - NEW: `app/api/recipes/search.py`
@@ -186,6 +207,7 @@ Break up 844-line recipes.py into smaller, focused modules.
 - REORGANIZE: `tests/api/recipes/`
 
 **Success Criteria:**
+
 - No single file over 500 lines
 - Clear separation of concerns
 - All tests pass
@@ -194,6 +216,7 @@ Break up 844-line recipes.py into smaller, focused modules.
 ---
 
 ### Task 6: Add Comprehensive Type Hints
+
 **Priority:** High
 **Effort:** M
 **Dependencies:** Task 1, Task 2
@@ -202,6 +225,7 @@ Break up 844-line recipes.py into smaller, focused modules.
 Improve type hint coverage from ~70% to >90%, replacing all `Any` types.
 
 **Actions:**
+
 - [x] Run mypy in strict mode to find missing type hints: `uv run mypy app/`
 - [x] Fix all type errors in priority order:
   1. `app/utils/pdf_export.py` - Replace `Any` with `Recipe` model
@@ -214,6 +238,7 @@ Improve type hint coverage from ~70% to >90%, replacing all `Any` types.
 - [x] Run mypy again and ensure no errors
 
 **Files:**
+
 - `app/utils/pdf_export.py`
 - `app/services/ai.py`
 - `app/api/*.py`
@@ -221,6 +246,7 @@ Improve type hint coverage from ~70% to >90%, replacing all `Any` types.
 - `tests/*.py`
 
 **Success Criteria:**
+
 - `uv run mypy app/ --strict` passes with no errors
 - No `Any` types except where truly necessary
 - Type hint coverage >90%
@@ -228,6 +254,7 @@ Improve type hint coverage from ~70% to >90%, replacing all `Any` types.
 ---
 
 ### Task 7: Set Up Test Coverage Measurement
+
 **Priority:** High
 **Effort:** S
 **Dependencies:** None
@@ -236,9 +263,10 @@ Improve type hint coverage from ~70% to >90%, replacing all `Any` types.
 Add pytest-cov and establish coverage baseline, targeting 80%+ coverage.
 
 **Actions:**
+
 - [ ] Add pytest-cov to dev dependencies if not present
 - [x] Create `.coveragerc` configuration file:
-  - Exclude migrations, tests, and __init__.py
+  - Exclude migrations, tests, and **init**.py
   - Set minimum coverage threshold
 - [x] Run coverage: `uv run pytest --cov=app --cov-report=html --cov-report=term-missing`
 - [x] Review coverage report in htmlcov/index.html
@@ -247,11 +275,13 @@ Add pytest-cov and establish coverage baseline, targeting 80%+ coverage.
 - [x] Document coverage in README
 
 **Files:**
+
 - NEW: `.coveragerc`
 - MODIFY: `pyproject.toml` (if adding pytest-cov)
 - MODIFY: `.github/workflows/` (if adding to CI)
 
 **Success Criteria:**
+
 - Coverage measurement working
 - HTML coverage report generated
 - Coverage metrics documented
@@ -260,6 +290,7 @@ Add pytest-cov and establish coverage baseline, targeting 80%+ coverage.
 ---
 
 ### Task 8: Replace Manual Dict Construction with Pydantic
+
 **Priority:** High
 **Effort:** M
 **Dependencies:** Task 6
@@ -268,25 +299,30 @@ Add pytest-cov and establish coverage baseline, targeting 80%+ coverage.
 Replace manual dictionary construction with Pydantic's model_validate().
 
 **Actions:**
+
 - [x] Identify all manual dict construction patterns:
   - `app/api/recipes.py:123-141` (18 lines of manual mapping)
   - Search for similar patterns in other files
 - [x] Create Pydantic response schemas if missing
 - [x] Replace manual dict construction with:
+
   ```python
   return RecipeSchema.model_validate(new_recipe)
   ```
+
 - [x] Configure Pydantic ORM mode if needed
 - [x] Update tests to verify response schemas
 - [x] Remove old dict construction code
 
 **Files:**
+
 - `app/api/recipes.py`
 - `app/api/shopping_lists.py`
 - `app/api/collections.py`
 - `app/schemas/*.py` (may need new schemas)
 
 **Success Criteria:**
+
 - No manual dict construction (18+ line blocks eliminated)
 - All endpoints return Pydantic models
 - Response validation automatic
@@ -297,6 +333,7 @@ Replace manual dictionary construction with Pydantic's model_validate().
 ## Medium Priority
 
 ### Task 9: Standardize Error Handling
+
 **Priority:** Medium
 **Effort:** M
 **Dependencies:** None
@@ -305,6 +342,7 @@ Replace manual dictionary construction with Pydantic's model_validate().
 Create custom exception classes and standardize error response format.
 
 **Actions:**
+
 - [x] Create `app/core/exceptions.py` with custom exceptions:
   - `RecipeNotFoundError`
   - `UnauthorizedAccessError`
@@ -312,19 +350,23 @@ Create custom exception classes and standardize error response format.
   - `RateLimitExceededError`
   - `ExternalServiceError`
 - [x] Add error codes enum:
+
   ```python
   class ErrorCode(str, Enum):
       RECIPE_NOT_FOUND = "RECIPE_NOT_FOUND"
       UNAUTHORIZED = "UNAUTHORIZED"
       # ... etc
   ```
+
 - [x] Create standardized error response schema:
+
   ```python
   class ErrorResponse(BaseModel):
       error_code: str
       message: str
       details: Optional[dict] = None
   ```
+
 - [x] Update exception handlers in `app/main.py`
 - [x] Replace generic `HTTPException` with custom exceptions throughout codebase
 - [x] Update error handling in:
@@ -335,6 +377,7 @@ Create custom exception classes and standardize error response format.
 - [x] Document error codes in API documentation
 
 **Files:**
+
 - NEW: `app/core/exceptions.py`
 - MODIFY: `app/main.py`
 - MODIFY: `app/api/*.py`
@@ -342,6 +385,7 @@ Create custom exception classes and standardize error response format.
 - NEW: `tests/test_exceptions.py`
 
 **Success Criteria:**
+
 - Custom exception classes defined
 - Consistent error response format
 - Error codes documented
@@ -351,6 +395,7 @@ Create custom exception classes and standardize error response format.
 ---
 
 ### Task 10: Add Structured Logging
+
 **Priority:** Medium
 **Effort:** M
 **Dependencies:** None
@@ -359,18 +404,21 @@ Create custom exception classes and standardize error response format.
 Implement structured logging with correlation IDs for better tracing.
 
 **Actions:**
+
 - [ ] Add `structlog` to dependencies
 - [ ] Create `app/core/logging.py` with configuration:
   - JSON formatting for production
   - Pretty console for development
   - Correlation ID processor
 - [ ] Create correlation ID middleware:
+
   ```python
   class CorrelationIdMiddleware:
       async def __call__(self, request, call_next):
           correlation_id = request.headers.get("X-Correlation-ID", str(uuid4()))
           # Add to context
   ```
+
 - [ ] Update logging calls to use structured logging:
   - Replace `logger.info(f"...")` with `logger.info("event", key=value)`
 - [ ] Add logging to endpoints missing it:
@@ -381,6 +429,7 @@ Implement structured logging with correlation IDs for better tracing.
 - [ ] Update logging configuration in settings
 
 **Files:**
+
 - NEW: `app/core/logging.py`
 - NEW: `app/middleware/correlation_id.py`
 - MODIFY: `app/main.py`
@@ -388,6 +437,7 @@ Implement structured logging with correlation IDs for better tracing.
 - MODIFY: All files with logging
 
 **Success Criteria:**
+
 - Structured logging configured
 - Correlation IDs in all logs
 - All API operations logged
@@ -397,6 +447,7 @@ Implement structured logging with correlation IDs for better tracing.
 ---
 
 ### Task 11: Extract Magic Numbers to Constants
+
 **Priority:** Medium
 **Effort:** S
 **Dependencies:** None
@@ -405,6 +456,7 @@ Implement structured logging with correlation IDs for better tracing.
 Replace magic numbers throughout codebase with named constants.
 
 **Actions:**
+
 - [ ] Create `app/core/constants.py` for global constants
 - [ ] Identify all magic numbers:
   - `household_recipes[:50]` → `MAX_RECIPES_FOR_PROMPT = 50`
@@ -414,6 +466,7 @@ Replace magic numbers throughout codebase with named constants.
   - Pagination limits
   - Rate limits
 - [ ] Define constants with clear names:
+
   ```python
   # app/core/constants.py
   MAX_RECIPES_IN_PROMPT = 50
@@ -422,10 +475,12 @@ Replace magic numbers throughout codebase with named constants.
   DEFAULT_PAGE_SIZE = 20
   MAX_PAGE_SIZE = 100
   ```
+
 - [ ] Replace magic numbers with constants throughout codebase
 - [ ] Update tests to use constants
 
 **Files:**
+
 - NEW: `app/core/constants.py`
 - MODIFY: `app/utils/pdf_export.py`
 - MODIFY: `app/services/ai.py`
@@ -433,6 +488,7 @@ Replace magic numbers throughout codebase with named constants.
 - MODIFY: `app/core/security.py`
 
 **Success Criteria:**
+
 - No unexplained magic numbers
 - All limits defined as constants
 - Constants documented with comments
@@ -441,6 +497,7 @@ Replace magic numbers throughout codebase with named constants.
 ---
 
 ### Task 12: Add API Versioning
+
 **Priority:** Medium
 **Effort:** M
 **Dependencies:** Task 5 (recommended)
@@ -449,12 +506,15 @@ Replace magic numbers throughout codebase with named constants.
 Implement API versioning to allow future changes without breaking clients.
 
 **Actions:**
+
 - [ ] Create versioning strategy (URL path versioning recommended)
 - [ ] Update router structure:
+
   ```python
   # app/api/v1/__init__.py
   api_v1_router = APIRouter(prefix="/api/v1")
   ```
+
 - [ ] Move current API routes to `/api/v1/`:
   - `/api/v1/auth`
   - `/api/v1/recipes`
@@ -469,6 +529,7 @@ Implement API versioning to allow future changes without breaking clients.
 - [ ] Add deprecation warning headers to old endpoints
 
 **Files:**
+
 - NEW: `app/api/v1/__init__.py`
 - MODIFY: `app/main.py`
 - MODIFY: `app/api/*.py` (move to v1/)
@@ -476,6 +537,7 @@ Implement API versioning to allow future changes without breaking clients.
 - MODIFY: Documentation
 
 **Success Criteria:**
+
 - All endpoints under `/api/v1/`
 - OpenAPI docs show version
 - Tests use versioned endpoints
@@ -487,6 +549,7 @@ Implement API versioning to allow future changes without breaking clients.
 ## Low Priority
 
 ### Task 13: Add Performance Tests
+
 **Priority:** Low
 **Effort:** M
 **Dependencies:** Task 7
@@ -495,6 +558,7 @@ Implement API versioning to allow future changes without breaking clients.
 Add performance and load testing to identify bottlenecks.
 
 **Actions:**
+
 - [ ] Add `locust` or `pytest-benchmark` to dev dependencies
 - [ ] Create `tests/performance/` directory
 - [ ] Create performance test scenarios:
@@ -507,11 +571,13 @@ Add performance and load testing to identify bottlenecks.
 - [ ] Document performance metrics
 
 **Files:**
+
 - NEW: `tests/performance/test_recipe_performance.py`
 - NEW: `tests/performance/test_search_performance.py`
 - MODIFY: `pyproject.toml`
 
 **Success Criteria:**
+
 - Performance tests created
 - Baselines established
 - Slow operations identified
@@ -520,6 +586,7 @@ Add performance and load testing to identify bottlenecks.
 ---
 
 ### Task 14: Simplify Over-Engineered Validation
+
 **Priority:** Low
 **Effort:** S
 **Dependencies:** None
@@ -528,6 +595,7 @@ Add performance and load testing to identify bottlenecks.
 Simplify complex validation logic that doesn't provide practical value.
 
 **Actions:**
+
 - [ ] Simplify SECRET_KEY validation in `app/core/config.py:115-148`:
   - Remove weak key dictionary (ops responsibility)
   - Keep only length check
@@ -536,10 +604,12 @@ Simplify complex validation logic that doesn't provide practical value.
 - [ ] Update tests for simplified validation
 
 **Files:**
+
 - `app/core/config.py`
 - `tests/test_config.py`
 
 **Success Criteria:**
+
 - Simpler validation logic
 - Tests still pass
 - Security not compromised
@@ -547,6 +617,7 @@ Simplify complex validation logic that doesn't provide practical value.
 ---
 
 ### Task 15: Add Database Indexes
+
 **Priority:** Low
 **Effort:** S
 **Dependencies:** None
@@ -555,24 +626,29 @@ Simplify complex validation logic that doesn't provide practical value.
 Add database indexes for common query patterns to improve performance.
 
 **Actions:**
+
 - [ ] Analyze common queries:
   - Recipe searches by name, tags, ingredients
   - User lookups by email
   - Household filtering
 - [ ] Identify missing indexes
 - [ ] Create Alembic migration for new indexes:
+
   ```python
   op.create_index('idx_recipes_name', 'recipes', ['name'])
   op.create_index('idx_recipes_household_deleted', 'recipes', ['household_id', 'deleted_at'])
   ```
+
 - [ ] Test query performance improvement
 - [ ] Document index strategy
 
 **Files:**
+
 - NEW: `alembic/versions/xxx_add_performance_indexes.py`
 - Documentation
 
 **Success Criteria:**
+
 - Indexes added for common queries
 - Query performance improved
 - Migration tested
@@ -582,6 +658,7 @@ Add database indexes for common query patterns to improve performance.
 ## Testing & Validation Tasks
 
 ### Task 16: Expand Test Coverage
+
 **Priority:** High (After Task 7)
 **Effort:** L
 **Dependencies:** Task 7
@@ -590,6 +667,7 @@ Add database indexes for common query patterns to improve performance.
 Add tests to reach 80%+ coverage, focusing on untested areas.
 
 **Actions:**
+
 - [ ] Review coverage report from Task 7
 - [ ] Identify files with <80% coverage
 - [ ] Add tests for:
@@ -605,9 +683,11 @@ Add tests to reach 80%+ coverage, focusing on untested areas.
 - [ ] Re-run coverage and verify >80%
 
 **Files:**
+
 - `tests/**/*.py` (various test files)
 
 **Success Criteria:**
+
 - Overall coverage >80%
 - No critical paths untested
 - Edge cases covered
@@ -616,6 +696,7 @@ Add tests to reach 80%+ coverage, focusing on untested areas.
 ---
 
 ### Task 17: Update Documentation
+
 **Priority:** Medium
 **Effort:** S
 **Dependencies:** Tasks 1-12
@@ -624,6 +705,7 @@ Add tests to reach 80%+ coverage, focusing on untested areas.
 Update documentation to reflect code improvements.
 
 **Actions:**
+
 - [ ] Update README with:
   - Linting/formatting instructions
   - Coverage instructions
@@ -634,11 +716,13 @@ Update documentation to reflect code improvements.
 - [ ] Update deployment docs with new requirements
 
 **Files:**
+
 - `README.md`
 - `CONTRIBUTING.md` (if exists)
 - API documentation files
 
 **Success Criteria:**
+
 - Documentation up-to-date
 - New developers can onboard easily
 - All new tools documented
@@ -654,11 +738,13 @@ Update documentation to reflect code improvements.
 **Low Priority:** 3 tasks
 
 **Estimated Effort:**
+
 - Small tasks: 7
 - Medium tasks: 7
 - Large tasks: 3
 
 **Expected Code Reduction:**
+
 - ~200 lines from export logic extraction
 - ~100 lines from Pydantic conversion
 - ~44 lines from CSRF removal
@@ -666,6 +752,7 @@ Update documentation to reflect code improvements.
 - **Total: ~400 lines removed**
 
 **Expected Improvements:**
+
 - Type coverage: 70% → 90%+
 - Test coverage: Unknown → 80%+
 - Largest file: 844 lines → <500 lines

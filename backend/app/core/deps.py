@@ -2,7 +2,6 @@
 Dependency functions for FastAPI routes.
 """
 
-
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
