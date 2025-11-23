@@ -129,23 +129,23 @@
 			</label>
 		</div>
 
-		<div class="form-group">
-			<label class="form-label">Dietary Preferences</label>
-			<p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
-				Select your dietary preferences to personalize AI-generated menu suggestions
-			</p>
-			<div class="dietary-options">
-				{#each dietaryOptions as option}
-					<button
-						type="button"
-						on:click={() => toggleDietary(option)}
-						class="dietary-option {form.dietary_preferences?.includes(option) ? 'active' : ''}"
-					>
-						{option}
-					</button>
-				{/each}
-			</div>
+	<fieldset class="form-group" aria-describedby="dietary-preferences-help">
+		<legend class="form-label">Dietary Preferences</legend>
+		<p id="dietary-preferences-help" class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+			Select your dietary preferences to personalize AI-generated menu suggestions
+		</p>
+		<div class="dietary-options">
+			{#each dietaryOptions as option}
+				<button
+					type="button"
+					on:click={() => toggleDietary(option)}
+					class="dietary-option {form.dietary_preferences?.includes(option) ? 'active' : ''}"
+				>
+					{option}
+				</button>
+			{/each}
 		</div>
+	</fieldset>
 
 		<div class="form-actions">
 			<button type="submit" class="btn btn-primary" disabled={saving}>
@@ -186,6 +186,12 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
+	}
+
+	.settings-form fieldset {
+		border: 0;
+		padding: 0;
+		margin: 0;
 	}
 
 	.form-group {

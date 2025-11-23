@@ -110,8 +110,8 @@
 						<div class="system-icon">⚙️</div>
 					{:else}
 						<div class="preview-colors">
-							<div class="color-block" style="background-color: {theme.primary};" />
-							<div class="color-block" style="background-color: {theme.accent};" />
+							<div class="color-block" style="background-color: {theme.primary};"></div>
+							<div class="color-block" style="background-color: {theme.accent};"></div>
 						</div>
 					{/if}
 					{#if currentTheme === theme.id}

@@ -394,8 +394,9 @@
 			transition: left 0.3s ease;
 		}
 
-		.collections-sidebar.open {
+		/* Unused: sidebar toggle not implemented yet */
+		/* .collections-sidebar.open {
 			left: 0;
-		}
+		} */
 	}
 </style>

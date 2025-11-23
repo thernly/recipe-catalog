@@ -10,7 +10,7 @@
 	let error = '';
 
 	onMount(async () => {
-		token = $page.params.token;
+		token = $page.params.token!;
 		await verifyEmail();
 	});
 

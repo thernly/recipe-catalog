@@ -78,7 +78,7 @@
 					placeholder="Describe this step..."
 					rows="2"
 					class="form-input flex-1"
-				/>
+				></textarea>
 				<button
 					type="button"
 					on:click={() => removeInstruction(index)}

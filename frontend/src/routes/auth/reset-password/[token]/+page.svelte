@@ -30,7 +30,7 @@
 	}
 
 	onMount(() => {
-		token = $page.params.token;
+		token = $page.params.token!;
 	});
 
 	async function handleSubmit() {

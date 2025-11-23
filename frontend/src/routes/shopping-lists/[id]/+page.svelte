@@ -40,7 +40,7 @@
 	let sortBy: 'order' | 'category' | 'checked' = 'order';
 	let hideChecked = false;
 
-	$: listId = parseInt($page.params.id);
+	$: listId = parseInt($page.params.id!);
 	$: sortedItems = sortItems(shoppingList?.items || []);
 	$: visibleItems = hideChecked
 		? sortedItems.filter((item) => !item.checked)
@@ -233,7 +233,7 @@
 						class="w-full text-gray-600 border border-gray-300 rounded px-3 py-2 mt-2"
 						rows="2"
 						placeholder="Description (optional)"
-					/>
+					></textarea>
 					<div class="flex gap-2 mt-2">
 						<button
 							on:click={handleUpdateList}
@@ -424,3 +424,4 @@
 		</div>
 	{/if}
 </div>
+

@@ -160,10 +160,11 @@
 
 					<!-- File input -->
 					<div class="mb-4">
-						<label class="block mb-2 font-medium" style="color: var(--text-700);">
+						<label for="recipe-import-files" class="block mb-2 font-medium" style="color: var(--text-700);">
 							Select File(s)
 						</label>
 						<input
+							id="recipe-import-files"
 							type="file"
 							accept="application/json,.json"
 							multiple
@@ -190,13 +191,14 @@
 						{/if}
 					</div>
 
-					<!-- Duplicate handling -->
-					<div class="mb-4">
-						<label class="block mb-2 font-medium" style="color: var(--text-700);">
-							Duplicate Handling
-						</label>
-						<select
-							bind:value={duplicateHandling}
+				<!-- Duplicate handling -->
+				<div class="mb-4">
+					<label for="duplicate-handling" class="block mb-2 font-medium" style="color: var(--text-700);">
+						Duplicate Handling
+					</label>
+					<select
+						id="duplicate-handling"
+						bind:value={duplicateHandling}
 							class="w-full px-4 py-2 border rounded-md"
 							style="border-color: var(--neutral-300);"
 							disabled={loading}
@@ -210,13 +212,14 @@
 						</p>
 					</div>
 
-					<!-- Collection selection (optional) -->
-					<div class="mb-6">
-						<label class="block mb-2 font-medium" style="color: var(--text-700);">
-							Add to Collection (Optional)
-						</label>
-						<select
-							bind:value={selectedCollectionId}
+				<!-- Collection selection (optional) -->
+				<div class="mb-6">
+					<label for="collection-select" class="block mb-2 font-medium" style="color: var(--text-700);">
+						Add to Collection (Optional)
+					</label>
+					<select
+						id="collection-select"
+						bind:value={selectedCollectionId}
 							class="w-full px-4 py-2 border rounded-md"
 							style="border-color: var(--neutral-300);"
 							disabled={loading}

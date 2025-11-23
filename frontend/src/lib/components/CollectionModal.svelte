@@ -89,8 +89,8 @@
 </script>
 
 {#if isOpen}
-	<div class="modal-backdrop" on:click={handleBackdropClick} on:keydown={(e) => e.key === 'Escape' && handleCancel()}>
-		<div class="modal" role="dialog" aria-modal="true">
+	<div class="modal-backdrop" role="presentation" on:click={handleBackdropClick} on:keydown={(e) => e.key === 'Escape' && handleCancel()}>
+		<div class="modal" role="dialog" aria-modal="true" tabindex="0">
 			<div class="modal-header">
 				<h2 class="modal-title">
 					{collection ? 'Edit Collection' : 'Create Collection'}
@@ -115,37 +115,34 @@
 							id="collection-name"
 							bind:value={name}
 							placeholder="e.g., Favorite Desserts, Quick Meals"
-							class="form-input"
-							maxlength="50"
-							required
-							autofocus
-						/>
-						<p class="form-help">{name.length}/50 characters</p>
-					</div>
+						class="form-input"
+						maxlength="50"
+						required
+					/>
+					<p class="form-help">{name.length}/50 characters</p>
+				</div>				<div class="form-group">
+					<label for="collection-desc" class="form-label">Description (Optional)</label>
+					<textarea
+						id="collection-desc"
+						bind:value={description}
+						placeholder="Add a description for this collection..."
+						rows="3"
+						class="form-input"
+					></textarea>
+			</div>
 
-					<div class="form-group">
-						<label for="collection-desc" class="form-label">Description (Optional)</label>
-						<textarea
-							id="collection-desc"
-							bind:value={description}
-							placeholder="Add a description for this collection..."
-							rows="3"
-							class="form-input"
-						/>
-					</div>
-
-					<div class="form-group">
-						<label class="form-label">Icon (Optional)</label>
-						<div class="icon-grid">
-							{#each iconOptions as iconOption}
-								<button
-									type="button"
-									class="icon-option"
-									class:selected={icon === iconOption}
-									on:click={() => (icon = iconOption)}
-								>
-									{iconOption}
-								</button>
+			<div class="form-group">
+				<p id="icon-label" class="form-label">Icon (Optional)</p>
+					<div class="icon-grid" role="group" aria-labelledby="icon-label">
+						{#each iconOptions as iconOption}
+							<button
+								type="button"
+								class="icon-option"
+								class:selected={icon === iconOption}
+								on:click={() => (icon = iconOption)}
+							>
+								{iconOption}
+							</button>
 							{/each}
 						</div>
 						{#if icon}

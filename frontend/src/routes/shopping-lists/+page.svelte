@@ -215,18 +215,16 @@
 
 				<div class="mb-6">
 					<label for="description" class="block text-sm font-medium text-gray-700 mb-1">
-						Description (optional)
-					</label>
-					<textarea
-						id="description"
-						bind:value={newListDescription}
-						rows="3"
-						class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-						placeholder="Add any notes about this list..."
-					/>
-				</div>
-
-				<div class="flex justify-end gap-3">
+					Description (optional)
+				</label>
+				<textarea
+					id="description"
+					bind:value={newListDescription}
+					rows="3"
+					class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+					placeholder="Add any notes about this list..."
+				></textarea>
+			</div>				<div class="flex justify-end gap-3">
 					<button
 						type="button"
 						on:click={closeCreateDialog}

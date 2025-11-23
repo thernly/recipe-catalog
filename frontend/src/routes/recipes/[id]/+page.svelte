@@ -16,7 +16,7 @@
 	let addingToList = false;
 
 	// Get recipe ID from URL
-	$: recipeId = parseInt($page.params.id);
+	$: recipeId = parseInt($page.params.id!);
 
 	async function loadRecipe() {
 		loading = true;
@@ -234,10 +234,10 @@
 							</div>
 						</div>
 
-						<!-- Actions -->
-						<div class="flex gap-2">
-							<button on:click={() => goto(`/recipes/${recipe.id}/edit`)} class="btn btn-secondary">
-								✏️ Edit
+					<!-- Actions -->
+					<div class="flex gap-2">
+						<button on:click={() => goto(`/recipes/${recipe?.id}/edit`)} class="btn btn-secondary">
+							✏️ Edit
 							</button>
 							<button on:click={handleDuplicate} class="btn btn-secondary">📋 Duplicate</button>
 							<button

@@ -29,12 +29,14 @@ export interface RecipeSummary {
 	name: string;
 	description?: string;
 	image_url?: string;
+	recipe_data?: any;
 	cuisine?: string;
 	category?: string;
 	total_time_minutes?: number;
 	source_type: 'imported' | 'manual' | 'ai-generated';
 	created_at: string;
 	creator_display_name?: string | null;
+	deleted_at?: string;
 }
 
 export interface RecipeSearchResult {
@@ -191,7 +193,8 @@ export async function exportRecipe(
 
 	if (!response.ok) {
 		const errorText = await response.text();
-		throw new Error(`Export failed: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`);
+		const detailedMessage = errorText ? ` - ${errorText}` : '';
+		throw new Error(`Export failed: ${response.statusText}${detailedMessage}`);
 	}
 
 	return response.blob();

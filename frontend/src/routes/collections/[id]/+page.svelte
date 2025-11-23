@@ -19,7 +19,7 @@
 	let viewMode: 'grid' | 'list' = 'grid';
 	let exportingPdf = false;
 
-	$: collectionId = parseInt($page.params.id);
+	$: collectionId = parseInt($page.params.id!);
 
 	async function loadData() {
 		loading = true;

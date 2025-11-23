@@ -10,7 +10,7 @@
 	let saving = false;
 	let error: string | null = null;
 
-	$: recipeId = parseInt($page.params.id);
+	$: recipeId = parseInt($page.params.id!);
 
 	async function loadRecipe() {
 		loading = true;
@@ -88,9 +88,9 @@
 		<div class="container-custom">
 			<!-- Header -->
 			<div class="mb-8">
-				<button
-					on:click={() => goto(`/recipes/${recipe.id}`)}
-					class="text-sm mb-4 flex items-center gap-2"
+			<button
+				on:click={() => goto(`/recipes/${recipe?.id}`)}
+				class="text-sm mb-4 flex items-center gap-2"
 					style="color: var(--text-600);"
 				>
 					← Back to Recipe

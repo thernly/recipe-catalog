@@ -115,9 +115,9 @@
 	});
 </script>
 
-<div class="modal-overlay" on:click={handleClose} on:keydown={(e) => e.key === 'Escape' && handleClose()} role="button" tabindex="-1">
+<div class="modal-overlay" on:click={handleClose} on:keydown={(e) => e.key === 'Escape' && handleClose()} role="presentation">
 	<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-	<div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation role="dialog">
+	<div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation role="dialog" tabindex="0" aria-modal="true">
 		<div class="modal-header">
 			<h2>Edit Meal</h2>
 			<button class="close-btn" on:click={handleClose}>&times;</button>
@@ -212,7 +212,7 @@
 					placeholder="Add any notes..."
 					rows="3"
 					class="input"
-				/>
+				></textarea>
 			</div>
 		</div>
 

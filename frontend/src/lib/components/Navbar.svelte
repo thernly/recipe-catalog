@@ -7,19 +7,20 @@
 	let user: any = null;
 	let currentTheme: 'classic' | 'professional' = 'classic';
 
-	onMount(async () => {
+	onMount(() => {
 		const unsubscribe = auth.subscribe((state) => {
 			user = state.user;
 		});
 
 		// Load current theme from user preferences
-		try {
-			const prefs = await getPreferences();
-			currentTheme = prefs.theme as 'classic' | 'professional';
-			document.documentElement.setAttribute('data-theme', currentTheme);
-		} catch (err) {
-			console.log('Could not load theme preferences, using default');
-		}
+		getPreferences()
+			.then((prefs) => {
+				currentTheme = prefs.theme as 'classic' | 'professional';
+				document.documentElement.setAttribute('data-theme', currentTheme);
+			})
+			.catch((err) => {
+				console.log('Could not load theme preferences, using default');
+			});
 
 		return unsubscribe;
 	});

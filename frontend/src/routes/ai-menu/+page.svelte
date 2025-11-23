@@ -123,13 +123,12 @@
 
 				// Only add if there's a recipe_id (catalog-first mode)
 				if (suggestion.recipe_id) {
-					await addPlannedMeal({
-						meal_plan_id: mealPlan.id,
+					await addPlannedMeal(mealPlan.id, {
 						recipe_id: suggestion.recipe_id,
 						day_of_week: suggestion.day - 1, // Convert 1-indexed to 0-indexed
-						meal_type: suggestion.meal_type,
+						meal_type: suggestion.meal_type as "breakfast" | "lunch" | "dinner" | "snack" | "other",
 						servings: 4,
-						notes: suggestion.description || null
+						notes: suggestion.description || undefined
 					});
 				}
 			}
@@ -185,10 +184,7 @@
 		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 space-y-6">
 			<!-- Time Range -->
 			<div>
-				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-					Number of Days
-				</label>
-				<input
+				<label for="days-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Number of Days</label><input id="days-input"
 					type="number"
 					min="1"
 					max="14"
@@ -199,9 +195,7 @@
 
 			<!-- Meal Types -->
 			<div>
-				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-					Meal Types to Include
-				</label>
+				<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Meal Types to Include</div>
 				<div class="grid grid-cols-2 md:grid-cols-4 gap-2">
 					{#each mealTypeOptions as mealType}
 						<button
@@ -221,9 +215,7 @@
 
 			<!-- Dietary Preferences -->
 			<div>
-				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-					Dietary Preferences
-				</label>
+				<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dietary Preferences</div>
 				<div class="grid grid-cols-2 md:grid-cols-3 gap-2">
 					{#each dietaryOptions as option}
 						<button
@@ -257,9 +249,7 @@
 
 			<!-- Generation Mode -->
 			<div>
-				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-					Generation Mode
-				</label>
+				<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Generation Mode</div>
 				<div class="space-y-2">
 					<label class="flex items-start cursor-pointer">
 						<input
@@ -420,3 +410,8 @@
 		</div>
 	{/if}
 </div>
+
+
+
+
+

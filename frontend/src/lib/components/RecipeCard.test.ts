@@ -16,9 +16,7 @@ describe('RecipeCard', () => {
 		category: 'Dinner',
 		total_time_minutes: 45,
 		source_type: 'manual',
-		created_at: '2024-01-01T00:00:00Z',
-		updated_at: '2024-01-01T00:00:00Z',
-		user_id: 1
+		created_at: '2024-01-01T00:00:00Z'
 	};
 
 	it('should render recipe name', () => {
@@ -134,7 +132,7 @@ describe('RecipeCard', () => {
 	});
 
 	it('should show imported source type badge', () => {
-		const importedRecipe = { ...mockRecipe, source_type: 'imported' };
+		const importedRecipe: RecipeSummary = { ...mockRecipe, source_type: 'imported' as const };
 
 		const { getByText } = render(RecipeCard, {
 			props: { recipe: importedRecipe }
@@ -278,10 +276,8 @@ describe('RecipeCard', () => {
 		const minimalRecipe: RecipeSummary = {
 			id: 1,
 			name: 'Minimal Recipe',
-			user_id: 1,
 			source_type: 'manual',
-			created_at: '2024-01-01T00:00:00Z',
-			updated_at: '2024-01-01T00:00:00Z'
+			created_at: '2024-01-01T00:00:00Z'
 		};
 
 		const { getByText, queryByText } = render(RecipeCard, {

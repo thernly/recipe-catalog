@@ -275,7 +275,6 @@
 
 {#if showEditDialog && selectedMeal && mealPlan}
 	<EditMealDialog
-		{mealPlan}
 		meal={selectedMeal}
 		on:close={() => {
 			showEditDialog = false;

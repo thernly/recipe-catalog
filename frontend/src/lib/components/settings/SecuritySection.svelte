@@ -124,9 +124,9 @@
 	}
 
 	onMount(async () => {
-		const currentUser = await auth.subscribe((state) => {
-			hasPassword = state.user?.hashed_password !== null;
-		});
+		// Assume user has password by default (will handle errors gracefully in password change form)
+		// The backend will check if password exists when user attempts to change it
+		hasPassword = true;
 
 		await loadProviders();
 	});

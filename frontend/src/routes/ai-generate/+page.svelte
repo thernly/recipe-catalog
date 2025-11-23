@@ -192,19 +192,24 @@
 
 				<!-- Ingredients -->
 				<div class="mb-6">
-					<label class="block text-sm font-semibold mb-2" style="color: var(--text-900);">
+					<label
+						for="ingredients-input"
+						class="block text-sm font-semibold mb-2"
+						style="color: var(--text-900);"
+					>
 						Ingredients <span class="text-red-500">*</span>
 					</label>
 					<p class="text-sm mb-2" style="color: var(--text-600);">
 						Enter your available ingredients (one per line or comma-separated)
 					</p>
 					<textarea
+						id="ingredients-input"
 						bind:value={ingredientsText}
 						rows="6"
 						class="input-field w-full"
 						placeholder="chicken breast&#10;bell peppers&#10;onion&#10;garlic&#10;rice"
 						required
-					/>
+					></textarea>
 				</div>
 
 				<!-- Optional Constraints -->
@@ -215,10 +220,15 @@
 
 					<!-- Cuisine -->
 					<div class="mb-4">
-						<label class="block text-sm font-semibold mb-2" style="color: var(--text-900);">
+						<label
+							for="cuisine-input"
+							class="block text-sm font-semibold mb-2"
+							style="color: var(--text-900);"
+						>
 							Cuisine Type
 						</label>
 						<input
+							id="cuisine-input"
 							type="text"
 							bind:value={cuisine}
 							class="input-field w-full"
@@ -228,10 +238,15 @@
 
 					<!-- Time Limit -->
 					<div class="mb-4">
-						<label class="block text-sm font-semibold mb-2" style="color: var(--text-900);">
+						<label
+							for="time-limit-input"
+							class="block text-sm font-semibold mb-2"
+							style="color: var(--text-900);"
+						>
 							Maximum Time (minutes)
 						</label>
 						<input
+							id="time-limit-input"
 							type="number"
 							bind:value={timeLimit}
 							class="input-field w-full"
@@ -242,10 +257,10 @@
 					</div>
 
 					<!-- Dietary Preferences -->
-					<div class="mb-4">
-						<label class="block text-sm font-semibold mb-2" style="color: var(--text-900);">
+					<fieldset class="mb-4">
+						<legend class="block text-sm font-semibold mb-2" style="color: var(--text-900);">
 							Dietary Preferences
-						</label>
+						</legend>
 						<div class="flex flex-wrap gap-2">
 							{#each dietaryOptions as option}
 								<button
@@ -261,13 +276,13 @@
 								</button>
 							{/each}
 						</div>
-					</div>
+					</fieldset>
 
 					<!-- Equipment -->
-					<div class="mb-4">
-						<label class="block text-sm font-semibold mb-2" style="color: var(--text-900);">
+					<fieldset class="mb-4">
+						<legend class="block text-sm font-semibold mb-2" style="color: var(--text-900);">
 							Available Equipment
-						</label>
+						</legend>
 						<div class="flex flex-wrap gap-2">
 							{#each equipmentOptions as option}
 								<button
@@ -283,7 +298,7 @@
 								</button>
 							{/each}
 						</div>
-					</div>
+					</fieldset>
 				</div>
 
 				<!-- Error Message -->

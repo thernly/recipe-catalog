@@ -6,16 +6,19 @@
 
 	export let recipe: Recipe | null = null; // null for create, recipe for edit
 	export let saving = false;
+	export let initialData: RecipeCreate | null = null;
 
 	const dispatch = createEventDispatcher();
 
+	const baseRecipeData = recipe?.recipe_data ?? initialData?.recipe_data;
+
 	// Form fields
-	let name = recipe?.name || '';
-	let description = recipe?.description || '';
-	let imageUrl = recipe?.image_url || '';
-	let cuisine = recipe?.cuisine || '';
-	let category = recipe?.category || '';
-	let sourceUrl = recipe?.source_url || '';
+	let name = initialData?.name ?? recipe?.name ?? '';
+	let description = initialData?.description ?? recipe?.description ?? '';
+	let imageUrl = recipe?.image_url ?? initialData?.image_url ?? '';
+	let cuisine = initialData?.cuisine ?? recipe?.cuisine ?? '';
+	let category = initialData?.category ?? recipe?.category ?? '';
+	let sourceUrl = recipe?.source_url ?? '';
 
 	// Times (in minutes)
 	let prepTimeHours = 0;
@@ -24,21 +27,25 @@
 	let cookTimeMinutes = 0;
 	let totalTimeMinutes = recipe?.total_time_minutes || 0;
 
-	let recipeYield = recipe?.recipe_data?.recipeYield || '';
+	let recipeYield = baseRecipeData?.recipeYield || '';
 
 	// Dynamic lists
-	let ingredients: string[] = recipe?.recipe_data?.recipeIngredient || [''];
-	let instructions: string[] = recipe?.recipe_data?.recipeInstructions || [''];
-	let equipment: string[] = recipe?.recipe_data?.equipment || [];
-	let notes = recipe?.recipe_data?.notes || '';
-	let keywords = recipe?.recipe_data?.keywords || '';
+	const initialIngredients = baseRecipeData?.recipeIngredient;
+	const initialInstructions = baseRecipeData?.recipeInstructions;
+	const initialEquipment = baseRecipeData?.equipment;
+
+	let ingredients: string[] = Array.isArray(initialIngredients) && initialIngredients.length > 0 ? [...initialIngredients] : [''];
+	let instructions: string[] = Array.isArray(initialInstructions) && initialInstructions.length > 0 ? [...initialInstructions] : [''];
+	let equipment: string[] = Array.isArray(initialEquipment) ? [...initialEquipment] : [];
+	let notes = baseRecipeData?.notes || '';
+	let keywords = baseRecipeData?.keywords || '';
 
 	// Validation errors
 	let errors: Record<string, string> = {};
 
 	// Parse existing times if editing
-	if (recipe?.recipe_data) {
-		const data = recipe.recipe_data;
+	if (baseRecipeData) {
+		const data = baseRecipeData;
 		if (data.prepTime) {
 			const match = data.prepTime.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
 			if (match) {
@@ -160,9 +167,11 @@
 	}
 
 	// Auto-save (TODO: implement localStorage draft saving)
-	let autoSaveTimeout: number;
+	let autoSaveTimeout: ReturnType<typeof setTimeout> | undefined;
 	function scheduleAutoSave() {
-		clearTimeout(autoSaveTimeout);
+		if (autoSaveTimeout) {
+			clearTimeout(autoSaveTimeout);
+		}
 		autoSaveTimeout = setTimeout(() => {
 			// Save to localStorage
 			const draft = {
@@ -183,7 +192,7 @@
 				keywords
 			};
 			localStorage.setItem('recipe-draft', JSON.stringify(draft));
-		}, 30000); // 30 seconds
+		}, 30000);
 	}
 
 	// Watch for changes to trigger auto-save
@@ -211,16 +220,16 @@
 			{/if}
 		</div>
 
-		<div class="form-group">
-			<label for="description" class="form-label">Description</label>
-			<textarea
-				id="description"
-				bind:value={description}
-				placeholder="A brief description of your recipe..."
-				rows="3"
-				class="form-input"
-			/>
-		</div>
+	<div class="form-group">
+		<label for="description" class="form-label">Description</label>
+		<textarea
+			id="description"
+			bind:value={description}
+			placeholder="A brief description of your recipe..."
+			rows="3"
+			class="form-input"
+		></textarea>
+	</div>
 
 		<div class="form-group">
 			<label for="imageUrl" class="form-label">Image URL</label>
@@ -267,59 +276,67 @@
 	<section class="form-section">
 		<h2 class="section-title">Times & Yield</h2>
 
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-			<div class="form-group">
-				<label class="form-label">Prep Time</label>
-				<div class="flex gap-3">
-					<div class="flex-1">
-						<input
-							type="number"
-							bind:value={prepTimeHours}
-							min="0"
-							placeholder="Hours"
-							class="form-input"
-						/>
-					</div>
-					<span class="py-2">:</span>
-					<div class="flex-1">
-						<input
-							type="number"
-							bind:value={prepTimeMinutes}
-							min="0"
-							max="59"
-							placeholder="Minutes"
-							class="form-input"
-						/>
-					</div>
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+		<fieldset class="form-group time-fieldset">
+			<legend class="form-label">Prep Time</legend>
+			<div class="flex gap-3">
+				<div class="flex-1">
+					<label for="prep-time-hours" class="sr-only">Prep time hours</label>
+					<input
+						id="prep-time-hours"
+						type="number"
+						bind:value={prepTimeHours}
+						min="0"
+						placeholder="Hours"
+						class="form-input"
+					/>
+				</div>
+				<span class="py-2" aria-hidden="true">:</span>
+				<div class="flex-1">
+					<label for="prep-time-minutes" class="sr-only">Prep time minutes</label>
+					<input
+						id="prep-time-minutes"
+						type="number"
+						bind:value={prepTimeMinutes}
+						min="0"
+						max="59"
+						placeholder="Minutes"
+						class="form-input"
+					/>
 				</div>
 			</div>
+		</fieldset>
 
-			<div class="form-group">
-				<label class="form-label">Cook Time</label>
-				<div class="flex gap-3">
-					<div class="flex-1">
-						<input
-							type="number"
-							bind:value={cookTimeHours}
-							min="0"
-							placeholder="Hours"
-							class="form-input"
-						/>
-					</div>
-					<span class="py-2">:</span>
-					<div class="flex-1">
-						<input
-							type="number"
-							bind:value={cookTimeMinutes}
-							min="0"
-							max="59"
-							placeholder="Minutes"
-							class="form-input"
-						/>
-					</div>
+		<fieldset class="form-group time-fieldset">
+			<legend class="form-label">Cook Time</legend>
+			<div class="flex gap-3">
+				<div class="flex-1">
+					<label for="cook-time-hours" class="sr-only">Cook time hours</label>
+					<input
+						id="cook-time-hours"
+						type="number"
+						bind:value={cookTimeHours}
+						min="0"
+						placeholder="Hours"
+						class="form-input"
+					/>
+				</div>
+				<span class="py-2" aria-hidden="true">:</span>
+				<div class="flex-1">
+					<label for="cook-time-minutes" class="sr-only">Cook time minutes</label>
+					<input
+						id="cook-time-minutes"
+						type="number"
+						bind:value={cookTimeMinutes}
+						min="0"
+						max="59"
+						placeholder="Minutes"
+						class="form-input"
+					/>
 				</div>
 			</div>
-		</div>
+		</fieldset>
+	</div>
 
 		{#if totalTimeMinutes > 0}
 			<p class="text-sm mt-2" style="color: var(--text-600);">
@@ -413,16 +430,18 @@
 
 	<!-- Notes Section -->
 	<section class="form-section">
-		<h2 class="section-title">Notes & Tips</h2>
+	<h2 class="section-title">Notes & Tips</h2>
 
-		<div class="form-group">
-			<textarea
-				bind:value={notes}
-				placeholder="Add any notes, tips, or variations..."
-				rows="4"
-				class="form-input"
-			/>
-		</div>
+	<div class="form-group">
+		<label for="recipe-notes" class="sr-only">Notes and Tips</label>
+		<textarea
+			id="recipe-notes"
+			bind:value={notes}
+			placeholder="Add any notes, tips, or variations..."
+			rows="4"
+			class="form-input"
+		></textarea>
+	</div>
 	</section>
 
 	<!-- Form Actions -->
@@ -463,11 +482,13 @@
 		margin-bottom: 1.5rem;
 	}
 
-	.section-title.required::after {
+	/* Unused: .section-title.required::after removed */
+	/* If needed in future, add required class to section-title elements */
+	/* .section-title.required::after {
 		content: '*';
 		color: #EF4444;
 		margin-left: 0.25rem;
-	}
+	} */
 
 	.form-group {
 		margin-bottom: 1.5rem;
@@ -550,5 +571,26 @@
 	textarea.form-input {
 		resize: vertical;
 		min-height: 5rem;
+	}
+
+	.time-fieldset {
+		border: 0;
+		padding: 0;
+		margin: 0 0 1.5rem;
+	}
+
+	.time-fieldset:last-child {
+		margin-bottom: 0;
+	}
+
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		border: 0;
 	}
 </style>

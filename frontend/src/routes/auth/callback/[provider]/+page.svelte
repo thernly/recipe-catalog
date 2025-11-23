@@ -9,7 +9,7 @@
 	let provider = '';
 
 	onMount(async () => {
-		provider = $page.params.provider;
+		provider = $page.params.provider!;
 		const code = $page.url.searchParams.get('code');
 		const state = $page.url.searchParams.get('state');
 		const errorParam = $page.url.searchParams.get('error');

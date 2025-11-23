@@ -79,7 +79,7 @@
 						🕐 {formatTime(recipe.total_time_minutes)}
 					</span>
 				{:else}
-					<span />
+					<span></span>
 				{/if}
 
 				<span
@@ -141,6 +141,7 @@
 		margin-bottom: 0.5rem;
 		line-height: 1.4;
 		display: -webkit-box;
+		line-clamp: 2;
 		-webkit-line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
@@ -151,6 +152,7 @@
 		color: var(--text-600);
 		line-height: 1.5;
 		display: -webkit-box;
+		line-clamp: 2;
 		-webkit-line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;

@@ -59,7 +59,7 @@
 	}
 
 	// Handle search
-	let searchTimeout: number;
+	let searchTimeout: ReturnType<typeof setTimeout>;
 	function handleSearch(e: Event) {
 		const target = e.target as HTMLInputElement;
 		searchParams.query = target.value;
@@ -328,9 +328,9 @@
 			<!-- Pagination -->
 			{#if searchResult.total_pages > 1}
 				<div class="flex justify-center items-center gap-2 mt-8">
-					<button
-						on:click={() => goToPage(searchParams.page - 1)}
-						disabled={!searchResult.has_prev}
+				<button
+					on:click={() => goToPage(searchParams.page! - 1)}
+					disabled={!searchResult.has_prev}
 						class="pagination-btn"
 					>
 						← Previous
@@ -340,9 +340,9 @@
 						Page {searchParams.page} of {searchResult.total_pages}
 					</span>
 
-					<button
-						on:click={() => goToPage(searchParams.page + 1)}
-						disabled={!searchResult.has_next}
+				<button
+					on:click={() => goToPage(searchParams.page! + 1)}
+					disabled={!searchResult.has_next}
 						class="pagination-btn"
 					>
 						Next →

@@ -19,7 +19,7 @@
 	let declining = false;
 
 	const currentUser = get(auth).user;
-	const isLoggedIn = get(auth).isAuthenticated;
+	const isLoggedIn = currentUser !== null;
 
 	async function loadInvitation() {
 		loading = true;
@@ -82,7 +82,7 @@
 	}
 
 	onMount(() => {
-		token = $page.params.token;
+		token = $page.params.token!;
 		loadInvitation();
 	});
 </script>
