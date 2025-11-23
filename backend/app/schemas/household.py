@@ -107,6 +107,49 @@ class InvitationDeclineRequest(BaseModel):
 
 
 # ============================================
+# Household Invite Link Schemas
+# ============================================
+
+
+class HouseholdInviteLinkCreate(BaseModel):
+    """Schema for creating a household invite link."""
+
+    expires_in_days: int = Field(7, ge=1, le=30)
+
+
+class HouseholdInviteLink(BaseModel):
+    """Full household invite link schema (response)."""
+
+    id: int
+    household_id: int
+    code: str
+    created_by_user_id: int
+    expires_at: datetime
+    used_at: datetime | None = None
+    used_by_user_id: int | None = None
+    created_at: datetime
+    # Include related entity details for convenience
+    household_name: str | None = None
+    created_by_display_name: str | None = None
+    used_by_display_name: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class JoinViaInviteLinkRequest(BaseModel):
+    """Schema for joining a household via invite link."""
+
+    code: str
+
+
+class LeaveHouseholdResponse(BaseModel):
+    """Response for leaving a household."""
+
+    message: str
+    household_deleted: bool = False
+
+
+# ============================================
 # Household Response with Members
 # ============================================
 

@@ -6,10 +6,20 @@ from datetime import UTC, datetime, timedelta
 from fastapi import HTTPException, status
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from wonderwords import RandomWord
 
 from app.core.email import email_service
-from app.models.household import Household, HouseholdInvitation, HouseholdMember
+from app.models.household import (
+    Household,
+    HouseholdInvitation,
+    HouseholdInviteLink,
+    HouseholdMember,
+)
 from app.models.user import User
+
+
+# Initialize wonderwords random word generator
+_random_word = RandomWord()
 
 
 # ============================================
@@ -17,9 +27,7 @@ from app.models.user import User
 # ============================================
 
 
-async def create_default_household_for_new_user(
-    db: AsyncSession, user: User, max_members: int = 10
-) -> Household:
+async def create_default_household_for_new_user(db: AsyncSession, user: User, max_members: int = 10) -> Household:
     """
     Create a default household for a newly registered user.
 
@@ -58,9 +66,7 @@ async def create_default_household_for_new_user(
     return household
 
 
-async def create_household(
-    db: AsyncSession, name: str, owner_user_id: int, max_members: int = 10
-) -> Household:
+async def create_household(db: AsyncSession, name: str, owner_user_id: int, max_members: int = 10) -> Household:
     """
     Create a new household.
 
@@ -77,9 +83,7 @@ async def create_household(
         HTTPException: If user already belongs to a household
     """
     # Check if user already belongs to a household (one household per user rule)
-    existing_membership = await db.execute(
-        select(HouseholdMember).where(HouseholdMember.user_id == owner_user_id)
-    )
+    existing_membership = await db.execute(select(HouseholdMember).where(HouseholdMember.user_id == owner_user_id))
     if existing_membership.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -126,15 +130,11 @@ async def get_user_household(db: AsyncSession, user_id: int) -> Household | None
     Returns:
         Household or None
     """
-    result = await db.execute(
-        select(Household).join(HouseholdMember).where(HouseholdMember.user_id == user_id)
-    )
+    result = await db.execute(select(Household).join(HouseholdMember).where(HouseholdMember.user_id == user_id))
     return result.scalar_one_or_none()
 
 
-async def update_household(
-    db: AsyncSession, household_id: int, user_id: int, name: str
-) -> Household:
+async def update_household(db: AsyncSession, household_id: int, user_id: int, name: str) -> Household:
     """
     Update household name.
 
@@ -209,9 +209,7 @@ async def get_household_members(db: AsyncSession, household_id: int) -> list[Hou
     Returns:
         List of household members
     """
-    result = await db.execute(
-        select(HouseholdMember).where(HouseholdMember.household_id == household_id)
-    )
+    result = await db.execute(select(HouseholdMember).where(HouseholdMember.household_id == household_id))
     return list(result.scalars().all())
 
 
@@ -365,9 +363,7 @@ async def create_invitation(
     invitee_user = await db.execute(select(User).where(User.email == invitee_email))
     invitee = invitee_user.scalar_one_or_none()
     if invitee:
-        existing_member = await db.execute(
-            select(HouseholdMember).where(HouseholdMember.user_id == invitee.id)
-        )
+        existing_member = await db.execute(select(HouseholdMember).where(HouseholdMember.user_id == invitee.id))
         if existing_member.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -497,9 +493,7 @@ async def get_pending_invitations(db: AsyncSession, household_id: int) -> list[H
     now_utc = datetime.now(UTC)
     active_invitations = []
     for inv in invitations:
-        expires_at_utc = (
-            inv.expires_at.replace(tzinfo=UTC) if inv.expires_at.tzinfo is None else inv.expires_at
-        )
+        expires_at_utc = inv.expires_at.replace(tzinfo=UTC) if inv.expires_at.tzinfo is None else inv.expires_at
         if expires_at_utc > now_utc:
             active_invitations.append(inv)
 
@@ -526,9 +520,7 @@ async def get_invitation_by_token(db: AsyncSession, token: str) -> HouseholdInvi
     # Check if expired (SQLite stores datetime as naive)
     now_utc = datetime.now(UTC)
     expires_at_utc = (
-        invitation.expires_at.replace(tzinfo=UTC)
-        if invitation.expires_at.tzinfo is None
-        else invitation.expires_at
+        invitation.expires_at.replace(tzinfo=UTC) if invitation.expires_at.tzinfo is None else invitation.expires_at
     )
 
     if expires_at_utc < now_utc:
@@ -569,14 +561,10 @@ async def accept_invitation(db: AsyncSession, token: str, user_id: int) -> House
     # Check if expired
     # SQLite stores datetime as naive, so we need to compare with naive datetime
     expires_at_utc = (
-        invitation.expires_at.replace(tzinfo=UTC)
-        if invitation.expires_at.tzinfo is None
-        else invitation.expires_at
+        invitation.expires_at.replace(tzinfo=UTC) if invitation.expires_at.tzinfo is None else invitation.expires_at
     )
     if expires_at_utc < datetime.now(UTC):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation has expired"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation has expired")
 
     # Verify email matches
     user_result = await db.execute(select(User).where(User.id == user_id))
@@ -589,9 +577,7 @@ async def accept_invitation(db: AsyncSession, token: str, user_id: int) -> House
         )
 
     # Check if user already belongs to a household
-    existing_membership = await db.execute(
-        select(HouseholdMember).where(HouseholdMember.user_id == user_id)
-    )
+    existing_membership = await db.execute(select(HouseholdMember).where(HouseholdMember.user_id == user_id))
     if existing_membership.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -673,3 +659,270 @@ async def check_user_household_access(db: AsyncSession, user_id: int, household_
         )
     )
     return result.scalar_one_or_none() is not None
+
+
+# ============================================
+# Household Invite Links
+# ============================================
+
+
+def generate_invite_code() -> str:
+    """
+    Generate a readable invite code using three random words.
+
+    Uses wonderwords library to generate random nouns for easy-to-remember codes.
+
+    Returns:
+        A code in the format "word1-word2-word3"
+    """
+    words = [_random_word.word(include_parts_of_speech=["nouns"]) for _ in range(3)]
+    return "-".join(words)
+
+
+async def create_invite_link(
+    db: AsyncSession, household_id: int, created_by_user_id: int, expires_in_days: int = 7
+) -> HouseholdInviteLink:
+    """
+    Create a one-time use invite link for a household.
+
+    Args:
+        db: Database session
+        household_id: Household ID
+        created_by_user_id: User creating the invite link
+        expires_in_days: Days until expiration (default 7)
+
+    Returns:
+        Created invite link
+
+    Raises:
+        HTTPException: If household not found or user doesn't have permission
+    """
+    # Verify household exists
+    household_result = await db.execute(select(Household).where(Household.id == household_id))
+    household = household_result.scalar_one_or_none()
+
+    if not household:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Household not found")
+
+    # Verify user is owner or member of household
+    if not await check_user_household_access(db, created_by_user_id, household_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User does not have access to this household",
+        )
+
+    # Generate unique code
+    max_attempts = 10
+    for _ in range(max_attempts):
+        code = generate_invite_code()
+        # Check if code already exists
+        existing = await db.execute(select(HouseholdInviteLink).where(HouseholdInviteLink.code == code))
+        if not existing.scalar_one_or_none():
+            break
+    else:
+        # Fallback to UUID-based code if we can't generate unique word-based code
+        import uuid
+
+        code = str(uuid.uuid4())[:8]
+
+    # Create invite link
+    expires_at = datetime.now(UTC) + timedelta(days=expires_in_days)
+    invite_link = HouseholdInviteLink(
+        household_id=household_id,
+        code=code,
+        created_by_user_id=created_by_user_id,
+        expires_at=expires_at,
+    )
+    db.add(invite_link)
+    await db.commit()
+    await db.refresh(invite_link)
+
+    return invite_link
+
+
+async def get_invite_link_by_code(db: AsyncSession, code: str) -> HouseholdInviteLink | None:
+    """
+    Get an invite link by its code.
+
+    Args:
+        db: Database session
+        code: Invite code (case-insensitive, ignores hyphens and spaces)
+
+    Returns:
+        Invite link if found, None otherwise
+    """
+    # Normalize code: lowercase, remove hyphens and spaces
+    normalized_code = code.lower().replace("-", "").replace(" ", "")
+
+    # Try exact match first
+    result = await db.execute(select(HouseholdInviteLink).where(HouseholdInviteLink.code == code))
+    invite_link = result.scalar_one_or_none()
+
+    if not invite_link:
+        # Try normalized match (search all codes and normalize them)
+        all_links_result = await db.execute(select(HouseholdInviteLink))
+        all_links = all_links_result.scalars().all()
+
+        for link in all_links:
+            normalized_link_code = link.code.lower().replace("-", "").replace(" ", "")
+            if normalized_link_code == normalized_code:
+                invite_link = link
+                break
+
+    return invite_link
+
+
+async def join_via_invite_link(db: AsyncSession, code: str, user_id: int) -> HouseholdMember:
+    """
+    Join a household using an invite link code.
+
+    Args:
+        db: Database session
+        code: Invite code
+        user_id: User ID joining the household
+
+    Returns:
+        Created household member
+
+    Raises:
+        HTTPException: If code invalid, expired, already used, or user already in household
+    """
+    # Find invite link
+    invite_link = await get_invite_link_by_code(db, code)
+
+    if not invite_link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invite code not found",
+        )
+
+    # Check if already used
+    if invite_link.used_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This invite code has already been used",
+        )
+
+    # Check if expired
+    expires_at_utc = (
+        invite_link.expires_at.replace(tzinfo=UTC) if invite_link.expires_at.tzinfo is None else invite_link.expires_at
+    )
+    if expires_at_utc < datetime.now(UTC):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This invite code has expired",
+        )
+
+    # Check if user already belongs to a household
+    existing_membership = await db.execute(select(HouseholdMember).where(HouseholdMember.user_id == user_id))
+    if existing_membership.scalar_one_or_none():
+        # Get current household info for better error message
+        current_member = existing_membership.scalar_one_or_none()
+        if current_member:
+            household_result = await db.execute(select(Household).where(Household.id == current_member.household_id))
+            current_household = household_result.scalar_one_or_none()
+            household_name = current_household.name if current_household else "a household"
+        else:
+            household_name = "a household"
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You are already in '{household_name}'. Leave your current household first to join this one.",
+        )
+
+    # Check household size limit
+    if not await check_household_size_limit(db, invite_link.household_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Household has reached its maximum size",
+        )
+
+    # Create household member
+    member = HouseholdMember(
+        household_id=invite_link.household_id,
+        user_id=user_id,
+        role="member",
+    )
+    db.add(member)
+
+    # Mark invite link as used (one-time use)
+    invite_link.used_at = datetime.now(UTC)
+    invite_link.used_by_user_id = user_id
+
+    await db.commit()
+    await db.refresh(member)
+
+    return member
+
+
+async def leave_household(db: AsyncSession, user_id: int) -> dict:
+    """
+    Remove a user from their household.
+
+    Args:
+        db: Database session
+        user_id: User ID leaving the household
+
+    Returns:
+        Dictionary with message and whether household was deleted
+
+    Raises:
+        HTTPException: If user not in household or is owner with other members
+    """
+    # Find user's household membership
+    member_result = await db.execute(select(HouseholdMember).where(HouseholdMember.user_id == user_id))
+    member = member_result.scalar_one_or_none()
+
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User is not a member of any household",
+        )
+
+    household_id = member.household_id
+
+    # Get household
+    household_result = await db.execute(select(Household).where(Household.id == household_id))
+    household = household_result.scalar_one_or_none()
+
+    if not household:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Household not found")
+
+    # Check if user is the owner
+    is_owner = member.role == "owner"
+
+    # Count other members
+    other_members_result = await db.execute(
+        select(func.count(HouseholdMember.id)).where(
+            and_(
+                HouseholdMember.household_id == household_id,
+                HouseholdMember.user_id != user_id,
+            )
+        )
+    )
+    other_members_count = other_members_result.scalar()
+
+    if is_owner and other_members_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot leave household as owner while other members exist. Transfer ownership or remove other members first.",
+        )
+
+    # Remove user from household
+    await db.delete(member)
+
+    household_deleted = False
+
+    # If owner leaving and no other members, delete the household
+    if is_owner and other_members_count == 0:
+        await db.delete(household)
+        household_deleted = True
+
+    await db.commit()
+
+    return {
+        "message": "Successfully left household"
+        if not household_deleted
+        else "Successfully left and deleted household",
+        "household_deleted": household_deleted,
+    }

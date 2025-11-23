@@ -14,13 +14,19 @@ from app.schemas.household import (
 from app.schemas.household import (
     HouseholdCreate,
     HouseholdInvitationCreate,
+    HouseholdInviteLinkCreate,
     HouseholdUpdate,
     HouseholdWithMembers,
     InvitationAcceptRequest,
     InvitationDeclineRequest,
+    JoinViaInviteLinkRequest,
+    LeaveHouseholdResponse,
 )
 from app.schemas.household import (
     HouseholdInvitation as HouseholdInvitationSchema,
+)
+from app.schemas.household import (
+    HouseholdInviteLink as HouseholdInviteLinkSchema,
 )
 from app.schemas.household import (
     HouseholdMember as HouseholdMemberSchema,
@@ -133,9 +139,7 @@ async def update_household(
     Returns:
         Updated household
     """
-    household = await household_service.update_household(
-        db, household_id, current_user.id, household_data.name
-    )
+    household = await household_service.update_household(db, household_id, current_user.id, household_data.name)
     return household
 
 
@@ -312,9 +316,7 @@ async def get_invitation_by_token(
         )
 
     # Get household details
-    household_result = await db.execute(
-        select(Household).where(Household.id == invitation.household_id)
-    )
+    household_result = await db.execute(select(Household).where(Household.id == invitation.household_id))
     household = household_result.scalar_one_or_none()
 
     # Get inviter details
@@ -384,3 +386,179 @@ async def decline_invitation(
         db: Database session
     """
     await household_service.decline_invitation(db, request.token, current_user.id)
+
+
+# ============================================
+# Household Invite Links (One-Time Use Codes)
+# ============================================
+
+
+@router.post(
+    "/{household_id}/invite-links",
+    response_model=HouseholdInviteLinkSchema,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_invite_link(
+    household_id: int,
+    link_data: HouseholdInviteLinkCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Create a one-time use invite link/code for the household.
+
+    The generated code uses three random words (e.g., "happy-ocean-river") that can be:
+    - Shared as a link: https://app/join/happy-ocean-river
+    - Entered manually by users in a "Join Household" form
+
+    Args:
+        household_id: Household ID
+        link_data: Invite link creation data (expiry days)
+        current_user: The authenticated user
+        db: Database session
+
+    Returns:
+        Created invite link with code
+    """
+    invite_link = await household_service.create_invite_link(
+        db, household_id, current_user.id, link_data.expires_in_days
+    )
+
+    # Get household and creator details
+    household_result = await db.execute(select(Household).where(Household.id == household_id))
+    household = household_result.scalar_one_or_none()
+
+    return HouseholdInviteLinkSchema(
+        id=invite_link.id,
+        household_id=invite_link.household_id,
+        code=invite_link.code,
+        created_by_user_id=invite_link.created_by_user_id,
+        expires_at=invite_link.expires_at,
+        used_at=invite_link.used_at,
+        used_by_user_id=invite_link.used_by_user_id,
+        created_at=invite_link.created_at,
+        household_name=household.name if household else None,
+        created_by_display_name=current_user.display_name,
+    )
+
+
+@router.get("/join/{code}", response_model=HouseholdInviteLinkSchema)
+async def get_invite_link_info(
+    code: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get information about an invite link (public endpoint for preview).
+
+    This allows users to see what household they're joining before actually joining.
+
+    Args:
+        code: Invite code (e.g., "happy-ocean-river")
+        db: Database session
+
+    Returns:
+        Invite link details with household information
+    """
+    invite_link = await household_service.get_invite_link_by_code(db, code)
+
+    if not invite_link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invite code not found",
+        )
+
+    # Get household details
+    household_result = await db.execute(select(Household).where(Household.id == invite_link.household_id))
+    household = household_result.scalar_one_or_none()
+
+    # Get creator details
+    creator_result = await db.execute(select(User).where(User.id == invite_link.created_by_user_id))
+    creator = creator_result.scalar_one_or_none()
+
+    return HouseholdInviteLinkSchema(
+        id=invite_link.id,
+        household_id=invite_link.household_id,
+        code=invite_link.code,
+        created_by_user_id=invite_link.created_by_user_id,
+        expires_at=invite_link.expires_at,
+        used_at=invite_link.used_at,
+        used_by_user_id=invite_link.used_by_user_id,
+        created_at=invite_link.created_at,
+        household_name=household.name if household else None,
+        created_by_display_name=creator.display_name if creator else None,
+    )
+
+
+@router.post("/join", response_model=HouseholdMemberSchema)
+async def join_via_invite_code(
+    request: JoinViaInviteLinkRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Join a household using an invite code.
+
+    Users enter the code (e.g., "happy-ocean-river") to join.
+    The code is one-time use and becomes invalid after joining.
+
+    Args:
+        request: Request with invite code
+        current_user: The authenticated user
+        db: Database session
+
+    Returns:
+        Created household member
+
+    Raises:
+        400: If code already used, expired, or user already in a household
+        404: If code not found
+    """
+    member = await household_service.join_via_invite_link(db, request.code, current_user.id)
+
+    # Get user details
+    user_result = await db.execute(select(User).where(User.id == member.user_id))
+    user = user_result.scalar_one()
+
+    return HouseholdMemberSchema(
+        id=member.id,
+        household_id=member.household_id,
+        user_id=member.user_id,
+        role=member.role,
+        joined_at=member.joined_at,
+        user_email=user.email,
+        user_display_name=user.display_name,
+    )
+
+
+# ============================================
+# Leave Household
+# ============================================
+
+
+@router.post("/leave", response_model=LeaveHouseholdResponse)
+async def leave_household(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Leave your current household.
+
+    If you are the owner and the only member, the household will be deleted.
+    If you are the owner with other members, you must transfer ownership first.
+
+    Args:
+        current_user: The authenticated user
+        db: Database session
+
+    Returns:
+        Response with success message and whether household was deleted
+
+    Raises:
+        400: If owner trying to leave with other members present
+        404: If user not in any household
+    """
+    result = await household_service.leave_household(db, current_user.id)
+    return LeaveHouseholdResponse(
+        message=result["message"],
+        household_deleted=result["household_deleted"],
+    )

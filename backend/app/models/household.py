@@ -28,12 +28,8 @@ class Household(Base):
 
     # Relationships
     owner = relationship("User", foreign_keys=[owner_user_id])
-    members = relationship(
-        "HouseholdMember", back_populates="household", cascade="all, delete-orphan"
-    )
-    invitations = relationship(
-        "HouseholdInvitation", back_populates="household", cascade="all, delete-orphan"
-    )
+    members = relationship("HouseholdMember", back_populates="household", cascade="all, delete-orphan")
+    invitations = relationship("HouseholdInvitation", back_populates="household", cascade="all, delete-orphan")
     recipes = relationship("Recipe", back_populates="household")
     collections = relationship("Collection", back_populates="household")
     meal_plans = relationship("MealPlan", cascade="all, delete-orphan")
@@ -75,3 +71,23 @@ class HouseholdInvitation(Base):
     # Relationships
     household = relationship("Household", back_populates="invitations")
     inviter = relationship("User", foreign_keys=[inviter_user_id])
+
+
+class HouseholdInviteLink(Base):
+    """One-time use shareable invite link for households."""
+
+    __tablename__ = "household_invite_links"
+
+    id = Column(Integer, primary_key=True, index=True)
+    household_id = Column(Integer, ForeignKey("households.id"), nullable=False, index=True)
+    code = Column(String(32), unique=True, nullable=False, index=True)
+    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)  # NULL = not used yet
+    used_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    # Relationships
+    household = relationship("Household")
+    created_by = relationship("User", foreign_keys=[created_by_user_id])
+    used_by = relationship("User", foreign_keys=[used_by_user_id])
