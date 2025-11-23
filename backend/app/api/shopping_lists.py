@@ -408,7 +408,7 @@ def consolidate_ingredients(
 
     # Convert back to list with formatted quantities
     result = []
-    for (name_key, unit_key), data in consolidated.items():
+    for (_name_key, _unit_key), data in consolidated.items():
         qty_value = data["quantity_value"]
 
         # Format quantity nicely

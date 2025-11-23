@@ -2,7 +2,7 @@
 
 import asyncio
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal
 from app.core.security import get_password_hash
@@ -31,8 +31,8 @@ async def reset_password():
         await db.commit()
 
         print(f"✅ Password reset for {user.email}")
-        print(f"   Email: testuser@test.example.com")
-        print(f"   Password: password123")
+        print("   Email: testuser@test.example.com")
+        print("   Password: password123")
         print(f"   Is Active: {user.is_active}")
         print(f"   Is Verified: {user.is_verified}")
 

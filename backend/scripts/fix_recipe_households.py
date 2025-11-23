@@ -2,15 +2,16 @@
 
 import sqlite3
 
+
 conn = sqlite3.connect("recipes.db")
 cursor = conn.cursor()
 
 # Update recipes to have the correct household_id
 cursor.execute("""
-    UPDATE recipes 
+    UPDATE recipes
     SET household_id = (
-        SELECT household_id 
-        FROM household_members 
+        SELECT household_id
+        FROM household_members
         WHERE household_members.user_id = recipes.user_id
         LIMIT 1
     )
@@ -24,9 +25,9 @@ print(f"✅ Updated {updated} recipes with household_id")
 
 # Verify
 cursor.execute("""
-    SELECT user_id, household_id, COUNT(*) 
-    FROM recipes 
-    WHERE deleted_at IS NULL 
+    SELECT user_id, household_id, COUNT(*)
+    FROM recipes
+    WHERE deleted_at IS NULL
     GROUP BY user_id, household_id
 """)
 print("\nRecipes by user and household after fix:")

@@ -41,7 +41,15 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
-ignore = ["E501"]  # Line too long (handled by formatter)
+ignore = [
+    "E501",    # Line too long (handled by formatter)
+    "B008",    # FastAPI Depends pattern
+    "B904",    # Exception chaining (raise from)
+    "N818",    # Exception naming convention
+    "N806",    # Variable naming in tests
+    "B017",    # Blind exception assertions in tests
+    "SIM108",  # Ternary operator preference
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

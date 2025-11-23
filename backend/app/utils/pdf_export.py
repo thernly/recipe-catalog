@@ -9,6 +9,7 @@ from fpdf import FPDF
 
 from app.utils.recipe_format import convert_to_schema_org
 
+
 if TYPE_CHECKING:
     from app.models.recipe import Recipe
 

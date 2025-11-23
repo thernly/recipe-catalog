@@ -17,7 +17,7 @@ from app.models.household import Household
 from app.models.recipe import Recipe
 from app.models.user import User
 from app.schemas.recipe import Recipe as RecipeSchema
-from app.schemas.recipe import RecipeCreate, RecipeSummary, RecipeUpdate
+from app.schemas.recipe import RecipeCreate, RecipeUpdate
 
 
 router = APIRouter()

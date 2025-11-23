@@ -1,5 +1,6 @@
 import sqlite3
 
+
 conn = sqlite3.connect("recipes.db")
 cursor = conn.cursor()
 

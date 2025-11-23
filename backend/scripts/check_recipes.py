@@ -1,5 +1,6 @@
 import sqlite3
 
+
 conn = sqlite3.connect("recipes.db")
 cursor = conn.cursor()
 
@@ -22,11 +23,11 @@ for row in cursor.fetchall():
 
 # Check if recipes have required fields
 cursor.execute("""
-    SELECT 
+    SELECT
         COUNT(*) as total,
         COUNT(CASE WHEN name IS NULL OR name = '' THEN 1 END) as no_name,
         COUNT(CASE WHEN recipe_data IS NULL THEN 1 END) as no_data
-    FROM recipes 
+    FROM recipes
     WHERE deleted_at IS NULL
 """)
 row = cursor.fetchone()

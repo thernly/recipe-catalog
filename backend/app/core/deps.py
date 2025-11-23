@@ -17,10 +17,10 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """
-    Get the current authenticated user from JWT token in cookie.
+    Get the current authenticated user from JWT token in cookie or Authorization header.
 
     Args:
-        request: Request object to read cookies
+        request: Request object to read cookies/headers
         db: Database session
 
     Returns:
@@ -29,8 +29,17 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or user not found
     """
-    # Get token from cookie
-    token = request.cookies.get("access_token")
+    # Get token from Authorization header first (preferred for API clients/tests)
+    # then fall back to cookie (for browser-based auth)
+    token = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:]  # Remove "Bearer " prefix
+
+    # Fall back to cookie if no Authorization header
+    if not token:
+        token = request.cookies.get("access_token")
+
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -131,9 +140,7 @@ async def get_user_household(
     Raises:
         HTTPException: If user doesn't belong to a household
     """
-    result = await db.execute(
-        select(Household).join(HouseholdMember).where(HouseholdMember.user_id == current_user.id)
-    )
+    result = await db.execute(select(Household).join(HouseholdMember).where(HouseholdMember.user_id == current_user.id))
     household = result.scalar_one_or_none()
 
     if not household:

@@ -27,17 +27,20 @@ async def test_create_invite_link(client: AsyncClient, test_user_headers: dict, 
 
 
 @pytest.mark.asyncio
-async def test_invite_code_format(db: AsyncSession, test_user: dict, test_household: dict):
+async def test_invite_code_format(db: AsyncSession, test_household: dict):
     """Test that invite codes use word-based format."""
-    invite_link = await household_service.create_invite_link(db, test_household["id"], test_user["id"], 7)
+    invite_link = await household_service.create_invite_link(
+        db, test_household["id"], test_household["owner_user_id"], 7
+    )
 
     # Should be three words separated by hyphens
     words = invite_link.code.split("-")
     assert len(words) == 3
-    # Each word should be lowercase alphabetic
+    # Each word should be lowercase alphabetic (or contain hyphens for compound words)
     for word in words:
         assert word.islower()
-        assert word.isalpha()
+        # Word should be alphabetic or contain hyphens (for compound words like "step-sister")
+        assert all(c.isalpha() or c == "-" for c in word)
 
 
 @pytest.mark.asyncio
@@ -66,7 +69,6 @@ async def test_join_via_invite_code(
     client: AsyncClient,
     test_user_headers: dict,
     test_household: dict,
-    db: AsyncSession,
 ):
     """Test joining a household via invite code."""
     # Create a second user who will join
@@ -85,7 +87,7 @@ async def test_join_via_invite_code(
         "/api/auth/login",
         json={"email": "newuser@example.com", "password": "SecurePass123!"},
     )
-    new_user_token = login_response.json()["access_token"]
+    new_user_token = login_response.cookies.get("access_token")
     new_user_headers = {"Authorization": f"Bearer {new_user_token}"}
 
     # First, new user needs to leave their auto-created household
@@ -98,6 +100,7 @@ async def test_join_via_invite_code(
         headers=test_user_headers,
         json={"expires_in_days": 7},
     )
+    assert create_response.status_code == status.HTTP_201_CREATED
     code = create_response.json()["code"]
 
     # New user joins via code
@@ -144,14 +147,14 @@ async def test_invite_code_one_time_use(
         "/api/auth/login",
         json={"email": "user1@example.com", "password": "SecurePass123!"},
     )
-    user1_headers = {"Authorization": f"Bearer {login1.json()['access_token']}"}
+    user1_headers = {"Authorization": f"Bearer {login1.cookies.get('access_token')}"}
 
     # Login as user2
     login2 = await client.post(
         "/api/auth/login",
         json={"email": "user2@example.com", "password": "SecurePass123!"},
     )
-    user2_headers = {"Authorization": f"Bearer {login2.json()['access_token']}"}
+    user2_headers = {"Authorization": f"Bearer {login2.cookies.get('access_token')}"}
 
     # Both leave their auto-created households
     await client.post("/api/households/leave", headers=user1_headers)

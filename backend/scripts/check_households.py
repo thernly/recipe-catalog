@@ -1,5 +1,6 @@
 import sqlite3
 
+
 conn = sqlite3.connect("recipes.db")
 cursor = conn.cursor()
 
@@ -15,9 +16,9 @@ for row in cursor.fetchall():
 
 # Check recipes and their household assignments
 cursor.execute("""
-    SELECT user_id, household_id, COUNT(*) 
-    FROM recipes 
-    WHERE deleted_at IS NULL 
+    SELECT user_id, household_id, COUNT(*)
+    FROM recipes
+    WHERE deleted_at IS NULL
     GROUP BY user_id, household_id
 """)
 print("\nRecipes by user and household:")

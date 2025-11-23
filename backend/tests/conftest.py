@@ -103,3 +103,56 @@ async def client(test_db):
         yield ac
 
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def test_user_headers(client: AsyncClient):
+    """Create a test user and return authorization headers."""
+    # Register user
+    await client.post(
+        "/api/auth/register",
+        json={
+            "email": "testuser@example.com",
+            "password": "SecurePass123!",
+            "display_name": "Test User",
+        },
+    )
+
+    # Login to get token cookie
+    login_response = await client.post(
+        "/api/auth/login",
+        json={"email": "testuser@example.com", "password": "SecurePass123!"},
+    )
+
+    # Extract token from cookies
+    token = login_response.cookies.get("access_token")
+
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
+async def test_household(client: AsyncClient, test_user_headers: dict):
+    """Create a test household and return its data."""
+    # Get the user's household (created automatically on registration)
+    response = await client.get("/api/households/me", headers=test_user_headers)
+
+    if response.status_code == 200:
+        household = response.json()
+        return {
+            "id": household["id"],
+            "name": household["name"],
+            "owner_user_id": household["owner_user_id"],
+        }
+
+    # If no household exists, create one
+    create_response = await client.post(
+        "/api/households/",
+        headers=test_user_headers,
+        json={"name": "Test Household"},
+    )
+    household = create_response.json()
+    return {
+        "id": household["id"],
+        "name": household["name"],
+        "owner_user_id": household["owner_user_id"],
+    }

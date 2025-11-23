@@ -815,15 +815,12 @@ async def join_via_invite_link(db: AsyncSession, code: str, user_id: int) -> Hou
 
     # Check if user already belongs to a household
     existing_membership = await db.execute(select(HouseholdMember).where(HouseholdMember.user_id == user_id))
-    if existing_membership.scalar_one_or_none():
+    current_member = existing_membership.scalar_one_or_none()
+    if current_member:
         # Get current household info for better error message
-        current_member = existing_membership.scalar_one_or_none()
-        if current_member:
-            household_result = await db.execute(select(Household).where(Household.id == current_member.household_id))
-            current_household = household_result.scalar_one_or_none()
-            household_name = current_household.name if current_household else "a household"
-        else:
-            household_name = "a household"
+        household_result = await db.execute(select(Household).where(Household.id == current_member.household_id))
+        current_household = household_result.scalar_one_or_none()
+        household_name = current_household.name if current_household else "a household"
 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
