@@ -52,6 +52,33 @@ export interface AcceptInvitationRequest {
 	token: string;
 }
 
+export interface HouseholdInviteLink {
+	id: number;
+	household_id: number;
+	code: string;
+	created_by_user_id: number;
+	expires_at: string;
+	used_at: string | null;
+	used_by_user_id: number | null;
+	created_at: string;
+	household_name?: string | null;
+	created_by_display_name?: string | null;
+	used_by_display_name?: string | null;
+}
+
+export interface CreateInviteLinkRequest {
+	expires_in_days?: number;
+}
+
+export interface JoinViaInviteLinkRequest {
+	code: string;
+}
+
+export interface LeaveHouseholdResponse {
+	message: string;
+	household_deleted: boolean;
+}
+
 /**
  * Get current user's household
  */
@@ -162,5 +189,46 @@ export async function declineInvitation(token: string): Promise<void> {
 export async function revokeInvitation(householdId: number, invitationId: number): Promise<void> {
 	return apiRequest<void>(`/api/households/${householdId}/invitations/${invitationId}`, {
 		method: 'DELETE'
+	});
+}
+
+/**
+ * Create invite link (one-time use code)
+ */
+export async function createInviteLink(
+	householdId: number,
+	data: CreateInviteLinkRequest = {}
+): Promise<HouseholdInviteLink> {
+	return apiRequest<HouseholdInviteLink>(`/api/households/${householdId}/invite-links`, {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+}
+
+/**
+ * Get invite link info by code (no auth required)
+ */
+export async function getInviteLinkInfo(code: string): Promise<HouseholdInviteLink> {
+	return apiRequest<HouseholdInviteLink>(`/api/households/join/${code}`, {
+		requireAuth: false
+	});
+}
+
+/**
+ * Join household via invite code
+ */
+export async function joinViaInviteLink(code: string): Promise<HouseholdMember> {
+	return apiRequest<HouseholdMember>('/api/households/join', {
+		method: 'POST',
+		body: JSON.stringify({ code })
+	});
+}
+
+/**
+ * Leave current household
+ */
+export async function leaveHousehold(): Promise<LeaveHouseholdResponse> {
+	return apiRequest<LeaveHouseholdResponse>('/api/households/leave', {
+		method: 'POST'
 	});
 }

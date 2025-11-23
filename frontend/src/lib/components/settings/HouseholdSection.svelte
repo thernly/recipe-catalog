@@ -8,9 +8,13 @@
 		removeMember,
 		createInvitation,
 		revokeInvitation,
+		createInviteLink,
+		joinViaInviteLink,
+		leaveHousehold,
 		type Household,
 		type HouseholdMember,
-		type HouseholdInvitation
+		type HouseholdInvitation,
+		type HouseholdInviteLink
 	} from '$lib/api/households';
 	import { auth } from '$lib/stores/auth';
 	import { get } from 'svelte/store';
@@ -18,6 +22,7 @@
 	let household: Household | null = null;
 	let members: HouseholdMember[] = [];
 	let invitations: HouseholdInvitation[] = [];
+	let inviteLink: HouseholdInviteLink | null = null;
 	let loading = true;
 	let error = '';
 	let success = '';
@@ -29,6 +34,14 @@
 	let inviteeEmail = '';
 	let sendingInvitation = false;
 
+	let creatingInviteLink = false;
+	let inviteLinkExpiryDays = 7;
+	let codeCopied = false;
+	let linkCopied = false;
+
+	let joiningCode = '';
+	let joiningHousehold = false;
+
 	let removingMemberId: number | null = null;
 	let revokingInvitationId: number | null = null;
 
@@ -38,6 +51,8 @@
 	async function loadHouseholdData() {
 		loading = true;
 		error = '';
+		household = null;
+		
 		try {
 			household = await getCurrentHousehold();
 			newName = household.name;
@@ -49,7 +64,12 @@
 			]);
 		} catch (err) {
 			console.error('Failed to load household data:', err);
-			error = err instanceof Error ? err.message : 'Failed to load household data';
+			// Don't set error if user just isn't in a household yet
+			const errorMessage = err instanceof Error ? err.message : '';
+			if (!errorMessage.includes('not found') && !errorMessage.includes('No household')) {
+				error = errorMessage || 'Failed to load household data';
+			}
+			// household stays null, which will show the join form
 		} finally {
 			loading = false;
 		}
@@ -132,6 +152,7 @@
 
 		revokingInvitationId = invitationId;
 		error = '';
+		success = '';
 
 		try {
 			await revokeInvitation(household.id, invitationId);
@@ -154,6 +175,108 @@
 
 	function isExpired(expiresAt: string): boolean {
 		return new Date(expiresAt) < new Date();
+	}
+
+	function isInviteLinkExpired(): boolean {
+		if (!inviteLink) return false;
+		return isExpired(inviteLink.expires_at);
+	}
+
+	function isInviteLinkUsed(): boolean {
+		return inviteLink?.used_at !== null;
+	}
+
+	async function handleCreateInviteLink() {
+		if (!household) return;
+
+		creatingInviteLink = true;
+		error = '';
+		success = '';
+
+		try {
+			inviteLink = await createInviteLink(household.id, {
+				expires_in_days: inviteLinkExpiryDays
+			});
+			success = 'Invite link created! Share the code or link with someone to join your household.';
+			setTimeout(() => (success = ''), 5000);
+		} catch (err) {
+			console.error('Failed to create invite link:', err);
+			error = err instanceof Error ? err.message : 'Failed to create invite link';
+		} finally {
+			creatingInviteLink = false;
+		}
+	}
+
+	async function handleCopyInviteCode() {
+		if (!inviteLink) return;
+
+		try {
+			await navigator.clipboard.writeText(inviteLink.code);
+			codeCopied = true;
+			success = 'Invite code copied to clipboard!';
+			setTimeout(() => {
+				codeCopied = false;
+				success = '';
+			}, 3000);
+		} catch (err) {
+			console.error('Failed to copy to clipboard:', err);
+			error = 'Failed to copy to clipboard';
+		}
+	}
+
+	async function handleCopyInviteLink() {
+		if (!inviteLink) return;
+
+		const link = `${window.location.origin}/join/${inviteLink.code}`;
+		try {
+			await navigator.clipboard.writeText(link);
+			linkCopied = true;
+			success = 'Invite link copied to clipboard!';
+			setTimeout(() => {
+				linkCopied = false;
+				success = '';
+			}, 3000);
+		} catch (err) {
+			console.error('Failed to copy to clipboard:', err);
+			error = 'Failed to copy to clipboard';
+		}
+	}
+
+	async function handleJoinViaCode() {
+		if (!joiningCode.trim()) return;
+
+		// Warn if already in a household
+		if (household) {
+			const confirmMsg = `You are currently in "${household.name}". Joining a new household will automatically remove you from your current household. Continue?`;
+			if (!confirm(confirmMsg)) {
+				return;
+			}
+		}
+
+		joiningHousehold = true;
+		error = '';
+		success = '';
+
+		try {
+			// If already in a household, leave it first
+			if (household) {
+				await leaveHousehold();
+			}
+			
+			await joinViaInviteLink(joiningCode.trim());
+			success = 'Successfully joined household! Reloading...';
+			joiningCode = '';
+			
+			// Reload household data
+			setTimeout(() => {
+				loadHouseholdData();
+			}, 1000);
+		} catch (err) {
+			console.error('Failed to join household:', err);
+			error = err instanceof Error ? err.message : 'Failed to join household';
+		} finally {
+			joiningHousehold = false;
+		}
 	}
 
 	onMount(() => {
@@ -248,7 +371,8 @@
 		<!-- Invite Member -->
 		{#if isOwner() && members.length < household.max_members}
 			<div class="subsection">
-				<h3 class="subsection-title">Invite Member</h3>
+				<h3 class="subsection-title">Invite by Email</h3>
+				<p class="subsection-description">Send an invitation to a specific email address</p>
 				<form on:submit|preventDefault={handleSendInvitation} class="invite-form">
 					<input
 						type="email"
@@ -261,6 +385,90 @@
 						{sendingInvitation ? 'Sending...' : 'Send Invitation'}
 					</button>
 				</form>
+			</div>
+
+			<!-- Invite Link -->
+			<div class="subsection">
+				<h3 class="subsection-title">Invite Link (One-Time Code)</h3>
+				<p class="subsection-description">
+					Generate a shareable code that anyone can use to join your household (one-time use)
+				</p>
+
+				{#if inviteLink && !isInviteLinkUsed() && !isInviteLinkExpired()}
+					<div class="invite-link-display">
+						<div class="invite-link-info">
+							<p class="invite-code-label">Invite Code:</p>
+							<div class="invite-code-box">
+								<code class="invite-code">{inviteLink.code}</code>
+								<button
+									type="button"
+									class="btn btn-sm"
+									class:btn-success={codeCopied}
+									class:btn-outline={!codeCopied}
+									on:click={handleCopyInviteCode}
+								>
+									{codeCopied ? '✓ Copied!' : 'Copy Code'}
+								</button>
+							</div>
+							<p class="invite-link-meta">
+								Expires {formatDate(inviteLink.expires_at)}
+							</p>
+							<p class="invite-link-instructions">
+								Share this code with someone to join your household. They can enter it on the
+								join page.
+							</p>
+							<button
+								type="button"
+								class="btn btn-sm"
+								class:btn-success={linkCopied}
+								class:btn-outline={!linkCopied}
+								on:click={handleCopyInviteLink}
+							>
+								{linkCopied ? '✓ Link Copied!' : 'Copy Full Link'}
+							</button>
+						</div>
+					</div>
+				{:else if inviteLink && isInviteLinkUsed()}
+					<p class="text-muted">Your previous invite link has been used.</p>
+					<button
+						type="button"
+						class="btn btn-primary"
+						on:click={handleCreateInviteLink}
+						disabled={creatingInviteLink}
+					>
+						{creatingInviteLink ? 'Creating...' : 'Create New Invite Link'}
+					</button>
+				{:else if inviteLink && isInviteLinkExpired()}
+					<p class="text-muted">Your previous invite link has expired.</p>
+					<button
+						type="button"
+						class="btn btn-primary"
+						on:click={handleCreateInviteLink}
+						disabled={creatingInviteLink}
+					>
+						{creatingInviteLink ? 'Creating...' : 'Create New Invite Link'}
+					</button>
+				{:else}
+					<div class="create-link-form">
+						<label class="form-label">
+							Link expires in:
+							<select bind:value={inviteLinkExpiryDays} class="form-select">
+								<option value={1}>1 day</option>
+								<option value={7}>7 days (recommended)</option>
+								<option value={14}>14 days</option>
+								<option value={30}>30 days</option>
+							</select>
+						</label>
+						<button
+							type="button"
+							class="btn btn-primary"
+							on:click={handleCreateInviteLink}
+							disabled={creatingInviteLink}
+						>
+							{creatingInviteLink ? 'Creating...' : 'Generate Invite Link'}
+						</button>
+					</div>
+				{/if}
 			</div>
 		{/if}
 
@@ -296,6 +504,38 @@
 				</div>
 			</div>
 		{/if}
+
+		<!-- Join a Different Household -->
+		<div class="subsection">
+			<h3 class="subsection-title">Join a Different Household</h3>
+			<p class="subsection-description">
+				{#if household}
+					Enter an invite code to switch to a different household. You will automatically leave your current household.
+				{:else}
+					Enter an invite code to join an existing household.
+				{/if}
+			</p>
+
+			<form on:submit|preventDefault={handleJoinViaCode} class="join-form">
+				<div class="form-group">
+					<label for="join-code" class="form-label">Invite Code</label>
+					<input
+						id="join-code"
+						type="text"
+						bind:value={joiningCode}
+						class="form-input"
+						placeholder="e.g., happy-ocean-river"
+						required
+					/>
+					<p class="form-help">
+						Enter the invite code shared with you (three words separated by hyphens)
+					</p>
+				</div>
+				<button type="submit" class="btn btn-primary" disabled={joiningHousehold}>
+					{joiningHousehold ? 'Joining...' : household ? 'Switch Household' : 'Join Household'}
+				</button>
+			</form>
+		</div>
 
 		{#if error}
 			<div class="error-message">{error}</div>
@@ -339,6 +579,12 @@
 		font-size: 1.125rem;
 		font-weight: 600;
 		color: var(--text-900);
+		margin: 0 0 1rem 0;
+	}
+
+	.subsection-description {
+		font-size: 0.875rem;
+		color: var(--text-600);
 		margin: 0 0 1rem 0;
 	}
 
@@ -464,6 +710,115 @@
 		flex-wrap: wrap;
 	}
 
+	.create-link-form {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.form-label {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: var(--text-700);
+	}
+
+	.form-select {
+		padding: 0.5rem;
+		border: 1px solid var(--neutral-200);
+		border-radius: var(--radius-md);
+		font-size: 0.875rem;
+		color: var(--text-900);
+		background: var(--neutral-white);
+		cursor: pointer;
+	}
+
+	.form-select:focus {
+		outline: none;
+		border-color: var(--accent-500);
+		box-shadow: 0 0 0 3px var(--accent-100);
+	}
+
+	.invite-link-display {
+		padding: 1rem;
+		background: var(--neutral-50);
+		border: 1px solid var(--neutral-200);
+		border-radius: var(--radius-md);
+	}
+
+	.invite-link-info {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.invite-code-label {
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: var(--text-700);
+		margin: 0;
+	}
+
+	.invite-code-box {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.75rem;
+		background: var(--neutral-white);
+		border: 2px solid var(--accent-200);
+		border-radius: var(--radius-md);
+	}
+
+	.invite-code {
+		flex: 1;
+		font-family: 'Courier New', monospace;
+		font-size: 1.125rem;
+		font-weight: 600;
+		color: var(--accent-700);
+		background: transparent;
+		padding: 0;
+	}
+
+	.invite-link-meta {
+		font-size: 0.75rem;
+		color: var(--text-500);
+		margin: 0;
+	}
+
+	.invite-link-instructions {
+		font-size: 0.875rem;
+		color: var(--text-600);
+		margin: 0;
+		padding-top: 0.5rem;
+		border-top: 1px solid var(--neutral-200);
+	}
+
+	.text-muted {
+		font-size: 0.875rem;
+		color: var(--text-500);
+		margin-bottom: 1rem;
+	}
+
+	.join-form {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+
+	.form-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.form-help {
+		font-size: 0.75rem;
+		color: var(--text-500);
+		margin: 0;
+	}
+
 	.error-message {
 		padding: 0.75rem;
 		background: var(--error-50);
@@ -510,8 +865,19 @@
 		background: var(--error-700, #c82333);
 	}
 
+	.btn-success {
+		background: var(--success-600, #28a745);
+		color: white;
+		border: none;
+	}
+
+	.btn-success:hover:not(:disabled) {
+		background: var(--success-700, #218838);
+	}
+
 	.btn-danger:disabled,
-	.btn-outline:disabled {
+	.btn-outline:disabled,
+	.btn-success:disabled {
 		opacity: 0.6;
 		cursor: not-allowed;
 	}
