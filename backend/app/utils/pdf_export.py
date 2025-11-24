@@ -7,6 +7,22 @@ from typing import TYPE_CHECKING, Any
 
 from fpdf import FPDF
 
+from app.core.constants import (
+    PDF_AUTO_PAGE_BREAK_MARGIN,
+    PDF_BOX_WIDTH,
+    PDF_COLUMN_WIDTH,
+    PDF_COVER_VERTICAL_POSITION,
+    PDF_FOOTER_Y_POSITION,
+    PDF_INDENT,
+    PDF_LABEL_WIDTH,
+    PDF_LINE_HEIGHT,
+    PDF_LINE_WIDTH_NORMAL,
+    PDF_LINE_WIDTH_THIN,
+    PDF_MARGIN,
+    PDF_MIN_CHAR_CODE,
+    PDF_PADDING,
+    PDF_TOC_MIN_RECIPES,
+)
 from app.utils.recipe_format import convert_to_schema_org
 
 
@@ -43,7 +59,7 @@ class RecipePDF(FPDF):
         super().__init__()
         # Use built-in Unicode font support
         # fpdf2 automatically handles Unicode when you don't restrict to core fonts
-        self.set_auto_page_break(auto=True, margin=15)
+        self.set_auto_page_break(auto=True, margin=PDF_AUTO_PAGE_BREAK_MARGIN)
 
     def header(self):
         """Add header to each page (empty for now)."""
@@ -51,7 +67,7 @@ class RecipePDF(FPDF):
 
     def footer(self):
         """Add page numbers to footer."""
-        self.set_y(-15)
+        self.set_y(PDF_FOOTER_Y_POSITION)
         self.set_font(FONT_FAMILY, "I", FONT_SIZE_FOOTER)
         self.set_text_color(*COLOR_FOOTER_TEXT)
         self.cell(0, 10, f"Page {self.page_no()}", align="C")
@@ -73,7 +89,7 @@ def generate_recipe_pdf(recipe: "Recipe") -> bytes:
     # Create PDF
     pdf = RecipePDF()
     pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_auto_page_break(auto=True, margin=PDF_MARGIN)
 
     # Add recipe content
     _add_recipe_to_pdf(pdf, schema_recipe)
@@ -98,14 +114,14 @@ def generate_collection_pdf(
         bytes: PDF file content
     """
     pdf = RecipePDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_auto_page_break(auto=True, margin=PDF_MARGIN)
 
     # Add cover page
     pdf.add_page()
     _add_collection_cover(pdf, collection_name, collection_description)
 
     # Add table of contents
-    if len(recipes) > 1:
+    if len(recipes) > PDF_TOC_MIN_RECIPES:
         pdf.add_page()
         _add_table_of_contents(pdf, recipes)
 
@@ -122,7 +138,7 @@ def generate_collection_pdf(
 def _add_collection_cover(pdf: FPDF, name: str, description: str):
     """Add collection cover page."""
     # Center vertically
-    pdf.set_y(80)
+    pdf.set_y(PDF_COVER_VERTICAL_POSITION)
 
     # Collection title
     pdf.set_font(FONT_FAMILY, "B", FONT_SIZE_COVER_TITLE)
@@ -146,8 +162,8 @@ def _add_table_of_contents(pdf: FPDF, recipes: list["Recipe"]):
 
     # Draw underline
     pdf.set_draw_color(*COLOR_BORDER)
-    pdf.set_line_width(0.5)
-    pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + 180, pdf.get_y())
+    pdf.set_line_width(PDF_LINE_WIDTH_THIN)
+    pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + PDF_BOX_WIDTH, pdf.get_y())
     pdf.ln(8)
 
     # List recipes
@@ -167,8 +183,8 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
 
     # Underline
     pdf.set_draw_color(*COLOR_BORDER)
-    pdf.set_line_width(0.5)
-    pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + 180, pdf.get_y())
+    pdf.set_line_width(PDF_LINE_WIDTH_THIN)
+    pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + PDF_BOX_WIDTH, pdf.get_y())
     pdf.ln(5)
 
     # Description
@@ -191,7 +207,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
         pdf.set_text_color(*COLOR_BODY_TEXT)
         for ingredient in schema_recipe["recipeIngredient"]:
             # Calculate available width accounting for margins and indentation
-            indent = 5
+            indent = PDF_INDENT
             left_margin = pdf.l_margin
             right_margin = pdf.r_margin
             page_width = pdf.w
@@ -212,7 +228,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
         pdf.set_text_color(*COLOR_BODY_TEXT)
         for item in equipment_list:
             # Calculate available width accounting for margins and indentation
-            indent = 5
+            indent = PDF_INDENT
             left_margin = pdf.l_margin
             right_margin = pdf.r_margin
             page_width = pdf.w
@@ -235,7 +251,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
                 step_text = step.get("text", str(step)) if isinstance(step, dict) else str(step)
 
                 # Calculate available width accounting for margins and indentation
-                indent = 5
+                indent = PDF_INDENT
                 left_margin = pdf.l_margin
                 right_margin = pdf.r_margin
                 page_width = pdf.w
@@ -268,7 +284,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
             pdf.set_text_color(*COLOR_BODY_TEXT)
 
             # Display in two columns
-            col_width = 90
+            col_width = PDF_COLUMN_WIDTH
             for key, value in nutrition_items:
                 label = "".join([" " + c if c.isupper() else c for c in key]).strip().title()
                 pdf.cell(col_width, 6, f"{label}: {_clean_text(str(value))}")
@@ -290,15 +306,15 @@ def _add_metadata_box(pdf: FPDF, items: list[tuple[str, str]]):
     y = pdf.get_y()
 
     # Calculate box height
-    line_height = 6
-    padding = 5
+    line_height = PDF_LINE_HEIGHT
+    padding = PDF_PADDING
     box_height = len(items) * line_height + 2 * padding
 
     # Draw background box
     pdf.set_fill_color(*COLOR_BACKGROUND)
     pdf.set_draw_color(*COLOR_ACCENT)
-    pdf.set_line_width(1)
-    pdf.rect(x, y, 180, box_height, "DF")
+    pdf.set_line_width(PDF_LINE_WIDTH_NORMAL)
+    pdf.rect(x, y, PDF_BOX_WIDTH, box_height, "DF")
 
     # Add text
     pdf.set_xy(x + padding + 2, y + padding)
@@ -307,7 +323,7 @@ def _add_metadata_box(pdf: FPDF, items: list[tuple[str, str]]):
 
     for label, value in items:
         pdf.set_font(FONT_FAMILY, "B", FONT_SIZE_BODY)
-        pdf.cell(30, line_height, f"{label}:")
+        pdf.cell(PDF_LABEL_WIDTH, line_height, f"{label}:")
         pdf.set_font(FONT_FAMILY, "", FONT_SIZE_BODY)
         pdf.cell(0, line_height, _clean_text(value), ln=True)
         pdf.set_x(x + padding + 2)
@@ -369,6 +385,6 @@ def _clean_text(text: str) -> str:
 
     # Remove any remaining problematic characters
     # fpdf2 handles most characters well, but we'll strip control chars
-    text = "".join(char for char in text if ord(char) >= 32 or char in "\n\r\t")
+    text = "".join(char for char in text if ord(char) >= PDF_MIN_CHAR_CODE or char in "\n\r\t")
 
     return text

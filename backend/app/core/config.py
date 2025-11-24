@@ -5,6 +5,8 @@ Application configuration settings.
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.constants import MIN_SECRET_KEY_LENGTH
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
@@ -124,9 +126,9 @@ class Settings(BaseSettings):
         }
 
         # Check minimum length
-        if len(v) < 32:
+        if len(v) < MIN_SECRET_KEY_LENGTH:
             raise ValueError(
-                f"SECRET_KEY must be at least 32 characters long (got {len(v)}). "
+                f"SECRET_KEY must be at least {MIN_SECRET_KEY_LENGTH} characters long (got {len(v)}). "
                 "Generate a secure key with: openssl rand -hex 32"
             )
 

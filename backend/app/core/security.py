@@ -13,6 +13,7 @@ from argon2.exceptions import VerifyMismatchError
 from jwt.exceptions import PyJWTError
 
 from app.core.config import settings
+from app.core.constants import REFRESH_TOKEN_LENGTH
 
 
 # Argon2 password hasher
@@ -123,7 +124,7 @@ def generate_refresh_token() -> str:
     Returns:
         A URL-safe random token string
     """
-    return secrets.token_urlsafe(64)
+    return secrets.token_urlsafe(REFRESH_TOKEN_LENGTH)
 
 
 def get_refresh_token_expiry() -> datetime:

@@ -405,12 +405,12 @@ Implement structured logging with correlation IDs for better tracing.
 
 **Actions:**
 
-- [ ] Add `structlog` to dependencies
-- [ ] Create `app/core/logging.py` with configuration:
+- [x] Add `structlog` to dependencies
+- [x] Create `app/core/logging.py` with configuration:
   - JSON formatting for production
   - Pretty console for development
   - Correlation ID processor
-- [ ] Create correlation ID middleware:
+- [x] Create correlation ID middleware:
 
   ```python
   class CorrelationIdMiddleware:
@@ -419,14 +419,14 @@ Implement structured logging with correlation IDs for better tracing.
           # Add to context
   ```
 
-- [ ] Update logging calls to use structured logging:
+- [x] Update logging calls to use structured logging:
   - Replace `logger.info(f"...")` with `logger.info("event", key=value)`
-- [ ] Add logging to endpoints missing it:
+- [x] Add logging to endpoints missing it:
   - Most API endpoints
   - Service layer operations
-- [ ] Add exception logging to all exception handlers
+- [x] Add exception logging to all exception handlers
 - [ ] Add request/response logging middleware (optional)
-- [ ] Update logging configuration in settings
+- [x] Update logging configuration in settings
 
 **Files:**
 
@@ -457,15 +457,15 @@ Replace magic numbers throughout codebase with named constants.
 
 **Actions:**
 
-- [ ] Create `app/core/constants.py` for global constants
-- [ ] Identify all magic numbers:
+- [x] Create `app/core/constants.py` for global constants
+- [x] Identify all magic numbers:
   - `household_recipes[:50]` → `MAX_RECIPES_FOR_PROMPT = 50`
   - Password length checks → `MIN_PASSWORD_LENGTH = 8`
   - Token expiration times → `ACCESS_TOKEN_EXPIRE_MINUTES = 30`
   - File size limits
   - Pagination limits
   - Rate limits
-- [ ] Define constants with clear names:
+- [x] Define constants with clear names:
 
   ```python
   # app/core/constants.py
@@ -476,8 +476,8 @@ Replace magic numbers throughout codebase with named constants.
   MAX_PAGE_SIZE = 100
   ```
 
-- [ ] Replace magic numbers with constants throughout codebase
-- [ ] Update tests to use constants
+- [x] Replace magic numbers with constants throughout codebase
+- [x] Update tests to use constants
 
 **Files:**
 

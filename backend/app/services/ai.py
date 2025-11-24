@@ -8,6 +8,11 @@ from typing import Any
 import httpx
 
 from app.core.config import settings
+from app.core.constants import (
+    AI_REQUEST_TIMEOUT_SECONDS,
+    AI_TEMPERATURE,
+    MAX_RECIPES_IN_PROMPT,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -56,7 +61,7 @@ class AIService:
         )
 
         # Call OpenRouter API
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
             try:
                 response = await client.post(
                     f"{self.base_url}/chat/completions",
@@ -74,7 +79,7 @@ class AIService:
                             },
                             {"role": "user", "content": prompt},
                         ],
-                        "temperature": 0.7,
+                        "temperature": AI_TEMPERATURE,
                     },
                 )
                 response.raise_for_status()
@@ -209,7 +214,7 @@ Important:
         )
 
         # Call OpenRouter API
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
             try:
                 response = await client.post(
                     f"{self.base_url}/chat/completions",
@@ -227,7 +232,7 @@ Important:
                             },
                             {"role": "user", "content": prompt},
                         ],
-                        "temperature": 0.7,
+                        "temperature": AI_TEMPERATURE,
                     },
                 )
                 response.raise_for_status()
@@ -288,7 +293,7 @@ Important:
         # Add mode-specific instructions
         if mode == "catalog-first" and household_recipes:
             prompt += "\nMode: Catalog-first - Prioritize using recipes from the user's catalog below:\n\n"
-            for recipe in household_recipes[:50]:  # Limit to avoid token overflow
+            for recipe in household_recipes[:MAX_RECIPES_IN_PROMPT]:
                 prompt += f"- ID: {recipe.get('id')}, Name: {recipe.get('name')}, Category: {recipe.get('category', 'N/A')}\n"
             prompt += "\nIf the catalog doesn't have suitable recipes for some meals, you may suggest new recipe names.\n"
         else:
