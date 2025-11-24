@@ -3,7 +3,6 @@ Recipe Catalog API - Main Application
 FastAPI backend for recipe management.
 """
 
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
@@ -34,15 +33,14 @@ from app.core.config import settings
 # Cleanup expired OAuth states on startup
 from app.core.database import AsyncSessionLocal, close_db, init_db
 from app.core.exceptions import AppException
+from app.core.logging import configure_logging, get_logger
+from app.middleware.correlation_id import CorrelationIdMiddleware
 from app.models.oauth_state import OAuthState
 
 
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL),
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+# Configure structured logging
+configure_logging()
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
@@ -55,9 +53,13 @@ async def lifespan(_app: FastAPI):
         try:
             deleted_count = await OAuthState.cleanup_expired(session)
             if deleted_count > 0:
-                logger.info("Cleaned up %s expired OAuth states", deleted_count)
+                logger.info(
+                    "oauth_cleanup_success", deleted_count=deleted_count
+                )
         except Exception as e:
-            logger.warning("Failed to cleanup expired OAuth states: %s", str(e))
+            logger.warning(
+                "oauth_cleanup_failed", error=str(e)
+            )
 
     yield
     # Shutdown
@@ -92,6 +94,9 @@ app.add_middleware(
 
 # Add GZip compression for responses > 1000 bytes
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# Add correlation ID middleware for request tracing
+app.add_middleware(CorrelationIdMiddleware)
 
 
 # Security headers middleware
@@ -140,11 +145,11 @@ async def add_security_headers(request: Request, call_next):
 async def app_exception_handler(request: Request, exc: AppException):
     """Handle custom application exceptions."""
     logger.error(
-        "Application error on %s: %s - %s",
-        request.url,
-        exc.error_code,
-        exc.message,
-        extra={"error_code": exc.error_code, "details": exc.details},
+        "application_error",
+        url=str(request.url),
+        error_code=exc.error_code,
+        message=exc.message,
+        details=exc.details,
     )
 
     return JSONResponse(
@@ -160,7 +165,7 @@ async def app_exception_handler(request: Request, exc: AppException):
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors and return JSON response."""
-    logger.error("Validation error on %s: %s", request.url, exc.errors())
+    logger.error("validation_error", url=str(request.url), errors=exc.errors())
 
     # Convert Pydantic errors to JSON-serializable format
     errors = []
@@ -188,7 +193,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle uncaught exceptions and return JSON response."""
-    logger.exception("Unhandled exception on %s: %s", request.url, str(exc))
+    logger.exception("unhandled_exception", url=str(request.url), error=str(exc))
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={

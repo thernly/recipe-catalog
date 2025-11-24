@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.constants import AUTH_RATE_LIMIT_REGISTRATION, AUTH_RATE_LIMIT_TEST_MODE
 from app.core.database import get_db
 from app.core.security import (
     create_access_token,
@@ -42,12 +43,12 @@ limiter = Limiter(key_func=get_remote_address)
 def _get_rate_limit(limit: str) -> str:
     """Return rate limit string or very high limit if testing."""
     if settings.TESTING:
-        return "10000/hour"  # Effectively unlimited for tests
+        return AUTH_RATE_LIMIT_TEST_MODE
     return limit
 
 
 @router.post("/register", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
-@limiter.limit(lambda: _get_rate_limit("5/hour"))
+@limiter.limit(lambda: _get_rate_limit(AUTH_RATE_LIMIT_REGISTRATION))
 async def register(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     """
     Register a new user account.
