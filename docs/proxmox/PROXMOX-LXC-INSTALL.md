@@ -15,6 +15,7 @@ sudo bash deploy-lxc.sh
 ```
 
 The automation script will:
+
 - ✅ Install all system dependencies
 - ✅ Install Python 3.13 using UV (pre-built binaries)
 - ✅ Set up backend and frontend
