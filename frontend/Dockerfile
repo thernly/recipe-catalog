@@ -7,11 +7,11 @@ WORKDIR /frontend
 RUN npm install -g pnpm
 
 # Copy manifests and install dependencies
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # Copy source
-COPY frontend/. ./
+COPY . ./
 
 # Build (produces static site in build/)
 RUN pnpm build
