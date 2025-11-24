@@ -232,6 +232,7 @@ EOF
 
 ```bash
 # Build the frontend
+pnpm install
 su - recipe-app -c "cd /opt/recipe-catalog/frontend && pnpm build"
 ```
 

@@ -5,6 +5,7 @@ A privacy-focused web application for organizing and managing your personal reci
 ## 🎯 Overview
 
 Recipe Catalog allows you to:
+
 - **Import recipes** from JSON files or generate with AI
 - **Manually add** family recipes and personal favorites
 - **Organize** recipes into custom collections with icons
@@ -25,16 +26,19 @@ Recipe Catalog allows you to:
 ## 🏗️ Tech Stack
 
 ### Frontend
+
 - **SvelteKit** - Fast, modern web framework
 - **Tailwind CSS** - Utility-first styling
 - **TypeScript** - Type-safe development
 
 ### Backend
+
 - **FastAPI** - High-performance Python API
 - **SQLite/D1** - Lightweight database (PostgreSQL-ready)
 - **Pydantic** - Data validation
 
 ### Deployment
+
 - **Cloudflare Pages** - Frontend hosting
 - **Cloudflare Workers** - Serverless API
 - **Cloudflare D1** - Managed SQLite database
@@ -74,6 +78,7 @@ recipe-catalog/
 ## ✨ Features
 
 ### Core Features (Implemented ✅)
+
 - **User Authentication** - Register, login, email verification, password reset, OAuth/OIDC
 - **OAuth Sign-In** - Google, Microsoft, and GitHub authentication
 - **Recipe Management** - Full CRUD operations with comprehensive forms
@@ -85,6 +90,7 @@ recipe-catalog/
 - **Soft Delete** - 30-day recovery period for deleted recipes
 
 ### Advanced Features (Implemented ✅)
+
 - **Multi-User Households** - Share recipes with family members via email invitations
 - **Meal Planning** - Weekly meal planning calendar with drag-and-drop
 - **Shopping Lists** - Generate shopping lists from recipes or meal plans
@@ -100,6 +106,7 @@ See [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md) for detailed feature 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 18+ (for frontend)
 - Python 3.13+ (for backend)
 - pnpm or npm (package manager)
@@ -127,7 +134,7 @@ Frontend runs on `http://localhost:5173`
 
 ### First Steps
 
-1. Open http://localhost:5173 in your browser
+1. Open <http://localhost:5173> in your browser
 2. Click "Register" to create an account
 3. Log in with your credentials
 4. Start adding recipes!
@@ -179,6 +186,7 @@ API documentation: `http://localhost:8000/docs`
 The database is automatically created when you run the backend server. Migrations are handled by Alembic.
 
 To load sample data (optional):
+
 ```bash
 cd database
 sqlite3 ../backend/recipes.db < seed.sql
@@ -189,10 +197,12 @@ sqlite3 ../backend/recipes.db < seed.sql
 The app features two beautiful themes:
 
 **Classic Minimal** (Default)
+
 - Primary: Charcoal (#3D4451)
 - Accent: Saffron (#F59E0B)
 
 **Professional Warm**
+
 - Primary: Navy (#1E3A5F)
 - Accent: Apricot (#F97316)
 
@@ -201,11 +211,13 @@ See `docs/requirements/Recipe_App_Themeable_Design_System.md` for complete desig
 ## 📝 Environment Variables
 
 ### Frontend (.env)
+
 ```env
 VITE_API_URL=http://localhost:8000
 ```
 
 ### Backend (.env)
+
 ```env
 DATABASE_URL=sqlite+aiosqlite:///./recipes.db
 SECRET_KEY=your-secret-key-here  # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
@@ -245,6 +257,7 @@ RATE_LIMIT_PER_HOUR=1000
 ## 🧪 Testing
 
 ### Frontend Tests
+
 ```bash
 cd frontend
 pnpm test
@@ -253,6 +266,7 @@ pnpm test:e2e
 ```
 
 ### Backend Tests
+
 ```bash
 cd backend
 uv run pytest
@@ -270,6 +284,7 @@ uv run pytest -v
 ### Database Migrations
 
 **Create a new migration:**
+
 ```bash
 cd backend
 uv run alembic revision -m "description of changes"
@@ -278,6 +293,7 @@ uv run alembic upgrade head
 ```
 
 **Apply migrations:**
+
 ```bash
 cd backend
 # Apply all pending migrations
@@ -297,6 +313,7 @@ uv run alembic current
 ### Database Backup & Restore
 
 **SQLite (Development):**
+
 ```bash
 cd backend
 
@@ -317,6 +334,7 @@ sqlite3 recipes.db < backup.sql
 ```
 
 **PostgreSQL (Production):**
+
 ```bash
 # Create backup
 pg_dump -U username -d recipe_catalog > backup.sql
@@ -337,6 +355,7 @@ gunzip -c backup.sql.gz | psql -U username -d recipe_catalog
 ### Database Maintenance
 
 **Clean up soft-deleted records:**
+
 ```bash
 cd backend
 # Records marked as deleted are kept for 30 days
@@ -365,6 +384,7 @@ asyncio.run(cleanup())
 ```
 
 **Optimize database:**
+
 ```bash
 # SQLite
 sqlite3 recipes.db "VACUUM;"
@@ -376,6 +396,7 @@ psql -U username -d recipe_catalog -c "VACUUM ANALYZE;"
 ### Monitoring & Logs
 
 **View application logs:**
+
 ```bash
 cd backend
 
@@ -390,6 +411,7 @@ tail -n 100 logs/app.log
 ```
 
 **Monitor server health:**
+
 ```bash
 # Check API health
 curl http://localhost:8000/health
@@ -404,6 +426,7 @@ ls -lh backend/recipes.db
 ### Data Export & Import
 
 **Export all recipes:**
+
 ```bash
 # Via API (requires authentication)
 curl -H "Authorization: Bearer YOUR_TOKEN" \
@@ -415,6 +438,7 @@ sqlite3 recipes.db "SELECT * FROM recipes WHERE deleted_at IS NULL;" \
 ```
 
 **Import recipes:**
+
 ```bash
 # Via API
 curl -X POST \
@@ -426,6 +450,7 @@ curl -X POST \
 ### Troubleshooting
 
 **Reset database (DESTRUCTIVE):**
+
 ```bash
 cd backend
 
@@ -443,6 +468,7 @@ uv run alembic upgrade head
 ```
 
 **Clear cache and restart:**
+
 ```bash
 # Clear Python cache
 find . -type d -name __pycache__ -exec rm -rf {} +
@@ -458,6 +484,7 @@ cd frontend && pnpm dev
 ```
 
 **Check dependencies:**
+
 ```bash
 # Backend
 cd backend
@@ -473,6 +500,7 @@ pnpm list
 ### Production Deployment Guide
 
 #### Prerequisites
+
 - Domain name with DNS configured
 - SSL certificate (automatically handled by Cloudflare or Let's Encrypt)
 - Production database (PostgreSQL recommended for high-traffic deployments)
@@ -482,6 +510,7 @@ pnpm list
 #### Option 1: Cloudflare (Recommended)
 
 **Step 1: Database Setup (D1)**
+
 ```bash
 # Create D1 database
 wrangler d1 create recipe-catalog-db
@@ -494,6 +523,7 @@ wrangler d1 list
 ```
 
 **Step 2: Backend Deployment (Workers)**
+
 ```bash
 cd backend
 
@@ -508,6 +538,7 @@ wrangler deploy
 ```
 
 **Step 3: Frontend Deployment (Pages)**
+
 ```bash
 cd frontend
 
@@ -523,12 +554,14 @@ wrangler pages deploy build
 ```
 
 **Step 4: Configure DNS**
+
 - Point your domain to Cloudflare Pages
 - Add CNAME record for API subdomain
 
 #### Option 2: Self-Hosted (Docker)
 
 **Step 1: Prepare Server**
+
 ```bash
 # Install Docker and Docker Compose
 curl -fsSL https://get.docker.com -o get-docker.sh
@@ -539,6 +572,7 @@ sudo apt install docker-compose
 ```
 
 **Step 2: Configure Environment**
+
 ```bash
 # Create production .env files
 cd backend
@@ -550,6 +584,7 @@ echo "VITE_API_URL=https://api.yourdomain.com" > .env
 ```
 
 **Step 3: Deploy with Docker**
+
 ```bash
 # Build and start services
 docker-compose up -d
@@ -562,6 +597,7 @@ docker-compose exec backend alembic upgrade head
 ```
 
 **Step 4: Set Up Reverse Proxy (nginx)**
+
 ```nginx
 # /etc/nginx/sites-available/recipe-catalog
 server {
@@ -583,6 +619,7 @@ server {
 ```
 
 **Step 5: SSL Setup (Let's Encrypt)**
+
 ```bash
 sudo apt install certbot python3-certbot-nginx
 sudo certbot --nginx -d yourdomain.com
@@ -616,18 +653,22 @@ Refer to your platform's documentation for specific deployment steps.
 We use automated tools to keep dependencies secure and up-to-date:
 
 **Automated Scanning (GitHub Dependabot)**
+
 - Dependabot is configured to check for vulnerabilities weekly
 - Automatically creates pull requests for security updates
 - See `.github/dependabot.yml` for configuration
 
 **Manual Scanning (Monthly)**
+
 1. Install pip-audit for backend scanning:
+
    ```bash
    cd backend
    uv pip install pip-audit
    ```
 
 2. Run security audit:
+
    ```bash
    uv run pip-audit
    ```
@@ -635,6 +676,7 @@ We use automated tools to keep dependencies secure and up-to-date:
 3. Review and address any vulnerabilities found
 
 4. Update frontend dependencies:
+
    ```bash
    cd frontend
    pnpm audit
@@ -642,12 +684,14 @@ We use automated tools to keep dependencies secure and up-to-date:
    ```
 
 **Monthly Maintenance Tasks**
+
 - Review and merge Dependabot PRs
 - Run manual security scans with pip-audit and pnpm audit
 - Test application after updates
 - Update dependency versions in lockfiles
 
 **Known Issues**
+
 - `ecdsa` (dependency of `python-jose`): Security advisory GHSA-wj6h-64fc-37mp
   - Future consideration: Replace `python-jose` with `PyJWT` for better security
   - Tracked in tasks backlog
@@ -687,6 +731,7 @@ Built with ❤️ for home cooks who value privacy and organization.
 ## 🚢 Deployment
 
 See [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md#-next-steps-for-production-deployment) for detailed deployment instructions including:
+
 - Cloudflare deployment (recommended)
 - Self-hosted Docker deployment
 - Traditional cloud platforms
@@ -694,6 +739,7 @@ See [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md#-next-steps-for-produc
 ## 🔮 Roadmap
 
 See the [PRD](docs/requirements/Recipe_Catalog_App_PRD_v1.1.md) for planned future features:
+
 - Browser extension for recipe import
 - Cooking mode (hands-free view)
 - Recipe scaling and unit conversion

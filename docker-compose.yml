@@ -1,0 +1,30 @@
+version: "3.9"
+services:
+  backend:
+    build: ./backend
+    container_name: recipe-backend
+    env_file: ./backend/.env
+    environment:
+      # Override DB path to volume-mounted directory
+      - DATABASE_URL=sqlite+aiosqlite:///./data/recipes.db
+    volumes:
+      - sqlite_data:/app/data
+    expose:
+      - "8000"
+    ports:
+      - "8000:8000"  # optional: remove if only accessed via frontend proxy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: recipe-frontend
+    environment:
+      - PUBLIC_API_URL=/api
+    ports:
+      - "8080:80"   # Public entry point
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  sqlite_data:
