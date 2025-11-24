@@ -2,6 +2,34 @@
 
 This guide walks you through installing the Recipe Catalog application on a Debian 12.12-1 LXC container running on Proxmox.
 
+## 🚀 Quick Start with Automation Script
+
+**NEW:** We now provide a fully automated deployment script that handles the entire installation process!
+
+```bash
+# Download and run the automated deployment script
+cd /tmp
+wget https://raw.githubusercontent.com/yourusername/recipe-catalog/main/scripts/deploy-lxc.sh
+chmod +x deploy-lxc.sh
+sudo bash deploy-lxc.sh
+```
+
+The automation script will:
+- ✅ Install all system dependencies
+- ✅ Install Python 3.13 using UV (pre-built binaries)
+- ✅ Set up backend and frontend
+- ✅ Configure Nginx and systemd services
+- ✅ Initialize the database
+- ✅ Optionally set up SSL/TLS
+
+See [`scripts/README.md`](scripts/README.md) for detailed automation script documentation.
+
+---
+
+## Manual Installation
+
+If you prefer to install manually or want to understand each step, continue with this guide below.
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
@@ -69,22 +97,13 @@ apt update && apt upgrade -y
 ```bash
 # Install essential build tools and utilities
 apt install -y \
-    build-essential \
     curl \
     wget \
     git \
     nginx \
     certbot \
     python3-certbot-nginx \
-    sqlite3 \
-    supervisor
-
-# Install Python 3.13 and dependencies
-apt install -y \
-    python3.13 \
-    python3.13-venv \
-    python3.13-dev \
-    python3-pip
+    sqlite3
 
 # Install Node.js 20.x (required for frontend)
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
@@ -106,7 +125,9 @@ useradd -r -m -s /bin/bash recipe-app
 ```bash
 # Create directory structure
 mkdir -p /opt/recipe-catalog
-chown recipe-app:recipe-app /opt/recipe-catalog
+mkdir -p /opt/recipe-catalog/backend/data
+mkdir -p /opt/recipe-catalog/backend/logs
+chown -R recipe-app:recipe-app /opt/recipe-catalog
 ```
 
 ---
@@ -124,15 +145,25 @@ git clone <your-repo-url> .
 # Use SCP or SFTP to upload your code to /opt/recipe-catalog
 ```
 
-### 2. Install UV Package Manager
+### 2. Install UV Package Manager and Python 3.13
+
+Debian 12 ships with Python 3.11, but this application requires Python 3.13. We'll use UV to manage Python versions - it downloads pre-built binaries, which is much faster than compiling from source.
 
 ```bash
-# Install UV (modern Python package manager)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# Install UV as the recipe-app user
+su - recipe-app -c "curl -LsSf https://astral.sh/uv/install.sh | sh"
 
-# Add UV to PATH for all users
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> /etc/profile.d/uv.sh
-source /etc/profile.d/uv.sh
+# Verify UV installation
+su - recipe-app -c "~/.local/bin/uv --version"
+
+# Install Python 3.13 using UV (downloads pre-built binary, ~30 seconds)
+su - recipe-app -c "~/.local/bin/uv python install 3.13"
+
+# Pin the project to use Python 3.13
+su - recipe-app -c "cd /opt/recipe-catalog/backend && ~/.local/bin/uv python pin 3.13"
+
+# Verify Python installation
+su - recipe-app -c "~/.local/bin/uv python list"
 ```
 
 ### 3. Setup Backend Environment
@@ -147,33 +178,51 @@ su - recipe-app -c "cd /opt/recipe-catalog/backend && uv sync"
 ### 4. Configure Backend Environment Variables
 
 ```bash
+# Generate a secure secret key
+SECRET_KEY=$(openssl rand -hex 32)
+
 # Create .env file
-cat > /opt/recipe-catalog/backend/.env << 'EOF'
+cat > /opt/recipe-catalog/backend/.env << EOF
 # Database Configuration
-DATABASE_URL=sqlite+aiosqlite:///./recipes.db
+DATABASE_URL=sqlite+aiosqlite:///./data/recipes.db
 
 # Security
-SECRET_KEY=$(openssl rand -hex 32)
-ALLOWED_ORIGINS=["http://localhost","http://<your-server-ip>"]
+SECRET_KEY=$SECRET_KEY
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+
+# CORS (comma-separated list)
+ALLOWED_ORIGINS=http://localhost,http://<your-server-ip>
+ALLOWED_METHODS=GET,POST,PUT,DELETE,PATCH
+ALLOWED_HEADERS=Authorization,Content-Type,Accept,X-CSRF-Token
 
 # Email Configuration (SMTP)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASSWORD=your-app-password
-SMTP_FROM=your-email@gmail.com
+FROM_EMAIL=noreply@recipecatalog.app
+FROM_NAME=Recipe Catalog
 
 # Application Settings
 APP_NAME=Recipe Catalog
 FRONTEND_URL=http://<your-server-ip>
+ENVIRONMENT=production
+DEBUG=False
 
 # Rate Limiting
 RATE_LIMIT_PER_MINUTE=60
-EOF
+RATE_LIMIT_PER_HOUR=1000
 
-# Generate a secure secret key
-SECRET_KEY=$(openssl rand -hex 32)
-sed -i "s/SECRET_KEY=.*/SECRET_KEY=$SECRET_KEY/" /opt/recipe-catalog/backend/.env
+# File Upload
+MAX_UPLOAD_SIZE_MB=10
+ALLOWED_IMAGE_TYPES=image/jpeg,image/png,image/webp
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE=logs/app.log
+EOF
 
 # Set proper permissions
 chown recipe-app:recipe-app /opt/recipe-catalog/backend/.env
@@ -183,7 +232,7 @@ chmod 600 /opt/recipe-catalog/backend/.env
 **Important**: Edit the `.env` file to replace placeholder values:
 
 - `<your-server-ip>`: Your container's IP address or domain
-- Email settings: Configure with your SMTP provider
+- Email settings: Configure with your SMTP provider (see [Email Configuration](#email-configuration) section)
 
 ### 5. Initialize Database
 
@@ -221,18 +270,22 @@ su - recipe-app -c "cd /opt/recipe-catalog/frontend && pnpm install"
 ```bash
 # Create .env file
 cat > /opt/recipe-catalog/frontend/.env << 'EOF'
-PUBLIC_API_URL=http://<your-server-ip>/api
+VITE_API_URL=http://<your-server-ip>/api
+VITE_APP_NAME=Recipe Catalog
 EOF
 
 # Replace <your-server-ip> with your actual IP or domain
-# Example: PUBLIC_API_URL=http://192.168.1.100/api
+# Example: VITE_API_URL=http://192.168.1.100/api
+# For production with domain: VITE_API_URL=https://yourdomain.com/api
+
+# Set proper permissions
+chown recipe-app:recipe-app /opt/recipe-catalog/frontend/.env
 ```
 
 ### 3. Build Frontend for Production
 
 ```bash
-# Build the frontend
-pnpm install
+# Build the frontend as recipe-app user
 su - recipe-app -c "cd /opt/recipe-catalog/frontend && pnpm build"
 ```
 
@@ -358,6 +411,7 @@ User=recipe-app
 Group=recipe-app
 WorkingDirectory=/opt/recipe-catalog/backend
 Environment="PATH=/home/recipe-app/.local/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONUNBUFFERED=1"
 
 # Start command using UV
 ExecStart=/home/recipe-app/.local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 4
