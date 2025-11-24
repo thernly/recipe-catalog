@@ -140,7 +140,9 @@ async def get_user_household(
     Raises:
         HTTPException: If user doesn't belong to a household
     """
-    result = await db.execute(select(Household).join(HouseholdMember).where(HouseholdMember.user_id == current_user.id))
+    result = await db.execute(
+        select(Household).join(HouseholdMember).where(HouseholdMember.user_id == current_user.id)
+    )
     household = result.scalar_one_or_none()
 
     if not household:

@@ -5,7 +5,9 @@ conn = sqlite3.connect("recipes.db")
 cursor = conn.cursor()
 
 # Check for specific user
-cursor.execute("SELECT email, is_active, is_verified FROM users WHERE email = 'testuser@test.example.com'")
+cursor.execute(
+    "SELECT email, is_active, is_verified FROM users WHERE email = 'testuser@test.example.com'"
+)
 result = cursor.fetchone()
 print("User found:", result if result else "No user found")
 

@@ -101,7 +101,9 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
 
         logger.debug(f"Creating default household for user {new_user.id}")
         household = await create_default_household_for_new_user(db, new_user)
-        logger.debug(f"Created household '{household.name}' (ID: {household.id}) for user {new_user.id}")
+        logger.debug(
+            f"Created household '{household.name}' (ID: {household.id}) for user {new_user.id}"
+        )
 
         # Create default collections
         from app.models.collection import Collection
@@ -347,7 +349,9 @@ async def logout(
 
     if refresh_token_value:
         # Revoke the refresh token
-        result = await db.execute(select(RefreshToken).where(RefreshToken.token == refresh_token_value))
+        result = await db.execute(
+            select(RefreshToken).where(RefreshToken.token == refresh_token_value)
+        )
         refresh_token_record = result.scalar_one_or_none()
 
         if refresh_token_record and not refresh_token_record.revoked:
@@ -364,7 +368,9 @@ async def logout(
 
 @router.post("/forgot-password")
 @limiter.limit(lambda: _get_rate_limit("3/hour"))
-async def forgot_password(req: Request, request: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def forgot_password(
+    req: Request, request: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
+):
     """
     Send password reset email.
 
@@ -388,7 +394,9 @@ async def forgot_password(req: Request, request: ForgotPasswordRequest, db: Asyn
     if user and user.is_active:
         # Invalidate any existing reset tokens
         existing_tokens_result = await db.execute(
-            select(PasswordResetToken).where(PasswordResetToken.user_id == user.id, not PasswordResetToken.used)
+            select(PasswordResetToken).where(
+                PasswordResetToken.user_id == user.id, not PasswordResetToken.used
+            )
         )
         existing_tokens = existing_tokens_result.scalars().all()
         for token in existing_tokens:
@@ -411,7 +419,9 @@ async def forgot_password(req: Request, request: ForgotPasswordRequest, db: Asyn
 
 @router.post("/reset-password")
 @limiter.limit(lambda: _get_rate_limit("5/hour"))
-async def reset_password(req: Request, request: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def reset_password(
+    req: Request, request: ResetPasswordRequest, db: AsyncSession = Depends(get_db)
+):
     """
     Reset password with token.
 
@@ -430,7 +440,9 @@ async def reset_password(req: Request, request: ResetPasswordRequest, db: AsyncS
     from app.models.token import PasswordResetToken
 
     # Find token
-    result = await db.execute(select(PasswordResetToken).where(PasswordResetToken.token == request.token))
+    result = await db.execute(
+        select(PasswordResetToken).where(PasswordResetToken.token == request.token)
+    )
     reset_token = result.scalar_one_or_none()
 
     if not reset_token or not reset_token.is_valid():
@@ -496,7 +508,9 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/resend-verification")
 @limiter.limit(lambda: _get_rate_limit("3/hour"))
-async def resend_verification(req: Request, request: ResendVerificationRequest, db: AsyncSession = Depends(get_db)):
+async def resend_verification(
+    req: Request, request: ResendVerificationRequest, db: AsyncSession = Depends(get_db)
+):
     """
     Resend verification email.
 
@@ -527,7 +541,9 @@ async def resend_verification(req: Request, request: ResendVerificationRequest, 
 
     # Invalidate existing verification tokens
     existing_tokens_result = await db.execute(
-        select(VerificationToken).where(VerificationToken.user_id == user.id, not VerificationToken.used)
+        select(VerificationToken).where(
+            VerificationToken.user_id == user.id, not VerificationToken.used
+        )
     )
     existing_tokens = existing_tokens_result.scalars().all()
     for token in existing_tokens:

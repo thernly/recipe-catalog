@@ -28,8 +28,12 @@ class Household(Base):
 
     # Relationships
     owner = relationship("User", foreign_keys=[owner_user_id])
-    members = relationship("HouseholdMember", back_populates="household", cascade="all, delete-orphan")
-    invitations = relationship("HouseholdInvitation", back_populates="household", cascade="all, delete-orphan")
+    members = relationship(
+        "HouseholdMember", back_populates="household", cascade="all, delete-orphan"
+    )
+    invitations = relationship(
+        "HouseholdInvitation", back_populates="household", cascade="all, delete-orphan"
+    )
     recipes = relationship("Recipe", back_populates="household")
     collections = relationship("Collection", back_populates="household")
     meal_plans = relationship("MealPlan", cascade="all, delete-orphan")

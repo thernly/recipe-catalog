@@ -233,7 +233,9 @@ async def oauth_callback(
             return {"message": "Login successful"}
 
         # Check if email already exists (for account linking)
-        email_result = await db.execute(select(User).where(User.email == user_data["email"].lower()))
+        email_result = await db.execute(
+            select(User).where(User.email == user_data["email"].lower())
+        )
         existing_user = email_result.scalar_one_or_none()
 
         if existing_user:
@@ -326,7 +328,9 @@ async def oauth_callback(
         from app.services.household import create_default_household_for_new_user
 
         household = await create_default_household_for_new_user(db, new_user)
-        logger.info(f"Created household '{household.name}' (ID: {household.id}) for user {new_user.id}")
+        logger.info(
+            f"Created household '{household.name}' (ID: {household.id}) for user {new_user.id}"
+        )
 
         # Create default collections
         from app.models.collection import Collection
@@ -394,7 +398,9 @@ async def list_linked_providers(
     db: AsyncSession = Depends(get_db),
 ):
     """Get list of identity providers linked to current user."""
-    result = await db.execute(select(IdentityProvider).where(IdentityProvider.user_id == current_user.id))
+    result = await db.execute(
+        select(IdentityProvider).where(IdentityProvider.user_id == current_user.id)
+    )
     providers = result.scalars().all()
     return providers
 
@@ -416,7 +422,9 @@ async def unlink_provider(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
 
     # Check if user has password or other providers
-    result = await db.execute(select(IdentityProvider).where(IdentityProvider.user_id == current_user.id))
+    result = await db.execute(
+        select(IdentityProvider).where(IdentityProvider.user_id == current_user.id)
+    )
     all_providers = result.scalars().all()
 
     has_password = current_user.hashed_password is not None

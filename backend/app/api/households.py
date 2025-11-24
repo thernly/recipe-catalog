@@ -139,7 +139,9 @@ async def update_household(
     Returns:
         Updated household
     """
-    household = await household_service.update_household(db, household_id, current_user.id, household_data.name)
+    household = await household_service.update_household(
+        db, household_id, current_user.id, household_data.name
+    )
     return household
 
 
@@ -316,7 +318,9 @@ async def get_invitation_by_token(
         )
 
     # Get household details
-    household_result = await db.execute(select(Household).where(Household.id == invitation.household_id))
+    household_result = await db.execute(
+        select(Household).where(Household.id == invitation.household_id)
+    )
     household = household_result.scalar_one_or_none()
 
     # Get inviter details
@@ -468,7 +472,9 @@ async def get_invite_link_info(
         )
 
     # Get household details
-    household_result = await db.execute(select(Household).where(Household.id == invite_link.household_id))
+    household_result = await db.execute(
+        select(Household).where(Household.id == invite_link.household_id)
+    )
     household = household_result.scalar_one_or_none()
 
     # Get creator details

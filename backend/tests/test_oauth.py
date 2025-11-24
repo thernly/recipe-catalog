@@ -174,7 +174,9 @@ async def test_oauth_callback_new_user_flow(mock_create_client, client: AsyncCli
 
 @pytest.mark.asyncio
 @patch("app.core.oauth.oauth.create_client")
-async def test_oauth_callback_auto_link_existing_user(mock_create_client, client: AsyncClient, test_db):
+async def test_oauth_callback_auto_link_existing_user(
+    mock_create_client, client: AsyncClient, test_db
+):
     """Test OAuth callback auto-linking to existing user with verified email."""
     # Create existing user
     await client.post(
@@ -222,7 +224,9 @@ async def test_oauth_callback_auto_link_existing_user(mock_create_client, client
 
 @pytest.mark.asyncio
 @patch("app.core.oauth.oauth.create_client")
-async def test_oauth_callback_unverified_email_rejects_link(mock_create_client, client: AsyncClient, test_db):
+async def test_oauth_callback_unverified_email_rejects_link(
+    mock_create_client, client: AsyncClient, test_db
+):
     """Test OAuth callback rejects auto-link if email not verified by provider."""
     # Create existing user with unique email
     import uuid
@@ -372,7 +376,9 @@ async def test_oauth_creates_default_household(mock_create_client, client: Async
     await test_db.commit()
 
     # Make callback request (creates new user via OAuth)
-    response = await client.get("/api/auth/google/callback?code=test_code&state=test_state_household")
+    response = await client.get(
+        "/api/auth/google/callback?code=test_code&state=test_state_household"
+    )
 
     # Should successfully create user and set cookies
     assert response.status_code == 200
@@ -388,7 +394,9 @@ async def test_oauth_creates_default_household(mock_create_client, client: Async
     user = result.scalar_one()
 
     # Verify household was created for the user
-    result = await test_db.execute(select(Household).join(HouseholdMember).where(HouseholdMember.user_id == user.id))
+    result = await test_db.execute(
+        select(Household).join(HouseholdMember).where(HouseholdMember.user_id == user.id)
+    )
     household = result.scalar_one()
     assert household is not None
     assert household.owner_user_id == user.id

@@ -9,7 +9,9 @@ from app.services import household as household_service
 
 
 @pytest.mark.asyncio
-async def test_create_invite_link(client: AsyncClient, test_user_headers: dict, test_household: dict):
+async def test_create_invite_link(
+    client: AsyncClient, test_user_headers: dict, test_household: dict
+):
     """Test creating an invite link."""
     response = await client.post(
         f"/api/households/{test_household['id']}/invite-links",
@@ -44,7 +46,9 @@ async def test_invite_code_format(db: AsyncSession, test_household: dict):
 
 
 @pytest.mark.asyncio
-async def test_get_invite_link_info(client: AsyncClient, test_user_headers: dict, test_household: dict):
+async def test_get_invite_link_info(
+    client: AsyncClient, test_user_headers: dict, test_household: dict
+):
     """Test getting invite link information."""
     # Create invite link
     create_response = await client.post(

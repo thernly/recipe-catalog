@@ -75,7 +75,9 @@ class Settings(BaseSettings):
     OPENROUTER_MODEL: str = "anthropic/claude-3.5-sonnet"
     AI_RATE_LIMIT_PER_HOUR: int = 50
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, env_parse_none_str="null")
+    model_config = SettingsConfigDict(
+        env_file=".env", case_sensitive=True, env_parse_none_str="null"
+    )
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
