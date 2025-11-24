@@ -16,7 +16,7 @@ sudo bash deploy-lxc.sh
 
 The automation script will:
 - ✅ Install all system dependencies
-- ✅ Install Python 3.13 from source
+- ✅ Install Python 3.13 using UV (pre-built binaries)
 - ✅ Set up backend and frontend
 - ✅ Configure Nginx and systemd services
 - ✅ Initialize the database
@@ -97,26 +97,13 @@ apt update && apt upgrade -y
 ```bash
 # Install essential build tools and utilities
 apt install -y \
-    build-essential \
     curl \
     wget \
     git \
     nginx \
     certbot \
     python3-certbot-nginx \
-    sqlite3 \
-    libssl-dev \
-    zlib1g-dev \
-    libbz2-dev \
-    libreadline-dev \
-    libsqlite3-dev \
-    libncursesw5-dev \
-    xz-utils \
-    tk-dev \
-    libxml2-dev \
-    libxmlsec1-dev \
-    libffi-dev \
-    liblzma-dev
+    sqlite3
 
 # Install Node.js 20.x (required for frontend)
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
@@ -126,42 +113,14 @@ apt install -y nodejs
 npm install -g pnpm
 ```
 
-### 3. Install Python 3.13
-
-Debian 12 ships with Python 3.11 by default. This application requires Python 3.13, so we'll install it from source:
-
-```bash
-# Download Python 3.13
-cd /tmp
-wget https://www.python.org/ftp/python/3.13.0/Python-3.13.0.tgz
-tar xzf Python-3.13.0.tgz
-cd Python-3.13.0
-
-# Configure and compile (this takes 5-10 minutes)
-./configure --enable-optimizations --with-ensurepip=install
-make -j $(nproc)
-make altinstall
-
-# Verify installation
-python3.13 --version
-
-# Create symlinks for convenience
-update-alternatives --install /usr/bin/python3 python3 /usr/local/bin/python3.13 1
-update-alternatives --install /usr/bin/pip3 pip3 /usr/local/bin/pip3.13 1
-
-# Clean up
-cd /tmp
-rm -rf Python-3.13.0 Python-3.13.0.tgz
-```
-
-### 4. Create Application User
+### 3. Create Application User
 
 ```bash
 # Create dedicated user for running the application
 useradd -r -m -s /bin/bash recipe-app
 ```
 
-### 5. Create Application Directories
+### 4. Create Application Directories
 
 ```bash
 # Create directory structure
@@ -186,7 +145,9 @@ git clone <your-repo-url> .
 # Use SCP or SFTP to upload your code to /opt/recipe-catalog
 ```
 
-### 2. Install UV Package Manager
+### 2. Install UV Package Manager and Python 3.13
+
+Debian 12 ships with Python 3.11, but this application requires Python 3.13. We'll use UV to manage Python versions - it downloads pre-built binaries, which is much faster than compiling from source.
 
 ```bash
 # Install UV as the recipe-app user
@@ -194,6 +155,15 @@ su - recipe-app -c "curl -LsSf https://astral.sh/uv/install.sh | sh"
 
 # Verify UV installation
 su - recipe-app -c "~/.local/bin/uv --version"
+
+# Install Python 3.13 using UV (downloads pre-built binary, ~30 seconds)
+su - recipe-app -c "~/.local/bin/uv python install 3.13"
+
+# Pin the project to use Python 3.13
+su - recipe-app -c "cd /opt/recipe-catalog/backend && ~/.local/bin/uv python pin 3.13"
+
+# Verify Python installation
+su - recipe-app -c "~/.local/bin/uv python list"
 ```
 
 ### 3. Setup Backend Environment

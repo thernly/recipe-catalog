@@ -12,9 +12,9 @@ Fully automated deployment script for installing Recipe Catalog on a Proxmox LXC
 
 ✅ **Automated Installation**
 - System package updates and dependency installation
-- Python 3.13 installation from source
 - Node.js 20.x and pnpm installation
 - UV package manager setup
+- Python 3.13 installation via UV (pre-built binaries)
 - Application code setup (Git clone or local)
 - Backend and frontend configuration
 - Database initialization
@@ -105,15 +105,16 @@ Before running the deployment script:
 
 ### 1. System Preparation
 - Updates all system packages
-- Installs build tools and system dependencies
+- Installs essential system dependencies (git, nginx, certbot, sqlite3)
 - Installs Node.js 20.x and pnpm
-- Compiles and installs Python 3.13 from source (takes 5-10 minutes)
 
 ### 2. Application Setup
 - Creates `recipe-app` user for running the application
 - Creates directory structure in `/opt/recipe-catalog`
 - Clones repository or uses existing files
 - Installs UV package manager for Python
+- Installs Python 3.13 using UV (downloads pre-built binary, ~30 seconds)
+- Pins the project to use Python 3.13
 
 ### 3. Backend Configuration
 - Installs Python dependencies using UV
@@ -188,15 +189,20 @@ After successful deployment:
 
 ### Script Fails During Python Installation
 
-If Python compilation fails:
+If Python installation via UV fails:
 ```bash
-# Check if you have enough disk space
-df -h
+# Check if UV is installed
+su - recipe-app
+~/.local/bin/uv --version
 
-# Check if you have enough memory
-free -h
+# Try installing Python manually
+~/.local/bin/uv python install 3.13
 
-# Try running with --skip-python and install Python manually
+# List installed Python versions
+~/.local/bin/uv python list
+
+# If still failing, check logs
+cat /var/log/recipe-catalog-deployment.log
 ```
 
 ### Backend Service Won't Start

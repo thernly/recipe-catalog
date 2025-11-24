@@ -245,9 +245,8 @@ update_system() {
 install_system_dependencies() {
     print_header "Step 2: Installing System Dependencies"
 
-    log "Installing build tools and utilities..."
+    log "Installing essential utilities..."
     apt install -y \
-        build-essential \
         curl \
         wget \
         git \
@@ -255,18 +254,6 @@ install_system_dependencies() {
         certbot \
         python3-certbot-nginx \
         sqlite3 \
-        libssl-dev \
-        zlib1g-dev \
-        libbz2-dev \
-        libreadline-dev \
-        libsqlite3-dev \
-        libncursesw5-dev \
-        xz-utils \
-        tk-dev \
-        libxml2-dev \
-        libxmlsec1-dev \
-        libffi-dev \
-        liblzma-dev \
         >> "$LOG_FILE" 2>&1
 
     log "System dependencies installed"
@@ -300,41 +287,26 @@ install_python313() {
         return
     fi
 
-    print_header "Step 4: Installing Python 3.13"
+    print_header "Step 8: Installing Python 3.13 with UV"
 
-    if command -v python3.13 &> /dev/null; then
-        log_info "Python 3.13 already installed: $(python3.13 --version)"
+    # Check if UV has Python 3.13 already installed
+    if sudo -u "$APP_USER" test -f "/home/$APP_USER/.local/bin/uv" && \
+       sudo -u "$APP_USER" /home/$APP_USER/.local/bin/uv python list 2>/dev/null | grep -q "3.13"; then
+        log_info "Python 3.13 already installed via UV"
         return
     fi
 
-    log "Downloading Python ${PYTHON_VERSION}..."
-    cd /tmp
-    wget -q "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz" >> "$LOG_FILE" 2>&1
-    tar xzf "Python-${PYTHON_VERSION}.tgz" >> "$LOG_FILE" 2>&1
-    cd "Python-${PYTHON_VERSION}"
+    log "Installing Python 3.13 using UV (downloading pre-built binary)..."
+    sudo -u "$APP_USER" /home/$APP_USER/.local/bin/uv python install 3.13 >> "$LOG_FILE" 2>&1
 
-    log "Configuring Python (this may take a few minutes)..."
-    ./configure --enable-optimizations --with-ensurepip=install >> "$LOG_FILE" 2>&1
+    log "Verifying Python 3.13 installation..."
+    sudo -u "$APP_USER" /home/$APP_USER/.local/bin/uv python list >> "$LOG_FILE" 2>&1
 
-    log "Compiling Python (this will take 5-10 minutes)..."
-    make -j "$(nproc)" >> "$LOG_FILE" 2>&1
-
-    log "Installing Python..."
-    make altinstall >> "$LOG_FILE" 2>&1
-
-    log "Creating Python symlinks..."
-    update-alternatives --install /usr/bin/python3 python3 /usr/local/bin/python3.13 1 >> "$LOG_FILE" 2>&1
-    update-alternatives --install /usr/bin/pip3 pip3 /usr/local/bin/pip3.13 1 >> "$LOG_FILE" 2>&1
-
-    # Clean up
-    cd /tmp
-    rm -rf "Python-${PYTHON_VERSION}" "Python-${PYTHON_VERSION}.tgz"
-
-    log "Python 3.13 installed: $(python3.13 --version)"
+    log "Python 3.13 installed successfully"
 }
 
 create_app_user() {
-    print_header "Step 5: Creating Application User"
+    print_header "Step 4: Creating Application User"
 
     if id "$APP_USER" &> /dev/null; then
         log_info "User $APP_USER already exists"
@@ -346,7 +318,7 @@ create_app_user() {
 }
 
 create_directories() {
-    print_header "Step 6: Creating Application Directories"
+    print_header "Step 5: Creating Application Directories"
 
     log "Creating directory structure..."
     mkdir -p "$INSTALL_DIR"
@@ -360,7 +332,7 @@ create_directories() {
 }
 
 setup_application_code() {
-    print_header "Step 7: Setting Up Application Code"
+    print_header "Step 6: Setting Up Application Code"
 
     if [[ "$REPO_URL" == "local" ]]; then
         log_info "Using local files - ensure application code is in $INSTALL_DIR"
@@ -389,7 +361,7 @@ setup_application_code() {
 }
 
 install_uv() {
-    print_header "Step 8: Installing UV Package Manager"
+    print_header "Step 7: Installing UV Package Manager"
 
     if sudo -u "$APP_USER" test -f "/home/$APP_USER/.local/bin/uv"; then
         log_info "UV already installed for $APP_USER"
@@ -404,6 +376,9 @@ setup_backend() {
     print_header "Step 9: Setting Up Backend"
 
     cd "$INSTALL_DIR/backend"
+
+    log "Pinning Python 3.13 for the project..."
+    sudo -u "$APP_USER" bash -c "cd $INSTALL_DIR/backend && /home/$APP_USER/.local/bin/uv python pin 3.13" >> "$LOG_FILE" 2>&1
 
     log "Installing backend dependencies..."
     sudo -u "$APP_USER" bash -c "cd $INSTALL_DIR/backend && /home/$APP_USER/.local/bin/uv sync" >> "$LOG_FILE" 2>&1
@@ -738,11 +713,11 @@ EOF
     update_system
     install_system_dependencies
     install_nodejs
-    install_python313
     create_app_user
     create_directories
     setup_application_code
     install_uv
+    install_python313
     setup_backend
     setup_frontend
     configure_nginx
