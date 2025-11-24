@@ -507,26 +507,26 @@ Implement API versioning to allow future changes without breaking clients.
 
 **Actions:**
 
-- [ ] Create versioning strategy (URL path versioning recommended)
-- [ ] Update router structure:
+- [x] Create versioning strategy (URL path versioning recommended)
+- [x] Update router structure:
 
   ```python
   # app/api/v1/__init__.py
   api_v1_router = APIRouter(prefix="/api/v1")
   ```
 
-- [ ] Move current API routes to `/api/v1/`:
+- [x] Move current API routes to `/api/v1/`:
   - `/api/v1/auth`
   - `/api/v1/recipes`
   - `/api/v1/collections`
   - `/api/v1/households`
   - `/api/v1/shopping-lists`
-- [ ] Keep backwards compatibility:
+- [x] Keep backwards compatibility:
   - Redirect `/api/*` → `/api/v1/*` (with deprecation warning)
-- [ ] Update OpenAPI docs to show version
-- [ ] Update all tests to use versioned endpoints
+- [x] Update OpenAPI docs to show version
+- [x] Update all tests to use versioned endpoints
 - [ ] Update API documentation
-- [ ] Add deprecation warning headers to old endpoints
+- [x] Add deprecation warning headers to old endpoints
 
 **Files:**
 
@@ -596,12 +596,12 @@ Simplify complex validation logic that doesn't provide practical value.
 
 **Actions:**
 
-- [ ] Simplify SECRET_KEY validation in `app/core/config.py:115-148`:
+- [x] Simplify SECRET_KEY validation in `app/core/config.py:115-148`:
   - Remove weak key dictionary (ops responsibility)
   - Keep only length check
   - Remove complex entropy checks
-- [ ] Review other validators for over-engineering
-- [ ] Update tests for simplified validation
+- [x] Review other validators for over-engineering
+- [x] Update tests for simplified validation
 
 **Files:**
 
@@ -627,19 +627,19 @@ Add database indexes for common query patterns to improve performance.
 
 **Actions:**
 
-- [ ] Analyze common queries:
+- [x] Analyze common queries:
   - Recipe searches by name, tags, ingredients
   - User lookups by email
   - Household filtering
-- [ ] Identify missing indexes
-- [ ] Create Alembic migration for new indexes:
+- [x] Identify missing indexes
+- [x] Create Alembic migration for new indexes:
 
   ```python
   op.create_index('idx_recipes_name', 'recipes', ['name'])
   op.create_index('idx_recipes_household_deleted', 'recipes', ['household_id', 'deleted_at'])
   ```
 
-- [ ] Test query performance improvement
+- [x] Test query performance improvement
 - [ ] Document index strategy
 
 **Files:**
@@ -668,9 +668,9 @@ Add tests to reach 80%+ coverage, focusing on untested areas.
 
 **Actions:**
 
-- [ ] Review coverage report from Task 7
-- [ ] Identify files with <80% coverage
-- [ ] Add tests for:
+- [x] Review coverage report from Task 7
+- [x] Identify files with <80% coverage
+- [x] Add tests for:
   - Edge cases (very large uploads, invalid data)
   - Error conditions
   - Service layer methods
@@ -679,7 +679,7 @@ Add tests to reach 80%+ coverage, focusing on untested areas.
   - Full recipe CRUD workflow
   - Shopping list generation flow
   - Collection management flow
-- [ ] Add missing edge case tests
+- [x] Add missing edge case tests
 - [ ] Re-run coverage and verify >80%
 
 **Files:**

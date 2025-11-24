@@ -111,36 +111,13 @@ class Settings(BaseSettings):
 
     @field_validator("SECRET_KEY")
     @classmethod
-    def validate_secret_key(cls, v, info):
-        """Validate SECRET_KEY strength in production."""
-        # Known weak/default keys to reject
-        weak_keys = {
-            "secret",
-            "changeme",
-            "default",
-            "test",
-            "password",
-            "secret_key",
-            "your-secret-key",
-            "dev-secret-key",
-        }
-
-        # Check minimum length
+    def validate_secret_key(cls, v):
+        """Validate SECRET_KEY length."""
         if len(v) < MIN_SECRET_KEY_LENGTH:
             raise ValueError(
                 f"SECRET_KEY must be at least {MIN_SECRET_KEY_LENGTH} characters long (got {len(v)}). "
                 "Generate a secure key with: openssl rand -hex 32"
             )
-
-        # Get environment from info context if available
-        environment = info.data.get("ENVIRONMENT", "production")
-
-        # In production, reject weak keys
-        if environment == "production" and v.lower() in weak_keys:
-            raise ValueError(
-                "SECRET_KEY appears to be a weak/default value. Generate a secure key with: openssl rand -hex 32"
-            )
-
         return v
 
 
