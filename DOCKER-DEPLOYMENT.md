@@ -22,9 +22,11 @@ SQLite data is persisted in a named volume.
 | Path | Purpose |
 |------|---------|
 | `backend/Dockerfile` | Builds backend image using uv and Python 3.13 |
-| `frontend/Dockerfile` | Builds frontend static assets then serves via nginx |
+| `backend/.dockerignore` | Excludes unnecessary files from backend build context |
+| `frontend/Dockerfile` | Builds frontend static assets using adapter-static, serves via nginx |
+| `frontend/.dockerignore` | Excludes unnecessary files from frontend build context |
 | `docker/nginx.conf` | Nginx config for SPA + API proxy |
-| `docker-compose.yml` | Orchestrates services + volume |
+| `docker-compose.yml` | Orchestrates services + volume + healthcheck |
 | `DOCKER-DEPLOYMENT.md` | This guide |
 
 ---
@@ -36,12 +38,14 @@ Create `backend/.env` (do NOT commit secrets):
 ```env
 DATABASE_URL=sqlite+aiosqlite:///./data/recipes.db
 SECRET_KEY=<generate-with: openssl rand -hex 32>
-ALLOWED_ORIGINS=["http://localhost:8080"]
+# Comma-separated list (no brackets)
+ALLOWED_ORIGINS=http://localhost:8080
 SMTP_HOST=
 SMTP_PORT=
 SMTP_USER=
 SMTP_PASSWORD=
-SMTP_FROM=
+FROM_EMAIL=noreply@recipecatalog.app
+FROM_NAME=Recipe Catalog
 APP_NAME=Recipe Catalog
 FRONTEND_URL=http://localhost:8080
 RATE_LIMIT_PER_MINUTE=60
@@ -65,7 +69,9 @@ docker compose logs -f
 Access:
 
 - Frontend: <http://localhost:8080>
-- Backend OpenAPI Docs (direct): <http://localhost:8000/api/docs> (if port published)
+- Backend API (proxied through frontend): <http://localhost:8080/api/docs>
+
+**Note**: The backend port (8000) is not exposed publicly for security. Access the API through the frontend proxy at port 8080.
 
 ---
 
@@ -108,12 +114,15 @@ For active development you may want live reload. Suggested adjustments:
 
 ### Sample Healthcheck
 
+The backend service includes a Python-based healthcheck (no curl required):
+
 ```yaml
 healthcheck:
-  test: ["CMD", "curl", "-f", "http://localhost:8000/api/docs"]
+  test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/docs').read()"]
   interval: 30s
   timeout: 5s
   retries: 3
+  start_period: 10s
 ```
 
 ---
@@ -194,10 +203,11 @@ docker compose down -v         # also remove volumes (DATA LOSS!)
 | Issue | Cause | Fix |
 |-------|-------|-----|
 | 502 Bad Gateway | Backend not reachable | `docker compose logs backend` / healthcheck failing |
-| API CORS errors | ALLOWED_ORIGINS mismatch | Update `ALLOWED_ORIGINS` in `.env` |
+| API CORS errors | ALLOWED_ORIGINS mismatch | Update `ALLOWED_ORIGINS` in `.env` (comma-separated, no brackets) |
 | Email failures | SMTP misconfig | Check env & backend logs |
 | DB locked | Concurrent writes in SQLite | Consider Postgres for multi-user high write load |
 | Static not updating | Old image cached | `docker compose build --no-cache` |
+| SvelteKit build fails | Missing adapter-static | Ensure `@sveltejs/adapter-static` is in package.json devDependencies |
 
 Inspect running containers:
 
@@ -243,5 +253,9 @@ docker compose logs -f
 Access at: `http://localhost:8080`
 
 ---
-**Guide Version**: 1.0  
-**Last Updated**: 2025-11-23
+**Guide Version**: 1.1
+**Last Updated**: 2025-11-24
+
+**Changelog**:
+- v1.1 (2025-11-24): Fixed Dockerfile COPY paths, added .dockerignore files, configured adapter-static, added Python-based healthcheck, removed direct backend port exposure, clarified ALLOWED_ORIGINS format
+- v1.0 (2025-11-23): Initial version

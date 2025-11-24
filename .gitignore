@@ -300,7 +300,6 @@ workers-site/
 
 # Docker
 docker-compose.override.yml
-.dockerignore
 
 # Logs
 logs/

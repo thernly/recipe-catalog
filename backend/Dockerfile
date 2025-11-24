@@ -18,13 +18,13 @@ ENV PATH="/root/.local/bin:${PATH}"
 WORKDIR /app
 
 # Copy dependency manifests first for layer caching
-COPY backend/pyproject.toml backend/uv.lock* ./
+COPY pyproject.toml uv.lock* ./
 
 # Install dependencies (fallback if lock file absent)
 RUN uv sync --frozen --no-dev || uv sync --no-dev
 
 # Copy application code
-COPY backend /app
+COPY . /app
 
 # Create data directory for SQLite persistence mounted as volume
 RUN mkdir -p /app/data
