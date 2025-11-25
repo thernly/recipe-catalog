@@ -23,7 +23,7 @@ The automation script will:
 - ✅ Initialize the database
 - ✅ Optionally set up SSL/TLS
 
-See [`scripts/README.md`](scripts/README.md) for detailed automation script documentation.
+See [`scripts/README.md`](../../scripts/README.md) for detailed automation script documentation.
 
 ---
 
@@ -173,7 +173,7 @@ su - recipe-app -c "~/.local/bin/uv python list"
 cd /opt/recipe-catalog/backend
 
 # Create Python virtual environment and install dependencies
-su - recipe-app -c "cd /opt/recipe-catalog/backend && uv sync"
+su - recipe-app -c "cd /opt/recipe-catalog/backend && ~/.local/bin/uv sync"
 ```
 
 ### 4. Configure Backend Environment Variables
@@ -241,14 +241,14 @@ chmod 600 /opt/recipe-catalog/backend/.env
 cd /opt/recipe-catalog/backend
 
 # Run database migrations as recipe-app user
-su - recipe-app -c "cd /opt/recipe-catalog/backend && uv run alembic upgrade head"
+su - recipe-app -c "cd /opt/recipe-catalog/backend && ~/.local/bin/uv run alembic upgrade head"
 ```
 
 ### 6. Verify Backend Installation
 
 ```bash
 # Test backend startup
-su - recipe-app -c "cd /opt/recipe-catalog/backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"
+su - recipe-app -c "cd /opt/recipe-catalog/backend && ~/.local/bin/uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
 # Press Ctrl+C after verifying it starts without errors
 ```
@@ -571,7 +571,7 @@ netstat -tulpn | grep 8000
 # Test manually
 su - recipe-app
 cd /opt/recipe-catalog/backend
-uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+~/.local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 ### Nginx Errors
@@ -591,13 +591,13 @@ systemctl status nginx
 
 ```bash
 # Check database file permissions
-ls -la /opt/recipe-catalog/backend/recipes.db
+ls -la /opt/recipe-catalog/backend/data/recipes.db
 
 # Ensure recipe-app owns the file
-chown recipe-app:recipe-app /opt/recipe-catalog/backend/recipes.db
+chown recipe-app:recipe-app /opt/recipe-catalog/backend/data/recipes.db
 
 # Check database integrity
-su - recipe-app -c "cd /opt/recipe-catalog/backend && sqlite3 recipes.db 'PRAGMA integrity_check;'"
+su - recipe-app -c "cd /opt/recipe-catalog/backend && sqlite3 data/recipes.db 'PRAGMA integrity_check;'"
 ```
 
 ### Email Not Sending
@@ -649,14 +649,14 @@ systemctl enable nginx
 mkdir -p /opt/backups
 
 # Backup database
-cp /opt/recipe-catalog/backend/recipes.db \
+cp /opt/recipe-catalog/backend/data/recipes.db \
    /opt/backups/recipes-$(date +%Y%m%d-%H%M%S).db
 
 # Automated backup script
 cat > /usr/local/bin/backup-recipe-db.sh << 'EOF'
 #!/bin/bash
 BACKUP_DIR="/opt/backups"
-DB_FILE="/opt/recipe-catalog/backend/recipes.db"
+DB_FILE="/opt/recipe-catalog/backend/data/recipes.db"
 mkdir -p $BACKUP_DIR
 cp $DB_FILE $BACKUP_DIR/recipes-$(date +%Y%m%d-%H%M%S).db
 # Keep only last 30 days of backups
