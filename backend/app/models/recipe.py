@@ -30,7 +30,9 @@ class Recipe(Base):
     description = Column(Text)
     image_url = Column(Text)
 
-    # Full recipe data as JSON
+    # Full recipe data as JSON following schema.org/Recipe format
+    # Note: Uses camelCase (e.g., recipeIngredient, recipeInstructions) per schema.org standard,
+    # not Python's snake_case convention. This enables compatibility with recipe import/export.
     recipe_data = Column(JSON, nullable=False)
 
     # Metadata

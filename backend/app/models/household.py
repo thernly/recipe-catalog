@@ -22,6 +22,8 @@ class Household(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     owner_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # Default max of 10 members balances household size with data privacy and performance.
+    # Most households have 2-4 members; 10 allows for extended family without becoming a public group.
     max_members = Column(Integer, default=10, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)

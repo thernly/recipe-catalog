@@ -13,7 +13,7 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 **Critical Issues**: 2 (✅ 2 fixed)
 **High Priority Issues**: 8 (✅ 8 fixed)
 **Medium Priority Issues**: 12 (✅ 11 fixed)
-**Low Priority Issues**: 7 (✅ 1 fixed)
+**Low Priority Issues**: 7 (✅ 5 fixed)
 
 **Recent Fixes (2025-11-25)**:
 - ✅ Issue #1: Fixed AI menu generation AttributeError
@@ -38,6 +38,10 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 - ✅ Issue #20: Added CORS validation to prevent wildcard origins in production
 - ✅ Issue #21: Added request size limit middleware (10MB max)
 - ✅ Issue #22: Fixed cookie security settings to use ENVIRONMENT instead of TESTING flag
+- ✅ Issue #23: Reduced excessive logging detail in auth registration flow
+- ✅ Issue #24: Added comments explaining magic number business logic
+- ✅ Issue #25: Documented schema.org naming conventions in recipe_data
+- ✅ Issue #26: Fixed async generator type hint in database.py
 
 ---
 
@@ -465,41 +469,61 @@ This ensures cookies are always secure in production regardless of any testing f
 ### 23. Excessive Logging Detail
 **File**: `backend/app/api/auth.py:93-107`
 **Severity**: Low (Security/Performance)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: Excessive debug logging with user IDs at multiple steps. In production, this creates large log files and potential privacy concerns.
 
-**Recommendation**: Use appropriate log levels (DEBUG vs INFO) and reduce verbosity in production.
+**Fix**: Reduced registration logging from 4 debug statements to 2 info statements:
+- Changed `logger.debug()` to `logger.info()` for important business events
+- Removed intermediate verbose logs (`creating_default_preferences`, `creating_default_household`)
+- Kept essential logs: `user_created` and `user_setup_completed`
+- Consolidated household creation details into single log entry
 
 ### 24. Magic Numbers
 **Files**: Multiple
 **Severity**: Low (Maintainability)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Examples**:
 - `household.max_members = 10` - why 10?
 - `expiration_days: int = 7` - why 7?
 - `REFRESH_TOKEN_EXPIRE_DAYS: int = 30` - why 30?
 
-**Recommendation**: Add comments explaining the business logic behind these numbers.
+**Fix**: Added explanatory comments for magic numbers:
+- `max_members = 10` in `backend/app/models/household.py`: Added comment explaining it balances household size with privacy/performance, and accommodates extended family
+- `expiration_days = 7` in `backend/app/services/household.py`: Added inline comment explaining 7 days balances urgency with flexibility
+- `REFRESH_TOKEN_EXPIRE_DAYS = 30` in `backend/app/core/config.py`: Already had adequate comment ("Long-lived for better UX")
 
 ### 25. Inconsistent Naming Conventions
 **Files**: Multiple
 **Severity**: Low (Code Quality)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: Mix of snake_case and camelCase in recipe_data JSON schema:
 - Model uses: `recipe_data.recipeIngredient`, `recipe_data.recipeInstructions`
 - Should be consistent with Python naming
 
-**Note**: This is actually schema.org format, so it's acceptable. But should be documented.
+**Fix**: Added documentation in `backend/app/models/recipe.py` explaining that `recipe_data` follows schema.org/Recipe format:
+- Added comment noting camelCase is per schema.org standard (e.g., recipeIngredient, recipeInstructions)
+- Explained this enables compatibility with recipe import/export
+- Clarified why it deviates from Python's snake_case convention
 
 ### 26. Missing Type Hints on Async Generators
 **File**: `backend/app/core/database.py:33`
 **Severity**: Low (Type Safety)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 ```python
 async def get_db() -> AsyncGenerator[AsyncSession]:
 ```
 
 **Issue**: Missing the full type hint. Should be `AsyncGenerator[AsyncSession, None]`.
+
+**Fix**: Updated type hint in `backend/app/core/database.py`:
+```python
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+```
+The second parameter (None) indicates the generator doesn't accept sent values, providing complete type safety.
 
 ### 27. Commented-Out Code
 **File**: `backend/app/api/recipes/crud.py:160`

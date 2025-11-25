@@ -91,24 +91,17 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
 
         db.add(new_user)
         await db.flush()  # Get the user ID
-        logger.debug("user_created", user_id=new_user.id)
+        logger.info("user_created", user_id=new_user.id)
 
         # Create default preferences
-        logger.debug("creating_default_preferences", user_id=new_user.id)
         preferences = UserPreferences(user_id=new_user.id)
         db.add(preferences)
 
         # Create default household
         from app.services.household import create_default_household_for_new_user
 
-        logger.debug("creating_default_household", user_id=new_user.id)
         household = await create_default_household_for_new_user(db, new_user)
-        logger.debug(
-            "household_created",
-            household_name=household.name,
-            household_id=household.id,
-            user_id=new_user.id,
-        )
+        logger.info("user_setup_completed", household_id=household.id, user_id=new_user.id)
 
         # Create default collections
         from app.models.collection import Collection
