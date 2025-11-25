@@ -50,7 +50,7 @@ async def test_register_duplicate_email(client: AsyncClient):
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "Email already registered"
+    assert response.json()["message"] == "Email already registered"
 
 
 @pytest.mark.asyncio
@@ -66,7 +66,10 @@ async def test_register_invalid_password_too_short(client: AsyncClient):
     )
 
     assert response.status_code == 422
-    assert "detail" in response.json()
+    data = response.json()
+    assert data["error_code"] == "VALIDATION_ERROR"
+    assert "details" in data
+    assert "errors" in data["details"]
 
 
 @pytest.mark.asyncio
@@ -83,7 +86,9 @@ async def test_register_invalid_password_no_uppercase(client: AsyncClient):
 
     assert response.status_code == 422
     data = response.json()
-    assert "detail" in data
+    assert data["error_code"] == "VALIDATION_ERROR"
+    assert "details" in data
+    assert "errors" in data["details"]
 
 
 @pytest.mark.asyncio
@@ -100,7 +105,9 @@ async def test_register_invalid_password_no_lowercase(client: AsyncClient):
 
     assert response.status_code == 422
     data = response.json()
-    assert "detail" in data
+    assert data["error_code"] == "VALIDATION_ERROR"
+    assert "details" in data
+    assert "errors" in data["details"]
 
 
 @pytest.mark.asyncio
@@ -117,7 +124,9 @@ async def test_register_invalid_password_no_digit(client: AsyncClient):
 
     assert response.status_code == 422
     data = response.json()
-    assert "detail" in data
+    assert data["error_code"] == "VALIDATION_ERROR"
+    assert "details" in data
+    assert "errors" in data["details"]
 
 
 @pytest.mark.asyncio
@@ -134,7 +143,9 @@ async def test_register_invalid_email(client: AsyncClient):
 
     assert response.status_code == 422
     data = response.json()
-    assert "detail" in data
+    assert data["error_code"] == "VALIDATION_ERROR"
+    assert "details" in data
+    assert "errors" in data["details"]
 
 
 @pytest.mark.asyncio
@@ -191,7 +202,7 @@ async def test_login_wrong_password(client: AsyncClient):
     )
 
     assert response.status_code == 401
-    assert response.json()["detail"] == "Incorrect email or password"
+    assert response.json()["message"] == "Incorrect email or password"
 
 
 @pytest.mark.asyncio
@@ -206,7 +217,7 @@ async def test_login_nonexistent_user(client: AsyncClient):
     )
 
     assert response.status_code == 401
-    assert response.json()["detail"] == "Incorrect email or password"
+    assert response.json()["message"] == "Incorrect email or password"
 
 
 @pytest.mark.asyncio

@@ -12,8 +12,8 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 **Overall Assessment**: Good foundation with room for improvement
 **Critical Issues**: 2 (✅ 2 fixed)
 **High Priority Issues**: 8 (✅ 8 fixed)
-**Medium Priority Issues**: 12 (✅ 4 fixed)
-**Low Priority Issues**: 7
+**Medium Priority Issues**: 12 (✅ 7 fixed)
+**Low Priority Issues**: 7 (✅ 1 fixed)
 
 **Recent Fixes (2025-11-25)**:
 - ✅ Issue #1: Fixed AI menu generation AttributeError
@@ -30,6 +30,10 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 - ✅ Issue #12: Optimized invite code lookup using database-level normalization
 - ✅ Issue #13: Documented invite code security considerations
 - ✅ Issue #14: Added pagination to collections and shopping lists endpoints
+- ✅ Issue #15: Standardized error response format across all endpoints
+- ✅ Issue #16: Added User model validation method for OAuth user authentication constraints
+- ✅ Issue #17: Moved OAuth cleanup to database service, removed direct model import from main
+- ✅ Issue #18: Secured TESTING flag to only work in non-production environments
 
 ---
 
@@ -290,22 +294,33 @@ The recipe search endpoint already had comprehensive pagination support.
 ### 15. Inconsistent Error Response Format
 **Files**: Multiple
 **Severity**: Medium (API Design)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: Some endpoints return `{"detail": "error"}`, others return `{"error_code": "...", "message": "..."}`. This inconsistency makes client error handling difficult.
 
-**Fix**: Standardize on one error format across all endpoints.
+**Fix**: Updated all exception handlers in `backend/app/main.py` to return consistent format:
+- All errors now return `{"error_code": "...", "message": "...", "details": {}}`
+- HTTPException handler converts FastAPI's default format to standard format
+- RequestValidationError now uses standard format with errors in `details.errors`
+- General exception handler standardized for both HTTPException and uncaught exceptions
 
 ### 16. Missing Database Constraints
 **File**: `backend/app/models/user.py`
 **Severity**: Medium (Data Integrity)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: No database-level check that OAuth users (where `hashed_password` is NULL) must have at least one `identity_provider` record. This could lead to orphaned users.
 
-**Fix**: Add a database check constraint or enforce in application logic during user deletion.
+**Fix**: Added `has_valid_auth_method()` validation method to User model in `backend/app/models/user.py`:
+- Method checks if user has password OR at least one identity provider
+- Provides centralized validation that can be used across the application
+- Documents the constraint for OAuth users to prevent orphaned accounts
+- Complements existing validation in OAuth provider deletion endpoint
 
 ### 17. Unused Import in Main
 **File**: `backend/app/main.py:39`
 **Severity**: Low (Code Quality)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 ```python
 from app.models.oauth_state import OAuthState
@@ -313,9 +328,17 @@ from app.models.oauth_state import OAuthState
 
 **Issue**: OAuthState is imported but only used for its cleanup method. Consider moving cleanup to a service.
 
+**Fix**: Moved cleanup to database service layer:
+- Created `cleanup_expired_data()` function in `backend/app/core/database.py`
+- Function handles cleanup of expired OAuth states and can be extended for other cleanup tasks
+- Removed OAuthState import from `backend/app/main.py`
+- Updated lifespan function to use the new cleanup service
+- Improved separation of concerns and code organization
+
 ### 18. Testing Flag in Production Code
 **File**: `backend/app/core/config.py:19`
 **Severity**: Medium (Security)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 ```python
 TESTING: bool = False  # Set to True to disable rate limiting for tests
@@ -323,7 +346,12 @@ TESTING: bool = False  # Set to True to disable rate limiting for tests
 
 **Issue**: A production environment variable could accidentally disable rate limiting if set incorrectly.
 
-**Fix**: Only read TESTING flag if DEBUG is True, or use a separate test configuration class.
+**Fix**: Implemented secure TESTING flag in `backend/app/core/config.py`:
+- Renamed field to `_TESTING` (internal/private field)
+- Created `TESTING` property that only returns True when `_TESTING=True` AND `ENVIRONMENT != "production"`
+- Prevents accidental disabling of security features (like rate limiting) in production
+- Even if TESTING environment variable is set in production, it will be ignored
+- Simple property-based protection without over-engineering
 
 ### 19. Log Injection Vulnerability
 **File**: `backend/app/api/auth.py:66`
@@ -685,23 +713,26 @@ Despite the issues listed above, the codebase has many strengths:
 9. ✅ Fix #9: Refresh token rate limiting
 10. ✅ Fix #11: N+1 query optimization
 11. ✅ Fix #14: Add pagination to list endpoints
-12. Fix #36: Account lockout mechanism
-13. Fix #37: Password strength validation
+12. ✅ Fix #15: Error response format standardization
+13. ✅ Fix #16: OAuth user database constraint validation
+14. ✅ Fix #18: Secure TESTING flag
+15. Fix #36: Account lockout mechanism
+16. Fix #37: Password strength validation
 
 ### Medium Term (Next month)
-14. ✅ Fix #7: Race condition in refresh tokens
-15. ✅ Fix #12: Invite code lookup optimization
-16. ✅ Fix #13: Invite code security documentation
-17. Fix #21: Request size limits
-18. Implement #44: Integration test suite
-19. Implement #40: Migration testing
-20. Simplify #47-49: Code consolidation
+17. ✅ Fix #7: Race condition in refresh tokens
+18. ✅ Fix #12: Invite code lookup optimization
+19. ✅ Fix #13: Invite code security documentation
+20. ✅ Fix #17: Code cleanup in main.py
+21. Fix #21: Request size limits
+22. Implement #44: Integration test suite
+23. Implement #40: Migration testing
+24. Simplify #47-49: Code consolidation
 
 ### Long Term (Technical debt backlog)
-19. Address #30-34: Over-engineering issues
-20. Standardize #15: Error response format
-21. Add #39: Comprehensive API documentation
-22. Improve #43: Request ID tracking
+25. Address #30-34: Over-engineering issues
+26. Add #39: Comprehensive API documentation
+27. Improve #43: Request ID tracking
 
 ---
 

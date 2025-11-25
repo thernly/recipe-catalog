@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "production"
-    TESTING: bool = False  # Set to True to disable rate limiting for tests
+    _TESTING: bool = False  # Internal flag - only enabled in non-production environments
 
     # Server
     HOST: str = "0.0.0.0"
@@ -119,6 +119,21 @@ class Settings(BaseSettings):
                 "Generate a secure key with: openssl rand -hex 32"
             )
         return v
+
+    @property
+    def TESTING(self) -> bool:
+        """
+        Testing flag that's only enabled in non-production environments.
+
+        This prevents accidentally disabling security features (like rate limiting)
+        in production even if the TESTING environment variable is set.
+        """
+        return self._TESTING and self.ENVIRONMENT != "production"
+
+    @TESTING.setter
+    def TESTING(self, value: bool) -> None:
+        """Allow tests to set TESTING flag."""
+        self._TESTING = value
 
 
 # Create global settings instance
