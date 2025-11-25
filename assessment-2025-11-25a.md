@@ -11,7 +11,7 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 
 **Overall Assessment**: Good foundation with room for improvement
 **Critical Issues**: 2 (✅ 2 fixed)
-**High Priority Issues**: 8 (✅ 5 fixed)
+**High Priority Issues**: 8 (✅ 8 fixed)
 **Medium Priority Issues**: 12
 **Low Priority Issues**: 7
 
@@ -23,6 +23,9 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 - ✅ Issue #5: Replaced hardcoded localhost URL with settings.FRONTEND_URL
 - ✅ Issue #6: Added email service configuration checks
 - ✅ Issue #7: Added database locking for refresh token race condition
+- ✅ Issue #8: Added OAuth redirect URL validation infrastructure
+- ✅ Issue #9: Reduced refresh token rate limit from 20/minute to 5/minute
+- ✅ Issue #10: Added collection ID ownership validation
 
 ---
 
@@ -163,41 +166,46 @@ result = await db.execute(
 This ensures concurrent refresh requests are serialized - the second request will wait until the first completes, then see the token is revoked and return an appropriate error.
 
 ### 8. Unvalidated Redirect in OAuth
-**File**: Not visible in reviewed files, but OAuth callback likely has this issue
+**File**: `backend/app/api/oauth.py`, `backend/app/core/security.py`
 **Severity**: High (Security - Open Redirect)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: OAuth callbacks typically redirect users. If the redirect URL isn't validated, it could lead to open redirect vulnerabilities.
 
-**Recommendation**: Ensure OAuth callback validates redirect URLs against a whitelist.
+**Fix**: Implemented comprehensive redirect URL validation:
+- Added `is_safe_redirect_url()` function in `backend/app/core/security.py` that validates URLs against `ALLOWED_ORIGINS` and `FRONTEND_URL`
+- Updated `OAuthState.create_state()` to support optional `redirect_url` parameter with security documentation
+- Modified OAuth authorize endpoint to accept and validate `return_url` parameter
+- Added security documentation in OAuth callback about proper handling of redirect URLs
+- Prevents CWE-601 open redirect vulnerabilities
 
 ### 9. No Rate Limiting on Refresh Token Endpoint
-**File**: `backend/app/api/auth.py:223`
+**File**: `backend/app/api/auth.py:225`
 **Severity**: High (Security)
-
-```python
-@router.post("/refresh")
-@limiter.limit(lambda: _get_rate_limit("20/minute"))
-```
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: 20 requests per minute is quite generous for refresh tokens. An attacker could potentially try many tokens.
 
-**Recommendation**: Reduce to 5/minute and implement exponential backoff on failures.
+**Fix**: Reduced rate limit from 20/minute to 5/minute:
+```python
+@router.post("/refresh")
+@limiter.limit(lambda: _get_rate_limit("5/minute"))
+```
+This significantly reduces the attack surface for refresh token brute-force attempts while still allowing legitimate use cases.
 
 ### 10. Missing Input Validation on Collection IDs
-**File**: `backend/app/api/recipes/crud.py:106-110`
+**File**: `backend/app/api/recipes/crud.py:141-154, 259-267`
 **Severity**: High (Authorization Bug)
-
-```python
-if recipe_data.collection_ids:
-    for collection_id in recipe_data.collection_ids:
-        recipe_collection = RecipeCollection(
-            recipe_id=new_recipe.id, collection_id=collection_id
-        )
-```
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: No validation that the collection_ids belong to the current user or household. An attacker could add recipes to other users' collections.
 
-**Fix**: Verify each collection_id is owned by the current user/household before adding.
+**Fix**: Added comprehensive collection ownership validation:
+- Created `validate_collection_ownership()` function that verifies each collection belongs to the user or their household
+- Applied validation in `create_recipe` endpoint before adding recipes to collections
+- Applied validation in `update_recipe` endpoint before updating recipe collections
+- Raises `InvalidInputError` with clear message if unauthorized collection access is attempted
+- Prevents unauthorized access to other users' collections (IDOR vulnerability)
 
 ---
 
@@ -649,28 +657,29 @@ Despite the issues listed above, the codebase has many strengths:
 ## Recommendations Priority
 
 ### Immediate (Fix before next deployment)
-1. Fix #1: AI menu generation AttributeError
-2. Fix #2: Database session auto-commit
-3. Fix #3: Recipe collections deletion bug
-4. Fix #10: Collection ID authorization check
+1. ✅ Fix #1: AI menu generation AttributeError
+2. ✅ Fix #2: Database session auto-commit
+3. ✅ Fix #3: Recipe collections deletion bug
+4. ✅ Fix #10: Collection ID authorization check
 5. Fix #35: Add CSRF protection
 
 ### Short Term (Next sprint)
-6. Fix #4: Timezone handling standardization
-7. Fix #5: Email URL hardcoding
-8. Fix #8: OAuth redirect validation
-9. Fix #11: N+1 query optimization
-10. Fix #14: Add pagination to list endpoints
-11. Fix #36: Account lockout mechanism
-12. Fix #37: Password strength validation
+6. ✅ Fix #4: Timezone handling standardization
+7. ✅ Fix #5: Email URL hardcoding
+8. ✅ Fix #8: OAuth redirect validation
+9. ✅ Fix #9: Refresh token rate limiting
+10. Fix #11: N+1 query optimization
+11. Fix #14: Add pagination to list endpoints
+12. Fix #36: Account lockout mechanism
+13. Fix #37: Password strength validation
 
 ### Medium Term (Next month)
-13. Fix #7: Race condition in refresh tokens
-14. Fix #12: Invite code lookup optimization
-15. Fix #21: Request size limits
-16. Implement #44: Integration test suite
-17. Implement #40: Migration testing
-18. Simplify #47-49: Code consolidation
+14. ✅ Fix #7: Race condition in refresh tokens
+15. Fix #12: Invite code lookup optimization
+16. Fix #21: Request size limits
+17. Implement #44: Integration test suite
+18. Implement #40: Migration testing
+19. Simplify #47-49: Code consolidation
 
 ### Long Term (Technical debt backlog)
 19. Address #30-34: Over-engineering issues

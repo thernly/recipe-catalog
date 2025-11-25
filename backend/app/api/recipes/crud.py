@@ -56,6 +56,42 @@ def sanitize_recipe_data(data: dict) -> dict:
     return sanitized
 
 
+async def validate_collection_ownership(
+    collection_ids: list[int],
+    user_id: int,
+    household_id: int,
+    db: AsyncSession,
+) -> None:
+    """
+    Validate that all collection IDs belong to the current user or their household.
+
+    Args:
+        collection_ids: List of collection IDs to validate
+        user_id: Current user's ID
+        household_id: Current user's household ID
+        db: Database session
+
+    Raises:
+        InvalidInputError: If any collection doesn't belong to user or household
+    """
+    from app.models.collection import Collection
+
+    for collection_id in collection_ids:
+        result = await db.execute(
+            select(Collection).where(Collection.id == collection_id)
+        )
+        collection = result.scalar_one_or_none()
+
+        if not collection:
+            raise InvalidInputError(message=f"Collection {collection_id} not found")
+
+        # Check if collection belongs to user or their household
+        if collection.user_id != user_id and collection.household_id != household_id:
+            raise InvalidInputError(
+                message=f"Collection {collection_id} does not belong to you or your household"
+            )
+
+
 @router.post("/", response_model=RecipeSchema, status_code=status.HTTP_201_CREATED)
 async def create_recipe(
     recipe_data: RecipeCreate,
@@ -103,6 +139,14 @@ async def create_recipe(
 
     # Add to collections if specified
     if recipe_data.collection_ids:
+        # Validate that all collections belong to user or household
+        await validate_collection_ownership(
+            recipe_data.collection_ids,
+            current_user.id,
+            household.id,
+            db,
+        )
+
         for collection_id in recipe_data.collection_ids:
             recipe_collection = RecipeCollection(
                 recipe_id=new_recipe.id, collection_id=collection_id
@@ -212,6 +256,16 @@ async def update_recipe(
 
     # Update collections if specified
     if recipe_update.collection_ids is not None:
+        # Validate that all collections belong to user or household
+        if recipe_update.collection_ids:
+            # Get household_id from recipe
+            await validate_collection_ownership(
+                recipe_update.collection_ids,
+                current_user.id,
+                recipe.household_id,
+                db,
+            )
+
         # Remove existing collections
         await db.execute(delete(RecipeCollection).where(RecipeCollection.recipe_id == recipe_id))
 

@@ -135,3 +135,55 @@ def get_refresh_token_expiry() -> datetime:
         Datetime object for configured days from now
     """
     return datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+
+def is_safe_redirect_url(url: str) -> bool:
+    """
+    Validate that a redirect URL is safe and belongs to allowed origins.
+
+    This prevents open redirect vulnerabilities by ensuring redirects only go to
+    trusted domains configured in ALLOWED_ORIGINS or FRONTEND_URL.
+
+    Args:
+        url: The URL to validate
+
+    Returns:
+        True if URL is safe to redirect to, False otherwise
+
+    Examples:
+        >>> is_safe_redirect_url("http://localhost:5173/dashboard")
+        True
+        >>> is_safe_redirect_url("https://evil.com/phishing")
+        False
+    """
+    from urllib.parse import urlparse
+
+    if not url:
+        return False
+
+    # Parse the URL
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+
+    # Relative URLs (no scheme/netloc) are safe - they can't redirect to external sites
+    if not parsed.scheme and not parsed.netloc:
+        return True
+
+    # Build list of allowed origins
+    allowed_origins = []
+
+    # Add configured allowed origins
+    if isinstance(settings.ALLOWED_ORIGINS, list):
+        allowed_origins.extend(settings.ALLOWED_ORIGINS)
+    elif isinstance(settings.ALLOWED_ORIGINS, str):
+        allowed_origins.append(settings.ALLOWED_ORIGINS)
+
+    # Add frontend URL
+    if settings.FRONTEND_URL:
+        allowed_origins.append(settings.FRONTEND_URL)
+
+    # Check if URL matches any allowed origin
+    url_origin = f"{parsed.scheme}://{parsed.netloc}"
+    return url_origin in allowed_origins
