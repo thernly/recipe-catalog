@@ -201,8 +201,6 @@ async def get_recipe(
     recipe_response = RecipeSchema.model_validate(recipe)
     recipe_response.creator_display_name = creator.display_name if creator else None
 
-    # TODO: Track recipe view for "recently viewed" feature
-
     return recipe_response
 
 

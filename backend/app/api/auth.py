@@ -125,8 +125,6 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
 
         logger.info("user_registered_successfully", email=new_user.email, user_id=new_user.id)
 
-        # TODO: Send verification email
-
         return new_user
     except HTTPException:
         # Re-raise HTTP exceptions
