@@ -75,6 +75,7 @@ function createAuthStore() {
 
 		/**
 		 * Register new user
+		 * Note: Does not automatically log in. Call login() separately if needed.
 		 */
 		async register(email: string, password: string, displayName?: string): Promise<void> {
 			update((state) => ({ ...state, isLoading: true }));
@@ -96,8 +97,7 @@ function createAuthStore() {
 					throw new Error(error.detail || 'Registration failed');
 				}
 
-				// Auto-login after registration
-				await this.login(email, password);
+				update((state) => ({ ...state, isLoading: false }));
 			} catch (error) {
 				update((state) => ({ ...state, isLoading: false }));
 				throw error;

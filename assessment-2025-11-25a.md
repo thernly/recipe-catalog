@@ -13,7 +13,7 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 **Critical Issues**: 2 (✅ 2 fixed)
 **High Priority Issues**: 8 (✅ 8 fixed)
 **Medium Priority Issues**: 12 (✅ 11 fixed)
-**Low Priority Issues**: 7 (✅ 7 fixed)
+**Low Priority Issues**: 10 (✅ 10 fixed)
 
 **Recent Fixes (2025-11-25)**:
 - ✅ Issue #1: Fixed AI menu generation AttributeError
@@ -45,6 +45,9 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 - ✅ Issue #27: Removed TODO comments without tracking
 - ✅ Issue #28: Centralized frontend API URL configuration
 - ✅ Issue #29: Added typed error handling with ApiError class
+- ✅ Issue #30: Removed unnecessary deprecation warning middleware
+- ✅ Issue #31: Simplified auth store registration flow by decoupling operations
+- ✅ Issue #32: Removed duplicate legacy route definitions
 
 ---
 
@@ -598,6 +601,7 @@ This enables the UI to display user-friendly error messages and handle different
 ### 30. Over-Engineering: Unnecessary Middleware Layer
 **File**: `backend/app/main.py:104-119`
 **Severity**: Low (Complexity)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 ```python
 @app.middleware("http")
@@ -612,23 +616,25 @@ async def add_deprecation_warning(request: Request, call_next):
 
 **Issue**: Adds deprecation headers to legacy routes, but these routes are still fully supported. If they're truly deprecated, set a sunset date and return 410 Gone after that date. Otherwise, this is just noise.
 
-**Simplification**: Either fully deprecate (with timeline) or remove the warning.
+**Fix**: Removed the deprecation warning middleware entirely since it added no value without a concrete deprecation plan.
 
 ### 31. Unnecessary Complexity in Auth Store
 **File**: `frontend/src/lib/stores/auth.ts:79-104`
 **Severity**: Low (Complexity)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: The `register` function auto-logs in after registration. This seems convenient but couples two operations. If auto-login fails, the user is registered but gets an error.
 
-**Simplification**: Let the register endpoint return tokens directly (like login does), or keep operations separate for clearer error handling.
+**Fix**: Decoupled registration and login operations in the auth store. The `register()` method now only handles registration, and the calling code (registration page) separately calls `login()` after successful registration. This provides clearer error handling and separation of concerns while maintaining the same user experience.
 
 ### 32. Duplicate Route Definitions
 **File**: `backend/app/main.py:245-260`
 **Severity**: Low (Maintenance)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: All routes are defined twice - once under `/api/v1/*` and once under `/api/*`. This doubles the maintenance burden.
 
-**Simplification**: Remove legacy routes or use a router alias/redirect instead of duplicating code.
+**Fix**: Removed all legacy route definitions (lines 316-326 in main.py). Since no code in the project (frontend or tests) uses the legacy routes, they were safely removed. Only the `/api/v1/*` routes remain, eliminating duplication and reducing maintenance burden. Also removed unused router imports from main.py.
 
 ### 33. Overly Complex Sanitization
 **File**: `backend/app/api/recipes/crud.py:26-56`
