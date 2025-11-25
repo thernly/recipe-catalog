@@ -187,7 +187,7 @@ async def test_invite_code_one_time_use(
         json={"code": code},
     )
     assert join2.status_code == status.HTTP_400_BAD_REQUEST
-    assert "already been used" in join2.json()["detail"]
+    assert "already been used" in join2.json()["message"]
 
 
 @pytest.mark.asyncio
@@ -213,7 +213,7 @@ async def test_cannot_join_if_already_in_household(
     )
 
     assert join_response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "already in" in join_response.json()["detail"].lower()
+    assert "already in" in join_response.json()["message"].lower()
 
 
 @pytest.mark.asyncio

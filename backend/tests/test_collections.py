@@ -84,7 +84,7 @@ async def test_create_collection_duplicate_name(client: AsyncClient, auth_header
     response = await client.post("/api/collections/", json=collection_data)
 
     assert response.status_code == 400
-    assert "already exists" in response.json()["detail"]
+    assert "already exists" in response.json()["message"]
 
 
 @pytest.mark.asyncio
@@ -230,7 +230,7 @@ async def test_update_collection_duplicate_name(client: AsyncClient, auth_header
     )
 
     assert response.status_code == 400
-    assert "already exists" in response.json()["detail"]
+    assert "already exists" in response.json()["message"]
 
 
 @pytest.mark.asyncio
@@ -295,7 +295,7 @@ async def test_cannot_delete_default_collection(
     response = await client.delete(f"/api/collections/{default_collection.id}")
 
     assert response.status_code == 400
-    assert "Cannot delete default collection" in response.json()["detail"]
+    assert "Cannot delete default collection" in response.json()["message"]
 
 
 @pytest.mark.asyncio

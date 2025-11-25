@@ -31,12 +31,11 @@ from app.api import (
 from app.api.v1 import api_v1_router
 from app.core.config import settings
 
-# Cleanup expired OAuth states on startup
-from app.core.database import AsyncSessionLocal, close_db, init_db
+# Database and core dependencies
+from app.core.database import AsyncSessionLocal, cleanup_expired_data, close_db, init_db
 from app.core.exceptions import AppException
 from app.core.logging import configure_logging, get_logger
 from app.middleware.correlation_id import CorrelationIdMiddleware
-from app.models.oauth_state import OAuthState
 
 
 # Configure structured logging
@@ -52,14 +51,14 @@ async def lifespan(_app: FastAPI):
 
     async with AsyncSessionLocal() as session:
         try:
-            deleted_count = await OAuthState.cleanup_expired(session)
+            deleted_count = await cleanup_expired_data(session)
             if deleted_count > 0:
                 logger.info(
-                    "oauth_cleanup_success", deleted_count=deleted_count
+                    "startup_cleanup_success", deleted_count=deleted_count
                 )
         except Exception as e:
             logger.warning(
-                "oauth_cleanup_failed", error=str(e)
+                "startup_cleanup_failed", error=str(e)
             )
 
     yield
@@ -161,6 +160,47 @@ async def add_security_headers(request: Request, call_next):
 
 
 # Exception handlers
+from fastapi.exceptions import HTTPException
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """
+    Handle HTTPException with consistent error response format.
+
+    Converts FastAPI's default {"detail": "error"} format to our standard
+    {"error_code": "...", "message": "...", "details": {}} format.
+    """
+    # Map HTTP status codes to error codes
+    error_code_map = {
+        400: "INVALID_INPUT",
+        401: "UNAUTHORIZED",
+        403: "UNAUTHORIZED",
+        404: "RESOURCE_NOT_FOUND",
+        429: "RATE_LIMIT_EXCEEDED",
+        500: "INTERNAL_ERROR",
+        503: "EXTERNAL_SERVICE_ERROR",
+    }
+
+    error_code = error_code_map.get(exc.status_code, "INTERNAL_ERROR")
+
+    logger.error(
+        "http_exception",
+        url=str(request.url),
+        status_code=exc.status_code,
+        detail=str(exc.detail),
+    )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error_code": error_code,
+            "message": str(exc.detail),
+            "details": {},
+        },
+    )
+
+
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
     """Handle custom application exceptions."""
@@ -184,7 +224,7 @@ async def app_exception_handler(request: Request, exc: AppException):
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle validation errors and return JSON response."""
+    """Handle validation errors and return consistent error format."""
     logger.error("validation_error", url=str(request.url), errors=exc.errors())
 
     # Convert Pydantic errors to JSON-serializable format
@@ -202,23 +242,26 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             error_dict["ctx"] = {k: str(v) for k, v in error["ctx"].items()}
         errors.append(error_dict)
 
-    response_content = {"detail": errors}
-
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-        content=response_content,
+        content={
+            "error_code": "VALIDATION_ERROR",
+            "message": "Request validation failed",
+            "details": {"errors": errors},
+        },
     )
 
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Handle uncaught exceptions and return JSON response."""
+    """Handle all other uncaught exceptions with consistent error format."""
     logger.exception("unhandled_exception", url=str(request.url), error=str(exc))
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
-            "detail": "Internal server error",
-            "error": str(exc) if settings.DEBUG else "An error occurred",
+            "error_code": "INTERNAL_ERROR",
+            "message": "Internal server error",
+            "details": {"error": str(exc)} if settings.DEBUG else {},
         },
     )
 

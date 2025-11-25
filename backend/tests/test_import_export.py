@@ -268,7 +268,7 @@ async def test_import_invalid_json(client: AsyncClient, auth_headers: dict):
     response = await client.post("/api/import/recipes", data=data, files=files)
 
     assert response.status_code == 400
-    assert "Invalid JSON" in response.json()["detail"]
+    assert "Invalid JSON" in response.json()["message"]
 
 
 @pytest.mark.asyncio
@@ -280,7 +280,7 @@ async def test_import_non_json_file(client: AsyncClient, auth_headers: dict):
     response = await client.post("/api/import/recipes", data=data, files=files)
 
     assert response.status_code == 400
-    assert "must be a JSON file" in response.json()["detail"]
+    assert "must be a JSON file" in response.json()["message"]
 
 
 @pytest.mark.asyncio
@@ -520,7 +520,7 @@ async def test_import_with_invalid_collection_id(client: AsyncClient, auth_heade
     response = await client.post("/api/import/recipes", data=data, files=files)
 
     assert response.status_code == 404
-    assert "Collection not found" in response.json()["detail"]
+    assert "Collection not found" in response.json()["message"]
 
 
 @pytest.mark.asyncio

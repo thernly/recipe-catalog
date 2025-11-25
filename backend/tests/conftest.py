@@ -29,9 +29,12 @@ TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 @pytest.fixture(scope="session", autouse=True)
 def enable_testing_mode():
     """Enable testing mode to disable rate limiting for all tests."""
+    original_env = settings.ENVIRONMENT
+    settings.ENVIRONMENT = "testing"
     settings.TESTING = True
     yield
     settings.TESTING = False
+    settings.ENVIRONMENT = original_env
 
 
 @pytest_asyncio.fixture

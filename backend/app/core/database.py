@@ -71,6 +71,19 @@ async def init_db():
         await conn.run_sync(Base.metadata.create_all)
 
 
+async def cleanup_expired_data(session: AsyncSession) -> int:
+    """
+    Clean up expired data from the database.
+
+    Returns:
+        Number of records deleted
+    """
+    from app.models.oauth_state import OAuthState
+
+    deleted_count = await OAuthState.cleanup_expired(session)
+    return deleted_count
+
+
 async def close_db():
     """Close database connections."""
     await engine.dispose()

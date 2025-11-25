@@ -26,7 +26,7 @@ async def test_authorize_provider_invalid(client: AsyncClient):
 
     assert response.status_code == 400
     data = response.json()
-    assert "Unknown provider" in data["detail"]
+    assert "Unknown provider" in data["message"]
 
 
 @pytest.mark.asyncio
@@ -36,7 +36,7 @@ async def test_authorize_provider_not_configured(client: AsyncClient):
     with patch("app.core.oauth.oauth.create_client", return_value=None):
         response = await client.get("/api/auth/google/authorize")
         assert response.status_code == 503
-        assert "not configured" in response.json()["detail"]
+        assert "not configured" in response.json()["message"]
 
 
 @pytest.mark.asyncio
@@ -268,7 +268,7 @@ async def test_oauth_callback_unverified_email_rejects_link(
     # Should reject auto-linking
     assert response.status_code == 400
     data = response.json()
-    assert "Email not verified" in data["detail"]
+    assert "Email not verified" in data["message"]
 
 
 @pytest.mark.asyncio
@@ -321,7 +321,7 @@ async def test_prevent_remove_last_auth_method(client: AsyncClient, test_db):
     # Should reject removal
     assert response.status_code == 400
     data = response.json()
-    assert "Cannot remove last authentication method" in data["detail"]
+    assert "Cannot remove last authentication method" in data["message"]
 
 
 @pytest.mark.asyncio
