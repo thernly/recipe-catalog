@@ -5,7 +5,7 @@ Recipe CRUD operations.
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -213,7 +213,7 @@ async def update_recipe(
     # Update collections if specified
     if recipe_update.collection_ids is not None:
         # Remove existing collections
-        await db.execute(select(RecipeCollection).where(RecipeCollection.recipe_id == recipe_id))
+        await db.execute(delete(RecipeCollection).where(RecipeCollection.recipe_id == recipe_id))
 
         # Add new collections
         for collection_id in recipe_update.collection_ids:

@@ -147,7 +147,7 @@ async def generate_menu(
                 {
                     "id": recipe.id,
                     "name": recipe.name,
-                    "category": recipe.recipeCategory[0] if recipe.recipeCategory else None,
+                    "category": recipe.category,
                 }
                 for recipe in recipes
             ]
