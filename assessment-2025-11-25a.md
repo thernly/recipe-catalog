@@ -12,7 +12,7 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 **Overall Assessment**: Good foundation with room for improvement
 **Critical Issues**: 2 (✅ 2 fixed)
 **High Priority Issues**: 8 (✅ 8 fixed)
-**Medium Priority Issues**: 12 (✅ 7 fixed)
+**Medium Priority Issues**: 12 (✅ 11 fixed)
 **Low Priority Issues**: 7 (✅ 1 fixed)
 
 **Recent Fixes (2025-11-25)**:
@@ -34,6 +34,10 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 - ✅ Issue #16: Added User model validation method for OAuth user authentication constraints
 - ✅ Issue #17: Moved OAuth cleanup to database service, removed direct model import from main
 - ✅ Issue #18: Secured TESTING flag to only work in non-production environments
+- ✅ Issue #19: Fixed log injection vulnerability using structured logging
+- ✅ Issue #20: Added CORS validation to prevent wildcard origins in production
+- ✅ Issue #21: Added request size limit middleware (10MB max)
+- ✅ Issue #22: Fixed cookie security settings to use ENVIRONMENT instead of TESTING flag
 
 ---
 
@@ -356,6 +360,7 @@ TESTING: bool = False  # Set to True to disable rate limiting for tests
 ### 19. Log Injection Vulnerability
 **File**: `backend/app/api/auth.py:66`
 **Severity**: Medium (Security)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 ```python
 logger.info(f"Registration attempt for email: {user_data.email}")
@@ -363,27 +368,75 @@ logger.info(f"Registration attempt for email: {user_data.email}")
 
 **Issue**: User input directly in log messages could allow log injection attacks (newlines, ANSI codes, etc.).
 
-**Fix**: Sanitize email or use structured logging with separate fields.
+**Fix**: Converted all f-string logging to structured logging with separate fields. For example:
+```python
+# Before
+logger.info(f"Registration attempt for email: {user_data.email}")
+
+# After
+logger.info("registration_attempt", email=user_data.email)
+```
+This ensures user input is properly escaped and cannot inject malicious content into logs. Updated all logging statements in `backend/app/api/auth.py` to use structured logging.
 
 ### 20. Overly Permissive CORS in Development
 **File**: `backend/app/core/config.py:35`
 **Severity**: Medium (Security)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: Default CORS is `["http://localhost:5173"]` which is fine, but no validation that production deployments set appropriate origins.
 
-**Recommendation**: Add validation that in production, ALLOWED_ORIGINS isn't set to "*".
+**Fix**: Added field validator in `backend/app/core/config.py` to prevent wildcard CORS origins in production:
+```python
+@field_validator("ALLOWED_ORIGINS")
+@classmethod
+def validate_cors_origins(cls, v, info):
+    """Validate CORS origins - prevent wildcard in production."""
+    if info.data.get("ENVIRONMENT") == "production":
+        if "*" in v:
+            raise ValueError(
+                "ALLOWED_ORIGINS cannot contain '*' in production. "
+                "Specify explicit origins for security."
+            )
+    return v
+```
+This prevents accidental deployment with permissive CORS settings in production environments.
 
 ### 21. No Request Size Limits
 **File**: `backend/app/main.py`
 **Severity**: Medium (DoS)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: No explicit limit on request body size. An attacker could POST a multi-GB recipe and exhaust memory.
 
-**Fix**: Add middleware to limit request body size (e.g., 10MB max).
+**Fix**: Added request size limit middleware in `backend/app/main.py`:
+```python
+@app.middleware("http")
+async def limit_request_size(request: Request, call_next):
+    """Limit request body size to prevent memory exhaustion attacks."""
+    content_length = request.headers.get("content-length")
+
+    if content_length:
+        content_length = int(content_length)
+        max_size = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024  # Convert MB to bytes
+
+        if content_length > max_size:
+            return JSONResponse(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                content={
+                    "error_code": "request_too_large",
+                    "message": f"Request body too large. Maximum size is {settings.MAX_UPLOAD_SIZE_MB}MB",
+                    "details": {},
+                },
+            )
+
+    return await call_next(request)
+```
+Uses the existing `MAX_UPLOAD_SIZE_MB` setting (default 10MB) to prevent DoS attacks via large request bodies.
 
 ### 22. Insecure Cookie Settings in Tests
 **File**: `backend/app/api/auth.py:205`
 **Severity**: Medium (Test Leakage)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 ```python
 secure=not settings.TESTING,  # HTTPS only in production
@@ -391,7 +444,19 @@ secure=not settings.TESTING,  # HTTPS only in production
 
 **Issue**: Testing flag makes cookies insecure. If TESTING accidentally set in production, cookies would be sent over HTTP.
 
-**Fix**: Never rely on TESTING flag for security settings. Use `ENVIRONMENT` check instead.
+**Fix**: Updated all cookie security settings to use `ENVIRONMENT` check instead of `TESTING` flag:
+```python
+# Before
+secure=not settings.TESTING
+
+# After
+secure=settings.ENVIRONMENT == "production"
+```
+Updated all occurrences in:
+- `backend/app/api/auth.py` (4 locations - login and refresh endpoints)
+- `backend/app/api/oauth.py` (6 locations - OAuth login flows)
+
+This ensures cookies are always secure in production regardless of any testing flags, preventing accidental security misconfigurations.
 
 ---
 
@@ -724,15 +789,18 @@ Despite the issues listed above, the codebase has many strengths:
 18. ✅ Fix #12: Invite code lookup optimization
 19. ✅ Fix #13: Invite code security documentation
 20. ✅ Fix #17: Code cleanup in main.py
-21. Fix #21: Request size limits
-22. Implement #44: Integration test suite
-23. Implement #40: Migration testing
-24. Simplify #47-49: Code consolidation
+21. ✅ Fix #19: Log injection vulnerability
+22. ✅ Fix #20: CORS validation for production
+23. ✅ Fix #21: Request size limits
+24. ✅ Fix #22: Cookie security settings
+25. Implement #44: Integration test suite
+26. Implement #40: Migration testing
+27. Simplify #47-49: Code consolidation
 
 ### Long Term (Technical debt backlog)
-25. Address #30-34: Over-engineering issues
-26. Add #39: Comprehensive API documentation
-27. Improve #43: Request ID tracking
+28. Address #30-34: Over-engineering issues
+29. Add #39: Comprehensive API documentation
+30. Improve #43: Request ID tracking
 
 ---
 

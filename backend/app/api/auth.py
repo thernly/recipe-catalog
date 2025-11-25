@@ -64,7 +64,7 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
     Raises:
         HTTPException: If email already exists
     """
-    logger.info(f"Registration attempt for email: {user_data.email}")
+    logger.info("registration_attempt", email=user_data.email)
 
     try:
         # Check if email already exists
@@ -72,14 +72,14 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
         existing_user = result.scalar_one_or_none()
 
         if existing_user:
-            logger.warning(f"Registration failed - email already exists: {user_data.email}")
+            logger.warning("registration_failed_duplicate_email", email=user_data.email)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered",
             )
 
         # Create new user
-        logger.debug(f"Creating new user: {user_data.email}")
+        logger.debug("creating_new_user", email=user_data.email)
         hashed_password = get_password_hash(user_data.password)
         new_user = User(
             email=user_data.email.lower(),
@@ -91,26 +91,29 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
 
         db.add(new_user)
         await db.flush()  # Get the user ID
-        logger.debug(f"User created with ID: {new_user.id}")
+        logger.debug("user_created", user_id=new_user.id)
 
         # Create default preferences
-        logger.debug(f"Creating default preferences for user {new_user.id}")
+        logger.debug("creating_default_preferences", user_id=new_user.id)
         preferences = UserPreferences(user_id=new_user.id)
         db.add(preferences)
 
         # Create default household
         from app.services.household import create_default_household_for_new_user
 
-        logger.debug(f"Creating default household for user {new_user.id}")
+        logger.debug("creating_default_household", user_id=new_user.id)
         household = await create_default_household_for_new_user(db, new_user)
         logger.debug(
-            f"Created household '{household.name}' (ID: {household.id}) for user {new_user.id}"
+            "household_created",
+            household_name=household.name,
+            household_id=household.id,
+            user_id=new_user.id,
         )
 
         # Create default collections
         from app.models.collection import Collection
 
-        logger.debug(f"Creating default collections for user {new_user.id}")
+        logger.debug("creating_default_collections", user_id=new_user.id)
         default_collections = [
             Collection(
                 user_id=new_user.id,
@@ -127,7 +130,7 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
         await db.commit()
         await db.refresh(new_user)
 
-        logger.info(f"User registered successfully: {new_user.email} (ID: {new_user.id})")
+        logger.info("user_registered_successfully", email=new_user.email, user_id=new_user.id)
 
         # TODO: Send verification email
 
@@ -203,7 +206,7 @@ async def login(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=not settings.TESTING,  # HTTPS only in production
+        secure=settings.ENVIRONMENT == "production",  # HTTPS only in production
         samesite="strict",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
@@ -213,7 +216,7 @@ async def login(
         key="refresh_token",
         value=refresh_token_value,
         httponly=True,
-        secure=not settings.TESTING,
+        secure=settings.ENVIRONMENT == "production",
         samesite="strict",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
@@ -315,7 +318,7 @@ async def refresh_token(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=not settings.TESTING,
+        secure=settings.ENVIRONMENT == "production",
         samesite="strict",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
@@ -324,7 +327,7 @@ async def refresh_token(
         key="refresh_token",
         value=new_refresh_token_value,
         httponly=True,
-        secure=not settings.TESTING,
+        secure=settings.ENVIRONMENT == "production",
         samesite="strict",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )

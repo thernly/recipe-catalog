@@ -246,7 +246,7 @@ async def oauth_callback(
                 key="access_token",
                 value=access_token,
                 httponly=True,
-                secure=not settings.TESTING,
+                secure=settings.ENVIRONMENT == "production",
                 samesite="strict",
                 max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             )
@@ -254,7 +254,7 @@ async def oauth_callback(
                 key="refresh_token",
                 value=refresh_token_value,
                 httponly=True,
-                secure=not settings.TESTING,
+                secure=settings.ENVIRONMENT == "production",
                 samesite="strict",
                 max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
             )
@@ -312,7 +312,7 @@ async def oauth_callback(
                 key="access_token",
                 value=access_token,
                 httponly=True,
-                secure=not settings.TESTING,
+                secure=settings.ENVIRONMENT == "production",
                 samesite="strict",
                 max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             )
@@ -320,7 +320,7 @@ async def oauth_callback(
                 key="refresh_token",
                 value=refresh_token_value,
                 httponly=True,
-                secure=not settings.TESTING,
+                secure=settings.ENVIRONMENT == "production",
                 samesite="strict",
                 max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
             )
@@ -398,7 +398,7 @@ async def oauth_callback(
             key="access_token",
             value=access_token,
             httponly=True,
-            secure=not settings.TESTING,
+            secure=settings.ENVIRONMENT == "production",
             samesite="strict",
             max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
@@ -406,7 +406,7 @@ async def oauth_callback(
             key="refresh_token",
             value=refresh_token_value,
             httponly=True,
-            secure=not settings.TESTING,
+            secure=settings.ENVIRONMENT == "production",
             samesite="strict",
             max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         )

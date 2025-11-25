@@ -120,6 +120,18 @@ class Settings(BaseSettings):
             )
         return v
 
+    @field_validator("ALLOWED_ORIGINS")
+    @classmethod
+    def validate_cors_origins(cls, v, info):
+        """Validate CORS origins - prevent wildcard in production."""
+        if info.data.get("ENVIRONMENT") == "production":
+            if "*" in v:
+                raise ValueError(
+                    "ALLOWED_ORIGINS cannot contain '*' in production. "
+                    "Specify explicit origins for security."
+                )
+        return v
+
     @property
     def TESTING(self) -> bool:
         """
