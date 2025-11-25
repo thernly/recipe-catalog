@@ -47,7 +47,7 @@ Alternative: Self-hosted on Proxmox with Docker
 
 ## 📁 Project Structure
 
-```
+```text
 recipe-catalog/
 ├── frontend/           # SvelteKit application
 │   ├── src/
@@ -312,6 +312,7 @@ uv run mypy --strict app/
 ```
 
 **Configuration:**
+
 - Ruff and mypy are configured in `pyproject.toml`
 - Line length: 100 characters
 - Target Python version: 3.13
@@ -365,6 +366,7 @@ open htmlcov/index.html
 ```
 
 **Coverage Configuration:**
+
 - Configuration file: `.coveragerc`
 - Target coverage: 80%+
 - Excluded: migrations, tests, `__init__.py` files

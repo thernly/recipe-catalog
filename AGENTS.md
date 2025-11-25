@@ -67,8 +67,7 @@ recipe-catalog/
 │   │   │   ├── recipes.py      # Recipe CRUD
 │   │   │   ├── collections.py  # Collection management
 │   │   │   ├── users.py        # User profile/preferences
-│   │   │   ├── import_recipes.py # Recipe import
-│   │   │   └── export.py       # Recipe export
+│   │   │   ├── import_export.py # Recipe import/export
 │   │   ├── core/               # Core utilities
 │   │   │   ├── config.py       # Settings management
 │   │   │   ├── database.py     # Database setup
@@ -83,7 +82,8 @@ recipe-catalog/
 │   │   ├── schemas/            # Pydantic schemas
 │   │   │   ├── user.py
 │   │   │   ├── recipe.py
-│   │   │   └── collection.py
+│   │   │   ├── collection.py
+│   │   │   └── import_export.py
 │   │   ├── services/           # Business logic
 │   │   └── utils/              # Utility functions
 │   ├── alembic/                # Database migrations
@@ -112,19 +112,25 @@ recipe-catalog/
    - `+layout.svelte` = layout wrapper
    - `[id]/` = dynamic route segments
 
-2. **Store-Based State**: Authentication and collections use Svelte stores
+2. **Unified Layout System**: Application uses a root layout with Navbar
+   - Root `+layout.svelte` includes Navbar and CollectionsSidebar for authenticated users
+   - Navbar appears consistently across all authenticated pages
+   - CollectionsSidebar is integrated into the main layout for easy collection navigation
+
+3. **Store-Based State**: Authentication and collections use Svelte stores
    - `auth.ts`: User session, login/logout, token management
    - `collections.ts`: Collection list and CRUD operations
 
-3. **API Client Pattern**: Centralized API calls through `lib/api/` modules
+4. **API Client Pattern**: Centralized API calls through `lib/api/` modules
    - `client.ts`: Base fetch wrapper with auth headers
    - Individual modules for different resources (recipes, users, collections)
 
-4. **Theme System**: CSS custom properties with `data-theme` attribute
+5. **Theme System**: CSS custom properties with `data-theme` attribute
    - Two themes: "classic" (Charcoal + Saffron) and "professional" (Navy + Apricot)
-   - Theme switcher component persists preference to localStorage
+   - Theme switcher available in Settings page
+   - Theme preference persists to localStorage
 
-5. **Component Organization**:
+6. **Component Organization**:
    - Reusable UI components in `lib/components/`
    - Feature-specific components in subdirectories (recipe/, settings/, export/)
 
@@ -194,24 +200,67 @@ recipe-catalog/
 
 ---
 
-## Known Issues & Technical Debt
+## Current Implementation Status
 
-### Current Issues (from CODEBASE_ANALYSIS.md)
+### ✅ Completed Features
 
-1. **Navigation Inconsistency**
-   - Navbar missing from recipe detail pages (`/recipes/[id]`)
-   - Navbar missing from settings page
-   - Navbar missing from collection detail pages
-   - Theme toggle only available on landing page (disappears after login)
+1. **Navigation System**
+   - Unified layout with Navbar component across all authenticated pages
+   - CollectionsSidebar integrated into main layout
+   - Theme switcher available in Settings page
+   - Consistent navigation experience throughout the app
 
-2. **Unused Components**
-   - `CollectionsSidebar.svelte` exists but is not used in any page layout
-   - Component has full functionality but no integration points
+2. **User Management**
+   - Registration with email verification
+   - Login/logout with JWT authentication
+   - Password reset flow
+   - User profile management
+   - User preferences (theme, default view, cuisines, categories)
+   - Account deletion
 
-3. **Layout Structure**
-   - Root layout (`+layout.svelte`) is empty (only `<slot />`)
-   - Each page imports Navbar individually (inconsistent)
-   - Should consider unified layout approach
+3. **Recipe Management**
+   - Full CRUD operations
+   - Search and filtering
+   - Pagination
+   - Soft delete with 30-day trash
+   - Recipe restoration
+   - Permanent deletion
+   - Ingredients and instructions management
+
+4. **Collection Management**
+   - Create, read, update, delete collections
+   - Add/remove recipes from collections
+   - Collection sidebar navigation
+   - Soft delete with trash
+
+5. **Import/Export**
+   - JSON import for bulk recipe creation
+   - JSON, Markdown, and Text export formats
+   - Full recipe data preservation
+
+6. **UI/UX**
+   - Two complete themes (Classic and Professional)
+   - Responsive design
+   - Loading states
+   - Error handling
+   - Toast notifications
+
+### 🚧 Known Technical Debt
+
+1. **Testing**
+   - Backend: Basic test coverage exists
+   - Frontend: No test framework configured yet
+   - Need: Comprehensive test suite for both frontend and backend
+
+2. **Documentation**
+   - API documentation exists in code
+   - Need: OpenAPI/Swagger UI setup
+   - Need: User-facing documentation
+
+3. **Performance**
+   - No query optimization yet
+   - No caching layer
+   - Consider adding for production deployment
 
 ### Planned Enhancements (from PRD v2.1)
 
@@ -347,10 +396,8 @@ uv run alembic downgrade -1
 - `DELETE /api/collections/{id}/recipes/{recipe_id}` - Remove recipe
 
 ### Import/Export
-- `POST /api/import/json` - Import recipes from JSON
-- `GET /api/export/json` - Export all recipes as JSON
-- `GET /api/export/markdown` - Export as Markdown
-- `GET /api/export/text` - Export as plain text
+- `POST /api/import-export/import` - Import recipes from JSON
+- `GET /api/import-export/export` - Export recipes (supports JSON, Markdown, Text formats via query param)
 
 ---
 
@@ -410,10 +457,10 @@ uv run alembic downgrade -1
 - Collection management
 
 **To Add**:
-- Import/export functionality
+- Import/export functionality tests
 - Email sending (mocked)
-- Rate limiting
-- Soft delete and restore
+- Rate limiting tests
+- Soft delete and restore edge cases
 
 ### Frontend Testing
 - **Framework**: Not yet configured (TODO)
@@ -444,7 +491,7 @@ When working on this codebase, AI agents should:
 - Read relevant files before making changes
 - Check both frontend and backend when changes affect both
 - Review existing patterns and follow them
-- Consult CODEBASE_ANALYSIS.md for known issues
+- The navigation system is now unified via root layout
 
 ### 2. Make Consistent Changes
 - Match existing code style and patterns
@@ -476,11 +523,11 @@ When working on this codebase, AI agents should:
 - Update API documentation if endpoints change
 - Note any breaking changes
 
-### 7. Known Issue Areas to Watch
-- Navigation consistency (navbar appearing on all pages)
-- Theme switcher availability (should be in settings)
-- CollectionsSidebar integration (currently unused)
-- Layout structure (consider unified approach)
+### 7. Implementation Notes
+- **Navigation**: Unified layout includes Navbar and CollectionsSidebar
+- **Theme Switcher**: Available in Settings page, persists to localStorage
+- **Import/Export**: Combined into single `import_export.py` API module
+- **Layout Pattern**: Root layout handles authenticated UI shell
 
 ---
 
@@ -519,8 +566,8 @@ from app.schemas.recipe import RecipeCreate
 
 ### Adding a New Page
 1. Create `+page.svelte` in `routes/` directory
-2. Import and use Navbar component (if authenticated page)
-3. Add to navigation if needed
+2. Page will automatically inherit Navbar and CollectionsSidebar from root layout
+3. Add to navigation if needed (Navbar component)
 4. Implement API calls using `lib/api/` clients
 5. Use theme CSS variables for styling
 6. Add auth guard if private page
@@ -560,5 +607,5 @@ This is a privacy-focused personal project. For questions or contributions:
 
 ---
 
-**Last Updated**: November 16, 2025  
-**Document Version**: 1.0
+**Last Updated**: November 25, 2025  
+**Document Version**: 1.1

@@ -11,6 +11,7 @@ Fully automated deployment script for installing Recipe Catalog on a Proxmox LXC
 #### Features
 
 ✅ **Automated Installation**
+
 - System package updates and dependency installation
 - Node.js 20.x and pnpm installation
 - UV package manager setup
@@ -24,10 +25,12 @@ Fully automated deployment script for installing Recipe Catalog on a Proxmox LXC
 - Optional firewall configuration
 
 ✅ **Interactive & Non-Interactive Modes**
+
 - Interactive mode with prompts (recommended for first-time setup)
 - Non-interactive mode for automation and CI/CD
 
 ✅ **Comprehensive Error Handling**
+
 - Detailed logging to `/var/log/recipe-catalog-deployment.log`
 - Color-coded console output
 - Pre-flight system checks
@@ -46,6 +49,7 @@ sudo bash deploy-lxc.sh
 ```
 
 The script will prompt you for:
+
 - Server IP address or domain name
 - Git repository URL (or use local files)
 - SSL/TLS configuration (optional)
@@ -104,11 +108,13 @@ Before running the deployment script:
 ## What The Script Does
 
 ### 1. System Preparation
+
 - Updates all system packages
 - Installs essential system dependencies (git, nginx, certbot, sqlite3)
 - Installs Node.js 20.x and pnpm
 
 ### 2. Application Setup
+
 - Creates `recipe-app` user for running the application
 - Creates directory structure in `/opt/recipe-catalog`
 - Clones repository or uses existing files
@@ -117,6 +123,7 @@ Before running the deployment script:
 - Pins the project to use Python 3.13
 
 ### 3. Backend Configuration
+
 - Installs Python dependencies using UV
 - Generates secure `.env` file with:
   - Random SECRET_KEY
@@ -127,11 +134,13 @@ Before running the deployment script:
 - Initializes SQLite database with migrations
 
 ### 4. Frontend Configuration
+
 - Installs Node.js dependencies
 - Generates `.env` file with API URL
 - Builds production frontend bundle
 
 ### 5. Web Server Setup
+
 - Configures Nginx as reverse proxy
 - Sets up static file serving for frontend
 - Proxies API requests to backend
@@ -139,12 +148,14 @@ Before running the deployment script:
 - Optionally installs SSL certificate
 
 ### 6. Service Management
+
 - Creates systemd service for backend
 - Enables auto-start on boot
 - Starts all services
 - Verifies service health
 
 ### 7. Security (Optional)
+
 - Configures UFW firewall
 - Opens ports 22 (SSH), 80 (HTTP), 443 (HTTPS)
 
@@ -153,22 +164,26 @@ Before running the deployment script:
 After successful deployment:
 
 1. **Access the Application**
+
    ```
    http://your-server-ip
    ```
 
 2. **View API Documentation**
+
    ```
    http://your-server-ip/api/docs
    ```
 
 3. **Check Service Status**
+
    ```bash
    systemctl status recipe-catalog-backend
    systemctl status nginx
    ```
 
 4. **View Logs**
+
    ```bash
    # Deployment log
    cat /var/log/recipe-catalog-deployment.log
@@ -190,6 +205,7 @@ After successful deployment:
 ### Script Fails During Python Installation
 
 If Python installation via UV fails:
+
 ```bash
 # Check if UV is installed
 su - recipe-app
@@ -260,6 +276,7 @@ sudo nano /opt/recipe-catalog/backend/.env
 ```
 
 After changes, restart the backend:
+
 ```bash
 sudo systemctl restart recipe-catalog-backend
 ```
@@ -273,6 +290,7 @@ sudo nano /opt/recipe-catalog/frontend/.env
 ```
 
 After changes, rebuild and restart:
+
 ```bash
 su - recipe-app
 cd /opt/recipe-catalog/frontend
@@ -290,6 +308,7 @@ sudo nano /etc/nginx/sites-available/recipe-catalog
 ```
 
 Test and reload:
+
 ```bash
 sudo nginx -t
 sudo systemctl reload nginx
@@ -352,6 +371,7 @@ sudo rm /var/log/nginx/recipe-catalog-*.log
 ## Support
 
 For issues with the deployment script:
+
 1. Check the deployment log: `/var/log/recipe-catalog-deployment.log`
 2. Review the troubleshooting section above
 3. Consult the main installation guide: `PROXMOX-LXC-INSTALL.md`
