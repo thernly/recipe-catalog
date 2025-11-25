@@ -19,6 +19,7 @@ from app.core.oauth import (
 )
 from app.core.security import (
     create_access_token,
+    generate_csrf_token,
     generate_refresh_token,
     get_refresh_token_expiry,
     is_safe_redirect_url,
@@ -259,7 +260,18 @@ async def oauth_callback(
                 max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
             )
 
-            return {"message": "Login successful"}
+            # Generate and set CSRF token
+            csrf_token = generate_csrf_token()
+            response.set_cookie(
+                key="csrf_token",
+                value=csrf_token,
+                httponly=False,
+                secure=settings.ENVIRONMENT == "production",
+                samesite="strict",
+                max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+            )
+
+            return {"message": "Login successful", "csrf_token": csrf_token}
 
         # Check if email already exists (for account linking)
         email_result = await db.execute(
@@ -325,7 +337,18 @@ async def oauth_callback(
                 max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
             )
 
-            return {"message": "Login successful"}
+            # Generate and set CSRF token
+            csrf_token = generate_csrf_token()
+            response.set_cookie(
+                key="csrf_token",
+                value=csrf_token,
+                httponly=False,
+                secure=settings.ENVIRONMENT == "production",
+                samesite="strict",
+                max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+            )
+
+            return {"message": "Login successful", "csrf_token": csrf_token}
 
         # Create new user account
         new_user = User(
@@ -411,7 +434,18 @@ async def oauth_callback(
             max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         )
 
-        return {"message": "Login successful"}
+        # Generate and set CSRF token
+        csrf_token = generate_csrf_token()
+        response.set_cookie(
+            key="csrf_token",
+            value=csrf_token,
+            httponly=False,
+            secure=settings.ENVIRONMENT == "production",
+            samesite="strict",
+            max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        )
+
+        return {"message": "Login successful", "csrf_token": csrf_token}
 
     except Exception as e:
         logger.error(f"OAuth callback error: {str(e)}")

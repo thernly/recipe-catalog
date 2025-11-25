@@ -187,3 +187,35 @@ def is_safe_redirect_url(url: str) -> bool:
     # Check if URL matches any allowed origin
     url_origin = f"{parsed.scheme}://{parsed.netloc}"
     return url_origin in allowed_origins
+
+
+# CSRF Protection (Double-Submit Cookie Pattern)
+def generate_csrf_token() -> str:
+    """
+    Generate a secure random CSRF token.
+
+    Returns:
+        A URL-safe random token string (32 bytes = 43 characters base64)
+    """
+    return secrets.token_urlsafe(32)
+
+
+def verify_csrf_token(cookie_token: str | None, header_token: str | None) -> bool:
+    """
+    Verify CSRF token using double-submit cookie pattern.
+
+    This provides defense-in-depth CSRF protection in addition to SameSite cookies.
+    The token in the cookie must match the token in the request header.
+
+    Args:
+        cookie_token: CSRF token from cookie
+        header_token: CSRF token from X-CSRF-Token header
+
+    Returns:
+        True if tokens match and are valid, False otherwise
+    """
+    if not cookie_token or not header_token:
+        return False
+
+    # Constant-time comparison to prevent timing attacks
+    return secrets.compare_digest(cookie_token, header_token)

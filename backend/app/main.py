@@ -22,6 +22,7 @@ from app.core.database import AsyncSessionLocal, cleanup_expired_data, close_db,
 from app.core.exceptions import AppException
 from app.core.logging import configure_logging, get_logger
 from app.middleware.correlation_id import CorrelationIdMiddleware
+from app.middleware.csrf import CSRFMiddleware
 
 
 # Configure structured logging
@@ -83,6 +84,9 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Add correlation ID middleware for request tracing
 app.add_middleware(CorrelationIdMiddleware)
+
+# Add CSRF protection middleware (defense-in-depth with SameSite cookies)
+app.add_middleware(CSRFMiddleware)
 
 
 # Security headers middleware

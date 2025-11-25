@@ -21,6 +21,11 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
     email_verified_at = Column(DateTime, nullable=True)  # Track when email was verified
+
+    # Account security
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime, nullable=True)  # Account locked until this time
+
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
@@ -48,6 +53,28 @@ class User(Base):
     refresh_tokens = relationship(
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"
     )
+
+    def is_locked(self) -> bool:
+        """
+        Check if account is currently locked due to failed login attempts.
+
+        Returns:
+            True if account is locked, False otherwise
+        """
+        if self.locked_until is None:
+            return False
+
+        from datetime import UTC, datetime
+
+        # Check if lock has expired
+        now = datetime.now(UTC)
+        locked_until_utc = (
+            self.locked_until.replace(tzinfo=UTC)
+            if self.locked_until.tzinfo is None
+            else self.locked_until
+        )
+
+        return locked_until_utc > now
 
     async def has_valid_auth_method(self, db: AsyncSession) -> bool:
         """
