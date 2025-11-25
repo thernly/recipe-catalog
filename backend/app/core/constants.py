@@ -14,6 +14,10 @@ AI_TEMPERATURE = 0.7  # Temperature for AI model responses (0.0-1.0, higher = mo
 MIN_SECRET_KEY_LENGTH = 32  # Minimum length for SECRET_KEY in characters
 REFRESH_TOKEN_LENGTH = 64  # Length of refresh token in bytes
 
+# Account Lockout Configuration
+MAX_LOGIN_ATTEMPTS = 5  # Maximum failed login attempts before account lockout
+LOCKOUT_DURATION_MINUTES = 15  # Account lockout duration in minutes
+
 # Password Requirements
 MIN_PASSWORD_LENGTH = 8  # Minimum password length for user accounts
 

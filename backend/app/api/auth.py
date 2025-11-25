@@ -12,10 +12,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.constants import AUTH_RATE_LIMIT_REGISTRATION, AUTH_RATE_LIMIT_TEST_MODE
+from app.core.constants import (
+    AUTH_RATE_LIMIT_REGISTRATION,
+    AUTH_RATE_LIMIT_TEST_MODE,
+    LOCKOUT_DURATION_MINUTES,
+    MAX_LOGIN_ATTEMPTS,
+)
 from app.core.database import get_db
 from app.core.security import (
     create_access_token,
+    generate_csrf_token,
     generate_refresh_token,
     get_password_hash,
     get_refresh_token_expiry,
@@ -159,14 +165,50 @@ async def login(
         dict: Success message
 
     Raises:
-        HTTPException: If credentials are invalid
+        HTTPException: If credentials are invalid or account is locked
     """
+    from datetime import timedelta
+
     # Get user by email
     result = await db.execute(select(User).where(User.email == login_data.email.lower()))
     user = result.scalar_one_or_none()
 
+    # Check if account is locked (if user exists)
+    if user and user.is_locked():
+        # Calculate remaining lockout time for better UX
+        now = datetime.now(UTC)
+        locked_until_utc = (
+            user.locked_until.replace(tzinfo=UTC)
+            if user.locked_until.tzinfo is None
+            else user.locked_until
+        )
+        remaining_minutes = int((locked_until_utc - now).total_seconds() / 60)
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Account is locked due to multiple failed login attempts. Try again in {remaining_minutes} minute(s).",
+        )
+
     # Verify user exists and password is correct
     if not user or not verify_password(login_data.password, user.hashed_password):
+        # Track failed login attempt
+        if user:
+            user.failed_login_attempts += 1
+
+            # Lock account if max attempts reached
+            if user.failed_login_attempts >= MAX_LOGIN_ATTEMPTS:
+                user.locked_until = datetime.now(UTC) + timedelta(
+                    minutes=LOCKOUT_DURATION_MINUTES
+                )
+                await db.commit()
+
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Account locked due to {MAX_LOGIN_ATTEMPTS} failed login attempts. Try again in {LOCKOUT_DURATION_MINUTES} minutes.",
+                )
+
+            await db.commit()
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -176,6 +218,11 @@ async def login(
     # Check if user is active
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
+
+    # Reset failed login attempts on successful login
+    if user.failed_login_attempts > 0 or user.locked_until is not None:
+        user.failed_login_attempts = 0
+        user.locked_until = None
 
     # Create access token
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
@@ -212,7 +259,18 @@ async def login(
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
 
-    return {"message": "Login successful"}
+    # Generate and set CSRF token (double-submit cookie pattern)
+    csrf_token = generate_csrf_token()
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=False,  # Frontend needs to read this
+        secure=settings.ENVIRONMENT == "production",
+        samesite="strict",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,  # Same as refresh token
+    )
+
+    return {"message": "Login successful", "csrf_token": csrf_token}
 
 
 @router.post("/refresh")
@@ -323,7 +381,18 @@ async def refresh_token(
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
 
-    return {"message": "Token refreshed successfully"}
+    # Regenerate CSRF token on refresh for added security
+    csrf_token = generate_csrf_token()
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=False,
+        secure=settings.ENVIRONMENT == "production",
+        samesite="strict",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+
+    return {"message": "Token refreshed successfully", "csrf_token": csrf_token}
 
 
 @router.post("/logout")
@@ -363,6 +432,7 @@ async def logout(
     # Clear cookies
     response.delete_cookie(key="access_token")
     response.delete_cookie(key="refresh_token")
+    response.delete_cookie(key="csrf_token")
 
     return {"message": "Successfully logged out"}
 

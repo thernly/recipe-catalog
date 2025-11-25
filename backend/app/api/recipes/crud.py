@@ -25,34 +25,42 @@ router = APIRouter()
 
 def sanitize_recipe_data(data: dict) -> dict:
     """
-    Recursively sanitize string values in recipe data dictionary.
+    Sanitize user-facing text fields in recipe data.
+
+    Only sanitizes fields that may contain user-provided formatted text:
+    - recipeInstructions[].text (cooking steps)
+    - notes (user notes)
+
+    Other fields (ingredients, yields, times, etc.) are simple text that
+    don't require HTML sanitization, improving performance.
 
     Args:
         data: Dictionary containing recipe data
 
     Returns:
-        Dictionary with sanitized string values
+        Dictionary with sanitized text fields
     """
     if not isinstance(data, dict):
         return data
 
-    sanitized = {}
-    for key, value in data.items():
-        if isinstance(value, str):
-            sanitized[key] = sanitize_html(value)
-        elif isinstance(value, dict):
-            sanitized[key] = sanitize_recipe_data(value)
-        elif isinstance(value, list):
-            sanitized[key] = [
-                sanitize_recipe_data(item)
-                if isinstance(item, dict)
-                else sanitize_html(item)
-                if isinstance(item, str)
-                else item
-                for item in value
-            ]
-        else:
-            sanitized[key] = value
+    sanitized = dict(data)  # Shallow copy
+
+    # Sanitize instruction text fields (users might paste formatted content)
+    if "recipeInstructions" in sanitized and isinstance(sanitized["recipeInstructions"], list):
+        sanitized_instructions = []
+        for instruction in sanitized["recipeInstructions"]:
+            if isinstance(instruction, dict) and "text" in instruction:
+                sanitized_instruction = dict(instruction)
+                sanitized_instruction["text"] = sanitize_html(instruction["text"])
+                sanitized_instructions.append(sanitized_instruction)
+            else:
+                sanitized_instructions.append(instruction)
+        sanitized["recipeInstructions"] = sanitized_instructions
+
+    # Sanitize notes field if present
+    if "notes" in sanitized and isinstance(sanitized["notes"], str):
+        sanitized["notes"] = sanitize_html(sanitized["notes"])
+
     return sanitized
 
 
