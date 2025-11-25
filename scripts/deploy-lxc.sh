@@ -31,7 +31,6 @@ set -u  # Exit on undefined variable
 #==============================================================================
 
 SCRIPT_VERSION="1.0.0"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="/var/log/recipe-catalog-deployment.log"
 INSTALL_DIR="/opt/recipe-catalog"
 APP_USER="recipe-app"
@@ -104,6 +103,23 @@ check_os() {
     fi
 }
 
+cleanup_on_error() {
+    local exit_code=$?
+    echo ""
+    log_error "============================================================"
+    log_error "Deployment failed with exit code: $exit_code"
+    log_error "============================================================"
+    log_error "Check the detailed log file for more information:"
+    log_error "  $LOG_FILE"
+    echo ""
+    log_info "Common troubleshooting steps:"
+    log_info "  1. Review the error messages above"
+    log_info "  2. Check the full log: cat $LOG_FILE"
+    log_info "  3. Verify network connectivity"
+    log_info "  4. Ensure sufficient disk space: df -h"
+    echo ""
+}
+
 prompt_user() {
     local prompt="$1"
     local default="$2"
@@ -116,6 +132,42 @@ prompt_user() {
 
     read -p "$prompt [$default]: " input
     eval "$var_name=\${input:-$default}"
+}
+
+validate_repo_url() {
+    local url="$1"
+
+    # Skip validation for 'local'
+    if [[ "$url" == "local" ]]; then
+        return 0
+    fi
+
+    # Basic URL format validation
+    if [[ ! "$url" =~ ^(https?|git)://.*\.git$ ]] && [[ ! "$url" =~ ^git@.*:.*\.git$ ]]; then
+        log_warn "Repository URL doesn't match typical Git URL format"
+        log_warn "Expected: https://.../.git or git@...:.../.git"
+
+        if [[ "$NON_INTERACTIVE" == false ]]; then
+            read -p "Continue anyway? (y/N): " continue_choice
+            if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
+                log_error "Repository URL validation failed"
+                exit 1
+            fi
+        fi
+    fi
+
+    # Test if repository is accessible (only for non-local)
+    log_info "Validating repository accessibility..."
+    if ! git ls-remote "$url" HEAD &> /dev/null; then
+        log_error "Cannot access repository at $url"
+        log_error "Please check:"
+        log_error "  1. The URL is correct"
+        log_error "  2. The repository exists and is accessible"
+        log_error "  3. You have proper authentication configured (for private repos)"
+        exit 1
+    fi
+
+    log_info "Repository validated successfully"
 }
 
 show_help() {
@@ -200,6 +252,9 @@ gather_configuration() {
         prompt_user "Enter Git repository URL (or 'local' to use existing files)" "local" REPO_URL
     fi
 
+    # Validate repository URL
+    validate_repo_url "$REPO_URL"
+
     # SSL configuration
     if [[ "$NON_INTERACTIVE" == false ]]; then
         read -p "Do you want to configure SSL/TLS? (y/N): " ssl_choice
@@ -210,12 +265,20 @@ gather_configuration() {
     fi
 
     # Email configuration
+    echo ""
+    log_info "Email/SMTP Configuration"
+    log_info "Note: If using Gmail, you need to generate an App Password:"
+    log_info "  1. Enable 2-Factor Authentication on your Google account"
+    log_info "  2. Go to: https://myaccount.google.com/apppasswords"
+    log_info "  3. Generate a new app password for 'Mail'"
+    echo ""
+
     prompt_user "Enter SMTP host (for email notifications)" "smtp.gmail.com" SMTP_HOST
     prompt_user "Enter SMTP port" "587" SMTP_PORT
     prompt_user "Enter SMTP user (email address)" "your-email@gmail.com" SMTP_USER
 
     if [[ "$NON_INTERACTIVE" == false ]]; then
-        read -s -p "Enter SMTP password: " SMTP_PASSWORD
+        read -s -p "Enter SMTP password (or Gmail App Password): " SMTP_PASSWORD
         echo ""
     else
         SMTP_PASSWORD="change-this-password"
@@ -290,10 +353,11 @@ install_python313() {
     print_header "Step 8: Installing Python 3.13 with UV"
 
     # Check if UV has Python 3.13 already installed
-    if sudo -u "$APP_USER" test -f "/home/$APP_USER/.local/bin/uv" && \
-       sudo -u "$APP_USER" /home/$APP_USER/.local/bin/uv python list 2>/dev/null | grep -q "3.13"; then
-        log_info "Python 3.13 already installed via UV"
-        return
+    if sudo -u "$APP_USER" test -f "/home/$APP_USER/.local/bin/uv"; then
+        if sudo -u "$APP_USER" /home/$APP_USER/.local/bin/uv python list 2>/dev/null | grep -q "3.13"; then
+            log_info "Python 3.13 already installed via UV"
+            return
+        fi
     fi
 
     log "Installing Python 3.13 using UV (downloading pre-built binary)..."
@@ -348,11 +412,18 @@ setup_application_code() {
         if [[ -d "$INSTALL_DIR/.git" ]]; then
             log_info "Repository already cloned, pulling latest changes..."
             cd "$INSTALL_DIR"
-            sudo -u "$APP_USER" git pull >> "$LOG_FILE" 2>&1
+            if ! sudo -u "$APP_USER" git pull >> "$LOG_FILE" 2>&1; then
+                log_error "Failed to pull latest changes from repository"
+                exit 1
+            fi
         else
             rm -rf "$INSTALL_DIR"
             mkdir -p "$INSTALL_DIR"
-            sudo -u "$APP_USER" git clone "$REPO_URL" "$INSTALL_DIR" >> "$LOG_FILE" 2>&1
+            if ! sudo -u "$APP_USER" git clone "$REPO_URL" "$INSTALL_DIR" >> "$LOG_FILE" 2>&1; then
+                log_error "Failed to clone repository from $REPO_URL"
+                log_error "Check that the URL is correct and accessible"
+                exit 1
+            fi
         fi
     fi
 
@@ -434,6 +505,14 @@ EOF
     log "Initializing database..."
     sudo -u "$APP_USER" bash -c "cd $INSTALL_DIR/backend && /home/$APP_USER/.local/bin/uv run alembic upgrade head" >> "$LOG_FILE" 2>&1
 
+    # Verify database was created
+    if [[ ! -f "$INSTALL_DIR/backend/data/recipes.db" ]]; then
+        log_error "Database file was not created at $INSTALL_DIR/backend/data/recipes.db"
+        log_error "Check the Alembic logs in $LOG_FILE for errors"
+        exit 1
+    fi
+
+    log "Database initialized successfully"
     log "Backend setup complete"
 }
 
@@ -549,6 +628,11 @@ create_systemd_service() {
 
     log "Creating backend service..."
 
+    # Calculate optimal worker count based on CPU cores
+    local cpu_cores=$(nproc)
+    local workers=$(( cpu_cores * 2 + 1 ))
+    log_info "Detected $cpu_cores CPU cores, configuring $workers workers"
+
     cat > /etc/systemd/system/recipe-catalog-backend.service << EOF
 [Unit]
 Description=Recipe Catalog Backend (FastAPI)
@@ -563,7 +647,7 @@ Environment="PATH=/home/$APP_USER/.local/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="PYTHONUNBUFFERED=1"
 
 # Start command using UV
-ExecStart=/home/$APP_USER/.local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 4
+ExecStart=/home/$APP_USER/.local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers $workers
 
 # Restart policy
 Restart=always
@@ -607,6 +691,33 @@ start_services() {
     log "Checking service status..."
     if systemctl is-active --quiet recipe-catalog-backend; then
         log "✓ Backend service is running"
+
+        # Wait a moment for the backend to fully start
+        log_info "Waiting for backend to initialize..."
+        sleep 5
+
+        # Check if backend is actually responding to requests
+        local max_attempts=6
+        local attempt=1
+        local backend_healthy=false
+
+        while [[ $attempt -le $max_attempts ]]; do
+            if curl -sf http://127.0.0.1:8000/api/docs > /dev/null 2>&1; then
+                backend_healthy=true
+                break
+            fi
+            log_info "Attempt $attempt/$max_attempts: Backend not responding yet, waiting..."
+            sleep 5
+            attempt=$((attempt + 1))
+        done
+
+        if [[ "$backend_healthy" == true ]]; then
+            log "✓ Backend is responding to requests"
+        else
+            log_warn "⚠ Backend service is running but not responding to health checks"
+            log_warn "This may be normal if the backend is still initializing"
+            log_warn "Check logs with: journalctl -u recipe-catalog-backend -n 50"
+        fi
     else
         log_error "✗ Backend service failed to start"
         log_error "Check logs with: journalctl -u recipe-catalog-backend -n 50"
@@ -687,6 +798,9 @@ main() {
     # Initialize log file
     touch "$LOG_FILE"
     chmod 644 "$LOG_FILE"
+
+    # Set up error trap
+    trap cleanup_on_error ERR
 
     # Print banner
     clear
