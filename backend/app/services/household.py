@@ -678,6 +678,14 @@ def generate_invite_code() -> str:
 
     Uses wonderwords library to generate random nouns for easy-to-remember codes.
 
+    Security Considerations:
+    - Entropy depends on the noun wordlist size (~5,000+ words in wonderwords)
+    - Three random nouns provide ~38 bits of entropy (5000^3 ≈ 10^11 combinations)
+    - Codes are one-time use and expire (typically 7 days), limiting brute-force risk
+    - If collision occurs after 10 attempts, fallback uses 8-char UUID (~32 bits entropy)
+    - The combination of one-time use, expiration, and reasonable entropy provides
+      adequate security for household invitations (not used for authentication)
+
     Returns:
         A code in the format "word1-word2-word3"
     """
@@ -762,22 +770,15 @@ async def get_invite_link_by_code(db: AsyncSession, code: str) -> HouseholdInvit
     # Normalize code: lowercase, remove hyphens and spaces
     normalized_code = code.lower().replace("-", "").replace(" ", "")
 
-    # Try exact match first
-    result = await db.execute(select(HouseholdInviteLink).where(HouseholdInviteLink.code == code))
-    invite_link = result.scalar_one_or_none()
-
-    if not invite_link:
-        # Try normalized match (search all codes and normalize them)
-        all_links_result = await db.execute(select(HouseholdInviteLink))
-        all_links = all_links_result.scalars().all()
-
-        for link in all_links:
-            normalized_link_code = link.code.lower().replace("-", "").replace(" ", "")
-            if normalized_link_code == normalized_code:
-                invite_link = link
-                break
-
-    return invite_link
+    # Use database-level normalization for efficient matching
+    # This avoids loading all invite links into memory
+    result = await db.execute(
+        select(HouseholdInviteLink).where(
+            func.replace(func.replace(func.lower(HouseholdInviteLink.code), "-", ""), " ", "")
+            == normalized_code
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 async def join_via_invite_link(db: AsyncSession, code: str, user_id: int) -> HouseholdMember:

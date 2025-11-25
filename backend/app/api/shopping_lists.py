@@ -488,6 +488,8 @@ async def create_shopping_list(
 
 @router.get("/", response_model=list[ShoppingListSummary])
 async def list_shopping_lists(
+    limit: int = 100,
+    offset: int = 0,
     status_filter: str | None = None,
     current_user: User = Depends(get_current_user),
     household: Household = Depends(get_user_household),
@@ -497,6 +499,8 @@ async def list_shopping_lists(
     List all shopping lists for the user's household.
 
     Args:
+        limit: Maximum number of shopping lists to return (default 100)
+        offset: Number of shopping lists to skip (default 0)
         status_filter: Optional status filter (active/archived)
         current_user: The authenticated user
         household: The user's household
@@ -528,6 +532,8 @@ async def list_shopping_lists(
             ShoppingList.created_at,
         )
         .order_by(ShoppingList.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
 
     if status_filter:

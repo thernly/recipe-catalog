@@ -3,10 +3,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models.household import Household
+from app.models.household import Household, HouseholdMember
 from app.models.user import User
 from app.schemas.household import (
     Household as HouseholdSchema,
@@ -86,24 +87,26 @@ async def get_my_household(
             detail="User does not belong to a household",
         )
 
-    # Get members with user details
-    members = await household_service.get_household_members(db, household.id)
-    members_with_details = []
+    # Get members with user details (using selectinload to avoid N+1 queries)
+    result = await db.execute(
+        select(HouseholdMember)
+        .where(HouseholdMember.household_id == household.id)
+        .options(selectinload(HouseholdMember.user))
+    )
+    members = result.scalars().all()
 
-    for member in members:
-        user_result = await db.execute(select(User).where(User.id == member.user_id))
-        user = user_result.scalar_one()
-
-        member_schema = HouseholdMemberSchema(
+    members_with_details = [
+        HouseholdMemberSchema(
             id=member.id,
             household_id=member.household_id,
             user_id=member.user_id,
             role=member.role,
             joined_at=member.joined_at,
-            user_email=user.email,
-            user_display_name=user.display_name,
+            user_email=member.user.email,
+            user_display_name=member.user.display_name,
         )
-        members_with_details.append(member_schema)
+        for member in members
+    ]
 
     # Get pending invitations
     invitations = await household_service.get_pending_invitations(db, household.id)
@@ -191,26 +194,26 @@ async def get_household_members(
             detail="User does not have access to this household",
         )
 
-    members = await household_service.get_household_members(db, household_id)
+    # Get members with user details (using selectinload to avoid N+1 queries)
+    result = await db.execute(
+        select(HouseholdMember)
+        .where(HouseholdMember.household_id == household_id)
+        .options(selectinload(HouseholdMember.user))
+    )
+    members = result.scalars().all()
 
-    # Add user details to each member
-    members_with_details = []
-    for member in members:
-        user_result = await db.execute(select(User).where(User.id == member.user_id))
-        user = user_result.scalar_one()
-
-        member_schema = HouseholdMemberSchema(
+    return [
+        HouseholdMemberSchema(
             id=member.id,
             household_id=member.household_id,
             user_id=member.user_id,
             role=member.role,
             joined_at=member.joined_at,
-            user_email=user.email,
-            user_display_name=user.display_name,
+            user_email=member.user.email,
+            user_display_name=member.user.display_name,
         )
-        members_with_details.append(member_schema)
-
-    return members_with_details
+        for member in members
+    ]
 
 
 @router.delete("/{household_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

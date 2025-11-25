@@ -2,7 +2,7 @@
 Collection management API endpoints.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -96,6 +96,8 @@ async def create_collection(
 
 @router.get("/", response_model=list[CollectionWithCount])
 async def list_collections(
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of collections to return"),
+    offset: int = Query(0, ge=0, description="Number of collections to skip"),
     current_user: User = Depends(get_current_user),
     household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
@@ -104,6 +106,8 @@ async def list_collections(
     List all collections for the current user's household.
 
     Args:
+        limit: Maximum number of collections to return (default 100, max 1000)
+        offset: Number of collections to skip (default 0)
         current_user: The authenticated user
         household: The user's household
         db: Database session
@@ -123,6 +127,8 @@ async def list_collections(
         .where(Collection.household_id == household.id)
         .group_by(Collection.id, User.id)
         .order_by(Collection.is_default.desc(), Collection.created_at.asc())
+        .limit(limit)
+        .offset(offset)
     )
 
     result = await db.execute(stmt)
