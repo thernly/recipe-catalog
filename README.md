@@ -181,6 +181,27 @@ Backend runs on `http://localhost:8000`
 
 API documentation: `http://localhost:8000/docs`
 
+### API Versioning
+
+The API uses URL path versioning for better client compatibility and future-proofing:
+
+- **Current version:** `/api/v1/`
+- **All endpoints:** Prefixed with `/api/v1/` (e.g., `/api/v1/recipes`, `/api/v1/auth/login`)
+- **Backward compatibility:** Legacy `/api/*` endpoints redirect to `/api/v1/*` with deprecation warnings
+- **OpenAPI docs:** Available at `http://localhost:8000/docs` (shows versioned endpoints)
+
+Example API calls:
+
+```bash
+# Get recipes (versioned endpoint)
+curl http://localhost:8000/api/v1/recipes
+
+# Login (versioned endpoint)
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "password"}'
+```
+
 ### Database
 
 The database is automatically created when you run the backend server. Migrations are handled by Alembic.
@@ -254,6 +275,49 @@ RATE_LIMIT_PER_MINUTE=60
 RATE_LIMIT_PER_HOUR=1000
 ```
 
+## 🔍 Code Quality & Linting
+
+The project uses automated code quality tools to maintain consistent style and catch errors early.
+
+### Backend Code Quality Tools
+
+**Ruff** - Fast Python linter and formatter:
+
+```bash
+cd backend
+
+# Check code style and errors
+uv run ruff check .
+
+# Auto-fix issues
+uv run ruff check --fix .
+
+# Format code
+uv run ruff format .
+
+# Check formatting without changes
+uv run ruff format --check .
+```
+
+**Mypy** - Static type checker:
+
+```bash
+cd backend
+
+# Type check all code
+uv run mypy app/
+
+# Type check with strict mode
+uv run mypy --strict app/
+```
+
+**Configuration:**
+- Ruff and mypy are configured in `pyproject.toml`
+- Line length: 100 characters
+- Target Python version: 3.13
+- Import sorting with isort integration
+- Type checking with SQLAlchemy plugin support
+
 ## 🧪 Testing
 
 ### Frontend Tests
@@ -269,15 +333,42 @@ pnpm test:e2e
 
 ```bash
 cd backend
+
+# Run all tests
 uv run pytest
-uv run pytest --cov=app tests/
+
+# Run with verbose output
+uv run pytest -v
 
 # Run specific test file
 uv run pytest tests/test_auth.py
 
-# Run with verbose output
-uv run pytest -v
+# Run specific test
+uv run pytest tests/test_auth.py::test_register_user
 ```
+
+### Test Coverage
+
+The project maintains 80%+ test coverage. Coverage reports are generated using pytest-cov.
+
+```bash
+cd backend
+
+# Run tests with coverage report
+uv run pytest --cov=app --cov-report=term-missing
+
+# Generate HTML coverage report
+uv run pytest --cov=app --cov-report=html
+
+# View HTML report (opens in browser)
+open htmlcov/index.html
+```
+
+**Coverage Configuration:**
+- Configuration file: `.coveragerc`
+- Target coverage: 80%+
+- Excluded: migrations, tests, `__init__.py` files
+- Reports show line-by-line coverage with missing lines highlighted
 
 ## 🔧 Common Operations
 
