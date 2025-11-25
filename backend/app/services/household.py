@@ -316,7 +316,7 @@ async def create_invitation(
     household_id: int,
     inviter_user_id: int,
     invitee_email: str,
-    expiration_days: int = 7,
+    expiration_days: int = 7,  # 7 days balances urgency with flexibility for busy users
 ) -> HouseholdInvitation:
     """
     Create a household invitation.
