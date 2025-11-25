@@ -159,6 +159,30 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
+# Request size limit middleware
+@app.middleware("http")
+async def limit_request_size(request: Request, call_next):
+    """Limit request body size to prevent memory exhaustion attacks."""
+    # Get Content-Length header
+    content_length = request.headers.get("content-length")
+
+    if content_length:
+        content_length = int(content_length)
+        max_size = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024  # Convert MB to bytes
+
+        if content_length > max_size:
+            return JSONResponse(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                content={
+                    "error_code": "request_too_large",
+                    "message": f"Request body too large. Maximum size is {settings.MAX_UPLOAD_SIZE_MB}MB",
+                    "details": {},
+                },
+            )
+
+    return await call_next(request)
+
+
 # Exception handlers
 from fastapi.exceptions import HTTPException
 
