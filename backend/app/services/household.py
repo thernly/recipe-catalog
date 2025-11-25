@@ -8,7 +8,9 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from wonderwords import RandomWord
 
+from app.core.config import settings
 from app.core.email import email_service
+from app.models._utils import ensure_utc, is_expired
 from app.models.household import (
     Household,
     HouseholdInvitation,
@@ -362,12 +364,7 @@ async def create_invitation(
     existing_invitation = existing_invitation_result.scalar_one_or_none()
     if existing_invitation:
         # Check if invitation is still valid (not expired)
-        expires_at_utc = (
-            existing_invitation.expires_at.replace(tzinfo=UTC)
-            if existing_invitation.expires_at.tzinfo is None
-            else existing_invitation.expires_at
-        )
-        if expires_at_utc > datetime.now(UTC):
+        if not is_expired(existing_invitation.expires_at):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User already has a pending invitation",
@@ -419,9 +416,8 @@ async def send_invitation_email(db: AsyncSession, invitation: HouseholdInvitatio
     inviter_result = await db.execute(select(User).where(User.id == invitation.inviter_user_id))
     inviter = inviter_result.scalar_one()
 
-    # Construct invitation URL (this would be your frontend URL)
-    # For now, we'll just use a placeholder
-    invitation_url = f"http://localhost:5173/invitations/accept?token={invitation.token}"
+    # Construct invitation URL using configured frontend URL
+    invitation_url = f"{settings.FRONTEND_URL}/invitations/accept?token={invitation.token}"
 
     subject = f"You've been invited to join {household.name}"
     body = f"""
@@ -506,13 +502,9 @@ async def get_pending_invitations(db: AsyncSession, household_id: int) -> list[H
     invitations = list(result.scalars().all())
 
     # Filter out expired invitations (SQLite stores datetime as naive)
-    now_utc = datetime.now(UTC)
     active_invitations = []
     for inv in invitations:
-        expires_at_utc = (
-            inv.expires_at.replace(tzinfo=UTC) if inv.expires_at.tzinfo is None else inv.expires_at
-        )
-        if expires_at_utc > now_utc:
+        if not is_expired(inv.expires_at):
             active_invitations.append(inv)
 
     return active_invitations
@@ -536,14 +528,7 @@ async def get_invitation_by_token(db: AsyncSession, token: str) -> HouseholdInvi
         return None
 
     # Check if expired (SQLite stores datetime as naive)
-    now_utc = datetime.now(UTC)
-    expires_at_utc = (
-        invitation.expires_at.replace(tzinfo=UTC)
-        if invitation.expires_at.tzinfo is None
-        else invitation.expires_at
-    )
-
-    if expires_at_utc < now_utc:
+    if is_expired(invitation.expires_at):
         return None
 
     return invitation
@@ -580,12 +565,7 @@ async def accept_invitation(db: AsyncSession, token: str, user_id: int) -> House
 
     # Check if expired
     # SQLite stores datetime as naive, so we need to compare with naive datetime
-    expires_at_utc = (
-        invitation.expires_at.replace(tzinfo=UTC)
-        if invitation.expires_at.tzinfo is None
-        else invitation.expires_at
-    )
-    if expires_at_utc < datetime.now(UTC):
+    if is_expired(invitation.expires_at):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation has expired"
         )
@@ -832,12 +812,7 @@ async def join_via_invite_link(db: AsyncSession, code: str, user_id: int) -> Hou
         )
 
     # Check if expired
-    expires_at_utc = (
-        invite_link.expires_at.replace(tzinfo=UTC)
-        if invite_link.expires_at.tzinfo is None
-        else invite_link.expires_at
-    )
-    if expires_at_utc < datetime.now(UTC):
+    if is_expired(invite_link.expires_at):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This invite code has expired",

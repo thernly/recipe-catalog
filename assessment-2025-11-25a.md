@@ -11,7 +11,7 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 
 **Overall Assessment**: Good foundation with room for improvement
 **Critical Issues**: 2 (✅ 2 fixed)
-**High Priority Issues**: 8 (✅ 1 fixed)
+**High Priority Issues**: 8 (✅ 5 fixed)
 **Medium Priority Issues**: 12
 **Low Priority Issues**: 7
 
@@ -19,6 +19,10 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 - ✅ Issue #1: Fixed AI menu generation AttributeError
 - ✅ Issue #2: Removed database session auto-commit
 - ✅ Issue #3: Fixed recipe collections deletion bug
+- ✅ Issue #4: Implemented timezone utility functions for consistent datetime handling
+- ✅ Issue #5: Replaced hardcoded localhost URL with settings.FRONTEND_URL
+- ✅ Issue #6: Added email service configuration checks
+- ✅ Issue #7: Added database locking for refresh token race condition
 
 ---
 
@@ -90,6 +94,7 @@ await db.execute(delete(RecipeCollection).where(RecipeCollection.recipe_id == re
 ### 4. Timezone Handling Inconsistency
 **File**: Multiple files (e.g., `backend/app/services/household.py`)
 **Severity**: High (Data Corruption)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: Throughout the codebase, there's inconsistent handling of timezone-aware vs naive datetimes. SQLite stores datetimes as naive, but the code uses `datetime.now(UTC)` (aware). This leads to repeated conversion code like:
 
@@ -103,11 +108,19 @@ expires_at_utc = (
 
 **Impact**: This pattern appears in at least 10 locations and is error-prone.
 
-**Fix**: Use a consistent approach - either always naive or always aware. Recommend creating a utility function `ensure_utc()` in `models/_utils.py`.
+**Fix**: Created utility functions in `models/_utils.py`:
+- `ensure_utc(dt)`: Converts naive datetimes to timezone-aware UTC
+- `is_expired(dt)`: Checks if a datetime has passed (handles both naive and aware)
+
+Updated all occurrences in:
+- `backend/app/services/household.py` (5 locations)
+- `backend/app/api/auth.py` (1 location)
+- `backend/tests/test_households.py` (1 location)
 
 ### 5. Hardcoded URL in Email Template
 **File**: `backend/app/services/household.py:424`
 **Severity**: High (Configuration Issue)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 ```python
 invitation_url = f"http://localhost:5173/invitations/accept?token={invitation.token}"
@@ -115,23 +128,39 @@ invitation_url = f"http://localhost:5173/invitations/accept?token={invitation.to
 
 **Issue**: Hardcoded localhost URL won't work in production.
 
-**Fix**: Use `settings.FRONTEND_URL` instead.
+**Fix**: Updated to use `settings.FRONTEND_URL` instead:
+```python
+invitation_url = f"{settings.FRONTEND_URL}/invitations/accept?token={invitation.token}"
+```
 
 ### 6. Missing Email Service Configuration Check
 **File**: `backend/app/api/auth.py:412`
 **Severity**: High (Runtime Error)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: Email sending functions are called without checking if SMTP is configured. If `SMTP_HOST` or credentials are missing, the application will crash.
 
-**Fix**: Check configuration and handle gracefully (skip email or return informative error).
+**Fix**: Added configuration check to `EmailService` class in `backend/app/core/email.py`:
+- Created `is_configured()` method that checks if SMTP settings are complete
+- Updated `send_email()` to check configuration before attempting to send
+- Returns `False` with warning log instead of crashing when email is not configured
 
 ### 7. Race Condition in Concurrent Refresh Tokens
 **File**: `backend/app/api/auth.py:223-326`
 **Severity**: High (Security/UX Issue)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: While the frontend has a refresh token promise cache, the backend doesn't protect against concurrent refresh token requests. If two requests arrive simultaneously with the same refresh token, both might succeed initially, then one will fail when the token is revoked.
 
-**Fix**: Add database-level locking or use optimistic locking when revoking refresh tokens.
+**Fix**: Added database row-level locking using `with_for_update()` in the refresh token endpoint:
+```python
+result = await db.execute(
+    select(RefreshToken)
+    .where(RefreshToken.token == refresh_token_value)
+    .with_for_update()
+)
+```
+This ensures concurrent refresh requests are serialized - the second request will wait until the first completes, then see the token is revoked and return an appropriate error.
 
 ### 8. Unvalidated Redirect in OAuth
 **File**: Not visible in reviewed files, but OAuth callback likely has this issue

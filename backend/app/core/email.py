@@ -25,6 +25,20 @@ class EmailService:
         self.from_email = settings.FROM_EMAIL
         self.from_name = settings.FROM_NAME
 
+    def is_configured(self) -> bool:
+        """
+        Check if email service is properly configured.
+
+        Returns:
+            True if SMTP configuration is complete, False otherwise
+        """
+        return bool(
+            self.smtp_host
+            and self.smtp_port
+            and self.smtp_user
+            and self.smtp_password
+        )
+
     async def send_email(
         self,
         to_email: str,
@@ -44,6 +58,14 @@ class EmailService:
         Returns:
             True if email sent successfully, False otherwise
         """
+        # Check if email service is configured
+        if not self.is_configured():
+            logger.warning(
+                f"Email service not configured. Skipping email to {to_email}. "
+                "Please configure SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASSWORD."
+            )
+            return False
+
         try:
             # Create message
             msg = MIMEMultipart("alternative")

@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models._utils import ensure_utc, is_expired
 from app.models.user import User
 from app.services import household as household_service
 
@@ -101,12 +102,7 @@ async def test_create_invitation(db: AsyncSession, test_user: User):
     assert invitation.invitee_email == "invitee@example.com"
     assert invitation.token is not None
     # SQLite stores datetime as naive, so we need to compare properly
-    expires_at_utc = (
-        invitation.expires_at.replace(tzinfo=UTC)
-        if invitation.expires_at.tzinfo is None
-        else invitation.expires_at
-    )
-    assert expires_at_utc > datetime.now(UTC)
+    assert not is_expired(invitation.expires_at)
     assert invitation.accepted_at is None
 
 

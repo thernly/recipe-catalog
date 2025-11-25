@@ -21,6 +21,7 @@ from app.core.security import (
     get_refresh_token_expiry,
     verify_password,
 )
+from app.models._utils import is_expired
 from app.models.refresh_token import RefreshToken
 from app.models.user import User, UserPreferences
 from app.schemas.user import (
@@ -251,8 +252,13 @@ async def refresh_token(
             detail="No refresh token found",
         )
 
-    # Look up the refresh token
-    result = await db.execute(select(RefreshToken).where(RefreshToken.token == refresh_token_value))
+    # Look up the refresh token with row-level lock to prevent race conditions
+    # The with_for_update() ensures that concurrent refresh requests will be serialized
+    result = await db.execute(
+        select(RefreshToken)
+        .where(RefreshToken.token == refresh_token_value)
+        .with_for_update()
+    )
     refresh_token_record = result.scalar_one_or_none()
 
     # Validate refresh token exists
@@ -270,7 +276,7 @@ async def refresh_token(
         )
 
     # Check if token is expired
-    if refresh_token_record.expires_at < datetime.now(UTC):
+    if is_expired(refresh_token_record.expires_at):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token has expired",
