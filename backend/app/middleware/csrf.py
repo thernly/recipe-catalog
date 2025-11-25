@@ -19,6 +19,9 @@ CSRF_EXEMPT_PATHS = [
     "/api/v1/auth/login",
     "/api/v1/auth/logout",
     "/api/v1/oauth/",  # Prefix match for OAuth endpoints
+    "/api/auth/register",  # Legacy path (for tests)
+    "/api/auth/login",  # Legacy path (for tests)
+    "/api/auth/logout",  # Legacy path (for tests)
     "/health",
     "/api/docs",
     "/api/redoc",

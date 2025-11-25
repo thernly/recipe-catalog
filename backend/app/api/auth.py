@@ -54,21 +54,56 @@ def _get_rate_limit(limit: str) -> str:
     return limit
 
 
-@router.post("/register", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=UserSchema,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        201: {"description": "User successfully created"},
+        400: {
+            "description": "Email already registered or validation error",
+            "content": {
+                "application/json": {"example": {"error_code": "invalid_input", "message": "Email already registered", "details": {}}}
+            },
+        },
+        422: {
+            "description": "Invalid request format or password requirements not met",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "error_code": "validation_error",
+                        "message": "Validation error",
+                        "details": {"errors": [{"field": "password", "message": "Password must contain at least one uppercase letter"}]},
+                    }
+                }
+            },
+        },
+        429: {"description": "Rate limit exceeded (10 requests per minute per IP)", "content": {"application/json": {"example": {"error": "Rate limit exceeded"}}}},
+    },
+)
 @limiter.limit(lambda: _get_rate_limit(AUTH_RATE_LIMIT_REGISTRATION))
 async def register(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     """
     Register a new user account.
 
+    Creates a new user account with the provided email and password. The password must be at least
+    12 characters long and contain at least one uppercase letter, one lowercase letter, and one digit.
+
+    **Rate Limit:** 10 requests per minute per IP address
+
+    **Authentication:** None required
+
     Args:
-        user_data: User registration data
+        user_data: User registration data (email, password, optional display_name)
         db: Database session
 
     Returns:
-        User: The created user
+        User: The created user object
 
     Raises:
-        HTTPException: If email already exists
+        HTTPException 400: If email already exists
+        HTTPException 422: If password doesn't meet requirements
+        HTTPException 429: If rate limit exceeded
     """
     logger.info("registration_attempt", email=user_data.email)
 
@@ -145,7 +180,32 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
         )
 
 
-@router.post("/login")
+@router.post(
+    "/login",
+    responses={
+        200: {
+            "description": "Login successful - authentication cookies set",
+            "content": {"application/json": {"example": {"message": "Login successful", "user": {"id": 1, "email": "user@example.com"}}}},
+        },
+        401: {
+            "description": "Invalid credentials",
+            "content": {"application/json": {"example": {"error_code": "authentication_failed", "message": "Invalid email or password", "details": {}}}},
+        },
+        403: {
+            "description": "Account locked due to failed login attempts",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "error_code": "account_locked",
+                        "message": "Account is locked due to multiple failed login attempts. Try again in 15 minute(s).",
+                        "details": {},
+                    }
+                }
+            },
+        },
+        429: {"description": "Rate limit exceeded (10 requests per minute per IP)", "content": {"application/json": {"example": {"error": "Rate limit exceeded"}}}},
+    },
+)
 @limiter.limit(lambda: _get_rate_limit("10/minute"))
 async def login(
     request: Request,
@@ -156,16 +216,25 @@ async def login(
     """
     Authenticate user and set httpOnly cookies.
 
+    Authenticates the user with email and password. On success, sets secure httpOnly cookies
+    for access token and refresh token. Account is locked for 15 minutes after 5 failed attempts.
+
+    **Rate Limit:** 10 requests per minute per IP address
+
+    **Authentication:** None required
+
     Args:
-        login_data: Login credentials
+        login_data: Login credentials (email and password)
         response: Response object to set cookies
         db: Database session
 
     Returns:
-        dict: Success message
+        dict: Success message with user information
 
     Raises:
-        HTTPException: If credentials are invalid or account is locked
+        HTTPException 401: If credentials are invalid
+        HTTPException 403: If account is locked due to failed login attempts
+        HTTPException 429: If rate limit exceeded
     """
     from datetime import timedelta
 
