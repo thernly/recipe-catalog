@@ -14,20 +14,6 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-# Include API routers
-from app.api import (
-    ai,
-    auth,
-    collections,
-    export,
-    households,
-    import_recipes,
-    meal_plans,
-    oauth,
-    recipes,
-    shopping_lists,
-    users,
-)
 from app.api.v1 import api_v1_router
 from app.core.config import settings
 
@@ -73,8 +59,7 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="Privacy-focused recipe catalog API. All new endpoints are under /api/v1/. "
-                "Legacy /api/* endpoints are deprecated.",
+    description="Privacy-focused recipe catalog API. All endpoints are under /api/v1/.",
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
     lifespan=lifespan,
@@ -98,24 +83,6 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Add correlation ID middleware for request tracing
 app.add_middleware(CorrelationIdMiddleware)
-
-
-# Deprecation warning middleware for old API routes
-@app.middleware("http")
-async def add_deprecation_warning(request: Request, call_next):
-    """Add deprecation warning to old /api/* routes."""
-    response = await call_next(request)
-
-    # Add deprecation header for old API routes (not v1)
-    if request.url.path.startswith("/api/") and not request.url.path.startswith("/api/v1/"):
-        response.headers["X-API-Deprecation"] = (
-            "This endpoint is deprecated. Please use /api/v1/* endpoints instead."
-        )
-        response.headers["X-API-Version"] = "legacy"
-    elif request.url.path.startswith("/api/v1/"):
-        response.headers["X-API-Version"] = "v1"
-
-    return response
 
 
 # Security headers middleware
@@ -311,19 +278,6 @@ async def health_check():
 
 # Include v1 API routes
 app.include_router(api_v1_router)
-
-# Include legacy routes for backward compatibility (deprecated)
-app.include_router(auth.router, prefix="/api/auth", tags=["Authentication (Legacy)"])
-app.include_router(oauth.router, prefix="/api/auth", tags=["OAuth (Legacy)"])
-app.include_router(users.router, prefix="/api/users", tags=["Users (Legacy)"])
-app.include_router(recipes.router, prefix="/api/recipes", tags=["Recipes (Legacy)"])
-app.include_router(collections.router, prefix="/api/collections", tags=["Collections (Legacy)"])
-app.include_router(export.router, prefix="/api/export", tags=["Export (Legacy)"])
-app.include_router(import_recipes.router, prefix="/api/import", tags=["Import (Legacy)"])
-app.include_router(households.router, prefix="/api/households", tags=["Households (Legacy)"])
-app.include_router(meal_plans.router, prefix="/api/meal-plans", tags=["Meal Plans (Legacy)"])
-app.include_router(shopping_lists.router, prefix="/api/shopping-lists", tags=["Shopping Lists (Legacy)"])
-app.include_router(ai.router, prefix="/api/ai", tags=["AI (Legacy)"])
 
 
 if __name__ == "__main__":

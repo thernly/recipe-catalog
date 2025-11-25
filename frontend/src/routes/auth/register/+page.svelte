@@ -46,7 +46,10 @@
 		loading = true;
 
 		try {
+			// Register the user
 			await auth.register(email, password, displayName || undefined);
+			// Login separately for clearer error handling
+			await auth.login(email, password);
 			goto('/dashboard');
 		} catch (err: any) {
 			error = err.message || 'Registration failed. Please try again.';
