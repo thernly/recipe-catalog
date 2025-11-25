@@ -12,7 +12,7 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 **Overall Assessment**: Good foundation with room for improvement
 **Critical Issues**: 2 (✅ 2 fixed)
 **High Priority Issues**: 8 (✅ 8 fixed)
-**Medium Priority Issues**: 12
+**Medium Priority Issues**: 12 (✅ 4 fixed)
 **Low Priority Issues**: 7
 
 **Recent Fixes (2025-11-25)**:
@@ -26,6 +26,10 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 - ✅ Issue #8: Added OAuth redirect URL validation infrastructure
 - ✅ Issue #9: Reduced refresh token rate limit from 20/minute to 5/minute
 - ✅ Issue #10: Added collection ID ownership validation
+- ✅ Issue #11: Fixed N+1 query pattern in households endpoint using selectinload
+- ✅ Issue #12: Optimized invite code lookup using database-level normalization
+- ✅ Issue #13: Documented invite code security considerations
+- ✅ Issue #14: Added pagination to collections and shopping lists endpoints
 
 ---
 
@@ -214,6 +218,7 @@ This significantly reduces the attack surface for refresh token brute-force atte
 ### 11. Inefficient N+1 Query Pattern
 **File**: `backend/app/api/households.py:89-106`
 **Severity**: Medium (Performance)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 ```python
 for member in members:
@@ -223,11 +228,12 @@ for member in members:
 
 **Issue**: Fetching users one-by-one in a loop. With 10 members, this makes 10 separate database queries.
 
-**Fix**: Use a single query with a join or `selectinload`.
+**Fix**: Used SQLAlchemy's `selectinload()` to eagerly load user relationships in both `get_my_household` and `get_household_members` endpoints. This reduces N+1 queries to a single query with proper joins.
 
 ### 12. Redundant Household Lookup
 **File**: `backend/app/services/household.py:771-800`
 **Severity**: Medium (Performance)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 ```python
 async def get_invite_link_by_code(db: AsyncSession, code: str) -> HouseholdInviteLink | None:
@@ -243,11 +249,12 @@ async def get_invite_link_by_code(db: AsyncSession, code: str) -> HouseholdInvit
 
 **Issue**: If exact match fails, loads ALL invite links into memory to check normalized codes. This doesn't scale.
 
-**Fix**: Normalize the code before storing it, then only need one query. Or use database-level case-insensitive comparison.
+**Fix**: Implemented database-level normalization using SQLAlchemy's `func.replace()` and `func.lower()` to perform the normalized comparison in a single SQL query. This eliminates the need to load all invite links into memory.
 
 ### 13. Weak Invite Code Generation
 **File**: `backend/app/services/household.py:695-706`
 **Severity**: Medium (Security)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 ```python
 def generate_invite_code() -> str:
@@ -257,20 +264,28 @@ def generate_invite_code() -> str:
 
 **Issue**: Only 10 attempts to generate unique code, then falls back to 8-character UUID. The UUID fallback is secure, but the word-based codes have limited entropy (depends on wordlist size).
 
-**Recommendation**: Document the security implications or increase to 4 words / add a numeric suffix.
+**Fix**: Added comprehensive security documentation to the `generate_invite_code()` function explaining:
+- Entropy calculations (~38 bits from three random nouns)
+- One-time use and expiration mitigating brute-force risks
+- UUID fallback security characteristics
+- Adequate security for household invitations (not used for authentication)
 
 ### 14. Missing Pagination
 **Files**: Multiple API endpoints
 **Severity**: Medium (Performance/DoS)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 **Issue**: Several list endpoints don't have pagination:
-- `GET /api/recipes/`
+- `GET /api/recipes/` - Already had pagination via search endpoint
 - `GET /api/collections/`
 - `GET /api/shopping-lists/`
 
 **Impact**: A user with 10,000 recipes will return all at once, causing memory/performance issues.
 
-**Fix**: Add standard pagination parameters (limit, offset or cursor-based).
+**Fix**: Added simple limit/offset pagination to:
+- `GET /api/collections/` - limit (default 100, max 1000), offset (default 0)
+- `GET /api/shopping-lists/` - limit (default 100), offset (default 0)
+The recipe search endpoint already had comprehensive pagination support.
 
 ### 15. Inconsistent Error Response Format
 **Files**: Multiple
@@ -668,18 +683,19 @@ Despite the issues listed above, the codebase has many strengths:
 7. ✅ Fix #5: Email URL hardcoding
 8. ✅ Fix #8: OAuth redirect validation
 9. ✅ Fix #9: Refresh token rate limiting
-10. Fix #11: N+1 query optimization
-11. Fix #14: Add pagination to list endpoints
+10. ✅ Fix #11: N+1 query optimization
+11. ✅ Fix #14: Add pagination to list endpoints
 12. Fix #36: Account lockout mechanism
 13. Fix #37: Password strength validation
 
 ### Medium Term (Next month)
 14. ✅ Fix #7: Race condition in refresh tokens
-15. Fix #12: Invite code lookup optimization
-16. Fix #21: Request size limits
-17. Implement #44: Integration test suite
-18. Implement #40: Migration testing
-19. Simplify #47-49: Code consolidation
+15. ✅ Fix #12: Invite code lookup optimization
+16. ✅ Fix #13: Invite code security documentation
+17. Fix #21: Request size limits
+18. Implement #44: Integration test suite
+19. Implement #40: Migration testing
+20. Simplify #47-49: Code consolidation
 
 ### Long Term (Technical debt backlog)
 19. Address #30-34: Over-engineering issues
