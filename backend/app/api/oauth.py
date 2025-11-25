@@ -21,6 +21,7 @@ from app.core.security import (
     create_access_token,
     generate_refresh_token,
     get_refresh_token_expiry,
+    is_safe_redirect_url,
 )
 from app.models.identity_provider import IdentityProvider
 from app.models.oauth_state import OAuthState
@@ -45,6 +46,7 @@ async def list_available_providers():
 async def authorize_provider(
     request: Request,
     provider: str,
+    return_url: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -52,9 +54,15 @@ async def authorize_provider(
 
     Args:
         provider: Provider name (google, microsoft, github)
+        return_url: Optional URL to redirect to after successful authentication
+                   (must be validated against allowed origins)
 
     Returns:
         RedirectResponse to provider's authorization URL
+
+    Security:
+        If return_url is provided, it is validated against ALLOWED_ORIGINS and
+        FRONTEND_URL to prevent open redirect vulnerabilities (CWE-601).
     """
     if provider not in ["google", "microsoft", "github"]:
         raise HTTPException(
@@ -69,8 +77,22 @@ async def authorize_provider(
             detail=f"Provider {provider} not configured",
         )
 
+    # Validate redirect URL if provided (prevents open redirect attacks)
+    validated_return_url = None
+    if return_url:
+        if not is_safe_redirect_url(return_url):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid return URL. URL must belong to an allowed origin.",
+            )
+        validated_return_url = return_url
+
     # Create OAuth state in database for CSRF protection
-    oauth_state = OAuthState.create_state(provider=provider, link_user_id=None)
+    oauth_state = OAuthState.create_state(
+        provider=provider,
+        link_user_id=None,
+        redirect_url=validated_return_url,
+    )
     db.add(oauth_state)
     await db.commit()
     await db.refresh(oauth_state)
@@ -100,6 +122,13 @@ async def oauth_callback(
 
     Returns:
         Token: JWT access token
+
+    Security Note:
+        The OAuth state may contain a redirect_url for post-authentication redirect.
+        If redirect_url is present, it has already been validated in the authorize
+        endpoint using is_safe_redirect_url(). However, for defense in depth,
+        any future implementation that uses this redirect_url should re-validate
+        it before performing the redirect to prevent open redirect vulnerabilities.
     """
     if provider not in ["google", "microsoft", "github"]:
         raise HTTPException(

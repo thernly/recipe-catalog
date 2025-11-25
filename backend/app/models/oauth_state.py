@@ -26,17 +26,33 @@ class OAuthState(Base):
         return secrets.token_urlsafe(32)
 
     @classmethod
-    def create_state(cls, provider: str, link_user_id: int = None, minutes_valid: int = 10):
+    def create_state(
+        cls,
+        provider: str,
+        link_user_id: int = None,
+        redirect_url: str = None,
+        minutes_valid: int = 10,
+    ):
         """Create a new OAuth state token.
 
         Args:
             provider: OAuth provider name (google, microsoft, github)
             link_user_id: Optional user ID if linking accounts
+            redirect_url: Optional validated redirect URL for post-auth redirect
             minutes_valid: Token validity period in minutes (default: 10)
+
+        Note:
+            If redirect_url is provided, it MUST be validated using
+            is_safe_redirect_url() before calling this method to prevent
+            open redirect vulnerabilities.
         """
         token = cls.generate_token()
         expires_at = datetime.now(UTC) + timedelta(minutes=minutes_valid)
-        data = {"provider": provider, "link_user_id": link_user_id}
+        data = {
+            "provider": provider,
+            "link_user_id": link_user_id,
+            "redirect_url": redirect_url,
+        }
 
         return cls(
             token=token,

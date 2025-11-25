@@ -222,7 +222,7 @@ async def login(
 
 
 @router.post("/refresh")
-@limiter.limit(lambda: _get_rate_limit("20/minute"))
+@limiter.limit(lambda: _get_rate_limit("5/minute"))
 async def refresh_token(
     request: Request,
     response: Response,
