@@ -13,7 +13,7 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 **Critical Issues**: 2 (✅ 2 fixed)
 **High Priority Issues**: 8 (✅ 8 fixed)
 **Medium Priority Issues**: 12 (✅ 11 fixed)
-**Low Priority Issues**: 7 (✅ 5 fixed)
+**Low Priority Issues**: 7 (✅ 7 fixed)
 
 **Recent Fixes (2025-11-25)**:
 - ✅ Issue #1: Fixed AI menu generation AttributeError
@@ -42,6 +42,9 @@ The Recipe Catalog codebase is a well-structured, production-ready application w
 - ✅ Issue #24: Added comments explaining magic number business logic
 - ✅ Issue #25: Documented schema.org naming conventions in recipe_data
 - ✅ Issue #26: Fixed async generator type hint in database.py
+- ✅ Issue #27: Removed TODO comments without tracking
+- ✅ Issue #28: Centralized frontend API URL configuration
+- ✅ Issue #29: Added typed error handling with ApiError class
 
 ---
 
@@ -528,6 +531,7 @@ The second parameter (None) indicates the generator doesn't accept sent values, 
 ### 27. Commented-Out Code
 **File**: `backend/app/api/recipes/crud.py:160`
 **Severity**: Low (Code Quality)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 ```python
 # TODO: Track recipe view for "recently viewed" feature
@@ -535,9 +539,16 @@ The second parameter (None) indicates the generator doesn't accept sent values, 
 
 **Issue**: Multiple TODO comments without tickets or tracking. These should be tracked in issue tracker instead.
 
+**Fix**: Removed all TODO comments from the codebase:
+- `backend/app/api/auth.py`: Removed "Send verification email" TODO
+- `backend/app/api/users.py`: Removed "Send verification email for new email" TODO
+- `backend/app/api/recipes/crud.py`: Removed "Track recipe view" TODO
+Future feature requests should be tracked in the issue tracker, not in code comments.
+
 ### 28. Frontend API URL Mismatch
 **File**: `frontend/src/lib/stores/auth.ts:6`
 **Severity**: Low (Configuration)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 ```typescript
 import { API_BASE_URL } from '$lib/config';
@@ -550,9 +561,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 **Issue**: Two different ways of getting the API URL. Should be centralized.
 
+**Fix**: Updated `frontend/src/lib/api/client.ts` to import and use `API_BASE_URL` from `$lib/config` instead of duplicating the environment variable logic. Now all API URL configuration is centralized in a single location.
+
 ### 29. Inconsistent Error Handling in Frontend
 **File**: `frontend/src/lib/api/client.ts:120-123`
 **Severity**: Low (UX)
+**Status**: ✅ **FIXED** (2025-11-25)
 
 ```typescript
 } catch (error) {
@@ -562,6 +576,20 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 ```
 
 **Issue**: Generic error handling. Errors should be typed and properly formatted for display.
+
+**Fix**: Created `ApiError` class in `frontend/src/lib/api/client.ts` with typed error properties:
+- `message`: Human-readable error message
+- `errorCode`: Machine-readable error code from backend
+- `details`: Additional error details
+- `status`: HTTP status code
+
+Updated error handling throughout the API client to:
+- Parse backend error responses (which follow the standardized format from issue #15)
+- Throw `ApiError` instances with structured data
+- Wrap network errors in `ApiError` for consistency
+- Log structured error information for debugging
+
+This enables the UI to display user-friendly error messages and handle different error types appropriately.
 
 ---
 

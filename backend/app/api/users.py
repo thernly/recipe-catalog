@@ -74,7 +74,6 @@ async def update_user_profile(
             )
 
         current_user.email = user_update.email.lower()
-        # TODO: Send verification email for new email
         current_user.is_verified = False
 
     await db.commit()
