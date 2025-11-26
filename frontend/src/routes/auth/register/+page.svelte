@@ -2,6 +2,7 @@
 	import { auth } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
 	import { getAvailableProviders, initiateOAuthFlow, type ProviderInfo } from '$lib/api/oauth';
 
 	let email = '';
@@ -78,11 +79,11 @@
 
 	onMount(async () => {
 		// If already logged in, redirect to dashboard
-		auth.subscribe((state) => {
-			if (state.user) {
-				goto('/dashboard');
-			}
-		});
+		const currentAuth = get(auth);
+		if (currentAuth.user) {
+			goto('/dashboard');
+			return;
+		}
 
 		// Load available OAuth providers
 		try {
