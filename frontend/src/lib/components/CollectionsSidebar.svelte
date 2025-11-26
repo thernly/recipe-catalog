@@ -12,6 +12,8 @@
 	} from '$lib/api/collections';
 	import CollectionModal from './CollectionModal.svelte';
 	import type { Collection } from '$lib/api/collections';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	export let currentCollectionId: number | null = null;
 
@@ -43,16 +45,18 @@
 				// Update existing collection
 				const updated = await updateCollection(editingCollection.id, data as CollectionUpdate);
 				collections.updateCollection(updated.id, { ...updated, recipe_count: 0 });
+				toast.success('Collection updated successfully');
 			} else {
 				// Create new collection
 				const created = await createCollection(data as CollectionCreate);
 				collections.add({ ...created, recipe_count: 0 });
+				toast.success('Collection created successfully');
 			}
 
 			showModal = false;
 			editingCollection = null;
 		} catch (err) {
-			alert(err instanceof Error ? err.message : 'Failed to save collection');
+			toast.error(err instanceof Error ? err.message : 'Failed to save collection');
 			console.error('Failed to save collection:', err);
 		}
 	}
@@ -64,24 +68,29 @@
 
 	async function handleDeleteCollection(collection: Collection) {
 		if (collection.is_default) {
-			alert('Cannot delete default collections');
+			toast.error('Cannot delete default collections');
 			return;
 		}
 
-		if (confirm(`Are you sure you want to delete "${collection.name}"? Recipes will not be deleted.`)) {
-			try {
-				await deleteCollection(collection.id);
-				collections.remove(collection.id);
+		dialog.show({
+			title: 'Delete Collection',
+			message: `Are you sure you want to delete "${collection.name}"? Recipes will not be deleted.`,
+			onConfirm: async () => {
+				try {
+					await deleteCollection(collection.id);
+					collections.remove(collection.id);
+					toast.success('Collection deleted successfully');
 
-				// Navigate away if we're viewing this collection
-				if (currentCollectionId === collection.id) {
-					goto('/recipes');
+					// Navigate away if we're viewing this collection
+					if (currentCollectionId === collection.id) {
+						goto('/recipes');
+					}
+				} catch (err) {
+					toast.error(err instanceof Error ? err.message : 'Failed to delete collection');
+					console.error('Failed to delete collection:', err);
 				}
-			} catch (err) {
-				alert(err instanceof Error ? err.message : 'Failed to delete collection');
-				console.error('Failed to delete collection:', err);
 			}
-		}
+		});
 	}
 
 	function isActive(collectionId: number | null): boolean {

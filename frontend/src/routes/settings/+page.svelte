@@ -18,6 +18,8 @@
 	import StatsSection from '$lib/components/settings/StatsSection.svelte';
 	import FiltersSection from '$lib/components/settings/FiltersSection.svelte';
 	import DangerZoneSection from '$lib/components/settings/DangerZoneSection.svelte';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	let user: User | null = null;
 	let preferences: UserPreferences | null = null;
@@ -85,7 +87,7 @@
 			auth.logout();
 			goto('/auth/login');
 		} catch (err) {
-			alert('Failed to delete account: ' + (err instanceof Error ? err.message : 'Unknown error'));
+			toast.error('Failed to delete account: ' + (err instanceof Error ? err.message : 'Unknown error'));
 			console.error('Failed to delete account:', err);
 		}
 	}

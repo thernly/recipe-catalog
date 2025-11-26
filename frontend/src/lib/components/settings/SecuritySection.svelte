@@ -8,6 +8,8 @@
 	} from '$lib/api/oauth';
 	import { auth } from '$lib/stores/auth';
 	import { onMount } from 'svelte';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	let passwordForm = {
 		current_password: '',
@@ -82,23 +84,27 @@
 			return;
 		}
 
-		if (!confirm(`Remove ${providerName} from your account?`)) {
-			return;
-		}
+		dialog.show({
+			title: 'Remove Authentication Method',
+			message: `Remove ${providerName} from your account?`,
+			onConfirm: async () => {
+				removingProvider = providerId;
+				providerError = '';
 
-		removingProvider = providerId;
-		providerError = '';
-
-		try {
-			await unlinkProvider(providerId);
-			await loadProviders();
-		} catch (err) {
-			console.error('Failed to unlink provider:', err);
-			providerError =
-				err instanceof Error ? err.message : 'Failed to remove provider. Please try again.';
-		} finally {
-			removingProvider = null;
-		}
+				try {
+					await unlinkProvider(providerId);
+					toast.success(`${providerName} removed successfully`);
+					await loadProviders();
+				} catch (err) {
+					console.error('Failed to unlink provider:', err);
+					providerError =
+						err instanceof Error ? err.message : 'Failed to remove provider. Please try again.';
+					toast.error('Failed to remove provider');
+				} finally {
+					removingProvider = null;
+				}
+			}
+		});
 	}
 
 	function handleLinkProvider(provider: string) {

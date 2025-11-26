@@ -16,6 +16,8 @@
 	import { generateFromMealPlan, createShoppingList } from '$lib/api/shopping-lists';
 	import AddMealDialog from './AddMealDialog.svelte';
 	import EditMealDialog from './EditMealDialog.svelte';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	let mealPlan: MealPlan | null = null;
 	let loading = true;
@@ -123,7 +125,7 @@
 
 	async function handleGenerateShoppingList() {
 		if (!mealPlan || mealPlan.planned_meals.length === 0) {
-			alert('No meals in this meal plan to generate a shopping list from.');
+			toast.error('No meals in this meal plan to generate a shopping list from.');
 			return;
 		}
 

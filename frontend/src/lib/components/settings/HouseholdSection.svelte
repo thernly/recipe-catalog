@@ -18,6 +18,8 @@
 	} from '$lib/api/households';
 	import { auth } from '$lib/stores/auth';
 	import { get } from 'svelte/store';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	let household: Household | null = null;
 	let members: HouseholdMember[] = [];
@@ -121,52 +123,60 @@
 	async function handleRemoveMember(userId: number, username: string) {
 		if (!household) return;
 
-		if (!confirm(`Remove ${username} from your household?`)) {
-			return;
-		}
+		dialog.show({
+			title: 'Remove Member',
+			message: `Remove ${username} from your household?`,
+			onConfirm: async () => {
+				removingMemberId = userId;
+				error = '';
 
-		removingMemberId = userId;
-		error = '';
+				try {
+					await removeMember(household.id, userId);
+					success = 'Member removed successfully';
+					toast.success('Member removed successfully');
+					setTimeout(() => (success = ''), 3000);
 
-		try {
-			await removeMember(household.id, userId);
-			success = 'Member removed successfully';
-			setTimeout(() => (success = ''), 3000);
-
-			// Reload members
-			members = await getHouseholdMembers(household.id);
-		} catch (err) {
-			console.error('Failed to remove member:', err);
-			error = err instanceof Error ? err.message : 'Failed to remove member';
-		} finally {
-			removingMemberId = null;
-		}
+					// Reload members
+					members = await getHouseholdMembers(household.id);
+				} catch (err) {
+					console.error('Failed to remove member:', err);
+					error = err instanceof Error ? err.message : 'Failed to remove member';
+					toast.error('Failed to remove member');
+				} finally {
+					removingMemberId = null;
+				}
+			}
+		});
 	}
 
 	async function handleRevokeInvitation(invitationId: number, email: string) {
 		if (!household) return;
 
-		if (!confirm(`Revoke invitation for ${email}?`)) {
-			return;
-		}
+		dialog.show({
+			title: 'Revoke Invitation',
+			message: `Revoke invitation for ${email}?`,
+			onConfirm: async () => {
+				revokingInvitationId = invitationId;
+				error = '';
+				success = '';
 
-		revokingInvitationId = invitationId;
-		error = '';
-		success = '';
+				try {
+					await revokeInvitation(household.id, invitationId);
+					success = 'Invitation revoked successfully';
+					toast.success('Invitation revoked successfully');
+					setTimeout(() => (success = ''), 3000);
 
-		try {
-			await revokeInvitation(household.id, invitationId);
-			success = 'Invitation revoked successfully';
-			setTimeout(() => (success = ''), 3000);
-
-			// Reload invitations
-			invitations = await getHouseholdInvitations(household.id);
-		} catch (err) {
-			console.error('Failed to revoke invitation:', err);
-			error = err instanceof Error ? err.message : 'Failed to revoke invitation';
-		} finally {
-			revokingInvitationId = null;
-		}
+					// Reload invitations
+					invitations = await getHouseholdInvitations(household.id);
+				} catch (err) {
+					console.error('Failed to revoke invitation:', err);
+					error = err instanceof Error ? err.message : 'Failed to revoke invitation';
+					toast.error('Failed to revoke invitation');
+				} finally {
+					revokingInvitationId = null;
+				}
+			}
+		});
 	}
 
 	function formatDate(dateString: string): string {
@@ -248,11 +258,19 @@
 		// Warn if already in a household
 		if (household) {
 			const confirmMsg = `You are currently in "${household.name}". Joining a new household will automatically remove you from your current household. Continue?`;
-			if (!confirm(confirmMsg)) {
-				return;
-			}
+			dialog.show({
+				title: 'Join New Household',
+				message: confirmMsg,
+				onConfirm: async () => {
+					await joinViaCode();
+				}
+			});
+		} else {
+			await joinViaCode();
 		}
+	}
 
+	async function joinViaCode() {
 		joiningHousehold = true;
 		error = '';
 		success = '';
@@ -262,11 +280,12 @@
 			if (household) {
 				await leaveHousehold();
 			}
-			
+
 			await joinViaInviteLink(joiningCode.trim());
 			success = 'Successfully joined household! Reloading...';
+			toast.success('Successfully joined household!');
 			joiningCode = '';
-			
+
 			// Reload household data
 			setTimeout(() => {
 				loadHouseholdData();
@@ -274,6 +293,7 @@
 		} catch (err) {
 			console.error('Failed to join household:', err);
 			error = err instanceof Error ? err.message : 'Failed to join household';
+			toast.error('Failed to join household');
 		} finally {
 			joiningHousehold = false;
 		}

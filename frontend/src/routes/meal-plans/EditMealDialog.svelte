@@ -7,6 +7,8 @@
 		type PlannedMealUpdate
 	} from '$lib/api/meal-plans';
 	import { searchRecipes, type RecipeSummary } from '$lib/api/recipes';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	export let meal: PlannedMeal;
 
@@ -84,22 +86,26 @@
 	}
 
 	async function handleDelete() {
-		if (!confirm('Are you sure you want to remove this meal from the plan?')) {
-			return;
-		}
+		dialog.show({
+			title: 'Remove Meal',
+			message: 'Are you sure you want to remove this meal from the plan?',
+			onConfirm: async () => {
+				deleting = true;
+				error = null;
 
-		deleting = true;
-		error = null;
-
-		try {
-			await deletePlannedMeal(meal.id);
-			dispatch('mealDeleted');
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to delete meal';
-			console.error('Failed to delete meal:', err);
-		} finally {
-			deleting = false;
-		}
+				try {
+					await deletePlannedMeal(meal.id);
+					toast.success('Meal removed from plan');
+					dispatch('mealDeleted');
+				} catch (err) {
+					error = err instanceof Error ? err.message : 'Failed to delete meal';
+					toast.error('Failed to delete meal');
+					console.error('Failed to delete meal:', err);
+				} finally {
+					deleting = false;
+				}
+			}
+		});
 	}
 
 	function handleClose() {

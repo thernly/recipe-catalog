@@ -7,6 +7,8 @@
 	import RecipeListItem from '$lib/components/RecipeListItem.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
 	import CollectionsSidebar from '$lib/components/CollectionsSidebar.svelte';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	let searchResult: RecipeSearchResult | null = null;
 	let loading = true;
@@ -100,17 +102,20 @@
 	async function handleDeleteRecipe(e: CustomEvent) {
 		const recipe = e.detail as RecipeSummary;
 
-		if (
-			confirm(`Are you sure you want to delete "${recipe.name}"? It will be moved to trash.`)
-		) {
-			try {
-				await deleteRecipe(recipe.id);
-				loadRecipes();
-			} catch (err) {
-				alert('Failed to delete recipe');
-				console.error('Delete failed:', err);
+		dialog.show({
+			title: 'Delete Recipe',
+			message: `Are you sure you want to delete "${recipe.name}"? It will be moved to trash.`,
+			onConfirm: async () => {
+				try {
+					await deleteRecipe(recipe.id);
+					toast.success('Recipe deleted successfully');
+					loadRecipes();
+				} catch (err) {
+					toast.error('Failed to delete recipe');
+					console.error('Delete failed:', err);
+				}
 			}
-		}
+		});
 	}
 
 	function handleFavoriteRecipe(e: CustomEvent) {

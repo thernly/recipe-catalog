@@ -4,6 +4,9 @@
 	import { page } from '$app/stores';
 	import { auth } from '$lib/stores/auth';
 	import Navbar from '$lib/components/Navbar.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import Toast from '$lib/components/Toast.svelte';
+	import { dialog } from '$lib/stores/dialog';
 
 	let user: any = null;
 	let isAuthPage = false;
@@ -30,3 +33,13 @@
 {/if}
 
 <slot />
+
+<!-- Global components -->
+<ConfirmDialog
+	open={$dialog.open}
+	title={$dialog.title}
+	message={$dialog.message}
+	onConfirm={$dialog.onConfirm}
+	onCancel={() => dialog.close()}
+/>
+<Toast />

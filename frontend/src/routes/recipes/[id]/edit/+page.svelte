@@ -4,6 +4,8 @@
 	import { goto } from '$app/navigation';
 	import { getRecipe, updateRecipe, type Recipe, type RecipeUpdate } from '$lib/api/recipes';
 	import RecipeForm from '$lib/components/RecipeForm.svelte';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	let recipe: Recipe | null = null;
 	let loading = true;
@@ -36,6 +38,7 @@
 		try {
 			const updated = await updateRecipe(recipe.id, formData);
 			// Navigate to the updated recipe
+			toast.success('Recipe updated successfully');
 			goto(`/recipes/${updated.id}`);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to update recipe';
@@ -43,7 +46,7 @@
 			saving = false;
 
 			// Show error to user
-			alert(`Failed to update recipe: ${error}`);
+			toast.error(`Failed to update recipe: ${error}`);
 		}
 	}
 
@@ -53,9 +56,13 @@
 			return;
 		}
 
-		if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
-			goto(`/recipes/${recipe.id}`);
-		}
+		dialog.show({
+			title: 'Cancel Editing',
+			message: 'Are you sure you want to cancel? Any unsaved changes will be lost.',
+			onConfirm: () => {
+				goto(`/recipes/${recipe.id}`);
+			}
+		});
 	}
 
 	onMount(() => {

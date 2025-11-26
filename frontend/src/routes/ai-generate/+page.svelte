@@ -3,6 +3,8 @@
 	import { generateRecipe } from '$lib/api/ai';
 	import { createRecipe, type RecipeCreate } from '$lib/api/recipes';
 	import RecipeForm from '$lib/components/RecipeForm.svelte';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	let step: 'input' | 'preview' = 'input';
 	let generating = false;
@@ -101,12 +103,13 @@
 			formData.source_type = 'ai-generated';
 
 			const recipe = await createRecipe(formData);
+			toast.success('Recipe saved successfully');
 			goto(`/recipes/${recipe.id}`);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to save recipe';
 			console.error('Failed to save recipe:', err);
 			saving = false;
-			alert(`Failed to save recipe: ${error}`);
+			toast.error(`Failed to save recipe: ${error}`);
 		}
 	}
 

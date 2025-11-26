@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { getPreferences, updatePreferences } from '$lib/api/users';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	// Custom filters
 	let customCuisines: string[] = [];
@@ -70,7 +72,7 @@
 				custom_categories: customCategories
 			});
 		} catch (err) {
-			alert('Failed to save custom filters: ' + (err instanceof Error ? err.message : 'Unknown error'));
+			toast.error('Failed to save custom filters: ' + (err instanceof Error ? err.message : 'Unknown error'));
 			console.error('Failed to save custom filters:', err);
 		} finally {
 			saving = false;
@@ -106,11 +108,16 @@
 	}
 
 	async function resetToDefaults() {
-		if (confirm('Reset all custom cuisines and categories to defaults? This will remove any custom entries you\'ve added.')) {
-			customCuisines = [];
-			customCategories = [];
-			await saveToDatabase();
-		}
+		dialog.show({
+			title: 'Reset to Defaults',
+			message: 'Reset all custom cuisines and categories to defaults? This will remove any custom entries you\'ve added.',
+			onConfirm: async () => {
+				customCuisines = [];
+				customCategories = [];
+				await saveToDatabase();
+				toast.success('Filters reset to defaults');
+			}
+		});
 	}
 
 	$: allCuisines = [...defaultCuisines, ...customCuisines];

@@ -17,6 +17,8 @@
 		type ShoppingListItemCreate,
 		type ShoppingListUpdate
 	} from '$lib/api/shopping-lists';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	let listId: number;
 	let shoppingList: ShoppingList | null = null;
@@ -129,15 +131,21 @@
 	}
 
 	async function handleDeleteItem(itemId: number) {
-		if (!confirm('Are you sure you want to delete this item?')) return;
-
-		try {
-			await deleteShoppingListItem(itemId);
-			await loadShoppingList();
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to delete item';
-			console.error('Failed to delete item:', err);
-		}
+		dialog.show({
+			title: 'Delete Item',
+			message: 'Are you sure you want to delete this item?',
+			onConfirm: async () => {
+				try {
+					await deleteShoppingListItem(itemId);
+					toast.success('Item deleted successfully');
+					await loadShoppingList();
+				} catch (err) {
+					error = err instanceof Error ? err.message : 'Failed to delete item';
+					toast.error('Failed to delete item');
+					console.error('Failed to delete item:', err);
+				}
+			}
+		});
 	}
 
 	async function handleUpdateList() {
@@ -159,15 +167,21 @@
 	}
 
 	async function handleArchiveList() {
-		if (!confirm('Are you sure you want to archive this list?')) return;
-
-		try {
-			await archiveShoppingList(listId);
-			goto('/shopping-lists');
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to archive list';
-			console.error('Failed to archive list:', err);
-		}
+		dialog.show({
+			title: 'Archive List',
+			message: 'Are you sure you want to archive this list?',
+			onConfirm: async () => {
+				try {
+					await archiveShoppingList(listId);
+					toast.success('List archived successfully');
+					goto('/shopping-lists');
+				} catch (err) {
+					error = err instanceof Error ? err.message : 'Failed to archive list';
+					toast.error('Failed to archive list');
+					console.error('Failed to archive list:', err);
+				}
+			}
+		});
 	}
 
 	async function handleDuplicateList() {
@@ -181,16 +195,21 @@
 	}
 
 	async function handleDeleteList() {
-		if (!confirm('Are you sure you want to delete this list? This action cannot be undone.'))
-			return;
-
-		try {
-			await deleteShoppingList(listId);
-			goto('/shopping-lists');
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to delete list';
-			console.error('Failed to delete list:', err);
-		}
+		dialog.show({
+			title: 'Delete List',
+			message: 'Are you sure you want to delete this list? This action cannot be undone.',
+			onConfirm: async () => {
+				try {
+					await deleteShoppingList(listId);
+					toast.success('List deleted successfully');
+					goto('/shopping-lists');
+				} catch (err) {
+					error = err instanceof Error ? err.message : 'Failed to delete list';
+					toast.error('Failed to delete list');
+					console.error('Failed to delete list:', err);
+				}
+			}
+		});
 	}
 
 	onMount(() => {

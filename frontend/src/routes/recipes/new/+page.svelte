@@ -2,6 +2,8 @@
 	import { goto } from '$app/navigation';
 	import { createRecipe, type RecipeCreate } from '$lib/api/recipes';
 	import RecipeForm from '$lib/components/RecipeForm.svelte';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	let saving = false;
 	let error: string | null = null;
@@ -16,6 +18,7 @@
 			// Clear draft from localStorage
 			localStorage.removeItem('recipe-draft');
 			// Navigate to the new recipe
+			toast.success('Recipe created successfully');
 			goto(`/recipes/${recipe.id}`);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to create recipe';
@@ -23,18 +26,18 @@
 			saving = false;
 
 			// Show error to user
-			alert(`Failed to create recipe: ${error}`);
+			toast.error(`Failed to create recipe: ${error}`);
 		}
 	}
 
 	function handleCancel() {
-		if (
-			confirm(
-				'Are you sure you want to cancel? Any unsaved changes will be lost (except auto-saved drafts).'
-			)
-		) {
-			goto('/recipes');
-		}
+		dialog.show({
+			title: 'Cancel Recipe Creation',
+			message: 'Are you sure you want to cancel? Any unsaved changes will be lost (except auto-saved drafts).',
+			onConfirm: () => {
+				goto('/recipes');
+			}
+		});
 	}
 </script>
 
