@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 async def test_register_success(client: AsyncClient):
     """Test successful user registration."""
     response = await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "test@example.com",
             "password": "TestPassword123",
@@ -31,7 +31,7 @@ async def test_register_duplicate_email(client: AsyncClient):
     """Test registration with duplicate email."""
     # Register first user
     await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "test@example.com",
             "password": "TestPassword123",
@@ -41,7 +41,7 @@ async def test_register_duplicate_email(client: AsyncClient):
 
     # Try to register again with same email
     response = await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "test@example.com",
             "password": "DifferentPassword123",
@@ -57,7 +57,7 @@ async def test_register_duplicate_email(client: AsyncClient):
 async def test_register_invalid_password_too_short(client: AsyncClient):
     """Test registration with password that's too short."""
     response = await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "test@example.com",
             "password": "Short1",  # Less than 12 characters
@@ -76,7 +76,7 @@ async def test_register_invalid_password_too_short(client: AsyncClient):
 async def test_register_invalid_password_no_uppercase(client: AsyncClient):
     """Test registration with password missing uppercase letter."""
     response = await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "test@example.com",
             "password": "alllowercase123",  # No uppercase
@@ -95,7 +95,7 @@ async def test_register_invalid_password_no_uppercase(client: AsyncClient):
 async def test_register_invalid_password_no_lowercase(client: AsyncClient):
     """Test registration with password missing lowercase letter."""
     response = await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "test@example.com",
             "password": "ALLUPPERCASE123",  # No lowercase
@@ -114,7 +114,7 @@ async def test_register_invalid_password_no_lowercase(client: AsyncClient):
 async def test_register_invalid_password_no_digit(client: AsyncClient):
     """Test registration with password missing digit."""
     response = await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "test@example.com",
             "password": "NoDigitsHere",  # No digits
@@ -133,7 +133,7 @@ async def test_register_invalid_password_no_digit(client: AsyncClient):
 async def test_register_invalid_email(client: AsyncClient):
     """Test registration with invalid email format."""
     response = await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "not-an-email",
             "password": "ValidPassword123",
@@ -153,7 +153,7 @@ async def test_login_success(client: AsyncClient):
     """Test successful login."""
     # First register a user
     await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "test@example.com",
             "password": "TestPassword123",
@@ -163,7 +163,7 @@ async def test_login_success(client: AsyncClient):
 
     # Then try to login
     response = await client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={
             "email": "test@example.com",
             "password": "TestPassword123",
@@ -184,7 +184,7 @@ async def test_login_wrong_password(client: AsyncClient):
     """Test login with incorrect password."""
     # First register a user
     await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "test@example.com",
             "password": "TestPassword123",
@@ -194,7 +194,7 @@ async def test_login_wrong_password(client: AsyncClient):
 
     # Try to login with wrong password
     response = await client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={
             "email": "test@example.com",
             "password": "WrongPassword123",
@@ -209,7 +209,7 @@ async def test_login_wrong_password(client: AsyncClient):
 async def test_login_nonexistent_user(client: AsyncClient):
     """Test login with nonexistent email."""
     response = await client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={
             "email": "nonexistent@example.com",
             "password": "SomePassword123",
@@ -223,7 +223,7 @@ async def test_login_nonexistent_user(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_logout(client: AsyncClient):
     """Test logout endpoint."""
-    response = await client.post("/api/auth/logout")
+    response = await client.post("/api/v1/auth/logout")
 
     assert response.status_code == 200
     assert response.json()["message"] == "Successfully logged out"
@@ -239,7 +239,7 @@ async def test_register_creates_default_household(client: AsyncClient, db: Async
 
     # Register a new user
     response = await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "newhousehold@example.com",
             "password": "TestPassword123",
@@ -286,7 +286,7 @@ async def test_register_household_name_from_email(client: AsyncClient, db: Async
 
     # Register a user without display name
     response = await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "johndoe@example.com",
             "password": "TestPassword123",

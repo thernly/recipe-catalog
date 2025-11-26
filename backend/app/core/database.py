@@ -13,12 +13,26 @@ from app.core.config import settings
 # Create base class for models
 Base = declarative_base()
 
-# Create async engine
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.DEBUG,
-    future=True,
-)
+# Create async engine with connection pooling configuration
+# Pool settings optimized for typical web application workloads:
+# - pool_size: Number of connections to maintain in the pool (default: 5)
+# - max_overflow: Additional connections allowed above pool_size (default: 10)
+# - pool_pre_ping: Verify connections before using them (prevents stale connections)
+# Note: SQLite doesn't support connection pooling, so these params are only for PostgreSQL/MySQL
+engine_kwargs = {
+    "echo": settings.DEBUG,
+    "future": True,
+}
+
+# Only add pool parameters for non-SQLite databases
+if not settings.DATABASE_URL.startswith("sqlite"):
+    engine_kwargs.update({
+        "pool_size": 5,  # Keep 5 persistent connections
+        "max_overflow": 10,  # Allow up to 15 total connections (5 + 10)
+        "pool_pre_ping": True,  # Verify connection health before use
+    })
+
+engine = create_async_engine(settings.DATABASE_URL, **engine_kwargs)
 
 # Create async session factory
 AsyncSessionLocal = async_sessionmaker(

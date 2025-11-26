@@ -1,6 +1,5 @@
 """OAuth/OIDC authentication API endpoints."""
 
-import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -12,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.logging import get_logger
 from app.core.oauth import (
     extract_user_info,
     get_available_providers,
@@ -32,7 +32,7 @@ from app.schemas.oauth import LinkedProviderResponse, ProviderInfo
 
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 
 

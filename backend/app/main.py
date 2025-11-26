@@ -156,6 +156,7 @@ async def limit_request_size(request: Request, call_next):
 
 # Exception handlers
 from fastapi.exceptions import HTTPException
+import structlog
 
 
 @app.exception_handler(HTTPException)
@@ -165,6 +166,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
     Converts FastAPI's default {"detail": "error"} format to our standard
     {"error_code": "...", "message": "...", "details": {}} format.
+    Includes correlation_id for client-side debugging.
     """
     # Map HTTP status codes to error codes
     error_code_map = {
@@ -179,6 +181,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
     error_code = error_code_map.get(exc.status_code, "INTERNAL_ERROR")
 
+    # Get correlation ID from structlog context or request headers
+    correlation_id = structlog.contextvars.get_contextvars().get("correlation_id") or request.headers.get("X-Correlation-ID")
+
     logger.error(
         "http_exception",
         url=str(request.url),
@@ -186,19 +191,28 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         detail=str(exc.detail),
     )
 
+    response_content = {
+        "error_code": error_code,
+        "message": str(exc.detail),
+        "details": {},
+    }
+
+    # Include correlation_id for debugging if available
+    if correlation_id:
+        response_content["correlation_id"] = correlation_id
+
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "error_code": error_code,
-            "message": str(exc.detail),
-            "details": {},
-        },
+        content=response_content,
     )
 
 
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
-    """Handle custom application exceptions."""
+    """Handle custom application exceptions. Includes correlation_id for debugging."""
+    # Get correlation ID from structlog context or request headers
+    correlation_id = structlog.contextvars.get_contextvars().get("correlation_id") or request.headers.get("X-Correlation-ID")
+
     logger.error(
         "application_error",
         url=str(request.url),
@@ -207,19 +221,28 @@ async def app_exception_handler(request: Request, exc: AppException):
         details=exc.details,
     )
 
+    response_content = {
+        "error_code": exc.error_code,
+        "message": exc.message,
+        "details": exc.details,
+    }
+
+    # Include correlation_id for debugging if available
+    if correlation_id:
+        response_content["correlation_id"] = correlation_id
+
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "error_code": exc.error_code,
-            "message": exc.message,
-            "details": exc.details,
-        },
+        content=response_content,
     )
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle validation errors and return consistent error format."""
+    """Handle validation errors and return consistent error format. Includes correlation_id for debugging."""
+    # Get correlation ID from structlog context or request headers
+    correlation_id = structlog.contextvars.get_contextvars().get("correlation_id") or request.headers.get("X-Correlation-ID")
+
     logger.error("validation_error", url=str(request.url), errors=exc.errors())
 
     # Convert Pydantic errors to JSON-serializable format
@@ -237,27 +260,43 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             error_dict["ctx"] = {k: str(v) for k, v in error["ctx"].items()}
         errors.append(error_dict)
 
+    response_content = {
+        "error_code": "VALIDATION_ERROR",
+        "message": "Request validation failed",
+        "details": {"errors": errors},
+    }
+
+    # Include correlation_id for debugging if available
+    if correlation_id:
+        response_content["correlation_id"] = correlation_id
+
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-        content={
-            "error_code": "VALIDATION_ERROR",
-            "message": "Request validation failed",
-            "details": {"errors": errors},
-        },
+        content=response_content,
     )
 
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Handle all other uncaught exceptions with consistent error format."""
+    """Handle all other uncaught exceptions with consistent error format. Includes correlation_id for debugging."""
+    # Get correlation ID from structlog context or request headers
+    correlation_id = structlog.contextvars.get_contextvars().get("correlation_id") or request.headers.get("X-Correlation-ID")
+
     logger.exception("unhandled_exception", url=str(request.url), error=str(exc))
+
+    response_content = {
+        "error_code": "INTERNAL_ERROR",
+        "message": "Internal server error",
+        "details": {"error": str(exc)} if settings.DEBUG else {},
+    }
+
+    # Include correlation_id for debugging if available
+    if correlation_id:
+        response_content["correlation_id"] = correlation_id
+
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "error_code": "INTERNAL_ERROR",
-            "message": "Internal server error",
-            "details": {"error": str(exc)} if settings.DEBUG else {},
-        },
+        content=response_content,
     )
 
 

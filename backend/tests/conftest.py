@@ -113,7 +113,7 @@ async def test_user_headers(client: AsyncClient):
     """Create a test user and return authorization headers."""
     # Register user
     await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "testuser@example.com",
             "password": "SecurePass123!",
@@ -123,21 +123,26 @@ async def test_user_headers(client: AsyncClient):
 
     # Login to get token cookie
     login_response = await client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"email": "testuser@example.com", "password": "SecurePass123!"},
     )
 
     # Extract token from cookies
     token = login_response.cookies.get("access_token")
+    csrf_token = login_response.cookies.get("csrf_token")
 
-    return {"Authorization": f"Bearer {token}"}
+    headers = {"Authorization": f"Bearer {token}"}
+    if csrf_token:
+        headers["X-CSRF-Token"] = csrf_token
+
+    return headers
 
 
 @pytest_asyncio.fixture
 async def test_household(client: AsyncClient, test_user_headers: dict):
     """Create a test household and return its data."""
     # Get the user's household (created automatically on registration)
-    response = await client.get("/api/households/me", headers=test_user_headers)
+    response = await client.get("/api/v1/households/me", headers=test_user_headers)
 
     if response.status_code == 200:
         household = response.json()
@@ -149,7 +154,7 @@ async def test_household(client: AsyncClient, test_user_headers: dict):
 
     # If no household exists, create one
     create_response = await client.post(
-        "/api/households/",
+        "/api/v1/households/",
         headers=test_user_headers,
         json={"name": "Test Household"},
     )

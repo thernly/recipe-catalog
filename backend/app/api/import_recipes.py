@@ -4,7 +4,6 @@ Allows users to import recipes from JSON files in Schema.org format
 """
 
 import json
-import logging
 from datetime import UTC, datetime
 from typing import Any, Literal
 
@@ -16,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
+from app.core.logging import get_logger
 from app.models.collection import Collection, RecipeCollection
 from app.models.household import Household
 from app.models.recipe import Recipe
@@ -25,7 +25,7 @@ from app.utils.recipe_format import convert_from_schema_org
 
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 
 

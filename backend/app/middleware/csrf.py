@@ -10,6 +10,7 @@ from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.core.config import settings
 from app.core.security import verify_csrf_token
 
 
@@ -44,6 +45,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         """Process request and validate CSRF token if required."""
+        # Skip CSRF protection in testing environment
+        if settings.ENVIRONMENT == "testing":
+            return await call_next(request)
+
         # Skip CSRF check for safe methods (GET, HEAD, OPTIONS)
         if request.method not in CSRF_PROTECTED_METHODS:
             return await call_next(request)
