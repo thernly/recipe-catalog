@@ -13,6 +13,7 @@ Recipe Catalog is a privacy-focused web application for organizing and managing 
 ## Technology Stack
 
 ### Frontend
+
 - **Framework**: SvelteKit (TypeScript)
 - **Styling**: Tailwind CSS with custom CSS variables for theming
 - **State Management**: Svelte stores (`auth.ts`, `collections.ts`)
@@ -20,6 +21,7 @@ Recipe Catalog is a privacy-focused web application for organizing and managing 
 - **Package Manager**: pnpm (preferred) or npm
 
 ### Backend
+
 - **Framework**: FastAPI (Python 3.13+)
 - **Database**: SQLite with SQLAlchemy async ORM (PostgreSQL-ready)
 - **Async Support**: aiosmtplib, aiosqlite
@@ -29,6 +31,7 @@ Recipe Catalog is a privacy-focused web application for organizing and managing 
 - **Rate Limiting**: SlowAPI
 
 ### Development Tools
+
 - **Backend Linting**: Ruff
 - **Backend Type Checking**: mypy
 - **Frontend Linting**: ESLint
@@ -163,6 +166,7 @@ recipe-catalog/
 ## Authentication & Security
 
 ### Authentication Flow
+
 1. User registers with email/password
 2. Email verification token sent
 3. User verifies email via token link
@@ -170,11 +174,13 @@ recipe-catalog/
 5. Token stored in localStorage (frontend) and passed as Bearer token
 
 ### Password Security
+
 - **Hashing**: Argon2 (industry standard)
 - **Reset Flow**: Time-limited reset tokens via email
 - **Validation**: Minimum length requirements
 
 ### Authorization
+
 - **JWT Tokens**: Short-lived access tokens
 - **User Scopes**: Currently single-user accounts (multi-user planned)
 - **Protected Routes**: Require `get_current_active_user` dependency
@@ -184,6 +190,7 @@ recipe-catalog/
 ## Database Schema
 
 ### Core Models
+
 1. **User**: User accounts and authentication
 2. **UserPreferences**: Theme, default view, cuisines, categories
 3. **Recipe**: Recipe data with ingredients, instructions, metadata
@@ -193,6 +200,7 @@ recipe-catalog/
 7. **PasswordResetToken**: Password reset flow
 
 ### Key Relationships
+
 - User ← (1:many) → Recipe
 - User ← (1:many) → Collection
 - Recipe ← (many:many) → Collection
@@ -265,6 +273,7 @@ recipe-catalog/
 ### Planned Enhancements (from PRD v2.1)
 
 **Next Feature Wave**:
+
 1. Identity Provider Authentication (Google, Microsoft SSO)
 2. Household/Group Multi-User Tenancy (max 10 members)
 3. Weekly Meal Planning (calendar-style)
@@ -275,6 +284,7 @@ recipe-catalog/
 8. PDF Export for Recipes & Collections
 
 **Explicitly Out of Scope**:
+
 - Social media features
 - Public recipe sharing
 - Community/social graph features
@@ -287,6 +297,7 @@ recipe-catalog/
 ### Running Locally
 
 **Backend**:
+
 ```powershell
 cd backend
 # Install dependencies with uv (recommended)
@@ -306,6 +317,7 @@ uv run mypy app/
 ```
 
 **Frontend**:
+
 ```powershell
 cd frontend
 # Install dependencies
@@ -327,6 +339,7 @@ pnpm format
 ### Environment Variables
 
 **Backend** (`.env` in `backend/`):
+
 ```
 DATABASE_URL=sqlite+aiosqlite:///./recipes.db
 SECRET_KEY=<your-secret-key>
@@ -338,6 +351,7 @@ SMTP_PASSWORD=<password>
 ```
 
 **Frontend** (`.env` in `frontend/`):
+
 ```
 PUBLIC_API_URL=http://localhost:8000
 ```
@@ -345,6 +359,7 @@ PUBLIC_API_URL=http://localhost:8000
 ### Database Migrations
 
 Using Alembic:
+
 ```powershell
 cd backend
 # Create migration
@@ -362,6 +377,7 @@ uv run alembic downgrade -1
 ## API Endpoints Reference
 
 ### Authentication
+
 - `POST /api/auth/register` - Register new user
 - `POST /api/auth/login` - Login and get token
 - `POST /api/auth/verify-email/{token}` - Verify email
@@ -369,6 +385,7 @@ uv run alembic downgrade -1
 - `POST /api/auth/reset-password/{token}` - Reset password
 
 ### Users
+
 - `GET /api/users/me` - Get current user profile
 - `PUT /api/users/me` - Update profile
 - `GET /api/users/me/preferences` - Get preferences
@@ -377,6 +394,7 @@ uv run alembic downgrade -1
 - `DELETE /api/users/me` - Delete account
 
 ### Recipes
+
 - `GET /api/recipes` - List recipes (with filters, search, pagination)
 - `POST /api/recipes` - Create recipe
 - `GET /api/recipes/{id}` - Get recipe details
@@ -387,6 +405,7 @@ uv run alembic downgrade -1
 - `DELETE /api/recipes/{id}/permanent` - Permanently delete
 
 ### Collections
+
 - `GET /api/collections` - List collections
 - `POST /api/collections` - Create collection
 - `GET /api/collections/{id}` - Get collection with recipes
@@ -396,6 +415,7 @@ uv run alembic downgrade -1
 - `DELETE /api/collections/{id}/recipes/{recipe_id}` - Remove recipe
 
 ### Import/Export
+
 - `POST /api/import-export/import` - Import recipes from JSON
 - `GET /api/import-export/export` - Export recipes (supports JSON, Markdown, Text formats via query param)
 
@@ -404,6 +424,7 @@ uv run alembic downgrade -1
 ## Coding Guidelines
 
 ### General Principles
+
 1. **Privacy First**: No tracking, no analytics, minimal data collection
 2. **Type Safety**: Use TypeScript (frontend) and type hints (backend)
 3. **Async by Default**: All I/O operations should be async
@@ -411,6 +432,7 @@ uv run alembic downgrade -1
 5. **Testing**: Write tests for critical business logic
 
 ### Frontend Guidelines
+
 - Use TypeScript for all new code
 - Follow Svelte component conventions
 - Use Tailwind utility classes (avoid custom CSS when possible)
@@ -419,6 +441,7 @@ uv run alembic downgrade -1
 - Use stores for shared state, props for component communication
 
 ### Backend Guidelines
+
 - Use async/await for all database operations
 - Validate input with Pydantic schemas
 - Use dependency injection for database sessions and auth
@@ -427,6 +450,7 @@ uv run alembic downgrade -1
 - Log errors but don't expose internals to users
 
 ### Python Style
+
 - Follow PEP 8 (enforced by Ruff)
 - Use type hints for function signatures
 - Docstrings for public APIs
@@ -434,6 +458,7 @@ uv run alembic downgrade -1
 - Use f-strings for string formatting
 
 ### TypeScript/JavaScript Style
+
 - Use `const` by default, `let` when needed, avoid `var`
 - Prefer async/await over promises/callbacks
 - Use optional chaining (`?.`) and nullish coalescing (`??`)
@@ -445,24 +470,28 @@ uv run alembic downgrade -1
 ## Testing Strategy
 
 ### Backend Testing
+
 - **Framework**: pytest with pytest-asyncio
 - **Coverage**: pytest-cov
 - **Test Database**: Separate test database (in-memory SQLite)
 - **Fixtures**: Defined in `conftest.py`
 
 **Current Tests**:
+
 - Authentication flows (register, login, verify)
 - User CRUD operations
 - Recipe CRUD operations
 - Collection management
 
 **To Add**:
+
 - Import/export functionality tests
 - Email sending (mocked)
 - Rate limiting tests
 - Soft delete and restore edge cases
 
 ### Frontend Testing
+
 - **Framework**: Not yet configured (TODO)
 - **Recommended**: Vitest + Testing Library
 
@@ -471,11 +500,13 @@ uv run alembic downgrade -1
 ## Deployment Targets
 
 ### Primary: Cloudflare
+
 - **Frontend**: Cloudflare Pages
 - **Backend**: Cloudflare Workers (with Hono adapter)
 - **Database**: Cloudflare D1 (managed SQLite)
 
 ### Alternative: Self-Hosted
+
 - **Platform**: Proxmox/Docker
 - **Frontend**: Static files via Nginx
 - **Backend**: Uvicorn behind Nginx reverse proxy
@@ -488,42 +519,49 @@ uv run alembic downgrade -1
 When working on this codebase, AI agents should:
 
 ### 1. Understand Context First
+
 - Read relevant files before making changes
 - Check both frontend and backend when changes affect both
 - Review existing patterns and follow them
 - The navigation system is now unified via root layout
 
 ### 2. Make Consistent Changes
+
 - Match existing code style and patterns
 - Use the same libraries and tools already in place
 - Maintain theme compatibility when touching UI
 - Update both implementation and tests
 
 ### 3. Consider Privacy
+
 - Never add analytics or tracking
 - Minimize data collection
 - Respect user data ownership
 - Default to secure options
 
 ### 4. Handle Errors Gracefully
+
 - Validate input thoroughly
 - Return helpful error messages
 - Log errors for debugging
 - Don't expose internal details to users
 
 ### 5. Test Your Changes
+
 - Run linters before committing
 - Test both happy path and edge cases
 - Verify database migrations work
 - Check UI in both themes
 
 ### 6. Document Decisions
+
 - Update relevant documentation
 - Add comments for complex logic
 - Update API documentation if endpoints change
 - Note any breaking changes
 
 ### 7. Implementation Notes
+
 - **Navigation**: Unified layout includes Navbar and CollectionsSidebar
 - **Theme Switcher**: Available in Settings page, persists to localStorage
 - **Import/Export**: Combined into single `import_export.py` API module
@@ -534,18 +572,23 @@ When working on this codebase, AI agents should:
 ## File Path Conventions
 
 ### Absolute Paths
+
 When referencing files in this codebase, use absolute paths from workspace root:
+
 - ✅ `c:\source\recipe-catalog\frontend\src\lib\components\Navbar.svelte`
 - ✅ `c:\source\recipe-catalog\backend\app\main.py`
 
 ### Import Paths
+
 **Frontend**: Use `$lib` alias for src/lib
+
 ```typescript
 import { auth } from '$lib/stores/auth';
 import Navbar from '$lib/components/Navbar.svelte';
 ```
 
 **Backend**: Use absolute imports from app package
+
 ```python
 from app.core.database import get_db
 from app.models.user import User
@@ -557,6 +600,7 @@ from app.schemas.recipe import RecipeCreate
 ## Common Tasks
 
 ### Adding a New API Endpoint
+
 1. Define Pydantic schema in `app/schemas/`
 2. Create/update model in `app/models/` if needed
 3. Add route handler in appropriate `app/api/` file
@@ -565,6 +609,7 @@ from app.schemas.recipe import RecipeCreate
 6. Add tests in `tests/`
 
 ### Adding a New Page
+
 1. Create `+page.svelte` in `routes/` directory
 2. Page will automatically inherit Navbar and CollectionsSidebar from root layout
 3. Add to navigation if needed (Navbar component)
@@ -573,6 +618,7 @@ from app.schemas.recipe import RecipeCreate
 6. Add auth guard if private page
 
 ### Adding a New Component
+
 1. Create `.svelte` file in `lib/components/`
 2. Use TypeScript for props typing
 3. Use Tailwind classes with theme CSS variables
@@ -580,6 +626,7 @@ from app.schemas.recipe import RecipeCreate
 5. Document props with JSDoc comments
 
 ### Modifying Database Schema
+
 1. Update SQLAlchemy model in `app/models/`
 2. Update Pydantic schemas in `app/schemas/`
 3. Generate Alembic migration
@@ -590,17 +637,18 @@ from app.schemas.recipe import RecipeCreate
 
 ## Resources & References
 
-- **FastAPI Documentation**: https://fastapi.tiangolo.com/
-- **SvelteKit Documentation**: https://kit.svelte.dev/
-- **SQLAlchemy Async**: https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html
-- **Pydantic V2**: https://docs.pydantic.dev/latest/
-- **Tailwind CSS**: https://tailwindcss.com/docs
+- **FastAPI Documentation**: <https://fastapi.tiangolo.com/>
+- **SvelteKit Documentation**: <https://kit.svelte.dev/>
+- **SQLAlchemy Async**: <https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html>
+- **Pydantic V2**: <https://docs.pydantic.dev/latest/>
+- **Tailwind CSS**: <https://tailwindcss.com/docs>
 
 ---
 
 ## Contact & Support
 
 This is a privacy-focused personal project. For questions or contributions:
+
 - Check existing documentation in `docs/`
 - Review known issues in `docs/issues/`
 - Consult product requirements in `docs/requirements/`
