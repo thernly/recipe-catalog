@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import { getUserStats } from '$lib/api/users';
 	import type { UserStats } from '$lib/api/users';
 	import { API_BASE_URL } from '$lib/config';
@@ -35,7 +36,7 @@
 
 		try {
 			// Get auth token
-			const token = localStorage.getItem('auth_token');
+			const token = browser ? localStorage.getItem('auth_token') : null;
 			if (!token) {
 				throw new Error('Not authenticated');
 			}

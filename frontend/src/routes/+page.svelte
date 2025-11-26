@@ -1,18 +1,24 @@
 <script lang="ts">
-	let theme = 'classic';
+	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
+	import type { Theme } from '$lib/types';
+
+	let theme: Theme = 'classic';
 
 	function toggleTheme() {
 		theme = theme === 'classic' ? 'professional' : 'classic';
 		document.documentElement.setAttribute('data-theme', theme);
-		localStorage.setItem('theme', theme);
+		if (browser) {
+			localStorage.setItem('theme', theme);
+		}
 	}
 
-	import { onMount } from 'svelte';
-
 	onMount(() => {
-		const savedTheme = localStorage.getItem('theme') || 'classic';
-		theme = savedTheme;
-		document.documentElement.setAttribute('data-theme', savedTheme);
+		if (browser) {
+			const savedTheme = localStorage.getItem('theme') || 'classic';
+			theme = savedTheme as Theme;
+			document.documentElement.setAttribute('data-theme', savedTheme);
+		}
 	});
 </script>
 

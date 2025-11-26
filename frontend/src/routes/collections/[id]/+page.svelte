@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import {
@@ -9,6 +10,7 @@
 		type CollectionWithCount
 	} from '$lib/api/collections';
 	import { deleteRecipe, type RecipeSummary } from '$lib/api/recipes';
+	import type { ViewMode } from '$lib/types';
 	import RecipeCard from '$lib/components/RecipeCard.svelte';
 	import RecipeListItem from '$lib/components/RecipeListItem.svelte';
 	import { dialog } from '$lib/stores/dialog';
@@ -18,7 +20,7 @@
 	let recipes: RecipeSummary[] = [];
 	let loading = true;
 	let error: string | null = null;
-	let viewMode: 'grid' | 'list' = 'grid';
+	let viewMode: ViewMode = 'grid';
 	let exportingPdf = false;
 
 	$: collectionId = parseInt($page.params.id!);
@@ -76,9 +78,11 @@
 		console.log('Favorite:', recipe);
 	}
 
-	function toggleViewMode(mode: 'grid' | 'list') {
+	function toggleViewMode(mode: ViewMode) {
 		viewMode = mode;
-		localStorage.setItem('recipe-view-mode', mode);
+		if (browser) {
+			localStorage.setItem('recipe-view-mode', mode);
+		}
 	}
 
 	async function handleExportPdf() {
@@ -111,9 +115,11 @@
 
 	onMount(() => {
 		// Restore view mode
-		const savedViewMode = localStorage.getItem('recipe-view-mode');
-		if (savedViewMode === 'grid' || savedViewMode === 'list') {
-			viewMode = savedViewMode;
+		if (browser) {
+			const savedViewMode = localStorage.getItem('recipe-view-mode');
+			if (savedViewMode === 'grid' || savedViewMode === 'list') {
+				viewMode = savedViewMode;
+			}
 		}
 
 		loadData();

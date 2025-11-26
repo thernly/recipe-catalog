@@ -2,8 +2,9 @@
 	import { auth } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import type { User } from '$lib/types';
 
-	let user: any = null;
+	let user: User | null = null;
 
 	onMount(() => {
 		const unsubscribe = auth.subscribe((state) => {

@@ -19,6 +19,7 @@
 
 	let showModal = false;
 	let editingCollection: Collection | null = null;
+	let deleting = false;
 
 	// Load collections on mount
 	onMount(() => {
@@ -76,6 +77,7 @@
 			title: 'Delete Collection',
 			message: `Are you sure you want to delete "${collection.name}"? Recipes will not be deleted.`,
 			onConfirm: async () => {
+				deleting = true;
 				try {
 					await deleteCollection(collection.id);
 					collections.remove(collection.id);
@@ -88,6 +90,8 @@
 				} catch (err) {
 					toast.error(err instanceof Error ? err.message : 'Failed to delete collection');
 					console.error('Failed to delete collection:', err);
+				} finally {
+					deleting = false;
 				}
 			}
 		});

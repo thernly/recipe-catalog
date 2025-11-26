@@ -1,0 +1,51 @@
+<script lang="ts">
+	export let loading = false;
+	export let disabled = false;
+	export let type: 'button' | 'submit' = 'button';
+	export let variant: 'primary' | 'secondary' | 'danger' = 'primary';
+</script>
+
+<button
+	{type}
+	disabled={loading || disabled}
+	class={`btn btn-${variant} ${$$props.class || ''}`}
+	class:loading
+	on:click
+>
+	{#if loading}
+		<span class="spinner"></span>
+	{/if}
+	<slot />
+</button>
+
+<style>
+	.btn {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		transition: all var(--transition-fast);
+	}
+
+	.btn.loading {
+		pointer-events: none;
+		opacity: 0.7;
+	}
+
+	.spinner {
+		display: inline-block;
+		width: 1rem;
+		height: 1rem;
+		border: 2px solid currentColor;
+		border-right-color: transparent;
+		border-radius: 50%;
+		animation: spin 0.6s linear infinite;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+</style>

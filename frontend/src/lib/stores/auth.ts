@@ -4,15 +4,7 @@
 import { writable, derived } from "svelte/store";
 import { browser } from "$app/environment";
 import { API_V1_URL } from "$lib/config";
-
-interface User {
-  id: number;
-  email: string;
-  display_name: string | null;
-  is_active: boolean;
-  is_verified: boolean;
-  created_at: string;
-}
+import type { User } from "$lib/types";
 
 interface AuthState {
   user: User | null;
