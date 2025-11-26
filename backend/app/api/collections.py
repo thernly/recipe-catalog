@@ -74,6 +74,8 @@ async def create_collection(
         is_default=False,
     )
 
+    # Ensure session is clean before adding
+    await db.flush()
     db.add(new_collection)
     await db.commit()
     await db.refresh(new_collection)

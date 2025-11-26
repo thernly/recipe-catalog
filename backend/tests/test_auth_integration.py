@@ -56,7 +56,7 @@ async def test_complete_auth_flow_register_to_logout(client: AsyncClient):
     # Step 3: Refresh the access token
     refresh_response = await client.post(
         "/api/v1/auth/refresh",
-        cookies={"refresh_token": initial_refresh_token},
+        headers={"Cookie": f"refresh_token={initial_refresh_token}"},
     )
     assert refresh_response.status_code == 200
     refresh_data = refresh_response.json()
@@ -72,7 +72,7 @@ async def test_complete_auth_flow_register_to_logout(client: AsyncClient):
     # Step 4: Verify the refreshed token works by accessing a protected endpoint
     me_response = await client.get(
         "/api/v1/users/me",
-        cookies={"access_token": new_access_token},
+        headers={"Cookie": f"access_token={new_access_token}"},
     )
     assert me_response.status_code == 200
     me_data = me_response.json()
@@ -81,7 +81,7 @@ async def test_complete_auth_flow_register_to_logout(client: AsyncClient):
     # Step 5: Logout
     logout_response = await client.post(
         "/api/v1/auth/logout",
-        cookies={"refresh_token": new_refresh_token},
+        headers={"Cookie": f"refresh_token={new_refresh_token}"},
     )
     assert logout_response.status_code == 200
 
@@ -91,7 +91,7 @@ async def test_complete_auth_flow_register_to_logout(client: AsyncClient):
     # Step 6: Verify old refresh token no longer works after logout
     failed_refresh_response = await client.post(
         "/api/v1/auth/refresh",
-        cookies={"refresh_token": new_refresh_token},
+        headers={"Cookie": f"refresh_token={new_refresh_token}"},
     )
     assert failed_refresh_response.status_code == 401  # Should be unauthorized
 
@@ -140,7 +140,7 @@ async def test_auth_flow_with_invalid_refresh_token(client: AsyncClient):
     # Try to refresh with a completely invalid token
     refresh_response = await client.post(
         "/api/v1/auth/refresh",
-        cookies={"refresh_token": "invalid-token-12345"},
+        headers={"Cookie": "refresh_token=invalid-token-12345"},
     )
     assert refresh_response.status_code == 401
 
@@ -170,7 +170,7 @@ async def test_auth_flow_creates_default_household(client: AsyncClient):
     # Step 2: Verify household was created
     household_response = await client.get(
         "/api/v1/households/me",
-        cookies={"access_token": access_token},
+        headers={"Cookie": f"access_token={access_token}"},
     )
     assert household_response.status_code == 200
     household_data = household_response.json()
@@ -190,7 +190,7 @@ async def test_protected_endpoint_requires_authentication(client: AsyncClient):
     # Try with invalid token
     response = await client.get(
         "/api/v1/users/me",
-        cookies={"access_token": "invalid-token"},
+        headers={"Cookie": "access_token=invalid-token"},
     )
     assert response.status_code == 401
 

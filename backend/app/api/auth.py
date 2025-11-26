@@ -336,6 +336,7 @@ async def login(
     if user.failed_login_attempts > 0 or user.locked_until is not None:
         user.failed_login_attempts = 0
         user.locked_until = None
+        await db.flush()
         await db.commit()
 
     # Create access token
@@ -349,6 +350,8 @@ async def login(
         expires_at=get_refresh_token_expiry(),
         revoked=False,
     )
+    # Ensure session is clean before adding
+    await db.flush()
     db.add(refresh_token)
     await db.commit()
 
