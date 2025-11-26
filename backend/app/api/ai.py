@@ -2,8 +2,6 @@
 AI-powered recipe generation API endpoints.
 """
 
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -13,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
+from app.core.logging import get_logger
 from app.models.household import Household
 from app.models.recipe import Recipe
 from app.models.user import User
@@ -26,7 +25,7 @@ from app.schemas.ai import (
 from app.services.ai import ai_service
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)

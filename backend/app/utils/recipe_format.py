@@ -3,14 +3,15 @@ Utilities for converting between internal recipe format and Schema.org Recipe JS
 """
 
 import base64
-import logging
 import re
 from typing import Any
 
 import httpx
 
+from app.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+
+logger = get_logger(__name__)
 
 
 def convert_to_schema_org(recipe_db: Any) -> dict[str, Any]:

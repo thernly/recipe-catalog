@@ -2,7 +2,6 @@
 AI service for recipe generation using OpenRouter API.
 """
 
-import logging
 from typing import Any
 
 import httpx
@@ -13,9 +12,10 @@ from app.core.constants import (
     AI_TEMPERATURE,
     MAX_RECIPES_IN_PROMPT,
 )
+from app.core.logging import get_logger
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class AIService:

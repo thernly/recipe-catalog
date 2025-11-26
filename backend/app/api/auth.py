@@ -2,7 +2,6 @@
 Authentication API endpoints.
 """
 
-import logging
 from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -19,6 +18,7 @@ from app.core.constants import (
     MAX_LOGIN_ATTEMPTS,
 )
 from app.core.database import get_db
+from app.core.logging import get_logger
 from app.core.security import (
     create_access_token,
     generate_csrf_token,
@@ -43,7 +43,7 @@ from app.schemas.user import (
 
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 
 

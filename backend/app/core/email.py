@@ -2,16 +2,16 @@
 Email service for sending verification and password reset emails
 """
 
-import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import aiosmtplib
 
 from app.core.config import settings
+from app.core.logging import get_logger
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class EmailService:

@@ -44,7 +44,7 @@ async def test_household(db: AsyncSession, test_user: User):
 async def auth_headers(client: AsyncClient, test_household: Household):
     """Authenticate test user (sets cookies automatically)."""
     await client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={
             "email": "test@example.com",
             "password": "testpassword",
@@ -62,7 +62,7 @@ async def test_create_collection(client: AsyncClient, auth_headers: dict):
         "icon": "star",
     }
 
-    response = await client.post("/api/collections/", json=collection_data)
+    response = await client.post("/api/v1/collections/", json=collection_data)
 
     assert response.status_code == 201
     data = response.json()
@@ -78,10 +78,10 @@ async def test_create_collection_duplicate_name(client: AsyncClient, auth_header
     """Test creating a collection with duplicate name fails"""
     # Create first collection
     collection_data = {"name": "Duplicates", "description": "First one"}
-    await client.post("/api/collections/", json=collection_data)
+    await client.post("/api/v1/collections/", json=collection_data)
 
     # Try to create duplicate
-    response = await client.post("/api/collections/", json=collection_data)
+    response = await client.post("/api/v1/collections/", json=collection_data)
 
     assert response.status_code == 400
     assert "already exists" in response.json()["message"]
@@ -92,7 +92,7 @@ async def test_create_collection_minimal_data(client: AsyncClient, auth_headers:
     """Test creating collection with minimal required data"""
     collection_data = {"name": "Minimal Collection"}
 
-    response = await client.post("/api/collections/", json=collection_data)
+    response = await client.post("/api/v1/collections/", json=collection_data)
 
     assert response.status_code == 201
     data = response.json()
@@ -103,10 +103,10 @@ async def test_create_collection_minimal_data(client: AsyncClient, auth_headers:
 async def test_list_collections(client: AsyncClient, auth_headers: dict, test_db):
     """Test listing all collections"""
     # Create a few collections
-    await client.post("/api/collections/", json={"name": "Collection 1"})
-    await client.post("/api/collections/", json={"name": "Collection 2"})
+    await client.post("/api/v1/collections/", json={"name": "Collection 1"})
+    await client.post("/api/v1/collections/", json={"name": "Collection 2"})
 
-    response = await client.get("/api/collections/")
+    response = await client.get("/api/v1/collections/")
 
     assert response.status_code == 200
     collections = response.json()
@@ -121,12 +121,12 @@ async def test_list_collections_includes_recipe_count(
 ):
     """Test that collection list includes recipe counts"""
     # Create collection
-    response = await client.post("/api/collections/", json={"name": "Test Collection"})
+    response = await client.post("/api/v1/collections/", json={"name": "Test Collection"})
     collection_id = response.json()["id"]
 
     # Create and add recipe
     recipe_response = await client.post(
-        "/api/recipes/",
+        "/api/v1/recipes/",
         json={
             "name": "Test Recipe",
             "description": "A test recipe",
@@ -135,10 +135,10 @@ async def test_list_collections_includes_recipe_count(
     )
     recipe_id = recipe_response.json()["id"]
 
-    await client.post(f"/api/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
+    await client.post(f"/api/v1/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
 
     # List collections
-    response = await client.get("/api/collections/")
+    response = await client.get("/api/v1/collections/")
 
     assert response.status_code == 200
     collections = response.json()
@@ -151,11 +151,11 @@ async def test_get_collection(client: AsyncClient, auth_headers: dict):
     """Test getting a single collection"""
     # Create collection
     create_response = await client.post(
-        "/api/collections/", json={"name": "Get Me", "description": "Test getting"}
+        "/api/v1/collections/", json={"name": "Get Me", "description": "Test getting"}
     )
     collection_id = create_response.json()["id"]
 
-    response = await client.get(f"/api/collections/{collection_id}")
+    response = await client.get(f"/api/v1/collections/{collection_id}")
 
     assert response.status_code == 200
     data = response.json()
@@ -167,7 +167,7 @@ async def test_get_collection(client: AsyncClient, auth_headers: dict):
 @pytest.mark.asyncio
 async def test_get_collection_not_found(client: AsyncClient, auth_headers: dict):
     """Test getting non-existent collection returns 404"""
-    response = await client.get("/api/collections/99999")
+    response = await client.get("/api/v1/collections/99999")
 
     assert response.status_code == 404
 
@@ -177,7 +177,7 @@ async def test_update_collection(client: AsyncClient, auth_headers: dict):
     """Test updating a collection"""
     # Create collection
     create_response = await client.post(
-        "/api/collections/", json={"name": "Original Name", "description": "Original"}
+        "/api/v1/collections/", json={"name": "Original Name", "description": "Original"}
     )
     collection_id = create_response.json()["id"]
 
@@ -187,7 +187,7 @@ async def test_update_collection(client: AsyncClient, auth_headers: dict):
         "description": "Updated description",
         "icon": "bookmark",
     }
-    response = await client.patch(f"/api/collections/{collection_id}", json=update_data)
+    response = await client.patch(f"/api/v1/collections/{collection_id}", json=update_data)
 
     assert response.status_code == 200
     data = response.json()
@@ -201,13 +201,13 @@ async def test_update_collection_partial(client: AsyncClient, auth_headers: dict
     """Test partial update of collection"""
     # Create collection
     create_response = await client.post(
-        "/api/collections/",
+        "/api/v1/collections/",
         json={"name": "Original", "description": "Keep this", "icon": "star"},
     )
     collection_id = create_response.json()["id"]
 
     # Update only name
-    response = await client.patch(f"/api/collections/{collection_id}", json={"name": "New Name"})
+    response = await client.patch(f"/api/v1/collections/{collection_id}", json={"name": "New Name"})
 
     assert response.status_code == 200
     data = response.json()
@@ -220,13 +220,13 @@ async def test_update_collection_partial(client: AsyncClient, auth_headers: dict
 async def test_update_collection_duplicate_name(client: AsyncClient, auth_headers: dict):
     """Test updating collection to duplicate name fails"""
     # Create two collections
-    await client.post("/api/collections/", json={"name": "Collection A"})
-    response2 = await client.post("/api/collections/", json={"name": "Collection B"})
+    await client.post("/api/v1/collections/", json={"name": "Collection A"})
+    response2 = await client.post("/api/v1/collections/", json={"name": "Collection B"})
     collection_b_id = response2.json()["id"]
 
     # Try to rename B to A
     response = await client.patch(
-        f"/api/collections/{collection_b_id}", json={"name": "Collection A"}
+        f"/api/v1/collections/{collection_b_id}", json={"name": "Collection A"}
     )
 
     assert response.status_code == 400
@@ -237,16 +237,16 @@ async def test_update_collection_duplicate_name(client: AsyncClient, auth_header
 async def test_delete_collection(client: AsyncClient, auth_headers: dict, test_db):
     """Test deleting a collection"""
     # Create collection
-    create_response = await client.post("/api/collections/", json={"name": "To Delete"})
+    create_response = await client.post("/api/v1/collections/", json={"name": "To Delete"})
     collection_id = create_response.json()["id"]
 
     # Delete collection
-    response = await client.delete(f"/api/collections/{collection_id}")
+    response = await client.delete(f"/api/v1/collections/{collection_id}")
 
     assert response.status_code == 204
 
     # Verify deleted
-    get_response = await client.get(f"/api/collections/{collection_id}")
+    get_response = await client.get(f"/api/v1/collections/{collection_id}")
     assert get_response.status_code == 404
 
 
@@ -256,22 +256,22 @@ async def test_delete_collection_preserves_recipes(
 ):
     """Test that deleting a collection doesn't delete recipes"""
     # Create collection
-    coll_response = await client.post("/api/collections/", json={"name": "Delete Me"})
+    coll_response = await client.post("/api/v1/collections/", json={"name": "Delete Me"})
     collection_id = coll_response.json()["id"]
 
     # Create and add recipe
     recipe_response = await client.post(
-        "/api/recipes/", json={"name": "Keep This Recipe", "recipe_data": {}}
+        "/api/v1/recipes/", json={"name": "Keep This Recipe", "recipe_data": {}}
     )
     recipe_id = recipe_response.json()["id"]
 
-    await client.post(f"/api/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
+    await client.post(f"/api/v1/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
 
     # Delete collection
-    await client.delete(f"/api/collections/{collection_id}")
+    await client.delete(f"/api/v1/collections/{collection_id}")
 
     # Verify recipe still exists
-    recipe_check = await client.get(f"/api/recipes/{recipe_id}")
+    recipe_check = await client.get(f"/api/v1/recipes/{recipe_id}")
     assert recipe_check.status_code == 200
 
 
@@ -292,7 +292,7 @@ async def test_cannot_delete_default_collection(
     await test_db.refresh(default_collection)
 
     # Try to delete default collection
-    response = await client.delete(f"/api/collections/{default_collection.id}")
+    response = await client.delete(f"/api/v1/collections/{default_collection.id}")
 
     assert response.status_code == 400
     assert "Cannot delete default collection" in response.json()["message"]
@@ -302,19 +302,19 @@ async def test_cannot_delete_default_collection(
 async def test_add_recipes_to_collection(client: AsyncClient, auth_headers: dict):
     """Test adding recipes to a collection"""
     # Create collection
-    coll_response = await client.post("/api/collections/", json={"name": "Recipes"})
+    coll_response = await client.post("/api/v1/collections/", json={"name": "Recipes"})
     collection_id = coll_response.json()["id"]
 
     # Create recipes
-    recipe1 = await client.post("/api/recipes/", json={"name": "Recipe 1", "recipe_data": {}})
-    recipe2 = await client.post("/api/recipes/", json={"name": "Recipe 2", "recipe_data": {}})
+    recipe1 = await client.post("/api/v1/recipes/", json={"name": "Recipe 1", "recipe_data": {}})
+    recipe2 = await client.post("/api/v1/recipes/", json={"name": "Recipe 2", "recipe_data": {}})
 
     recipe1_id = recipe1.json()["id"]
     recipe2_id = recipe2.json()["id"]
 
     # Add recipes to collection
     response = await client.post(
-        f"/api/collections/{collection_id}/recipes",
+        f"/api/v1/collections/{collection_id}/recipes",
         json={"recipe_ids": [recipe1_id, recipe2_id]},
     )
 
@@ -329,18 +329,18 @@ async def test_add_recipes_to_collection(client: AsyncClient, auth_headers: dict
 async def test_add_duplicate_recipe_to_collection_skips(client: AsyncClient, auth_headers: dict):
     """Test adding duplicate recipe to collection skips it"""
     # Create collection and recipe
-    coll_response = await client.post("/api/collections/", json={"name": "Collection"})
+    coll_response = await client.post("/api/v1/collections/", json={"name": "Collection"})
     collection_id = coll_response.json()["id"]
 
-    recipe_response = await client.post("/api/recipes/", json={"name": "Recipe", "recipe_data": {}})
+    recipe_response = await client.post("/api/v1/recipes/", json={"name": "Recipe", "recipe_data": {}})
     recipe_id = recipe_response.json()["id"]
 
     # Add recipe first time
-    await client.post(f"/api/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
+    await client.post(f"/api/v1/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
 
     # Add same recipe again
     response = await client.post(
-        f"/api/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]}
+        f"/api/v1/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]}
     )
 
     assert response.status_code == 200
@@ -352,11 +352,11 @@ async def test_add_duplicate_recipe_to_collection_skips(client: AsyncClient, aut
 @pytest.mark.asyncio
 async def test_add_nonexistent_recipe_to_collection(client: AsyncClient, auth_headers: dict):
     """Test adding non-existent recipe to collection"""
-    coll_response = await client.post("/api/collections/", json={"name": "Collection"})
+    coll_response = await client.post("/api/v1/collections/", json={"name": "Collection"})
     collection_id = coll_response.json()["id"]
 
     response = await client.post(
-        f"/api/collections/{collection_id}/recipes", json={"recipe_ids": [99999]}
+        f"/api/v1/collections/{collection_id}/recipes", json={"recipe_ids": [99999]}
     )
 
     assert response.status_code == 200
@@ -369,26 +369,26 @@ async def test_add_nonexistent_recipe_to_collection(client: AsyncClient, auth_he
 async def test_remove_recipes_from_collection(client: AsyncClient, auth_headers: dict):
     """Test removing recipes from a collection"""
     # Create collection and recipe
-    coll_response = await client.post("/api/collections/", json={"name": "Collection"})
+    coll_response = await client.post("/api/v1/collections/", json={"name": "Collection"})
     collection_id = coll_response.json()["id"]
 
-    recipe_response = await client.post("/api/recipes/", json={"name": "Recipe", "recipe_data": {}})
+    recipe_response = await client.post("/api/v1/recipes/", json={"name": "Recipe", "recipe_data": {}})
     recipe_id = recipe_response.json()["id"]
 
     # Add recipe
-    await client.post(f"/api/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
+    await client.post(f"/api/v1/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
 
     # Remove recipe
     response = await client.request(
         "DELETE",
-        f"/api/collections/{collection_id}/recipes",
+        f"/api/v1/collections/{collection_id}/recipes",
         json={"recipe_ids": [recipe_id]},
     )
 
     assert response.status_code == 204
 
     # Verify removed
-    recipes_response = await client.get(f"/api/collections/{collection_id}/recipes")
+    recipes_response = await client.get(f"/api/v1/collections/{collection_id}/recipes")
     recipes = recipes_response.json()
     assert len(recipes) == 0
 
@@ -397,24 +397,24 @@ async def test_remove_recipes_from_collection(client: AsyncClient, auth_headers:
 async def test_get_collection_recipes(client: AsyncClient, auth_headers: dict):
     """Test getting all recipes in a collection"""
     # Create collection
-    coll_response = await client.post("/api/collections/", json={"name": "Collection"})
+    coll_response = await client.post("/api/v1/collections/", json={"name": "Collection"})
     collection_id = coll_response.json()["id"]
 
     # Create recipes
-    recipe1 = await client.post("/api/recipes/", json={"name": "Recipe 1", "recipe_data": {}})
-    recipe2 = await client.post("/api/recipes/", json={"name": "Recipe 2", "recipe_data": {}})
+    recipe1 = await client.post("/api/v1/recipes/", json={"name": "Recipe 1", "recipe_data": {}})
+    recipe2 = await client.post("/api/v1/recipes/", json={"name": "Recipe 2", "recipe_data": {}})
 
     recipe1_id = recipe1.json()["id"]
     recipe2_id = recipe2.json()["id"]
 
     # Add recipes to collection
     await client.post(
-        f"/api/collections/{collection_id}/recipes",
+        f"/api/v1/collections/{collection_id}/recipes",
         json={"recipe_ids": [recipe1_id, recipe2_id]},
     )
 
     # Get recipes
-    response = await client.get(f"/api/collections/{collection_id}/recipes")
+    response = await client.get(f"/api/v1/collections/{collection_id}/recipes")
 
     assert response.status_code == 200
     recipes = response.json()
@@ -432,20 +432,20 @@ async def test_get_collection_recipes_excludes_deleted(
     from datetime import datetime
 
     # Create collection
-    coll_response = await client.post("/api/collections/", json={"name": "Collection"})
+    coll_response = await client.post("/api/v1/collections/", json={"name": "Collection"})
     collection_id = coll_response.json()["id"]
 
     # Create active recipe
-    recipe1 = await client.post("/api/recipes/", json={"name": "Active Recipe", "recipe_data": {}})
+    recipe1 = await client.post("/api/v1/recipes/", json={"name": "Active Recipe", "recipe_data": {}})
     recipe1_id = recipe1.json()["id"]
 
     # Create recipe that will be deleted
-    recipe2 = await client.post("/api/recipes/", json={"name": "To Delete", "recipe_data": {}})
+    recipe2 = await client.post("/api/v1/recipes/", json={"name": "To Delete", "recipe_data": {}})
     recipe2_id = recipe2.json()["id"]
 
     # Add both to collection
     await client.post(
-        f"/api/collections/{collection_id}/recipes",
+        f"/api/v1/collections/{collection_id}/recipes",
         json={"recipe_ids": [recipe1_id, recipe2_id]},
     )
 
@@ -456,7 +456,7 @@ async def test_get_collection_recipes_excludes_deleted(
     await test_db.commit()
 
     # Get collection recipes
-    response = await client.get(f"/api/collections/{collection_id}/recipes")
+    response = await client.get(f"/api/v1/collections/{collection_id}/recipes")
 
     assert response.status_code == 200
     recipes = response.json()
@@ -467,7 +467,7 @@ async def test_get_collection_recipes_excludes_deleted(
 @pytest.mark.asyncio
 async def test_collection_not_found_when_adding_recipes(client: AsyncClient, auth_headers: dict):
     """Test adding recipes to non-existent collection"""
-    response = await client.post("/api/collections/99999/recipes", json={"recipe_ids": [1]})
+    response = await client.post("/api/v1/collections/99999/recipes", json={"recipe_ids": [1]})
 
     assert response.status_code == 404
 
@@ -476,7 +476,7 @@ async def test_collection_not_found_when_adding_recipes(client: AsyncClient, aut
 async def test_collection_not_found_when_removing_recipes(client: AsyncClient, auth_headers: dict):
     """Test removing recipes from non-existent collection"""
     response = await client.request(
-        "DELETE", "/api/collections/99999/recipes", json={"recipe_ids": [1]}
+        "DELETE", "/api/v1/collections/99999/recipes", json={"recipe_ids": [1]}
     )
 
     assert response.status_code == 404
@@ -485,7 +485,7 @@ async def test_collection_not_found_when_removing_recipes(client: AsyncClient, a
 @pytest.mark.asyncio
 async def test_get_recipes_from_nonexistent_collection(client: AsyncClient, auth_headers: dict):
     """Test getting recipes from non-existent collection"""
-    response = await client.get("/api/collections/99999/recipes")
+    response = await client.get("/api/v1/collections/99999/recipes")
 
     assert response.status_code == 404
 
@@ -493,7 +493,7 @@ async def test_get_recipes_from_nonexistent_collection(client: AsyncClient, auth
 @pytest.mark.asyncio
 async def test_update_nonexistent_collection(client: AsyncClient, auth_headers: dict):
     """Test updating non-existent collection"""
-    response = await client.patch("/api/collections/99999", json={"name": "New Name"})
+    response = await client.patch("/api/v1/collections/99999", json={"name": "New Name"})
 
     assert response.status_code == 404
 
@@ -501,7 +501,7 @@ async def test_update_nonexistent_collection(client: AsyncClient, auth_headers: 
 @pytest.mark.asyncio
 async def test_delete_nonexistent_collection(client: AsyncClient, auth_headers: dict):
     """Test deleting non-existent collection"""
-    response = await client.delete("/api/collections/99999")
+    response = await client.delete("/api/v1/collections/99999")
 
     assert response.status_code == 404
 
@@ -509,10 +509,10 @@ async def test_delete_nonexistent_collection(client: AsyncClient, auth_headers: 
 @pytest.mark.asyncio
 async def test_empty_collection_has_zero_recipe_count(client: AsyncClient, auth_headers: dict):
     """Test that empty collection has recipe count of 0"""
-    response = await client.post("/api/collections/", json={"name": "Empty"})
+    response = await client.post("/api/v1/collections/", json={"name": "Empty"})
     collection_id = response.json()["id"]
 
-    get_response = await client.get(f"/api/collections/{collection_id}")
+    get_response = await client.get(f"/api/v1/collections/{collection_id}")
 
     assert get_response.status_code == 200
     assert get_response.json()["recipe_count"] == 0
@@ -521,10 +521,10 @@ async def test_empty_collection_has_zero_recipe_count(client: AsyncClient, auth_
 @pytest.mark.asyncio
 async def test_get_empty_collection_recipes(client: AsyncClient, auth_headers: dict):
     """Test getting recipes from empty collection returns empty list"""
-    response = await client.post("/api/collections/", json={"name": "Empty"})
+    response = await client.post("/api/v1/collections/", json={"name": "Empty"})
     collection_id = response.json()["id"]
 
-    recipes_response = await client.get(f"/api/collections/{collection_id}/recipes")
+    recipes_response = await client.get(f"/api/v1/collections/{collection_id}/recipes")
 
     assert recipes_response.status_code == 200
     assert recipes_response.json() == []
@@ -534,16 +534,16 @@ async def test_get_empty_collection_recipes(client: AsyncClient, auth_headers: d
 async def test_add_multiple_recipes_mixed_results(client: AsyncClient, auth_headers: dict):
     """Test adding multiple recipes with mixed results (some exist, some don't)"""
     # Create collection
-    coll_response = await client.post("/api/collections/", json={"name": "Collection"})
+    coll_response = await client.post("/api/v1/collections/", json={"name": "Collection"})
     collection_id = coll_response.json()["id"]
 
     # Create one recipe
-    recipe_response = await client.post("/api/recipes/", json={"name": "Exists", "recipe_data": {}})
+    recipe_response = await client.post("/api/v1/recipes/", json={"name": "Exists", "recipe_data": {}})
     existing_recipe_id = recipe_response.json()["id"]
 
     # Try to add existing recipe and non-existent recipe
     response = await client.post(
-        f"/api/collections/{collection_id}/recipes",
+        f"/api/v1/collections/{collection_id}/recipes",
         json={"recipe_ids": [existing_recipe_id, 99999]},
     )
 
@@ -560,7 +560,7 @@ async def test_collection_includes_creator_display_name(
     client: AsyncClient, auth_headers: dict, test_user: User
 ):
     """Test that collection includes creator display name"""
-    response = await client.post("/api/collections/", json={"name": "Test"})
+    response = await client.post("/api/v1/collections/", json={"name": "Test"})
 
     assert response.status_code == 201
     data = response.json()

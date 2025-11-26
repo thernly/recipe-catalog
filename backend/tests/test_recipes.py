@@ -39,7 +39,7 @@ async def auth_headers(client: AsyncClient, test_household: Household):
     # Login (user already exists from test_user fixture)
     # This sets httpOnly cookies that will be sent automatically with subsequent requests
     await client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={
             "email": "test@example.com",
             "password": "testpassword",  # The hashed password in conftest.py is for "testpassword"
@@ -66,7 +66,7 @@ async def test_create_recipe_success(client: AsyncClient, auth_headers: dict):
     }
 
     response = await client.post(
-        "/api/recipes/",
+        "/api/v1/recipes/",
         json=recipe_data,
         headers=auth_headers,
     )
@@ -91,7 +91,7 @@ async def test_create_recipe_minimal_data(client: AsyncClient, auth_headers: dic
     }
 
     response = await client.post(
-        "/api/recipes/",
+        "/api/v1/recipes/",
         json=recipe_data,
         headers=auth_headers,
     )
@@ -111,7 +111,7 @@ async def test_create_recipe_unauthorized(client: AsyncClient):
         "recipe_data": {"ingredients": [], "instructions": []},
     }
 
-    response = await client.post("/api/recipes/", json=recipe_data)
+    response = await client.post("/api/v1/recipes/", json=recipe_data)
 
     # Expect 403 (Forbidden) due to CSRF protection or 401 (Unauthorized)
     assert response.status_code in [401, 403]
@@ -120,7 +120,7 @@ async def test_create_recipe_unauthorized(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_search_recipes_empty(client: AsyncClient, auth_headers: dict):
     """Test searching recipes when none exist."""
-    response = await client.get("/api/recipes/search", headers=auth_headers)
+    response = await client.get("/api/v1/recipes/search", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -146,11 +146,11 @@ async def test_search_recipes_with_results(client: AsyncClient, auth_headers: di
         "cuisine": "Indian",
     }
 
-    await client.post("/api/recipes/", json=recipe1, headers=auth_headers)
-    await client.post("/api/recipes/", json=recipe2, headers=auth_headers)
+    await client.post("/api/v1/recipes/", json=recipe1, headers=auth_headers)
+    await client.post("/api/v1/recipes/", json=recipe2, headers=auth_headers)
 
     # Search all recipes
-    response = await client.get("/api/recipes/search", headers=auth_headers)
+    response = await client.get("/api/v1/recipes/search", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -163,7 +163,7 @@ async def test_search_recipes_by_cuisine(client: AsyncClient, auth_headers: dict
     """Test filtering recipes by cuisine."""
     # Create recipes with different cuisines
     await client.post(
-        "/api/recipes/",
+        "/api/v1/recipes/",
         json={
             "name": "Pasta",
             "recipe_data": {"ingredients": [], "instructions": []},
@@ -172,7 +172,7 @@ async def test_search_recipes_by_cuisine(client: AsyncClient, auth_headers: dict
         headers=auth_headers,
     )
     await client.post(
-        "/api/recipes/",
+        "/api/v1/recipes/",
         json={
             "name": "Curry",
             "recipe_data": {"ingredients": [], "instructions": []},
@@ -182,7 +182,7 @@ async def test_search_recipes_by_cuisine(client: AsyncClient, auth_headers: dict
     )
 
     # Filter by Italian cuisine
-    response = await client.get("/api/recipes/search?cuisine=Italian", headers=auth_headers)
+    response = await client.get("/api/v1/recipes/search?cuisine=Italian", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -196,7 +196,7 @@ async def test_search_recipes_with_pagination(client: AsyncClient, auth_headers:
     # Create 5 recipes
     for i in range(5):
         await client.post(
-            "/api/recipes/",
+            "/api/v1/recipes/",
             json={
                 "name": f"Recipe {i}",
                 "recipe_data": {"ingredients": [], "instructions": []},
@@ -205,7 +205,7 @@ async def test_search_recipes_with_pagination(client: AsyncClient, auth_headers:
         )
 
     # Get first page with 2 items
-    response = await client.get("/api/recipes/search?page=1&per_page=2", headers=auth_headers)
+    response = await client.get("/api/v1/recipes/search?page=1&per_page=2", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -220,7 +220,7 @@ async def test_get_recipe_by_id(client: AsyncClient, auth_headers: dict):
     """Test getting a specific recipe by ID."""
     # Create a recipe
     create_response = await client.post(
-        "/api/recipes/",
+        "/api/v1/recipes/",
         json={
             "name": "Test Recipe",
             "description": "Test description",
@@ -231,7 +231,7 @@ async def test_get_recipe_by_id(client: AsyncClient, auth_headers: dict):
     recipe_id = create_response.json()["id"]
 
     # Get the recipe
-    response = await client.get(f"/api/recipes/{recipe_id}", headers=auth_headers)
+    response = await client.get(f"/api/v1/recipes/{recipe_id}", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -243,7 +243,7 @@ async def test_get_recipe_by_id(client: AsyncClient, auth_headers: dict):
 @pytest.mark.asyncio
 async def test_get_nonexistent_recipe(client: AsyncClient, auth_headers: dict):
     """Test getting a recipe that doesn't exist."""
-    response = await client.get("/api/recipes/99999", headers=auth_headers)
+    response = await client.get("/api/v1/recipes/99999", headers=auth_headers)
 
     assert response.status_code == 404
 
@@ -253,7 +253,7 @@ async def test_update_recipe(client: AsyncClient, auth_headers: dict):
     """Test updating a recipe."""
     # Create a recipe
     create_response = await client.post(
-        "/api/recipes/",
+        "/api/v1/recipes/",
         json={
             "name": "Original Name",
             "description": "Original description",
@@ -272,7 +272,7 @@ async def test_update_recipe(client: AsyncClient, auth_headers: dict):
     }
 
     response = await client.patch(
-        f"/api/recipes/{recipe_id}",
+        f"/api/v1/recipes/{recipe_id}",
         json=update_data,
         headers=auth_headers,
     )
@@ -289,7 +289,7 @@ async def test_update_partial_recipe(client: AsyncClient, auth_headers: dict):
     """Test partially updating a recipe."""
     # Create a recipe
     create_response = await client.post(
-        "/api/recipes/",
+        "/api/v1/recipes/",
         json={
             "name": "Original Name",
             "description": "Original description",
@@ -301,7 +301,7 @@ async def test_update_partial_recipe(client: AsyncClient, auth_headers: dict):
 
     # Update only the name
     response = await client.patch(
-        f"/api/recipes/{recipe_id}",
+        f"/api/v1/recipes/{recipe_id}",
         json={"name": "New Name"},
         headers=auth_headers,
     )
@@ -317,7 +317,7 @@ async def test_delete_recipe_soft_delete(client: AsyncClient, auth_headers: dict
     """Test soft deleting a recipe."""
     # Create a recipe
     create_response = await client.post(
-        "/api/recipes/",
+        "/api/v1/recipes/",
         json={
             "name": "To Be Deleted",
             "recipe_data": {"ingredients": [], "instructions": []},
@@ -327,16 +327,16 @@ async def test_delete_recipe_soft_delete(client: AsyncClient, auth_headers: dict
     recipe_id = create_response.json()["id"]
 
     # Delete the recipe
-    response = await client.delete(f"/api/recipes/{recipe_id}", headers=auth_headers)
+    response = await client.delete(f"/api/v1/recipes/{recipe_id}", headers=auth_headers)
 
     assert response.status_code == 204
 
     # Verify it's not in search results
-    search_response = await client.get("/api/recipes/search", headers=auth_headers)
+    search_response = await client.get("/api/v1/recipes/search", headers=auth_headers)
     assert search_response.json()["total"] == 0
 
     # Verify it can still be retrieved directly (soft deleted)
-    get_response = await client.get(f"/api/recipes/{recipe_id}", headers=auth_headers)
+    get_response = await client.get(f"/api/v1/recipes/{recipe_id}", headers=auth_headers)
     assert get_response.status_code == 200
     assert get_response.json()["deleted_at"] is not None
 
@@ -346,7 +346,7 @@ async def test_restore_deleted_recipe(client: AsyncClient, auth_headers: dict):
     """Test restoring a soft-deleted recipe."""
     # Create and delete a recipe
     create_response = await client.post(
-        "/api/recipes/",
+        "/api/v1/recipes/",
         json={
             "name": "Deleted Recipe",
             "recipe_data": {"ingredients": [], "instructions": []},
@@ -355,17 +355,17 @@ async def test_restore_deleted_recipe(client: AsyncClient, auth_headers: dict):
     )
     recipe_id = create_response.json()["id"]
 
-    await client.delete(f"/api/recipes/{recipe_id}", headers=auth_headers)
+    await client.delete(f"/api/v1/recipes/{recipe_id}", headers=auth_headers)
 
     # Restore the recipe
-    response = await client.post(f"/api/recipes/{recipe_id}/restore", headers=auth_headers)
+    response = await client.post(f"/api/v1/recipes/{recipe_id}/restore", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
     assert data["deleted_at"] is None
 
     # Verify it's back in search results
-    search_response = await client.get("/api/recipes/search", headers=auth_headers)
+    search_response = await client.get("/api/v1/recipes/search", headers=auth_headers)
     assert search_response.json()["total"] == 1
 
 
@@ -376,7 +376,7 @@ async def test_recipe_isolation_between_households(
     """Test that recipes are isolated between different households."""
     # Create a recipe as first user
     await client.post(
-        "/api/recipes/",
+        "/api/v1/recipes/",
         json={
             "name": "User 1 Recipe",
             "recipe_data": {"ingredients": [], "instructions": []},
@@ -417,7 +417,7 @@ async def test_recipe_isolation_between_households(
 
     # Login as user2 (sets cookies automatically)
     await client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={
             "email": "user2@example.com",
             "password": "testpassword",
@@ -425,7 +425,7 @@ async def test_recipe_isolation_between_households(
     )
 
     # User 2 should not see User 1's recipes (cookies sent automatically)
-    response = await client.get("/api/recipes/search")
+    response = await client.get("/api/v1/recipes/search")
 
     assert response.status_code == 200
     assert response.json()["total"] == 0

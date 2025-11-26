@@ -46,7 +46,7 @@ async def test_household(db: AsyncSession, test_user: User):
 async def auth_headers(client: AsyncClient, test_household: Household):
     """Authenticate test user (sets cookies automatically)."""
     await client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={
             "email": "test@example.com",
             "password": "testpassword",
@@ -75,7 +75,7 @@ async def test_import_single_recipe_from_file(client: AsyncClient, auth_headers:
     files = {"file": ("recipe.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "skip"}
 
-    response = await client.post("/api/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files)
 
     assert response.status_code == 200
     result = response.json()
@@ -106,7 +106,7 @@ async def test_import_multiple_recipes_from_file(client: AsyncClient, auth_heade
     files = {"file": ("recipes.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "skip"}
 
-    response = await client.post("/api/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files)
 
     assert response.status_code == 200
     result = response.json()
@@ -139,7 +139,7 @@ async def test_import_duplicate_handling_skip(
     files = {"file": ("recipe.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "skip"}
 
-    response = await client.post("/api/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files)
 
     assert response.status_code == 200
     result = response.json()
@@ -174,7 +174,7 @@ async def test_import_duplicate_handling_update(
     files = {"file": ("recipe.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "update"}
 
-    response = await client.post("/api/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files)
 
     assert response.status_code == 200
     result = response.json()
@@ -214,7 +214,7 @@ async def test_import_duplicate_handling_create(
     data = {"duplicate_handling": "create"}
 
     response = await client.post(
-        "/api/import/recipes", data=data, files=files, headers=auth_headers
+        "/api/v1/import/recipes", data=data, files=files, headers=auth_headers
     )
 
     assert response.status_code == 200
@@ -247,12 +247,12 @@ async def test_import_to_collection(client: AsyncClient, test_user, test_db, aut
     files = {"file": ("recipe.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "skip", "collection_id": str(collection.id)}
 
-    response = await client.post("/api/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files)
 
     assert response.status_code == 200
 
     # Verify recipe is in collection
-    response = await client.get(f"/api/collections/{collection.id}/recipes")
+    response = await client.get(f"/api/v1/collections/{collection.id}/recipes")
     assert response.status_code == 200
     recipes = response.json()
     assert len(recipes) == 1
@@ -265,7 +265,7 @@ async def test_import_invalid_json(client: AsyncClient, auth_headers: dict):
     files = {"file": ("invalid.json", BytesIO(b"not valid json"), "application/json")}
     data = {"duplicate_handling": "skip"}
 
-    response = await client.post("/api/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files)
 
     assert response.status_code == 400
     assert "Invalid JSON" in response.json()["message"]
@@ -277,7 +277,7 @@ async def test_import_non_json_file(client: AsyncClient, auth_headers: dict):
     files = {"file": ("recipe.txt", BytesIO(b"some text"), "text/plain")}
     data = {"duplicate_handling": "skip"}
 
-    response = await client.post("/api/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files)
 
     assert response.status_code == 400
     assert "must be a JSON file" in response.json()["message"]
@@ -296,7 +296,7 @@ async def test_import_recipes_json_endpoint(client: AsyncClient, auth_headers: d
     ]
 
     response = await client.post(
-        "/api/import/recipes/json?duplicate_handling=skip",
+        "/api/v1/import/recipes/json?duplicate_handling=skip",
         json=recipes,
         headers=auth_headers,
     )
@@ -328,7 +328,7 @@ async def test_export_recipes_json(client: AsyncClient, test_user, test_db, auth
     test_db.add_all([recipe1, recipe2])
     await test_db.commit()
 
-    response = await client.get("/api/export/recipes?format=json")
+    response = await client.get("/api/v1/export/recipes?format=json")
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
@@ -357,7 +357,7 @@ async def test_export_recipes_markdown(client: AsyncClient, test_user, test_db, 
     test_db.add(recipe)
     await test_db.commit()
 
-    response = await client.get("/api/export/recipes?format=markdown")
+    response = await client.get("/api/v1/export/recipes?format=markdown")
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/markdown")
@@ -384,7 +384,7 @@ async def test_export_recipes_text(client: AsyncClient, test_user, test_db, auth
     test_db.add(recipe)
     await test_db.commit()
 
-    response = await client.get("/api/export/recipes?format=text")
+    response = await client.get("/api/v1/export/recipes?format=text")
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/plain")
@@ -406,17 +406,17 @@ async def test_export_collections_json(client: AsyncClient, test_user, test_db, 
 
     # Add recipe to collection
     recipe_data = {"name": "Collection Recipe", "description": "In collection", "recipe_data": {}}
-    response = await client.post("/api/recipes/", json=recipe_data, headers=auth_headers)
+    response = await client.post("/api/v1/recipes/", json=recipe_data, headers=auth_headers)
     recipe_id = response.json()["id"]
 
     await client.post(
-        f"/api/collections/{collection.id}/recipes",
+        f"/api/v1/collections/{collection.id}/recipes",
         json={"recipe_id": recipe_id},
         headers=auth_headers,
     )
 
     # Export collections
-    response = await client.get("/api/export/collections?format=json", headers=auth_headers)
+    response = await client.get("/api/v1/export/collections?format=json", headers=auth_headers)
 
     assert response.status_code == 200
     data = json.loads(response.content)
@@ -435,7 +435,7 @@ async def test_export_collections_markdown(
     test_db.add(collection)
     await test_db.commit()
 
-    response = await client.get("/api/export/collections?format=markdown")
+    response = await client.get("/api/v1/export/collections?format=markdown")
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/markdown")
@@ -458,7 +458,7 @@ async def test_export_all_data(client: AsyncClient, test_user, test_db, auth_hea
     test_db.add_all([recipe, collection])
     await test_db.commit()
 
-    response = await client.get("/api/export/all")
+    response = await client.get("/api/v1/export/all")
 
     assert response.status_code == 200
     data = json.loads(response.content)
@@ -496,7 +496,7 @@ async def test_export_excludes_deleted_recipes(
     test_db.add_all([recipe1, recipe2])
     await test_db.commit()
 
-    response = await client.get("/api/export/recipes?format=json", headers=auth_headers)
+    response = await client.get("/api/v1/export/recipes?format=json", headers=auth_headers)
 
     assert response.status_code == 200
     data = json.loads(response.content)
@@ -517,7 +517,7 @@ async def test_import_with_invalid_collection_id(client: AsyncClient, auth_heade
         "collection_id": "99999",  # Non-existent collection
     }
 
-    response = await client.post("/api/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files)
 
     assert response.status_code == 404
     assert "Collection not found" in response.json()["message"]
@@ -543,7 +543,7 @@ async def test_import_handles_partial_failures(client: AsyncClient, auth_headers
     files = {"file": ("recipes.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "skip"}
 
-    response = await client.post("/api/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files)
 
     assert response.status_code == 200
     result = response.json()

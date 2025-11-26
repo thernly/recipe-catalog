@@ -14,7 +14,7 @@ async def test_create_invite_link(
 ):
     """Test creating an invite link."""
     response = await client.post(
-        f"/api/households/{test_household['id']}/invite-links",
+        f"/api/v1/households/{test_household['id']}/invite-links",
         headers=test_user_headers,
         json={"expires_in_days": 7},
     )
@@ -52,14 +52,14 @@ async def test_get_invite_link_info(
     """Test getting invite link information."""
     # Create invite link
     create_response = await client.post(
-        f"/api/households/{test_household['id']}/invite-links",
+        f"/api/v1/households/{test_household['id']}/invite-links",
         headers=test_user_headers,
         json={"expires_in_days": 7},
     )
     code = create_response.json()["code"]
 
     # Get info (public endpoint)
-    response = await client.get(f"/api/households/join/{code}")
+    response = await client.get(f"/api/v1/households/join/{code}")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -77,7 +77,7 @@ async def test_join_via_invite_code(
     """Test joining a household via invite code."""
     # Create a second user who will join
     register_response = await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "newuser@example.com",
             "password": "SecurePass123!",
@@ -88,19 +88,19 @@ async def test_join_via_invite_code(
 
     # Login as new user
     login_response = await client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"email": "newuser@example.com", "password": "SecurePass123!"},
     )
     new_user_token = login_response.cookies.get("access_token")
     new_user_headers = {"Authorization": f"Bearer {new_user_token}"}
 
     # First, new user needs to leave their auto-created household
-    leave_response = await client.post("/api/households/leave", headers=new_user_headers)
+    leave_response = await client.post("/api/v1/households/leave", headers=new_user_headers)
     assert leave_response.status_code == status.HTTP_200_OK
 
     # Create invite link from original household
     create_response = await client.post(
-        f"/api/households/{test_household['id']}/invite-links",
+        f"/api/v1/households/{test_household['id']}/invite-links",
         headers=test_user_headers,
         json={"expires_in_days": 7},
     )
@@ -109,7 +109,7 @@ async def test_join_via_invite_code(
 
     # New user joins via code
     join_response = await client.post(
-        "/api/households/join",
+        "/api/v1/households/join",
         headers=new_user_headers,
         json={"code": code},
     )
@@ -130,7 +130,7 @@ async def test_invite_code_one_time_use(
     """Test that invite codes can only be used once."""
     # Create two users
     await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "user1@example.com",
             "password": "SecurePass123!",
@@ -138,7 +138,7 @@ async def test_invite_code_one_time_use(
         },
     )
     await client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "user2@example.com",
             "password": "SecurePass123!",
@@ -148,25 +148,25 @@ async def test_invite_code_one_time_use(
 
     # Login as user1
     login1 = await client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"email": "user1@example.com", "password": "SecurePass123!"},
     )
     user1_headers = {"Authorization": f"Bearer {login1.cookies.get('access_token')}"}
 
     # Login as user2
     login2 = await client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"email": "user2@example.com", "password": "SecurePass123!"},
     )
     user2_headers = {"Authorization": f"Bearer {login2.cookies.get('access_token')}"}
 
     # Both leave their auto-created households
-    await client.post("/api/households/leave", headers=user1_headers)
-    await client.post("/api/households/leave", headers=user2_headers)
+    await client.post("/api/v1/households/leave", headers=user1_headers)
+    await client.post("/api/v1/households/leave", headers=user2_headers)
 
     # Create invite link
     create_response = await client.post(
-        f"/api/households/{test_household['id']}/invite-links",
+        f"/api/v1/households/{test_household['id']}/invite-links",
         headers=test_user_headers,
         json={"expires_in_days": 7},
     )
@@ -174,7 +174,7 @@ async def test_invite_code_one_time_use(
 
     # User1 joins successfully
     join1 = await client.post(
-        "/api/households/join",
+        "/api/v1/households/join",
         headers=user1_headers,
         json={"code": code},
     )
@@ -182,7 +182,7 @@ async def test_invite_code_one_time_use(
 
     # User2 tries to use same code - should fail
     join2 = await client.post(
-        "/api/households/join",
+        "/api/v1/households/join",
         headers=user2_headers,
         json={"code": code},
     )
@@ -199,7 +199,7 @@ async def test_cannot_join_if_already_in_household(
     """Test that users already in a household cannot join another."""
     # Create invite link
     create_response = await client.post(
-        f"/api/households/{test_household['id']}/invite-links",
+        f"/api/v1/households/{test_household['id']}/invite-links",
         headers=test_user_headers,
         json={"expires_in_days": 7},
     )
@@ -207,7 +207,7 @@ async def test_cannot_join_if_already_in_household(
 
     # Try to join (but already in a household)
     join_response = await client.post(
-        "/api/households/join",
+        "/api/v1/households/join",
         headers=test_user_headers,
         json={"code": code},
     )
@@ -220,7 +220,7 @@ async def test_cannot_join_if_already_in_household(
 async def test_leave_household(client: AsyncClient, test_user_headers: dict):
     """Test leaving a household."""
     # Leave household (owner with no other members)
-    response = await client.post("/api/households/leave", headers=test_user_headers)
+    response = await client.post("/api/v1/households/leave", headers=test_user_headers)
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -241,7 +241,7 @@ async def test_code_case_insensitive(
 
     # Try to fetch with uppercase
     uppercase_code = code.upper()
-    response = await client.get(f"/api/households/join/{uppercase_code}")
+    response = await client.get(f"/api/v1/households/join/{uppercase_code}")
 
     # Should still work (case-insensitive)
     assert response.status_code == status.HTTP_200_OK
