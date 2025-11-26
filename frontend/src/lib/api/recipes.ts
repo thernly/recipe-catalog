@@ -91,21 +91,21 @@ export interface RecipeUpdate {
  */
 export async function searchRecipes(params: RecipeSearchParams = {}): Promise<RecipeSearchResult> {
 	const queryString = buildQueryString(params);
-	return apiRequest<RecipeSearchResult>(`/api/recipes/search${queryString}`);
+	return apiRequest<RecipeSearchResult>(`/recipes/search${queryString}`);
 }
 
 /**
  * Get a single recipe by ID
  */
 export async function getRecipe(id: number): Promise<Recipe> {
-	return apiRequest<Recipe>(`/api/recipes/${id}`);
+	return apiRequest<Recipe>(`/recipes/${id}`);
 }
 
 /**
  * Create a new recipe
  */
 export async function createRecipe(data: RecipeCreate): Promise<Recipe> {
-	return apiRequest<Recipe>('/api/recipes/', {
+	return apiRequest<Recipe>('/recipes/', {
 		method: 'POST',
 		body: JSON.stringify(data)
 	});
@@ -115,7 +115,7 @@ export async function createRecipe(data: RecipeCreate): Promise<Recipe> {
  * Update an existing recipe
  */
 export async function updateRecipe(id: number, data: RecipeUpdate): Promise<Recipe> {
-	return apiRequest<Recipe>(`/api/recipes/${id}`, {
+	return apiRequest<Recipe>(`/recipes/${id}`, {
 		method: 'PATCH',
 		body: JSON.stringify(data)
 	});
@@ -126,7 +126,7 @@ export async function updateRecipe(id: number, data: RecipeUpdate): Promise<Reci
  */
 export async function deleteRecipe(id: number, permanent: boolean = false): Promise<void> {
 	const queryString = permanent ? '?permanent=true' : '';
-	return apiRequest<void>(`/api/recipes/${id}${queryString}`, {
+	return apiRequest<void>(`/recipes/${id}${queryString}`, {
 		method: 'DELETE'
 	});
 }
@@ -135,7 +135,7 @@ export async function deleteRecipe(id: number, permanent: boolean = false): Prom
  * Restore a soft-deleted recipe
  */
 export async function restoreRecipe(id: number): Promise<Recipe> {
-	return apiRequest<Recipe>(`/api/recipes/${id}/restore`, {
+	return apiRequest<Recipe>(`/recipes/${id}/restore`, {
 		method: 'POST'
 	});
 }
@@ -144,7 +144,7 @@ export async function restoreRecipe(id: number): Promise<Recipe> {
  * Duplicate a recipe
  */
 export async function duplicateRecipe(id: number): Promise<Recipe> {
-	return apiRequest<Recipe>(`/api/recipes/${id}/duplicate`, {
+	return apiRequest<Recipe>(`/recipes/${id}/duplicate`, {
 		method: 'POST'
 	});
 }
@@ -153,7 +153,7 @@ export async function duplicateRecipe(id: number): Promise<Recipe> {
  * Get trashed recipes
  */
 export async function getTrashedRecipes(): Promise<RecipeSummary[]> {
-	return apiRequest<RecipeSummary[]>('/api/recipes/trash/list');
+	return apiRequest<RecipeSummary[]>('/recipes/trash/list');
 }
 
 /**
@@ -171,7 +171,7 @@ export async function importRecipes(
 		formData.append('collection_id', collectionId.toString());
 	}
 
-	return apiRequest<{ success: boolean; message: string; details: any }>('/api/import/recipes', {
+	return apiRequest<{ success: boolean; message: string; details: any }>('/import/recipes', {
 		method: 'POST',
 		body: formData,
 		headers: {} // Let browser set Content-Type for FormData
@@ -185,9 +185,9 @@ export async function exportRecipe(
 	id: number,
 	format: 'json' | 'markdown' | 'text' | 'pdf'
 ): Promise<Blob> {
-	const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-	
-	const response = await fetch(`${API_URL}/api/recipes/${id}/export?format=${format}`, {
+	const { API_V1_URL } = await import('$lib/config');
+
+	const response = await fetch(`${API_V1_URL}/recipes/${id}/export?format=${format}`, {
 		credentials: 'include' // Send cookies for authentication
 	});
 

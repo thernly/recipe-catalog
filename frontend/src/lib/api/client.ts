@@ -3,9 +3,9 @@
  */
 
 import { auth } from '$lib/stores/auth';
-import { API_BASE_URL } from '$lib/config';
+import { API_V1_URL } from '$lib/config';
 
-const API_URL = API_BASE_URL;
+const API_URL = API_V1_URL;
 
 interface RequestOptions extends RequestInit {
 	requireAuth?: boolean;

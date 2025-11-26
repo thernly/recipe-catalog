@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { auth } from '$lib/stores/auth';
+	import { API_V1_URL } from '$lib/config';
 
 	let loading = true;
 	let error = '';
@@ -35,8 +36,7 @@
 
 		try {
 			// Exchange code for token by calling backend callback endpoint
-			const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-			const callbackUrl = `${apiUrl}/api/auth/${provider}/callback?code=${code}&state=${state}`;
+			const callbackUrl = `${API_V1_URL}/auth/${provider}/callback?code=${code}&state=${state}`;
 
 			const response = await fetch(callbackUrl, {
 				method: 'GET',

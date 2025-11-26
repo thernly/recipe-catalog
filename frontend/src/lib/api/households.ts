@@ -83,14 +83,14 @@ export interface LeaveHouseholdResponse {
  * Get current user's household
  */
 export async function getCurrentHousehold(): Promise<Household> {
-	return apiRequest<Household>('/api/households/me');
+	return apiRequest<Household>('/households/me');
 }
 
 /**
  * Create a new household
  */
 export async function createHousehold(data: CreateHouseholdRequest): Promise<Household> {
-	return apiRequest<Household>('/api/households', {
+	return apiRequest<Household>('/households', {
 		method: 'POST',
 		body: JSON.stringify(data)
 	});
@@ -103,7 +103,7 @@ export async function updateHousehold(
 	householdId: number,
 	data: UpdateHouseholdRequest
 ): Promise<Household> {
-	return apiRequest<Household>(`/api/households/${householdId}`, {
+	return apiRequest<Household>(`/households/${householdId}`, {
 		method: 'PATCH',
 		body: JSON.stringify(data)
 	});
@@ -113,7 +113,7 @@ export async function updateHousehold(
  * Delete household
  */
 export async function deleteHousehold(householdId: number): Promise<void> {
-	return apiRequest<void>(`/api/households/${householdId}`, {
+	return apiRequest<void>(`/households/${householdId}`, {
 		method: 'DELETE'
 	});
 }
@@ -122,14 +122,14 @@ export async function deleteHousehold(householdId: number): Promise<void> {
  * Get household members
  */
 export async function getHouseholdMembers(householdId: number): Promise<HouseholdMember[]> {
-	return apiRequest<HouseholdMember[]>(`/api/households/${householdId}/members`);
+	return apiRequest<HouseholdMember[]>(`/households/${householdId}/members`);
 }
 
 /**
  * Remove member from household
  */
 export async function removeMember(householdId: number, userId: number): Promise<void> {
-	return apiRequest<void>(`/api/households/${householdId}/members/${userId}`, {
+	return apiRequest<void>(`/households/${householdId}/members/${userId}`, {
 		method: 'DELETE'
 	});
 }
@@ -138,7 +138,7 @@ export async function removeMember(householdId: number, userId: number): Promise
  * Get household invitations
  */
 export async function getHouseholdInvitations(householdId: number): Promise<HouseholdInvitation[]> {
-	return apiRequest<HouseholdInvitation[]>(`/api/households/${householdId}/invitations`);
+	return apiRequest<HouseholdInvitation[]>(`/households/${householdId}/invitations`);
 }
 
 /**
@@ -148,7 +148,7 @@ export async function createInvitation(
 	householdId: number,
 	data: CreateInvitationRequest
 ): Promise<HouseholdInvitation> {
-	return apiRequest<HouseholdInvitation>(`/api/households/${householdId}/invitations`, {
+	return apiRequest<HouseholdInvitation>(`/households/${householdId}/invitations`, {
 		method: 'POST',
 		body: JSON.stringify(data)
 	});
@@ -158,7 +158,7 @@ export async function createInvitation(
  * Get invitation by token (no auth required)
  */
 export async function getInvitationByToken(token: string): Promise<HouseholdInvitation> {
-	return apiRequest<HouseholdInvitation>(`/api/invitations/${token}`, {
+	return apiRequest<HouseholdInvitation>(`/invitations/${token}`, {
 		requireAuth: false
 	});
 }
@@ -167,7 +167,7 @@ export async function getInvitationByToken(token: string): Promise<HouseholdInvi
  * Accept invitation
  */
 export async function acceptInvitation(data: AcceptInvitationRequest): Promise<void> {
-	return apiRequest<void>('/api/invitations/accept', {
+	return apiRequest<void>('/invitations/accept', {
 		method: 'POST',
 		body: JSON.stringify(data)
 	});
@@ -177,7 +177,7 @@ export async function acceptInvitation(data: AcceptInvitationRequest): Promise<v
  * Decline invitation
  */
 export async function declineInvitation(token: string): Promise<void> {
-	return apiRequest<void>('/api/invitations/decline', {
+	return apiRequest<void>('/invitations/decline', {
 		method: 'POST',
 		body: JSON.stringify({ token })
 	});
@@ -187,7 +187,7 @@ export async function declineInvitation(token: string): Promise<void> {
  * Revoke invitation (delete)
  */
 export async function revokeInvitation(householdId: number, invitationId: number): Promise<void> {
-	return apiRequest<void>(`/api/households/${householdId}/invitations/${invitationId}`, {
+	return apiRequest<void>(`/households/${householdId}/invitations/${invitationId}`, {
 		method: 'DELETE'
 	});
 }
@@ -199,7 +199,7 @@ export async function createInviteLink(
 	householdId: number,
 	data: CreateInviteLinkRequest = {}
 ): Promise<HouseholdInviteLink> {
-	return apiRequest<HouseholdInviteLink>(`/api/households/${householdId}/invite-links`, {
+	return apiRequest<HouseholdInviteLink>(`/households/${householdId}/invite-links`, {
 		method: 'POST',
 		body: JSON.stringify(data)
 	});
@@ -209,7 +209,7 @@ export async function createInviteLink(
  * Get invite link info by code (no auth required)
  */
 export async function getInviteLinkInfo(code: string): Promise<HouseholdInviteLink> {
-	return apiRequest<HouseholdInviteLink>(`/api/households/join/${code}`, {
+	return apiRequest<HouseholdInviteLink>(`/households/join/${code}`, {
 		requireAuth: false
 	});
 }
@@ -218,7 +218,7 @@ export async function getInviteLinkInfo(code: string): Promise<HouseholdInviteLi
  * Join household via invite code
  */
 export async function joinViaInviteLink(code: string): Promise<HouseholdMember> {
-	return apiRequest<HouseholdMember>('/api/households/join', {
+	return apiRequest<HouseholdMember>('/households/join', {
 		method: 'POST',
 		body: JSON.stringify({ code })
 	});
@@ -228,7 +228,7 @@ export async function joinViaInviteLink(code: string): Promise<HouseholdMember> 
  * Leave current household
  */
 export async function leaveHousehold(): Promise<LeaveHouseholdResponse> {
-	return apiRequest<LeaveHouseholdResponse>('/api/households/leave', {
+	return apiRequest<LeaveHouseholdResponse>('/households/leave', {
 		method: 'POST'
 	});
 }

@@ -17,22 +17,6 @@ from slowapi.util import get_remote_address
 from app.api.v1 import api_v1_router
 from app.core.config import settings
 
-# Import routers for backward compatibility
-from app.api import (
-    ai,
-    auth,
-    collections,
-    export,
-    households,
-    import_recipes,
-    meal_plans,
-    oauth,
-    recipes,
-    shopping_lists,
-    users,
-)
-from fastapi import APIRouter
-
 # Database and core dependencies
 from app.core.database import AsyncSessionLocal, cleanup_expired_data, close_db, init_db
 from app.core.exceptions import AppException
@@ -334,24 +318,6 @@ async def health_check():
     """Health check endpoint - no rate limiting."""
     return {"status": "ok"}
 
-
-# Create backward-compatible non-versioned API router for existing frontend
-# This allows both /api/... and /api/v1/... routes to work
-api_router_compat = APIRouter(prefix="/api")
-api_router_compat.include_router(auth.router, prefix="/auth", tags=["Authentication"])
-api_router_compat.include_router(oauth.router, prefix="/auth", tags=["OAuth"])
-api_router_compat.include_router(users.router, prefix="/users", tags=["Users"])
-api_router_compat.include_router(recipes.router, prefix="/recipes", tags=["Recipes"])
-api_router_compat.include_router(collections.router, prefix="/collections", tags=["Collections"])
-api_router_compat.include_router(export.router, prefix="/export", tags=["Export"])
-api_router_compat.include_router(import_recipes.router, prefix="/import", tags=["Import"])
-api_router_compat.include_router(households.router, prefix="/households", tags=["Households"])
-api_router_compat.include_router(meal_plans.router, prefix="/meal-plans", tags=["Meal Plans"])
-api_router_compat.include_router(shopping_lists.router, prefix="/shopping-lists", tags=["Shopping Lists"])
-api_router_compat.include_router(ai.router, prefix="/ai", tags=["AI"])
-
-# Include backward-compatible non-versioned routes
-app.include_router(api_router_compat)
 
 # Include v1 API routes
 app.include_router(api_v1_router)

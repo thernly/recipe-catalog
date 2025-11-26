@@ -22,7 +22,7 @@ export interface LinkedProvider {
  * Get list of available OAuth providers
  */
 export async function getAvailableProviders(): Promise<ProviderInfo[]> {
-	return apiRequest<ProviderInfo[]>('/api/auth/providers', {
+	return apiRequest<ProviderInfo[]>('/auth/providers', {
 		method: 'GET'
 	});
 }
@@ -33,14 +33,14 @@ export async function getAvailableProviders(): Promise<ProviderInfo[]> {
  */
 export function initiateOAuthFlow(provider: string): void {
 	const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-	window.location.href = `${apiUrl}/api/auth/${provider}/authorize`;
+	window.location.href = `${apiUrl}/api/v1/auth/${provider}/authorize`;
 }
 
 /**
  * Get list of identity providers linked to current user
  */
 export async function getLinkedProviders(): Promise<LinkedProvider[]> {
-	return apiRequest<LinkedProvider[]>('/api/auth/me/providers', {
+	return apiRequest<LinkedProvider[]>('/auth/me/providers', {
 		method: 'GET'
 	});
 }
@@ -49,7 +49,7 @@ export async function getLinkedProviders(): Promise<LinkedProvider[]> {
  * Remove a linked identity provider
  */
 export async function unlinkProvider(providerId: number): Promise<void> {
-	return apiRequest<void>(`/api/auth/providers/${providerId}`, {
+	return apiRequest<void>(`/auth/providers/${providerId}`, {
 		method: 'DELETE'
 	});
 }
