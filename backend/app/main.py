@@ -40,13 +40,9 @@ async def lifespan(_app: FastAPI):
         try:
             deleted_count = await cleanup_expired_data(session)
             if deleted_count > 0:
-                logger.info(
-                    "startup_cleanup_success", deleted_count=deleted_count
-                )
+                logger.info("startup_cleanup_success", deleted_count=deleted_count)
         except Exception as e:
-            logger.warning(
-                "startup_cleanup_failed", error=str(e)
-            )
+            logger.warning("startup_cleanup_failed", error=str(e))
 
     yield
     # Shutdown
@@ -182,7 +178,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     error_code = error_code_map.get(exc.status_code, "INTERNAL_ERROR")
 
     # Get correlation ID from structlog context or request headers
-    correlation_id = structlog.contextvars.get_contextvars().get("correlation_id") or request.headers.get("X-Correlation-ID")
+    correlation_id = structlog.contextvars.get_contextvars().get(
+        "correlation_id"
+    ) or request.headers.get("X-Correlation-ID")
 
     logger.error(
         "http_exception",
@@ -211,7 +209,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 async def app_exception_handler(request: Request, exc: AppException):
     """Handle custom application exceptions. Includes correlation_id for debugging."""
     # Get correlation ID from structlog context or request headers
-    correlation_id = structlog.contextvars.get_contextvars().get("correlation_id") or request.headers.get("X-Correlation-ID")
+    correlation_id = structlog.contextvars.get_contextvars().get(
+        "correlation_id"
+    ) or request.headers.get("X-Correlation-ID")
 
     logger.error(
         "application_error",
@@ -241,7 +241,9 @@ async def app_exception_handler(request: Request, exc: AppException):
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors and return consistent error format. Includes correlation_id for debugging."""
     # Get correlation ID from structlog context or request headers
-    correlation_id = structlog.contextvars.get_contextvars().get("correlation_id") or request.headers.get("X-Correlation-ID")
+    correlation_id = structlog.contextvars.get_contextvars().get(
+        "correlation_id"
+    ) or request.headers.get("X-Correlation-ID")
 
     logger.error("validation_error", url=str(request.url), errors=exc.errors())
 
@@ -280,7 +282,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle all other uncaught exceptions with consistent error format. Includes correlation_id for debugging."""
     # Get correlation ID from structlog context or request headers
-    correlation_id = structlog.contextvars.get_contextvars().get("correlation_id") or request.headers.get("X-Correlation-ID")
+    correlation_id = structlog.contextvars.get_contextvars().get(
+        "correlation_id"
+    ) or request.headers.get("X-Correlation-ID")
 
     logger.exception("unhandled_exception", url=str(request.url), error=str(exc))
 

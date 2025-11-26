@@ -59,7 +59,9 @@ async def test_concurrent_refresh_token_requests(client: AsyncClient):
     # At most one should succeed (200), others should fail (401 or exception)
     # In production with proper database, locking ensures serialization
     # In test environment with SQLite, concurrent requests may raise exceptions
-    success_count = sum(1 for r in responses if not isinstance(r, Exception) and r.status_code == 200)
+    success_count = sum(
+        1 for r in responses if not isinstance(r, Exception) and r.status_code == 200
+    )
     assert success_count <= 1, "At most one concurrent refresh should succeed"
 
 
@@ -131,7 +133,7 @@ async def test_concurrent_household_joins(client: AsyncClient, db: AsyncSession)
 
     # Refresh to get user IDs
     result = await db.execute(
-        select(User.id).where(User.email.like('user%@example.com')).order_by(User.email)
+        select(User.id).where(User.email.like("user%@example.com")).order_by(User.email)
     )
     user_ids = [row[0] for row in result.fetchall()]
 
@@ -148,14 +150,12 @@ async def test_concurrent_household_joins(client: AsyncClient, db: AsyncSession)
 
     # Try to accept all 5 invitations concurrently
     responses = await asyncio.gather(
-        *[accept_invitation(i, user_ids[i]) for i in range(5)],
-        return_exceptions=True
+        *[accept_invitation(i, user_ids[i]) for i in range(5)], return_exceptions=True
     )
 
     # Count successes - should not exceed max_members - 1 (owner already in household)
     success_count = sum(
-        1 for r in responses
-        if not isinstance(r, Exception) and r.status_code == 200
+        1 for r in responses if not isinstance(r, Exception) and r.status_code == 200
     )
 
     # Household has max 5 members, owner is already one, so max 4 new members can join
@@ -199,10 +199,7 @@ async def test_concurrent_recipe_edits(client: AsyncClient, auth_headers: dict, 
             headers=auth_headers,
         )
 
-    responses = await asyncio.gather(
-        *[update_recipe(i) for i in range(3)],
-        return_exceptions=True
-    )
+    responses = await asyncio.gather(*[update_recipe(i) for i in range(3)], return_exceptions=True)
 
     # All updates should succeed (200)
     for r in responses:
@@ -228,6 +225,7 @@ async def test_concurrent_collection_creation(client: AsyncClient, auth_headers:
 
     Verifies that concurrent creation operations don't cause issues.
     """
+
     async def create_collection(i: int):
         return await client.post(
             "/api/v1/collections/",
@@ -240,8 +238,7 @@ async def test_concurrent_collection_creation(client: AsyncClient, auth_headers:
 
     # Create 5 collections concurrently
     responses = await asyncio.gather(
-        *[create_collection(i) for i in range(5)],
-        return_exceptions=True
+        *[create_collection(i) for i in range(5)], return_exceptions=True
     )
 
     # In production, all should succeed
@@ -251,7 +248,9 @@ async def test_concurrent_collection_creation(client: AsyncClient, auth_headers:
 
     # Verify at least some requests attempted (got responses or exceptions)
     # This ensures the endpoint is functional, even if SQLite concurrency causes issues
-    response_count = sum(1 for r in responses if not isinstance(r, Exception) or isinstance(r, Exception))
+    response_count = sum(
+        1 for r in responses if not isinstance(r, Exception) or isinstance(r, Exception)
+    )
     assert response_count == 5, "All requests should receive responses or exceptions"
 
 
@@ -288,7 +287,9 @@ async def test_concurrent_login_attempts_trigger_lockout(client: AsyncClient):
     # In production with proper database, account should be locked after failed attempts
     # In test environment with SQLite, concurrent requests may not properly increment counters
     # Check if we got any failed login responses
-    failed_count = sum(1 for r in responses if not isinstance(r, Exception) and r.status_code in [401, 403])
+    failed_count = sum(
+        1 for r in responses if not isinstance(r, Exception) and r.status_code in [401, 403]
+    )
 
     # Now try to login with correct password
     correct_login_response = await client.post(

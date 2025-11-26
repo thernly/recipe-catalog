@@ -22,9 +22,7 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
     4. Added to response headers for client tracking
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Process request and add correlation ID."""
         # Get or generate correlation ID
         correlation_id = request.headers.get("X-Correlation-ID") or str(uuid4())

@@ -338,7 +338,9 @@ async def test_oauth_callback_state_mismatch(client: AsyncClient, test_db):
     # Try to use with microsoft (mismatch)
     with patch("app.core.oauth.oauth.create_client") as mock:
         mock.return_value = AsyncMock()
-        response = await client.get("/api/v1/auth/microsoft/callback?code=test_code&state=test_state")
+        response = await client.get(
+            "/api/v1/auth/microsoft/callback?code=test_code&state=test_state"
+        )
 
         # Should reject due to state mismatch (if provider is configured)
         # or return 503 if not configured

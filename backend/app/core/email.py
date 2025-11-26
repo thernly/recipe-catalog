@@ -32,12 +32,7 @@ class EmailService:
         Returns:
             True if SMTP configuration is complete, False otherwise
         """
-        return bool(
-            self.smtp_host
-            and self.smtp_port
-            and self.smtp_user
-            and self.smtp_password
-        )
+        return bool(self.smtp_host and self.smtp_port and self.smtp_user and self.smtp_password)
 
     async def send_email(
         self,

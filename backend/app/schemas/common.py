@@ -12,14 +12,20 @@ class ErrorResponse(BaseModel):
     message: str = Field(..., description="Human-readable error message")
     details: dict[str, Any] = Field(default_factory=dict, description="Additional error details")
 
-    model_config = {"json_schema_extra": {"example": {"error_code": "not_found", "message": "Resource not found", "details": {}}}}
+    model_config = {
+        "json_schema_extra": {
+            "example": {"error_code": "not_found", "message": "Resource not found", "details": {}}
+        }
+    }
 
 
 class RateLimitInfo(BaseModel):
     """Information about API rate limits."""
 
     limit: str = Field(..., description="Rate limit (e.g., '5/minute', '20/hour')")
-    scope: str = Field(..., description="What the rate limit applies to (e.g., 'per IP', 'per user')")
+    scope: str = Field(
+        ..., description="What the rate limit applies to (e.g., 'per IP', 'per user')"
+    )
     description: str = Field(..., description="Description of what happens when limit is exceeded")
 
     model_config = {

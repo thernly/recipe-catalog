@@ -63,7 +63,13 @@ def _get_rate_limit(limit: str) -> str:
         400: {
             "description": "Email already registered or validation error",
             "content": {
-                "application/json": {"example": {"error_code": "invalid_input", "message": "Email already registered", "details": {}}}
+                "application/json": {
+                    "example": {
+                        "error_code": "invalid_input",
+                        "message": "Email already registered",
+                        "details": {},
+                    }
+                }
             },
         },
         422: {
@@ -73,16 +79,28 @@ def _get_rate_limit(limit: str) -> str:
                     "example": {
                         "error_code": "validation_error",
                         "message": "Validation error",
-                        "details": {"errors": [{"field": "password", "message": "Password must contain at least one uppercase letter"}]},
+                        "details": {
+                            "errors": [
+                                {
+                                    "field": "password",
+                                    "message": "Password must contain at least one uppercase letter",
+                                }
+                            ]
+                        },
                     }
                 }
             },
         },
-        429: {"description": "Rate limit exceeded (10 requests per minute per IP)", "content": {"application/json": {"example": {"error": "Rate limit exceeded"}}}},
+        429: {
+            "description": "Rate limit exceeded (10 requests per minute per IP)",
+            "content": {"application/json": {"example": {"error": "Rate limit exceeded"}}},
+        },
     },
 )
 @limiter.limit(lambda: _get_rate_limit(AUTH_RATE_LIMIT_REGISTRATION))
-async def register(request: Request, response: Response, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register(
+    request: Request, response: Response, user_data: UserCreate, db: AsyncSession = Depends(get_db)
+):
     """
     Register a new user account.
 
@@ -229,11 +247,26 @@ async def register(request: Request, response: Response, user_data: UserCreate, 
     responses={
         200: {
             "description": "Login successful - authentication cookies set",
-            "content": {"application/json": {"example": {"message": "Login successful", "user": {"id": 1, "email": "user@example.com"}}}},
+            "content": {
+                "application/json": {
+                    "example": {
+                        "message": "Login successful",
+                        "user": {"id": 1, "email": "user@example.com"},
+                    }
+                }
+            },
         },
         401: {
             "description": "Invalid credentials",
-            "content": {"application/json": {"example": {"error_code": "authentication_failed", "message": "Invalid email or password", "details": {}}}},
+            "content": {
+                "application/json": {
+                    "example": {
+                        "error_code": "authentication_failed",
+                        "message": "Invalid email or password",
+                        "details": {},
+                    }
+                }
+            },
         },
         403: {
             "description": "Account locked due to failed login attempts",
@@ -247,7 +280,10 @@ async def register(request: Request, response: Response, user_data: UserCreate, 
                 }
             },
         },
-        429: {"description": "Rate limit exceeded (10 requests per minute per IP)", "content": {"application/json": {"example": {"error": "Rate limit exceeded"}}}},
+        429: {
+            "description": "Rate limit exceeded (10 requests per minute per IP)",
+            "content": {"application/json": {"example": {"error": "Rate limit exceeded"}}},
+        },
     },
 )
 @limiter.limit(lambda: _get_rate_limit("10/minute"))
@@ -310,9 +346,7 @@ async def login(
 
             # Lock account if max attempts reached
             if user.failed_login_attempts >= MAX_LOGIN_ATTEMPTS:
-                user.locked_until = datetime.now(UTC) + timedelta(
-                    minutes=LOCKOUT_DURATION_MINUTES
-                )
+                user.locked_until = datetime.now(UTC) + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
                 await db.commit()
 
                 raise HTTPException(
@@ -424,9 +458,7 @@ async def refresh_token(
     # Look up the refresh token with row-level lock to prevent race conditions
     # The with_for_update() ensures that concurrent refresh requests will be serialized
     result = await db.execute(
-        select(RefreshToken)
-        .where(RefreshToken.token == refresh_token_value)
-        .with_for_update()
+        select(RefreshToken).where(RefreshToken.token == refresh_token_value).with_for_update()
     )
     refresh_token_record = result.scalar_one_or_none()
 

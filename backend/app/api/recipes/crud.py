@@ -85,9 +85,7 @@ async def validate_collection_ownership(
     from app.models.collection import Collection
 
     for collection_id in collection_ids:
-        result = await db.execute(
-            select(Collection).where(Collection.id == collection_id)
-        )
+        result = await db.execute(select(Collection).where(Collection.id == collection_id))
         collection = result.scalar_one_or_none()
 
         if not collection:
@@ -108,13 +106,25 @@ async def validate_collection_ownership(
         201: {"description": "Recipe successfully created"},
         401: {
             "description": "Not authenticated",
-            "content": {"application/json": {"example": {"error_code": "unauthorized", "message": "Not authenticated", "details": {}}}},
+            "content": {
+                "application/json": {
+                    "example": {
+                        "error_code": "unauthorized",
+                        "message": "Not authenticated",
+                        "details": {},
+                    }
+                }
+            },
         },
         400: {
             "description": "Invalid collection ID or validation error",
             "content": {
                 "application/json": {
-                    "example": {"error_code": "invalid_input", "message": "Collection 123 does not belong to you or your household", "details": {}}
+                    "example": {
+                        "error_code": "invalid_input",
+                        "message": "Collection 123 does not belong to you or your household",
+                        "details": {},
+                    }
                 }
             },
         },
@@ -122,7 +132,11 @@ async def validate_collection_ownership(
             "description": "Validation error - invalid request format",
             "content": {
                 "application/json": {
-                    "example": {"error_code": "validation_error", "message": "Validation error", "details": {"errors": [{"field": "name", "message": "Field required"}]}}
+                    "example": {
+                        "error_code": "validation_error",
+                        "message": "Validation error",
+                        "details": {"errors": [{"field": "name", "message": "Field required"}]},
+                    }
                 }
             },
         },

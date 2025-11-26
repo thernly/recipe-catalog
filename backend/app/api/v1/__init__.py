@@ -32,5 +32,7 @@ api_v1_router.include_router(export.router, prefix="/export", tags=["Export"])
 api_v1_router.include_router(import_recipes.router, prefix="/import", tags=["Import"])
 api_v1_router.include_router(households.router, prefix="/households", tags=["Households"])
 api_v1_router.include_router(meal_plans.router, prefix="/meal-plans", tags=["Meal Plans"])
-api_v1_router.include_router(shopping_lists.router, prefix="/shopping-lists", tags=["Shopping Lists"])
+api_v1_router.include_router(
+    shopping_lists.router, prefix="/shopping-lists", tags=["Shopping Lists"]
+)
 api_v1_router.include_router(ai.router, prefix="/ai", tags=["AI"])

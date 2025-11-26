@@ -174,7 +174,9 @@ async def test_auth_flow_creates_default_household(client: AsyncClient):
     )
     assert household_response.status_code == 200
     household_data = household_response.json()
-    assert household_data["name"] == "Household Test User's Household"  # Default name uses display_name
+    assert (
+        household_data["name"] == "Household Test User's Household"
+    )  # Default name uses display_name
     assert household_data["owner_user_id"] == register_response.json()["id"]
 
 

@@ -135,7 +135,9 @@ async def test_list_collections_includes_recipe_count(
     )
     recipe_id = recipe_response.json()["id"]
 
-    await client.post(f"/api/v1/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
+    await client.post(
+        f"/api/v1/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]}
+    )
 
     # List collections
     response = await client.get("/api/v1/collections/")
@@ -265,7 +267,9 @@ async def test_delete_collection_preserves_recipes(
     )
     recipe_id = recipe_response.json()["id"]
 
-    await client.post(f"/api/v1/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
+    await client.post(
+        f"/api/v1/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]}
+    )
 
     # Delete collection
     await client.delete(f"/api/v1/collections/{collection_id}")
@@ -332,11 +336,15 @@ async def test_add_duplicate_recipe_to_collection_skips(client: AsyncClient, aut
     coll_response = await client.post("/api/v1/collections/", json={"name": "Collection"})
     collection_id = coll_response.json()["id"]
 
-    recipe_response = await client.post("/api/v1/recipes/", json={"name": "Recipe", "recipe_data": {}})
+    recipe_response = await client.post(
+        "/api/v1/recipes/", json={"name": "Recipe", "recipe_data": {}}
+    )
     recipe_id = recipe_response.json()["id"]
 
     # Add recipe first time
-    await client.post(f"/api/v1/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
+    await client.post(
+        f"/api/v1/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]}
+    )
 
     # Add same recipe again
     response = await client.post(
@@ -372,11 +380,15 @@ async def test_remove_recipes_from_collection(client: AsyncClient, auth_headers:
     coll_response = await client.post("/api/v1/collections/", json={"name": "Collection"})
     collection_id = coll_response.json()["id"]
 
-    recipe_response = await client.post("/api/v1/recipes/", json={"name": "Recipe", "recipe_data": {}})
+    recipe_response = await client.post(
+        "/api/v1/recipes/", json={"name": "Recipe", "recipe_data": {}}
+    )
     recipe_id = recipe_response.json()["id"]
 
     # Add recipe
-    await client.post(f"/api/v1/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]})
+    await client.post(
+        f"/api/v1/collections/{collection_id}/recipes", json={"recipe_ids": [recipe_id]}
+    )
 
     # Remove recipe
     response = await client.request(
@@ -436,7 +448,9 @@ async def test_get_collection_recipes_excludes_deleted(
     collection_id = coll_response.json()["id"]
 
     # Create active recipe
-    recipe1 = await client.post("/api/v1/recipes/", json={"name": "Active Recipe", "recipe_data": {}})
+    recipe1 = await client.post(
+        "/api/v1/recipes/", json={"name": "Active Recipe", "recipe_data": {}}
+    )
     recipe1_id = recipe1.json()["id"]
 
     # Create recipe that will be deleted
@@ -538,7 +552,9 @@ async def test_add_multiple_recipes_mixed_results(client: AsyncClient, auth_head
     collection_id = coll_response.json()["id"]
 
     # Create one recipe
-    recipe_response = await client.post("/api/v1/recipes/", json={"name": "Exists", "recipe_data": {}})
+    recipe_response = await client.post(
+        "/api/v1/recipes/", json={"name": "Exists", "recipe_data": {}}
+    )
     existing_recipe_id = recipe_response.json()["id"]
 
     # Try to add existing recipe and non-existent recipe
