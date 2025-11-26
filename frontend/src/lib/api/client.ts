@@ -4,11 +4,36 @@
 
 import { auth } from "$lib/stores/auth";
 import { API_V1_URL } from "$lib/config";
+import { browser } from "$app/environment";
 
 const API_URL = API_V1_URL;
 
 interface RequestOptions extends RequestInit {
   requireAuth?: boolean;
+}
+
+/**
+ * Get a cookie value by name
+ */
+function getCookie(name: string): string | null {
+  if (!browser) {
+    return null;
+  }
+  const cookies = document.cookie.split(";");
+  for (const cookie of cookies) {
+    const [cookieName, cookieValue] = cookie.split("=").map((c) => c.trim());
+    if (cookieName === name) {
+      return decodeURIComponent(cookieValue);
+    }
+  }
+  return null;
+}
+
+/**
+ * Get CSRF token from cookie
+ */
+function getCsrfToken(): string | null {
+  return getCookie("csrf_token");
 }
 
 /**
@@ -84,6 +109,15 @@ export async function apiRequest<T>(
           ...fetchOptions.headers,
         };
 
+  // Add CSRF token for state-changing requests
+  const method = (fetchOptions.method || "GET").toUpperCase();
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    const csrfToken = getCsrfToken();
+    if (csrfToken) {
+      (headers as Record<string, string>)["X-CSRF-Token"] = csrfToken;
+    }
+  }
+
   const url = `${API_URL}${endpoint}`;
 
   try {
@@ -127,6 +161,54 @@ export async function apiRequest<T>(
 
       // Refresh failed, throw unauthorized error
       throw new ApiError("Authentication required", "unauthorized", {}, 401);
+    }
+
+    // Handle 403 Forbidden - likely CSRF token issue, try to refresh
+    if (response.status === 403 && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+      // Try to refresh to get new CSRF token
+      const refreshed = await refreshAccessToken();
+
+      if (refreshed) {
+        // Get the new CSRF token
+        const newCsrfToken = getCsrfToken();
+        if (newCsrfToken) {
+          (headers as Record<string, string>)["X-CSRF-Token"] = newCsrfToken;
+        }
+
+        // Retry the original request with new CSRF token
+        const retryResponse = await fetch(url, {
+          ...fetchOptions,
+          headers,
+          credentials: "include",
+        });
+
+        if (!retryResponse.ok) {
+          const errorData = await retryResponse.json().catch(() => ({}));
+          throw new ApiError(
+            errorData.message ||
+              errorData.detail ||
+              `HTTP error! status: ${retryResponse.status}`,
+            errorData.error_code,
+            errorData.details,
+            retryResponse.status,
+          );
+        }
+
+        if (retryResponse.status === 204) {
+          return {} as T;
+        }
+
+        return await retryResponse.json();
+      }
+
+      // Refresh failed, throw the original 403 error
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        errorData.message || errorData.detail || "Request forbidden",
+        errorData.error_code,
+        errorData.details,
+        403,
+      );
     }
 
     // Handle non-2xx responses

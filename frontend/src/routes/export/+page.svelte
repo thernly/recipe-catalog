@@ -35,22 +35,14 @@
 		exportStatus = '';
 
 		try {
-			// Get auth token
-			const token = browser ? localStorage.getItem('auth_token') : null;
-			if (!token) {
-				throw new Error('Not authenticated');
-			}
-
 			// Build URL with format parameter (only if format is provided)
 			const url = format
 				? `${API_BASE_URL}/api/export/${endpoint}?format=${format}`
 				: `${API_BASE_URL}/api/export/${endpoint}`;
 
-			// Fetch the export
+			// Fetch the export using cookie-based authentication
 			const response = await fetch(url, {
-				headers: {
-					Authorization: `Bearer ${token}`
-				}
+				credentials: 'include' // Send authentication cookies
 			});
 
 			if (!response.ok) {
