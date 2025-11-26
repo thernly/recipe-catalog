@@ -82,7 +82,7 @@ def _get_rate_limit(limit: str) -> str:
     },
 )
 @limiter.limit(lambda: _get_rate_limit(AUTH_RATE_LIMIT_REGISTRATION))
-async def register(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register(request: Request, response: Response, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     """
     Register a new user account.
 
@@ -165,6 +165,50 @@ async def register(request: Request, user_data: UserCreate, db: AsyncSession = D
         await db.refresh(new_user)
 
         logger.info("user_registered_successfully", email=new_user.email, user_id=new_user.id)
+
+        # Create tokens and set cookies (same as login)
+        access_token = create_access_token(data={"sub": str(new_user.id), "email": new_user.email})
+
+        # Generate and store refresh token
+        refresh_token_value = generate_refresh_token()
+        refresh_token = RefreshToken(
+            token=refresh_token_value,
+            user_id=new_user.id,
+            expires_at=get_refresh_token_expiry(),
+            revoked=False,
+        )
+        db.add(refresh_token)
+        await db.commit()
+
+        # Set httpOnly cookies
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=settings.ENVIRONMENT == "production",
+            samesite="strict",
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
+
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token_value,
+            httponly=True,
+            secure=settings.ENVIRONMENT == "production",
+            samesite="strict",
+            max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        )
+
+        # Generate and set CSRF token
+        csrf_token = generate_csrf_token()
+        response.set_cookie(
+            key="csrf_token",
+            value=csrf_token,
+            httponly=False,
+            secure=settings.ENVIRONMENT == "production",
+            samesite="strict",
+            max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        )
 
         return new_user
     except HTTPException:
@@ -292,6 +336,7 @@ async def login(
     if user.failed_login_attempts > 0 or user.locked_until is not None:
         user.failed_login_attempts = 0
         user.locked_until = None
+        await db.commit()
 
     # Create access token
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
@@ -414,6 +459,13 @@ async def refresh_token(
     # Create new access token
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
 
+    # Revoke old refresh token
+    refresh_token_record.revoked = True
+    refresh_token_record.revoked_at = datetime.now(UTC)
+
+    # Commit the revocation first
+    await db.commit()
+
     # Generate new refresh token (token rotation for security)
     new_refresh_token_value = generate_refresh_token()
     new_refresh_token = RefreshToken(
@@ -423,11 +475,7 @@ async def refresh_token(
         revoked=False,
     )
 
-    # Revoke old refresh token
-    refresh_token_record.revoked = True
-    refresh_token_record.revoked_at = datetime.now(UTC)
-
-    # Add new refresh token
+    # Add and commit new refresh token
     db.add(new_refresh_token)
     await db.commit()
 
