@@ -124,16 +124,15 @@ class Settings(BaseSettings):
     @classmethod
     def validate_cors_origins(cls, v, info):
         """Validate CORS origins - prevent wildcard in production."""
-        if info.data.get("ENVIRONMENT") == "production":
-            if "*" in v:
-                raise ValueError(
-                    "ALLOWED_ORIGINS cannot contain '*' in production. "
-                    "Specify explicit origins for security."
-                )
+        if info.data.get("ENVIRONMENT") == "production" and "*" in v:
+            raise ValueError(
+                "ALLOWED_ORIGINS cannot contain '*' in production. "
+                "Specify explicit origins for security."
+            )
         return v
 
     @property
-    def TESTING(self) -> bool:
+    def TESTING(self) -> bool:  # noqa: N802
         """
         Testing flag that's only enabled in non-production environments.
 
@@ -143,7 +142,7 @@ class Settings(BaseSettings):
         return self._TESTING and self.ENVIRONMENT != "production"
 
     @TESTING.setter
-    def TESTING(self, value: bool) -> None:
+    def TESTING(self, value: bool) -> None:  # noqa: N802
         """Allow tests to set TESTING flag."""
         self._TESTING = value
 

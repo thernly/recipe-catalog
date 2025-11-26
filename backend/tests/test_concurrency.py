@@ -10,13 +10,11 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token
 from app.models.household import Household, HouseholdInvitation, HouseholdMember
-from app.models.recipe import Recipe
 from app.models.user import User
 
 
@@ -282,14 +280,10 @@ async def test_concurrent_login_attempts_trigger_lockout(client: AsyncClient):
         )
 
     # Try to login with wrong password 5 times concurrently
-    responses = await asyncio.gather(*[failed_login() for _ in range(5)], return_exceptions=True)
+    await asyncio.gather(*[failed_login() for _ in range(5)], return_exceptions=True)
 
     # In production with proper database, account should be locked after failed attempts
     # In test environment with SQLite, concurrent requests may not properly increment counters
-    # Check if we got any failed login responses
-    failed_count = sum(
-        1 for r in responses if not isinstance(r, Exception) and r.status_code in [401, 403]
-    )
 
     # Now try to login with correct password
     correct_login_response = await client.post(

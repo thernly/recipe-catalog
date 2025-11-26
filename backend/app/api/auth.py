@@ -2,7 +2,7 @@
 Authentication API endpoints.
 """
 
-from datetime import UTC
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from slowapi import Limiter
@@ -316,8 +316,6 @@ async def login(
         HTTPException 403: If account is locked due to failed login attempts
         HTTPException 429: If rate limit exceeded
     """
-    from datetime import timedelta
-
     # Get user by email
     result = await db.execute(select(User).where(User.email == login_data.email.lower()))
     user = result.scalar_one_or_none()

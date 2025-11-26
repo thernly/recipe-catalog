@@ -50,7 +50,6 @@ async def test_complete_auth_flow_register_to_logout(client: AsyncClient):
     # Verify new tokens were issued
     assert "access_token" in login_response.cookies
     assert "refresh_token" in login_response.cookies
-    initial_access_token = login_response.cookies.get("access_token")
     initial_refresh_token = login_response.cookies.get("refresh_token")
 
     # Step 3: Refresh the access token
@@ -59,7 +58,6 @@ async def test_complete_auth_flow_register_to_logout(client: AsyncClient):
         headers={"Cookie": f"refresh_token={initial_refresh_token}"},
     )
     assert refresh_response.status_code == 200
-    refresh_data = refresh_response.json()
     assert "access_token" in refresh_response.cookies
     assert "refresh_token" in refresh_response.cookies
 

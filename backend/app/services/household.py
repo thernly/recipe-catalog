@@ -10,7 +10,7 @@ from wonderwords import RandomWord
 
 from app.core.config import settings
 from app.core.email import email_service
-from app.models._utils import ensure_utc, is_expired
+from app.models._utils import is_expired
 from app.models.household import (
     Household,
     HouseholdInvitation,
@@ -362,13 +362,12 @@ async def create_invitation(
         )
     )
     existing_invitation = existing_invitation_result.scalar_one_or_none()
-    if existing_invitation:
-        # Check if invitation is still valid (not expired)
-        if not is_expired(existing_invitation.expires_at):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User already has a pending invitation",
-            )
+    # Check if invitation is still valid (not expired)
+    if existing_invitation and not is_expired(existing_invitation.expires_at):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User already has a pending invitation",
+        )
 
     # Check if invitee is already a member
     invitee_user = await db.execute(select(User).where(User.email == invitee_email))
