@@ -48,7 +48,7 @@ async def test_concurrent_refresh_token_requests(client: AsyncClient):
     async def refresh():
         return await client.post(
             "/api/v1/auth/refresh",
-            cookies={"refresh_token": refresh_token},
+            headers={"Cookie": f"refresh_token={refresh_token}"},
         )
 
     responses = await asyncio.gather(*[refresh() for _ in range(5)], return_exceptions=True)
@@ -140,7 +140,7 @@ async def test_concurrent_household_joins(client: AsyncClient, db: AsyncSession)
         # Try to accept invitation
         return await client.post(
             f"/api/v1/households/invitations/{invitations[i].token}/accept",
-            cookies={"access_token": access_token},
+            headers={"Cookie": f"access_token={access_token}"},
         )
 
     # Try to accept all 10 invitations concurrently
