@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { browser } from '$app/environment';
 	import { createRecipe, type RecipeCreate } from '$lib/api/recipes';
 	import RecipeForm from '$lib/components/RecipeForm.svelte';
 	import { dialog } from '$lib/stores/dialog';
@@ -16,7 +17,9 @@
 		try {
 			const recipe = await createRecipe(formData);
 			// Clear draft from localStorage
-			localStorage.removeItem('recipe-draft');
+			if (browser) {
+				localStorage.removeItem('recipe-draft');
+			}
 			// Navigate to the new recipe
 			toast.success('Recipe created successfully');
 			goto(`/recipes/${recipe.id}`);

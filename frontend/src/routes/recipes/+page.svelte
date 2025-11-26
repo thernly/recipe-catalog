@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { browser } from '$app/environment';
 	import { searchRecipes, deleteRecipe, type RecipeSearchParams } from '$lib/api/recipes';
 	import type { RecipeSearchResult, RecipeSummary } from '$lib/api/recipes';
+	import type { RecipeSortBy, ViewMode } from '$lib/types';
 	import RecipeCard from '$lib/components/RecipeCard.svelte';
 	import RecipeListItem from '$lib/components/RecipeListItem.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
@@ -15,7 +17,7 @@
 	let error: string | null = null;
 
 	// View mode
-	let viewMode: 'grid' | 'list' = 'grid';
+	let viewMode: ViewMode = 'grid';
 
 	// Show/hide filters and collections
 	let showFilters = true;
@@ -76,7 +78,7 @@
 	// Handle sort change
 	function handleSortChange(e: Event) {
 		const target = e.target as HTMLSelectElement;
-		searchParams.sort_by = target.value as any;
+		searchParams.sort_by = target.value as RecipeSortBy;
 		searchParams.page = 1;
 		loadRecipes();
 	}
@@ -125,9 +127,11 @@
 	}
 
 	// Toggle view mode
-	function toggleViewMode(mode: 'grid' | 'list') {
+	function toggleViewMode(mode: ViewMode) {
 		viewMode = mode;
-		localStorage.setItem('recipe-view-mode', mode);
+		if (browser) {
+			localStorage.setItem('recipe-view-mode', mode);
+		}
 	}
 
 	// Handle filter changes
@@ -145,9 +149,11 @@
 	// Initialize
 	onMount(() => {
 		// Restore view mode from localStorage
-		const savedViewMode = localStorage.getItem('recipe-view-mode');
-		if (savedViewMode === 'grid' || savedViewMode === 'list') {
-			viewMode = savedViewMode;
+		if (browser) {
+			const savedViewMode = localStorage.getItem('recipe-view-mode');
+			if (savedViewMode === 'grid' || savedViewMode === 'list') {
+				viewMode = savedViewMode;
+			}
 		}
 
 		loadRecipes();

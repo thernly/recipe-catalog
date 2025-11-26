@@ -3,6 +3,7 @@
  */
 
 import { apiRequest, buildQueryString } from "./client";
+import type { RecipeData, RecipeSortBy, RecipeSourceType } from "$lib/types";
 
 export interface Recipe {
   id: number;
@@ -10,9 +11,9 @@ export interface Recipe {
   name: string;
   description?: string;
   image_url?: string;
-  recipe_data: any;
+  recipe_data: RecipeData;
   source_url?: string;
-  source_type: "imported" | "manual" | "ai-generated";
+  source_type: RecipeSourceType;
   is_modified: boolean;
   created_at: string;
   updated_at: string;
@@ -29,11 +30,11 @@ export interface RecipeSummary {
   name: string;
   description?: string;
   image_url?: string;
-  recipe_data?: any;
+  recipe_data?: RecipeData;
   cuisine?: string;
   category?: string;
   total_time_minutes?: number;
-  source_type: "imported" | "manual" | "ai-generated";
+  source_type: RecipeSourceType;
   created_at: string;
   creator_display_name?: string | null;
   deleted_at?: string;
@@ -57,7 +58,7 @@ export interface RecipeSearchParams {
   collection_ids?: number[];
   max_time_minutes?: number;
   min_time_minutes?: number;
-  sort_by?: "recently_added" | "alphabetical" | "time_asc" | "time_desc";
+  sort_by?: RecipeSortBy;
   page?: number;
   per_page?: number;
 }
@@ -66,9 +67,9 @@ export interface RecipeCreate {
   name: string;
   description?: string;
   image_url?: string;
-  recipe_data: any;
+  recipe_data: RecipeData;
   source_url?: string;
-  source_type?: "imported" | "manual" | "ai-generated";
+  source_type?: RecipeSourceType;
   cuisine?: string;
   category?: string;
   total_time_minutes?: number;
@@ -79,7 +80,7 @@ export interface RecipeUpdate {
   name?: string;
   description?: string;
   image_url?: string;
-  recipe_data?: any;
+  recipe_data?: RecipeData;
   cuisine?: string;
   category?: string;
   total_time_minutes?: number;

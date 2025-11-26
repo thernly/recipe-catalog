@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 	import { auth } from '$lib/stores/auth';
 	import { API_V1_URL } from '$lib/config';
@@ -54,7 +55,9 @@
 
 			// Store the access token
 			if (data.access_token) {
-				localStorage.setItem('auth_token', data.access_token);
+				if (browser) {
+					localStorage.setItem('auth_token', data.access_token);
+				}
 				await auth.init();
 				goto('/dashboard');
 			} else {

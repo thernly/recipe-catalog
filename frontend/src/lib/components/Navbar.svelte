@@ -3,9 +3,10 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { getPreferences, updatePreferences } from '$lib/api/users';
+	import type { User, Theme } from '$lib/types';
 
-	let user: any = null;
-	let currentTheme: 'classic' | 'professional' = 'classic';
+	let user: User | null = null;
+	let currentTheme: Theme = 'classic';
 
 	onMount(() => {
 		const unsubscribe = auth.subscribe((state) => {
@@ -15,7 +16,7 @@
 		// Load current theme from user preferences
 		getPreferences()
 			.then((prefs) => {
-				currentTheme = prefs.theme as 'classic' | 'professional';
+				currentTheme = prefs.theme;
 				document.documentElement.setAttribute('data-theme', currentTheme);
 			})
 			.catch((err) => {

@@ -7,8 +7,9 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Toast from '$lib/components/Toast.svelte';
 	import { dialog } from '$lib/stores/dialog';
+	import type { User } from '$lib/types';
 
-	let user: any = null;
+	let user: User | null = null;
 	let isAuthPage = false;
 
 	// Subscribe to auth state

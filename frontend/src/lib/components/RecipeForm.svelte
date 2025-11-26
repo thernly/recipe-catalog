@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
+	import { browser } from '$app/environment';
 	import type { Recipe, RecipeCreate, RecipeUpdate } from '$lib/api/recipes';
 	import IngredientsEditor from '$lib/components/recipe/IngredientsEditor.svelte';
 	import InstructionsEditor from '$lib/components/recipe/InstructionsEditor.svelte';
+	import Button from '$lib/components/Button.svelte';
 
 	export let recipe: Recipe | null = null; // null for create, recipe for edit
 	export let saving = false;
@@ -29,13 +31,25 @@
 
 	let recipeYield = baseRecipeData?.recipeYield || '';
 
+	// Helper to normalize instructions to string array
+	function normalizeInstructions(instructions: any): string[] {
+		if (!instructions) return [''];
+		if (typeof instructions === 'string') return [instructions];
+		if (Array.isArray(instructions)) {
+			return instructions.map(item =>
+				typeof item === 'string' ? item : (item.text || '')
+			).filter(Boolean);
+		}
+		return [''];
+	}
+
 	// Dynamic lists
 	const initialIngredients = baseRecipeData?.recipeIngredient;
 	const initialInstructions = baseRecipeData?.recipeInstructions;
 	const initialEquipment = baseRecipeData?.equipment;
 
 	let ingredients: string[] = Array.isArray(initialIngredients) && initialIngredients.length > 0 ? [...initialIngredients] : [''];
-	let instructions: string[] = Array.isArray(initialInstructions) && initialInstructions.length > 0 ? [...initialInstructions] : [''];
+	let instructions: string[] = normalizeInstructions(initialInstructions);
 	let equipment: string[] = Array.isArray(initialEquipment) ? [...initialEquipment] : [];
 	let notes = baseRecipeData?.notes || '';
 	let keywords = baseRecipeData?.keywords || '';
@@ -174,24 +188,26 @@
 		}
 		autoSaveTimeout = setTimeout(() => {
 			// Save to localStorage
-			const draft = {
-				name,
-				description,
-				imageUrl,
-				ingredients,
-				instructions,
-				equipment,
-				cuisine,
-				category,
-				prepTimeHours,
-				prepTimeMinutes,
-				cookTimeHours,
-				cookTimeMinutes,
-				recipeYield,
-				notes,
-				keywords
-			};
-			localStorage.setItem('recipe-draft', JSON.stringify(draft));
+			if (browser) {
+				const draft = {
+					name,
+					description,
+					imageUrl,
+					ingredients,
+					instructions,
+					equipment,
+					cuisine,
+					category,
+					prepTimeHours,
+					prepTimeMinutes,
+					cookTimeHours,
+					cookTimeMinutes,
+					recipeYield,
+					notes,
+					keywords
+				};
+				localStorage.setItem('recipe-draft', JSON.stringify(draft));
+			}
 		}, 30000);
 	}
 
@@ -446,18 +462,16 @@
 
 	<!-- Form Actions -->
 	<div class="form-actions">
-		<button type="button" on:click={handleCancel} class="btn btn-secondary" disabled={saving}>
+		<Button type="button" on:click={handleCancel} variant="secondary" disabled={saving}>
 			Cancel
-		</button>
-		<button type="submit" class="btn btn-primary" disabled={saving}>
-			{#if saving}
-				Saving...
-			{:else if recipe}
+		</Button>
+		<Button type="submit" variant="primary" loading={saving}>
+			{#if recipe}
 				Update Recipe
 			{:else}
 				Create Recipe
 			{/if}
-		</button>
+		</Button>
 	</div>
 </form>
 
