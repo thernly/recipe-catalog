@@ -3,6 +3,8 @@
 	import { updatePreferences } from '$lib/api/users';
 	import { createEventDispatcher } from 'svelte';
 	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	export let preferences: UserPreferences;
 
@@ -50,7 +52,7 @@
 
 			setTimeout(() => (success = false), 3000);
 		} catch (err) {
-			alert(
+			toast.error(
 				'Failed to update preferences: ' + (err instanceof Error ? err.message : 'Unknown error')
 			);
 			console.error('Failed to update preferences:', err);

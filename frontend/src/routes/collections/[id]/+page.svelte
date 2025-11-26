@@ -11,6 +11,8 @@
 	import { deleteRecipe, type RecipeSummary } from '$lib/api/recipes';
 	import RecipeCard from '$lib/components/RecipeCard.svelte';
 	import RecipeListItem from '$lib/components/RecipeListItem.svelte';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	let collection: CollectionWithCount | null = null;
 	let recipes: RecipeSummary[] = [];
@@ -51,18 +53,21 @@
 	async function handleDeleteRecipe(e: CustomEvent) {
 		const recipe = e.detail as RecipeSummary;
 
-		if (
-			confirm(`Are you sure you want to delete "${recipe.name}"? It will be moved to trash.`)
-		) {
-			try {
-				await deleteRecipe(recipe.id);
-				// Reload the collection
-				loadData();
-			} catch (err) {
-				alert('Failed to delete recipe');
-				console.error('Delete failed:', err);
+		dialog.show({
+			title: 'Delete Recipe',
+			message: `Are you sure you want to delete "${recipe.name}"? It will be moved to trash.`,
+			onConfirm: async () => {
+				try {
+					await deleteRecipe(recipe.id);
+					toast.success('Recipe deleted successfully');
+					// Reload the collection
+					loadData();
+				} catch (err) {
+					toast.error('Failed to delete recipe');
+					console.error('Delete failed:', err);
+				}
 			}
-		}
+		});
 	}
 
 	function handleFavoriteRecipe(e: CustomEvent) {
@@ -97,7 +102,7 @@
 			window.URL.revokeObjectURL(url);
 			document.body.removeChild(a);
 		} catch (err) {
-			alert(`Failed to export collection: ${err instanceof Error ? err.message : 'Unknown error'}`);
+			toast.error(`Failed to export collection: ${err instanceof Error ? err.message : 'Unknown error'}`);
 			console.error('Export failed:', err);
 		} finally {
 			exportingPdf = false;

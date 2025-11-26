@@ -2,6 +2,8 @@
 	import type { User } from '$lib/api/users';
 	import { updateProfile } from '$lib/api/users';
 	import { createEventDispatcher } from 'svelte';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	export let user: User;
 
@@ -27,7 +29,7 @@
 			success = true;
 			setTimeout(() => (success = false), 3000);
 		} catch (err) {
-			alert('Failed to update profile: ' + (err instanceof Error ? err.message : 'Unknown error'));
+			toast.error('Failed to update profile: ' + (err instanceof Error ? err.message : 'Unknown error'));
 			console.error('Failed to update profile:', err);
 		} finally {
 			saving = false;

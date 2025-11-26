@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { getTrashedRecipes, restoreRecipe, deleteRecipe, type RecipeSummary } from '$lib/api/recipes';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	let recipes: RecipeSummary[] = [];
 	let loading = true;
@@ -28,50 +30,51 @@
 			recipes = recipes.filter((r) => r.id !== recipe.id);
 
 			// Show success message
-			alert(`"${recipe.name}" has been restored`);
+			toast.success(`"${recipe.name}" has been restored`);
 		} catch (err) {
-			alert('Failed to restore recipe');
+			toast.error('Failed to restore recipe');
 			console.error('Restore failed:', err);
 		}
 	}
 
 	async function handlePermanentDelete(recipe: RecipeSummary) {
-		if (
-			confirm(
-				`Are you sure you want to permanently delete "${recipe.name}"? This action cannot be undone.`
-			)
-		) {
-			try {
-				await deleteRecipe(recipe.id, true); // permanent = true
-				// Remove from list
-				recipes = recipes.filter((r) => r.id !== recipe.id);
-			} catch (err) {
-				alert('Failed to delete recipe');
-				console.error('Delete failed:', err);
+		dialog.show({
+			title: 'Permanently Delete Recipe',
+			message: `Are you sure you want to permanently delete "${recipe.name}"? This action cannot be undone.`,
+			onConfirm: async () => {
+				try {
+					await deleteRecipe(recipe.id, true); // permanent = true
+					// Remove from list
+					recipes = recipes.filter((r) => r.id !== recipe.id);
+					toast.success('Recipe permanently deleted');
+				} catch (err) {
+					toast.error('Failed to delete recipe');
+					console.error('Delete failed:', err);
+				}
 			}
-		}
+		});
 	}
 
 	async function handleEmptyTrash() {
 		if (!recipes.length) return;
 
-		if (
-			confirm(
-				`Are you sure you want to permanently delete all ${recipes.length} recipes in trash? This action cannot be undone.`
-			)
-		) {
-			try {
-				// Delete all recipes
-				await Promise.all(recipes.map((recipe) => deleteRecipe(recipe.id, true)));
-				recipes = [];
-				alert('Trash emptied successfully');
-			} catch (err) {
-				alert('Failed to empty trash');
-				console.error('Empty trash failed:', err);
-				// Reload to show what's left
-				loadTrashedRecipes();
+		dialog.show({
+			title: 'Empty Trash',
+			message: `Are you sure you want to permanently delete all ${recipes.length} recipes in trash? This action cannot be undone.`,
+			onConfirm: async () => {
+				try {
+					// Delete all recipes
+					await Promise.all(recipes.map((recipe) => deleteRecipe(recipe.id, true)));
+					recipes = [];
+					toast.success('Trash emptied successfully');
+				} catch (err) {
+					toast.error('Failed to empty trash');
+					console.error('Empty trash failed:', err);
+					// Reload to show what's left
+					loadTrashedRecipes();
+				}
 			}
-		}
+		});
 	}
 
 	function getDaysUntilPurge(deletedAt: string): number {

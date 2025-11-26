@@ -4,6 +4,8 @@
 	import { goto } from '$app/navigation';
 	import { getRecipe, deleteRecipe, duplicateRecipe, exportRecipe, type Recipe } from '$lib/api/recipes';
 	import { generateFromRecipe, listShoppingLists, type ShoppingListSummary } from '$lib/api/shopping-lists';
+	import { dialog } from '$lib/stores/dialog';
+	import { toast } from '$lib/stores/toast';
 
 	let recipe: Recipe | null = null;
 	let loading = true;
@@ -80,15 +82,20 @@
 	async function handleDelete() {
 		if (!recipe) return;
 
-		if (confirm(`Are you sure you want to delete "${recipe.name}"? It will be moved to trash.`)) {
-			try {
-				await deleteRecipe(recipe.id);
-				goto('/recipes');
-			} catch (err) {
-				alert('Failed to delete recipe');
-				console.error('Delete failed:', err);
+		dialog.show({
+			title: 'Delete Recipe',
+			message: `Are you sure you want to delete "${recipe.name}"? It will be moved to trash.`,
+			onConfirm: async () => {
+				try {
+					await deleteRecipe(recipe.id);
+					toast.success('Recipe deleted successfully');
+					goto('/recipes');
+				} catch (err) {
+					toast.error('Failed to delete recipe');
+					console.error('Delete failed:', err);
+				}
 			}
-		}
+		});
 	}
 
 	async function handleDuplicate() {
@@ -96,9 +103,10 @@
 
 		try {
 			const duplicated = await duplicateRecipe(recipe.id);
+			toast.success('Recipe duplicated successfully');
 			goto(`/recipes/${duplicated.id}/edit`);
 		} catch (err) {
-			alert('Failed to duplicate recipe');
+			toast.error('Failed to duplicate recipe');
 			console.error('Duplicate failed:', err);
 		}
 	}
@@ -131,7 +139,7 @@
 			window.URL.revokeObjectURL(url);
 			document.body.removeChild(a);
 		} catch (err) {
-			alert(`Failed to export recipe: ${err instanceof Error ? err.message : 'Unknown error'}`);
+			toast.error(`Failed to export recipe: ${err instanceof Error ? err.message : 'Unknown error'}`);
 			console.error('Export failed:', err);
 		} finally {
 			exporting = false;
@@ -155,9 +163,10 @@
 				list_name: `Shopping list for ${recipe.name}`
 			});
 			showAddToShoppingListDialog = false;
+			toast.success('Shopping list created successfully');
 			goto(`/shopping-lists/${newList.id}`);
 		} catch (err) {
-			alert(`Failed to create shopping list: ${err instanceof Error ? err.message : 'Unknown error'}`);
+			toast.error(`Failed to create shopping list: ${err instanceof Error ? err.message : 'Unknown error'}`);
 			console.error('Failed to create shopping list:', err);
 		} finally {
 			addingToList = false;
