@@ -154,12 +154,13 @@ function createAuthStore() {
         return;
       }
 
-      // Check if access_token cookie exists before making API call
-      if (!hasCookie("access_token")) {
-        // No auth cookie present, no need to call API
+      // Check if csrf_token cookie exists (access_token is httpOnly and can't be read by JS)
+      // If no csrf_token, user is not logged in, but don't clear user if already set
+      // (e.g., during login flow)
+      if (!hasCookie("csrf_token")) {
+        // No auth cookie present, skip API call but preserve existing user state
         update((state) => ({
           ...state,
-          user: null,
           isLoading: false,
         }));
         return;
@@ -173,10 +174,12 @@ function createAuthStore() {
         });
 
         if (!response.ok) {
-          // No valid auth cookie, clear user
+          // API call failed - only clear user if this is an initial load,
+          // not if user was just set by login
           update((state) => ({
             ...state,
-            user: null,
+            // Preserve user if already set (e.g., just logged in)
+            user: state.user || null,
             isLoading: false,
           }));
           return;
@@ -190,9 +193,9 @@ function createAuthStore() {
           isLoading: false,
         }));
       } catch (error) {
+        // Network error - preserve existing user state
         update((state) => ({
           ...state,
-          user: null,
           isLoading: false,
         }));
       }

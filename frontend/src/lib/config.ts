@@ -5,9 +5,12 @@
 
 // In development, use relative URLs so Vite's proxy can forward requests
 // In production, use the full API URL
+// Use environment variable if set, otherwise empty string in dev (for proxy)
+// or location.origin in production (same-origin deployment)
 export const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? "" : "http://localhost:8000");
+  import.meta.env.PUBLIC_API_URL ||
+  (import.meta.env.DEV ? "" : location.origin);
 
 /**
  * Versioned API base URL
