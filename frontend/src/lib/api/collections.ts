@@ -36,21 +36,21 @@ export interface CollectionUpdate {
  * Get all collections for the current user
  */
 export async function getCollections(): Promise<CollectionWithCount[]> {
-	return apiRequest<CollectionWithCount[]>('/api/collections/');
+	return apiRequest<CollectionWithCount[]>('/collections/');
 }
 
 /**
  * Get a single collection by ID
  */
 export async function getCollection(id: number): Promise<CollectionWithCount> {
-	return apiRequest<CollectionWithCount>(`/api/collections/${id}`);
+	return apiRequest<CollectionWithCount>(`/collections/${id}`);
 }
 
 /**
  * Create a new collection
  */
 export async function createCollection(data: CollectionCreate): Promise<Collection> {
-	return apiRequest<Collection>('/api/collections/', {
+	return apiRequest<Collection>('/collections/', {
 		method: 'POST',
 		body: JSON.stringify(data)
 	});
@@ -60,7 +60,7 @@ export async function createCollection(data: CollectionCreate): Promise<Collecti
  * Update a collection
  */
 export async function updateCollection(id: number, data: CollectionUpdate): Promise<Collection> {
-	return apiRequest<Collection>(`/api/collections/${id}`, {
+	return apiRequest<Collection>(`/collections/${id}`, {
 		method: 'PATCH',
 		body: JSON.stringify(data)
 	});
@@ -70,7 +70,7 @@ export async function updateCollection(id: number, data: CollectionUpdate): Prom
  * Delete a collection
  */
 export async function deleteCollection(id: number): Promise<void> {
-	return apiRequest<void>(`/api/collections/${id}`, {
+	return apiRequest<void>(`/collections/${id}`, {
 		method: 'DELETE'
 	});
 }
@@ -82,7 +82,7 @@ export async function addRecipesToCollection(
 	collectionId: number,
 	recipeIds: number[]
 ): Promise<void> {
-	return apiRequest<void>(`/api/collections/${collectionId}/recipes`, {
+	return apiRequest<void>(`/collections/${collectionId}/recipes`, {
 		method: 'POST',
 		body: JSON.stringify({ recipe_ids: recipeIds })
 	});
@@ -95,7 +95,7 @@ export async function removeRecipesFromCollection(
 	collectionId: number,
 	recipeIds: number[]
 ): Promise<void> {
-	return apiRequest<void>(`/api/collections/${collectionId}/recipes`, {
+	return apiRequest<void>(`/collections/${collectionId}/recipes`, {
 		method: 'DELETE',
 		body: JSON.stringify({ recipe_ids: recipeIds })
 	});
@@ -105,16 +105,16 @@ export async function removeRecipesFromCollection(
  * Get recipes in a collection
  */
 export async function getCollectionRecipes(collectionId: number): Promise<any[]> {
-	return apiRequest<any[]>(`/api/collections/${collectionId}/recipes`);
+	return apiRequest<any[]>(`/collections/${collectionId}/recipes`);
 }
 
 /**
  * Export a collection as PDF
  */
 export async function exportCollectionPdf(collectionId: number): Promise<Blob> {
-	const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-	
-	const response = await fetch(`${API_URL}/api/collections/${collectionId}/export/pdf`, {
+	const { API_V1_URL } = await import('$lib/config');
+
+	const response = await fetch(`${API_V1_URL}/collections/${collectionId}/export/pdf`, {
 		credentials: 'include' // Send cookies for authentication
 	});
 

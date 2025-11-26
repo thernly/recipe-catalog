@@ -47,14 +47,14 @@ export interface PasswordChange {
  * Get current user profile
  */
 export async function getCurrentUser(): Promise<User> {
-	return apiRequest<User>('/api/users/me');
+	return apiRequest<User>('/users/me');
 }
 
 /**
  * Update current user profile
  */
 export async function updateProfile(data: UserUpdate): Promise<User> {
-	return apiRequest<User>('/api/users/me', {
+	return apiRequest<User>('/users/me', {
 		method: 'PATCH',
 		body: JSON.stringify(data)
 	});
@@ -64,7 +64,7 @@ export async function updateProfile(data: UserUpdate): Promise<User> {
  * Change password
  */
 export async function changePassword(data: PasswordChange): Promise<void> {
-	return apiRequest<void>('/api/users/me/change-password', {
+	return apiRequest<void>('/users/me/change-password', {
 		method: 'POST',
 		body: JSON.stringify(data)
 	});
@@ -74,7 +74,7 @@ export async function changePassword(data: PasswordChange): Promise<void> {
  * Get user preferences
  */
 export async function getPreferences(): Promise<UserPreferences> {
-	return apiRequest<UserPreferences>('/api/users/me/preferences');
+	return apiRequest<UserPreferences>('/users/me/preferences');
 }
 
 /**
@@ -88,7 +88,7 @@ export async function getUserPreferences(): Promise<UserPreferences> {
  * Update user preferences (partial update supported)
  */
 export async function updatePreferences(data: Partial<UserPreferences>): Promise<UserPreferences> {
-	return apiRequest<UserPreferences>('/api/users/me/preferences', {
+	return apiRequest<UserPreferences>('/users/me/preferences', {
 		method: 'PATCH',
 		body: JSON.stringify(data)
 	});
@@ -98,14 +98,14 @@ export async function updatePreferences(data: Partial<UserPreferences>): Promise
  * Get user statistics
  */
 export async function getUserStats(): Promise<UserStats> {
-	return apiRequest<UserStats>('/api/users/me/stats');
+	return apiRequest<UserStats>('/users/me/stats');
 }
 
 /**
  * Delete current user account
  */
 export async function deleteAccount(): Promise<void> {
-	return apiRequest<void>('/api/users/me', {
+	return apiRequest<void>('/users/me', {
 		method: 'DELETE'
 	});
 }

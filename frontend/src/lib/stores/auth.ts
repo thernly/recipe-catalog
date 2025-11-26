@@ -3,7 +3,7 @@
  */
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
-import { API_BASE_URL } from '$lib/config';
+import { API_V1_URL } from '$lib/config';
 
 interface User {
 	id: number;
@@ -38,7 +38,7 @@ function createAuthStore() {
 			update((state) => ({ ...state, isLoading: true }));
 
 			try {
-				const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+				const response = await fetch(`${API_V1_URL}/auth/login`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ email, password }),
@@ -52,7 +52,7 @@ function createAuthStore() {
 
 				// Login successful - cookies are set automatically
 				// Fetch user profile
-				const userResponse = await fetch(`${API_BASE_URL}/api/users/me`, {
+				const userResponse = await fetch(`${API_V1_URL}/users/me`, {
 					credentials: 'include' // Send cookies
 				});
 
@@ -81,7 +81,7 @@ function createAuthStore() {
 			update((state) => ({ ...state, isLoading: true }));
 
 			try {
-				const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+				const response = await fetch(`${API_V1_URL}/auth/register`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
@@ -111,7 +111,7 @@ function createAuthStore() {
 		async logout(redirect: boolean = false) {
 			try {
 				// Call backend logout to clear cookies
-				await fetch(`${API_BASE_URL}/api/auth/logout`, {
+				await fetch(`${API_V1_URL}/auth/logout`, {
 					method: 'POST',
 					credentials: 'include'
 				});
@@ -142,7 +142,7 @@ function createAuthStore() {
 			update((state) => ({ ...state, isLoading: true }));
 
 			try {
-				const response = await fetch(`${API_BASE_URL}/api/users/me`, {
+				const response = await fetch(`${API_V1_URL}/users/me`, {
 					credentials: 'include' // Send cookies
 				});
 

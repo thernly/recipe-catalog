@@ -86,7 +86,7 @@ export interface GenerateFromMealPlanRequest {
  * Get default shopping list categories
  */
 export async function getCategories(): Promise<string[]> {
-	const response = await apiRequest<{ categories: string[] }>('/api/shopping-lists/categories');
+	const response = await apiRequest<{ categories: string[] }>('/shopping-lists/categories');
 	return response.categories;
 }
 
@@ -94,7 +94,7 @@ export async function getCategories(): Promise<string[]> {
  * Create a new shopping list
  */
 export async function createShoppingList(data: ShoppingListCreate): Promise<ShoppingList> {
-	return apiRequest<ShoppingList>('/api/shopping-lists/', {
+	return apiRequest<ShoppingList>('/shopping-lists/', {
 		method: 'POST',
 		body: JSON.stringify(data)
 	});
@@ -107,8 +107,8 @@ export async function listShoppingLists(
 	statusFilter?: 'active' | 'archived'
 ): Promise<ShoppingListSummary[]> {
 	const url = statusFilter
-		? `/api/shopping-lists/?status_filter=${statusFilter}`
-		: '/api/shopping-lists/';
+		? `/shopping-lists/?status_filter=${statusFilter}`
+		: '/shopping-lists/';
 	return apiRequest<ShoppingListSummary[]>(url);
 }
 
@@ -116,7 +116,7 @@ export async function listShoppingLists(
  * Get a specific shopping list with all items
  */
 export async function getShoppingList(id: number): Promise<ShoppingList> {
-	return apiRequest<ShoppingList>(`/api/shopping-lists/${id}`);
+	return apiRequest<ShoppingList>(`/shopping-lists/${id}`);
 }
 
 /**
@@ -126,7 +126,7 @@ export async function updateShoppingList(
 	id: number,
 	data: ShoppingListUpdate
 ): Promise<ShoppingList> {
-	return apiRequest<ShoppingList>(`/api/shopping-lists/${id}`, {
+	return apiRequest<ShoppingList>(`/shopping-lists/${id}`, {
 		method: 'PATCH',
 		body: JSON.stringify(data)
 	});
@@ -136,7 +136,7 @@ export async function updateShoppingList(
  * Delete a shopping list
  */
 export async function deleteShoppingList(id: number): Promise<void> {
-	return apiRequest<void>(`/api/shopping-lists/${id}`, {
+	return apiRequest<void>(`/shopping-lists/${id}`, {
 		method: 'DELETE'
 	});
 }
@@ -145,7 +145,7 @@ export async function deleteShoppingList(id: number): Promise<void> {
  * Archive a shopping list
  */
 export async function archiveShoppingList(id: number): Promise<ShoppingList> {
-	return apiRequest<ShoppingList>(`/api/shopping-lists/${id}/archive`, {
+	return apiRequest<ShoppingList>(`/shopping-lists/${id}/archive`, {
 		method: 'POST'
 	});
 }
@@ -154,7 +154,7 @@ export async function archiveShoppingList(id: number): Promise<ShoppingList> {
  * Duplicate a shopping list
  */
 export async function duplicateShoppingList(id: number): Promise<ShoppingList> {
-	return apiRequest<ShoppingList>(`/api/shopping-lists/${id}/duplicate`, {
+	return apiRequest<ShoppingList>(`/shopping-lists/${id}/duplicate`, {
 		method: 'POST'
 	});
 }
@@ -166,7 +166,7 @@ export async function addShoppingListItem(
 	listId: number,
 	data: ShoppingListItemCreate
 ): Promise<ShoppingListItem> {
-	return apiRequest<ShoppingListItem>(`/api/shopping-lists/${listId}/items`, {
+	return apiRequest<ShoppingListItem>(`/shopping-lists/${listId}/items`, {
 		method: 'POST',
 		body: JSON.stringify(data)
 	});
@@ -179,7 +179,7 @@ export async function updateShoppingListItem(
 	itemId: number,
 	data: ShoppingListItemUpdate
 ): Promise<ShoppingListItem> {
-	return apiRequest<ShoppingListItem>(`/api/shopping-lists/items/${itemId}`, {
+	return apiRequest<ShoppingListItem>(`/shopping-lists/items/${itemId}`, {
 		method: 'PATCH',
 		body: JSON.stringify(data)
 	});
@@ -189,7 +189,7 @@ export async function updateShoppingListItem(
  * Delete a shopping list item
  */
 export async function deleteShoppingListItem(itemId: number): Promise<void> {
-	return apiRequest<void>(`/api/shopping-lists/items/${itemId}`, {
+	return apiRequest<void>(`/shopping-lists/items/${itemId}`, {
 		method: 'DELETE'
 	});
 }
@@ -200,7 +200,7 @@ export async function deleteShoppingListItem(itemId: number): Promise<void> {
 export async function generateFromRecipe(
 	data: GenerateFromRecipeRequest
 ): Promise<ShoppingList> {
-	return apiRequest<ShoppingList>('/api/shopping-lists/from-recipe', {
+	return apiRequest<ShoppingList>('/shopping-lists/from-recipe', {
 		method: 'POST',
 		body: JSON.stringify(data)
 	});
@@ -212,7 +212,7 @@ export async function generateFromRecipe(
 export async function generateFromMealPlan(
 	data: GenerateFromMealPlanRequest
 ): Promise<ShoppingList> {
-	return apiRequest<ShoppingList>('/api/shopping-lists/from-meal-plan', {
+	return apiRequest<ShoppingList>('/shopping-lists/from-meal-plan', {
 		method: 'POST',
 		body: JSON.stringify(data)
 	});

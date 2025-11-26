@@ -47,7 +47,7 @@ export interface AIMenuGenerateResponse {
 export async function generateRecipe(
 	request: AIRecipeGenerateRequest
 ): Promise<AIRecipeGenerateResponse> {
-	return apiRequest<AIRecipeGenerateResponse>('/api/ai/generate-recipe', {
+	return apiRequest<AIRecipeGenerateResponse>('/ai/generate-recipe', {
 		method: 'POST',
 		body: JSON.stringify(request)
 	});
@@ -59,7 +59,7 @@ export async function generateRecipe(
 export async function generateMenu(
 	request: AIMenuGenerateRequest
 ): Promise<AIMenuGenerateResponse> {
-	return apiRequest<AIMenuGenerateResponse>('/api/ai/generate-menu', {
+	return apiRequest<AIMenuGenerateResponse>('/ai/generate-menu', {
 		method: 'POST',
 		body: JSON.stringify(request)
 	});

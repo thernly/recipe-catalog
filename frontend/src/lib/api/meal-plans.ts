@@ -55,7 +55,7 @@ export interface PlannedMealUpdate {
  * Get all meal plans for the household
  */
 export async function listMealPlans(): Promise<MealPlanSummary[]> {
-	return apiRequest<MealPlanSummary[]>('/api/meal-plans/');
+	return apiRequest<MealPlanSummary[]>('/meal-plans/');
 }
 
 /**
@@ -63,21 +63,21 @@ export async function listMealPlans(): Promise<MealPlanSummary[]> {
  */
 export async function getCurrentWeekMealPlan(weekStart?: string): Promise<MealPlan> {
 	const queryString = weekStart ? `?week_start=${weekStart}` : '';
-	return apiRequest<MealPlan>(`/api/meal-plans/current${queryString}`);
+	return apiRequest<MealPlan>(`/meal-plans/current${queryString}`);
 }
 
 /**
  * Get a specific meal plan by ID
  */
 export async function getMealPlan(id: number): Promise<MealPlan> {
-	return apiRequest<MealPlan>(`/api/meal-plans/${id}`);
+	return apiRequest<MealPlan>(`/meal-plans/${id}`);
 }
 
 /**
  * Delete a meal plan
  */
 export async function deleteMealPlan(id: number): Promise<void> {
-	return apiRequest<void>(`/api/meal-plans/${id}`, {
+	return apiRequest<void>(`/meal-plans/${id}`, {
 		method: 'DELETE'
 	});
 }
@@ -89,7 +89,7 @@ export async function addPlannedMeal(
 	mealPlanId: number,
 	data: PlannedMealCreate
 ): Promise<PlannedMeal> {
-	return apiRequest<PlannedMeal>(`/api/meal-plans/${mealPlanId}/meals`, {
+	return apiRequest<PlannedMeal>(`/meal-plans/${mealPlanId}/meals`, {
 		method: 'POST',
 		body: JSON.stringify(data)
 	});
@@ -102,7 +102,7 @@ export async function updatePlannedMeal(
 	plannedMealId: number,
 	data: PlannedMealUpdate
 ): Promise<PlannedMeal> {
-	return apiRequest<PlannedMeal>(`/api/meal-plans/${plannedMealId}`, {
+	return apiRequest<PlannedMeal>(`/meal-plans/${plannedMealId}`, {
 		method: 'PATCH',
 		body: JSON.stringify(data)
 	});
@@ -112,7 +112,7 @@ export async function updatePlannedMeal(
  * Delete a planned meal
  */
 export async function deletePlannedMeal(plannedMealId: number): Promise<void> {
-	return apiRequest<void>(`/api/meal-plans/meals/${plannedMealId}`, {
+	return apiRequest<void>(`/meal-plans/meals/${plannedMealId}`, {
 		method: 'DELETE'
 	});
 }
