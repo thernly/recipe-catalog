@@ -1,4 +1,4 @@
 /**
  * Test setup file for vitest
  */
-import '@testing-library/jest-dom';
+import "@testing-library/jest-dom";

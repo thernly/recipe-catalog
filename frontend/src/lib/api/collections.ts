@@ -2,126 +2,138 @@
  * Collections API endpoints
  */
 
-import { apiRequest } from './client';
+import { apiRequest } from "./client";
 
 export interface Collection {
-	id: number;
-	user_id: number;
-	name: string;
-	description?: string;
-	is_default: boolean;
-	icon?: string;
-	created_at: string;
-	updated_at: string;
-	creator_display_name?: string | null;
+  id: number;
+  user_id: number;
+  name: string;
+  description?: string;
+  is_default: boolean;
+  icon?: string;
+  created_at: string;
+  updated_at: string;
+  creator_display_name?: string | null;
 }
 
 export interface CollectionWithCount extends Collection {
-	recipe_count: number;
+  recipe_count: number;
 }
 
 export interface CollectionCreate {
-	name: string;
-	description?: string;
-	icon?: string;
+  name: string;
+  description?: string;
+  icon?: string;
 }
 
 export interface CollectionUpdate {
-	name?: string;
-	description?: string;
-	icon?: string;
+  name?: string;
+  description?: string;
+  icon?: string;
 }
 
 /**
  * Get all collections for the current user
  */
 export async function getCollections(): Promise<CollectionWithCount[]> {
-	return apiRequest<CollectionWithCount[]>('/collections/');
+  return apiRequest<CollectionWithCount[]>("/collections/");
 }
 
 /**
  * Get a single collection by ID
  */
 export async function getCollection(id: number): Promise<CollectionWithCount> {
-	return apiRequest<CollectionWithCount>(`/collections/${id}`);
+  return apiRequest<CollectionWithCount>(`/collections/${id}`);
 }
 
 /**
  * Create a new collection
  */
-export async function createCollection(data: CollectionCreate): Promise<Collection> {
-	return apiRequest<Collection>('/collections/', {
-		method: 'POST',
-		body: JSON.stringify(data)
-	});
+export async function createCollection(
+  data: CollectionCreate,
+): Promise<Collection> {
+  return apiRequest<Collection>("/collections/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
 /**
  * Update a collection
  */
-export async function updateCollection(id: number, data: CollectionUpdate): Promise<Collection> {
-	return apiRequest<Collection>(`/collections/${id}`, {
-		method: 'PATCH',
-		body: JSON.stringify(data)
-	});
+export async function updateCollection(
+  id: number,
+  data: CollectionUpdate,
+): Promise<Collection> {
+  return apiRequest<Collection>(`/collections/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 }
 
 /**
  * Delete a collection
  */
 export async function deleteCollection(id: number): Promise<void> {
-	return apiRequest<void>(`/collections/${id}`, {
-		method: 'DELETE'
-	});
+  return apiRequest<void>(`/collections/${id}`, {
+    method: "DELETE",
+  });
 }
 
 /**
  * Add recipes to a collection
  */
 export async function addRecipesToCollection(
-	collectionId: number,
-	recipeIds: number[]
+  collectionId: number,
+  recipeIds: number[],
 ): Promise<void> {
-	return apiRequest<void>(`/collections/${collectionId}/recipes`, {
-		method: 'POST',
-		body: JSON.stringify({ recipe_ids: recipeIds })
-	});
+  return apiRequest<void>(`/collections/${collectionId}/recipes`, {
+    method: "POST",
+    body: JSON.stringify({ recipe_ids: recipeIds }),
+  });
 }
 
 /**
  * Remove recipes from a collection
  */
 export async function removeRecipesFromCollection(
-	collectionId: number,
-	recipeIds: number[]
+  collectionId: number,
+  recipeIds: number[],
 ): Promise<void> {
-	return apiRequest<void>(`/collections/${collectionId}/recipes`, {
-		method: 'DELETE',
-		body: JSON.stringify({ recipe_ids: recipeIds })
-	});
+  return apiRequest<void>(`/collections/${collectionId}/recipes`, {
+    method: "DELETE",
+    body: JSON.stringify({ recipe_ids: recipeIds }),
+  });
 }
 
 /**
  * Get recipes in a collection
  */
-export async function getCollectionRecipes(collectionId: number): Promise<any[]> {
-	return apiRequest<any[]>(`/collections/${collectionId}/recipes`);
+export async function getCollectionRecipes(
+  collectionId: number,
+): Promise<any[]> {
+  return apiRequest<any[]>(`/collections/${collectionId}/recipes`);
 }
 
 /**
  * Export a collection as PDF
  */
 export async function exportCollectionPdf(collectionId: number): Promise<Blob> {
-	const { API_V1_URL } = await import('$lib/config');
+  const { API_V1_URL } = await import("$lib/config");
 
-	const response = await fetch(`${API_V1_URL}/collections/${collectionId}/export/pdf`, {
-		credentials: 'include' // Send cookies for authentication
-	});
+  const response = await fetch(
+    `${API_V1_URL}/collections/${collectionId}/export/pdf`,
+    {
+      credentials: "include", // Send cookies for authentication
+    },
+  );
 
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Export failed: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`);
-	}
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Export failed: ${response.statusText}${errorText ? ` - ${errorText}` : ""}`,
+    );
+  }
 
-	return response.blob();
+  return response.blob();
 }

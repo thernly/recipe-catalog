@@ -1,184 +1,210 @@
 /**
  * Authentication store using Svelte stores.
  */
-import { writable, derived } from 'svelte/store';
-import { browser } from '$app/environment';
-import { API_V1_URL } from '$lib/config';
+import { writable, derived } from "svelte/store";
+import { browser } from "$app/environment";
+import { API_V1_URL } from "$lib/config";
 
 interface User {
-	id: number;
-	email: string;
-	display_name: string | null;
-	is_active: boolean;
-	is_verified: boolean;
-	created_at: string;
+  id: number;
+  email: string;
+  display_name: string | null;
+  is_active: boolean;
+  is_verified: boolean;
+  created_at: string;
 }
 
 interface AuthState {
-	user: User | null;
-	isLoading: boolean;
+  user: User | null;
+  isLoading: boolean;
+}
+
+/**
+ * Check if a specific cookie exists
+ */
+function hasCookie(name: string): boolean {
+  if (!browser) {
+    return false;
+  }
+  const cookies = document.cookie.split(";");
+  return cookies.some((cookie) => cookie.trim().startsWith(`${name}=`));
 }
 
 // Initialize with no user (will check cookies on init)
 const initialState: AuthState = {
-	user: null,
-	isLoading: false
+  user: null,
+  isLoading: false,
 };
 
 function createAuthStore() {
-	const { subscribe, set, update } = writable<AuthState>(initialState);
+  const { subscribe, set, update } = writable<AuthState>(initialState);
 
-	return {
-		subscribe,
+  return {
+    subscribe,
 
-		/**
-		 * Login with email and password
-		 */
-		async login(email: string, password: string): Promise<void> {
-			update((state) => ({ ...state, isLoading: true }));
+    /**
+     * Login with email and password
+     */
+    async login(email: string, password: string): Promise<void> {
+      update((state) => ({ ...state, isLoading: true }));
 
-			try {
-				const response = await fetch(`${API_V1_URL}/auth/login`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ email, password }),
-					credentials: 'include' // Send and receive cookies
-				});
+      try {
+        const response = await fetch(`${API_V1_URL}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+          credentials: "include", // Send and receive cookies
+        });
 
-				if (!response.ok) {
-					const error = await response.json();
-					throw new Error(error.detail || 'Login failed');
-				}
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || "Login failed");
+        }
 
-				// Login successful - cookies are set automatically
-				// Fetch user profile
-				const userResponse = await fetch(`${API_V1_URL}/users/me`, {
-					credentials: 'include' // Send cookies
-				});
+        // Login successful - cookies are set automatically
+        // Fetch user profile
+        const userResponse = await fetch(`${API_V1_URL}/users/me`, {
+          credentials: "include", // Send cookies
+        });
 
-				if (!userResponse.ok) {
-					throw new Error('Failed to fetch user profile');
-				}
+        if (!userResponse.ok) {
+          throw new Error("Failed to fetch user profile");
+        }
 
-				const user = await userResponse.json();
+        const user = await userResponse.json();
 
-				update((state) => ({
-					...state,
-					user,
-					isLoading: false
-				}));
-			} catch (error) {
-				update((state) => ({ ...state, isLoading: false }));
-				throw error;
-			}
-		},
+        update((state) => ({
+          ...state,
+          user,
+          isLoading: false,
+        }));
+      } catch (error) {
+        update((state) => ({ ...state, isLoading: false }));
+        throw error;
+      }
+    },
 
-		/**
-		 * Register new user
-		 * Note: Does not automatically log in. Call login() separately if needed.
-		 */
-		async register(email: string, password: string, displayName?: string): Promise<void> {
-			update((state) => ({ ...state, isLoading: true }));
+    /**
+     * Register new user
+     * Note: Does not automatically log in. Call login() separately if needed.
+     */
+    async register(
+      email: string,
+      password: string,
+      displayName?: string,
+    ): Promise<void> {
+      update((state) => ({ ...state, isLoading: true }));
 
-			try {
-				const response = await fetch(`${API_V1_URL}/auth/register`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						email,
-						password,
-						display_name: displayName || null
-					}),
-					credentials: 'include'
-				});
+      try {
+        const response = await fetch(`${API_V1_URL}/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            password,
+            display_name: displayName || null,
+          }),
+          credentials: "include",
+        });
 
-				if (!response.ok) {
-					const error = await response.json();
-					throw new Error(error.detail || 'Registration failed');
-				}
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || "Registration failed");
+        }
 
-				update((state) => ({ ...state, isLoading: false }));
-			} catch (error) {
-				update((state) => ({ ...state, isLoading: false }));
-				throw error;
-			}
-		},
+        update((state) => ({ ...state, isLoading: false }));
+      } catch (error) {
+        update((state) => ({ ...state, isLoading: false }));
+        throw error;
+      }
+    },
 
-		/**
-		 * Logout user
-		 * @param redirect - If true, redirect to login page after logout
-		 */
-		async logout(redirect: boolean = false) {
-			try {
-				// Call backend logout to clear cookies
-				await fetch(`${API_V1_URL}/auth/logout`, {
-					method: 'POST',
-					credentials: 'include'
-				});
-			} catch (error) {
-				console.error('Logout request failed:', error);
-				// Continue with local logout even if backend call fails
-			}
+    /**
+     * Logout user
+     * @param redirect - If true, redirect to login page after logout
+     */
+    async logout(redirect: boolean = false) {
+      try {
+        // Call backend logout to clear cookies
+        await fetch(`${API_V1_URL}/auth/logout`, {
+          method: "POST",
+          credentials: "include",
+        });
+      } catch (error) {
+        console.error("Logout request failed:", error);
+        // Continue with local logout even if backend call fails
+      }
 
-			set({
-				user: null,
-				isLoading: false
-			});
+      set({
+        user: null,
+        isLoading: false,
+      });
 
-			// Redirect to login page if requested and in browser
-			if (redirect && browser) {
-				window.location.href = '/auth/login';
-			}
-		},
+      // Redirect to login page if requested and in browser
+      if (redirect && browser) {
+        window.location.href = "/auth/login";
+      }
+    },
 
-		/**
-		 * Initialize auth from cookies
-		 */
-		async init(): Promise<void> {
-			if (!browser) {
-				return;
-			}
+    /**
+     * Initialize auth from cookies
+     */
+    async init(): Promise<void> {
+      if (!browser) {
+        return;
+      }
 
-			update((state) => ({ ...state, isLoading: true }));
+      // Check if access_token cookie exists before making API call
+      if (!hasCookie("access_token")) {
+        // No auth cookie present, no need to call API
+        update((state) => ({
+          ...state,
+          user: null,
+          isLoading: false,
+        }));
+        return;
+      }
 
-			try {
-				const response = await fetch(`${API_V1_URL}/users/me`, {
-					credentials: 'include' // Send cookies
-				});
+      update((state) => ({ ...state, isLoading: true }));
 
-				if (!response.ok) {
-					// No valid auth cookie, clear user
-					update((state) => ({
-						...state,
-						user: null,
-						isLoading: false
-					}));
-					return;
-				}
+      try {
+        const response = await fetch(`${API_V1_URL}/users/me`, {
+          credentials: "include", // Send cookies
+        });
 
-				const user = await response.json();
+        if (!response.ok) {
+          // No valid auth cookie, clear user
+          update((state) => ({
+            ...state,
+            user: null,
+            isLoading: false,
+          }));
+          return;
+        }
 
-				update((state) => ({
-					...state,
-					user,
-					isLoading: false
-				}));
-			} catch (error) {
-				update((state) => ({
-					...state,
-					user: null,
-					isLoading: false
-				}));
-			}
-		},
+        const user = await response.json();
 
-		/**
-		 * Reset store to initial state (for testing)
-		 */
-		reset(): void {
-			set(initialState);
-		}
-	};
+        update((state) => ({
+          ...state,
+          user,
+          isLoading: false,
+        }));
+      } catch (error) {
+        update((state) => ({
+          ...state,
+          user: null,
+          isLoading: false,
+        }));
+      }
+    },
+
+    /**
+     * Reset store to initial state (for testing)
+     */
+    reset(): void {
+      set(initialState);
+    },
+  };
 }
 
 export const auth = createAuthStore();
