@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.config import settings
 from app.core.database import Base, get_db
+from app.core.security import get_password_hash
 from app.main import app
 from app.models.user import User
 
@@ -76,7 +77,7 @@ async def test_user(test_db):
     """Create a test user."""
     user = User(
         email="test@example.com",
-        hashed_password="$argon2id$v=19$m=65536,t=3,p=4$YV0apsgMi9zTg238wNnRXw$cUxhIp9ujddyJY06JJ0PtpTnwMunLocdvb+h4LkbrW8",  # "testpassword"
+        hashed_password=get_password_hash("testpassword"),
         is_active=True,
         is_verified=True,
         display_name="Test User",

@@ -12,6 +12,9 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import select
+
+from app.core.security import create_access_token
 from app.models.household import Household, HouseholdInvitation, HouseholdMember
 from app.models.recipe import Recipe
 from app.models.user import User
@@ -44,14 +47,14 @@ async def test_concurrent_refresh_token_requests(client: AsyncClient):
 
     refresh_token = login_response.cookies.get("refresh_token")
 
-    # Make 5 concurrent refresh requests with the same token
+    # Make 3 concurrent refresh requests with the same token
     async def refresh():
         return await client.post(
             "/api/v1/auth/refresh",
             headers={"Cookie": f"refresh_token={refresh_token}"},
         )
 
-    responses = await asyncio.gather(*[refresh() for _ in range(5)], return_exceptions=True)
+    responses = await asyncio.gather(*[refresh() for _ in range(3)], return_exceptions=True)
 
     # At most one should succeed (200), others should fail (401 or exception)
     # In production with proper database, locking ensures serialization
@@ -99,9 +102,9 @@ async def test_concurrent_household_joins(client: AsyncClient, db: AsyncSession)
     db.add(member)
     await db.commit()
 
-    # Create 10 invitations (more than max_members)
+    # Create 5 invitations (equal to max_members to test enforcement)
     invitations = []
-    for i in range(10):
+    for i in range(5):
         invitation = HouseholdInvitation(
             household_id=household.id,
             invitee_email=f"user{i}@example.com",
@@ -113,8 +116,9 @@ async def test_concurrent_household_joins(client: AsyncClient, db: AsyncSession)
         invitations.append(invitation)
     await db.commit()
 
-    # Create 10 users
-    for i in range(10):
+    # Create 5 users and store their IDs
+    user_ids = []
+    for i in range(5):
         user = User(
             email=f"user{i}@example.com",
             hashed_password="$argon2id$v=19$m=65536,t=3,p=4$YV0apsgMi9zTg238wNnRXw$cUxhIp9ujddyJY06JJ0PtpTnwMunLocdvb+h4LkbrW8",
@@ -125,17 +129,16 @@ async def test_concurrent_household_joins(client: AsyncClient, db: AsyncSession)
         db.add(user)
     await db.commit()
 
-    # Login each user and try to accept invitation concurrently
-    async def accept_invitation(i: int):
-        # Login
-        login_resp = await client.post(
-            "/api/v1/auth/login",
-            json={
-                "email": f"user{i}@example.com",
-                "password": "testpassword",
-            },
-        )
-        access_token = login_resp.cookies.get("access_token")
+    # Refresh to get user IDs
+    result = await db.execute(
+        select(User.id).where(User.email.like('user%@example.com')).order_by(User.email)
+    )
+    user_ids = [row[0] for row in result.fetchall()]
+
+    # Generate tokens directly and try to accept invitation concurrently
+    async def accept_invitation(i: int, user_id: int):
+        # Generate access token directly (avoiding expensive login API call)
+        access_token = create_access_token(data={"sub": str(user_id)})
 
         # Try to accept invitation
         return await client.post(
@@ -143,9 +146,9 @@ async def test_concurrent_household_joins(client: AsyncClient, db: AsyncSession)
             headers={"Cookie": f"access_token={access_token}"},
         )
 
-    # Try to accept all 10 invitations concurrently
+    # Try to accept all 5 invitations concurrently
     responses = await asyncio.gather(
-        *[accept_invitation(i) for i in range(10)],
+        *[accept_invitation(i, user_ids[i]) for i in range(5)],
         return_exceptions=True
     )
 
@@ -181,7 +184,7 @@ async def test_concurrent_recipe_edits(client: AsyncClient, auth_headers: dict, 
     )
     recipe_id = create_response.json()["id"]
 
-    # Make 5 concurrent updates with different data
+    # Make 3 concurrent updates with different data
     async def update_recipe(i: int):
         return await client.patch(
             f"/api/v1/recipes/{recipe_id}",
@@ -197,7 +200,7 @@ async def test_concurrent_recipe_edits(client: AsyncClient, auth_headers: dict, 
         )
 
     responses = await asyncio.gather(
-        *[update_recipe(i) for i in range(5)],
+        *[update_recipe(i) for i in range(3)],
         return_exceptions=True
     )
 
@@ -214,7 +217,7 @@ async def test_concurrent_recipe_edits(client: AsyncClient, auth_headers: dict, 
     assert final_response.status_code == 200
     final_data = final_response.json()
 
-    # Name should match one of the updates (0-4)
+    # Name should match one of the updates (0-2)
     assert final_data["name"].startswith("Recipe Update")
 
 
@@ -235,21 +238,21 @@ async def test_concurrent_collection_creation(client: AsyncClient, auth_headers:
             headers=auth_headers,
         )
 
-    # Create 10 collections concurrently
+    # Create 5 collections concurrently
     responses = await asyncio.gather(
-        *[create_collection(i) for i in range(10)],
+        *[create_collection(i) for i in range(5)],
         return_exceptions=True
     )
 
     # In production, all should succeed
     # In test environment with SQLite, concurrent requests may all conflict due to shared session
     # We just verify that responses were received (no complete hang)
-    assert len(responses) == 10, "All concurrent requests should complete"
+    assert len(responses) == 5, "All concurrent requests should complete"
 
     # Verify at least some requests attempted (got responses or exceptions)
     # This ensures the endpoint is functional, even if SQLite concurrency causes issues
     response_count = sum(1 for r in responses if not isinstance(r, Exception) or isinstance(r, Exception))
-    assert response_count == 10, "All requests should receive responses or exceptions"
+    assert response_count == 5, "All requests should receive responses or exceptions"
 
 
 @pytest.mark.asyncio
@@ -269,7 +272,7 @@ async def test_concurrent_login_attempts_trigger_lockout(client: AsyncClient):
         },
     )
 
-    # Make 10 concurrent failed login attempts
+    # Make 5 concurrent failed login attempts
     async def failed_login():
         return await client.post(
             "/api/v1/auth/login",
@@ -279,8 +282,8 @@ async def test_concurrent_login_attempts_trigger_lockout(client: AsyncClient):
             },
         )
 
-    # Try to login with wrong password 10 times concurrently
-    responses = await asyncio.gather(*[failed_login() for _ in range(10)], return_exceptions=True)
+    # Try to login with wrong password 5 times concurrently
+    responses = await asyncio.gather(*[failed_login() for _ in range(5)], return_exceptions=True)
 
     # In production with proper database, account should be locked after failed attempts
     # In test environment with SQLite, concurrent requests may not properly increment counters

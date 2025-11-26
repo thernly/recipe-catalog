@@ -28,7 +28,12 @@ from app.core.constants import REFRESH_TOKEN_LENGTH
 # - parallelism=1 (threads)
 # - hash_len=32 (bytes)
 # - salt_len=16 (bytes)
-ph = PasswordHasher()
+#
+# For testing, use much faster parameters to speed up test suite
+if settings.TESTING:
+    ph = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1)
+else:
+    ph = PasswordHasher()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
