@@ -2,200 +2,214 @@
  * Recipe API endpoints
  */
 
-import { apiRequest, buildQueryString } from './client';
+import { apiRequest, buildQueryString } from "./client";
 
 export interface Recipe {
-	id: number;
-	user_id: number;
-	name: string;
-	description?: string;
-	image_url?: string;
-	recipe_data: any;
-	source_url?: string;
-	source_type: 'imported' | 'manual' | 'ai-generated';
-	is_modified: boolean;
-	created_at: string;
-	updated_at: string;
-	imported_at?: string;
-	deleted_at?: string;
-	cuisine?: string;
-	category?: string;
-	total_time_minutes?: number;
-	creator_display_name?: string | null;
+  id: number;
+  user_id: number;
+  name: string;
+  description?: string;
+  image_url?: string;
+  recipe_data: any;
+  source_url?: string;
+  source_type: "imported" | "manual" | "ai-generated";
+  is_modified: boolean;
+  created_at: string;
+  updated_at: string;
+  imported_at?: string;
+  deleted_at?: string;
+  cuisine?: string;
+  category?: string;
+  total_time_minutes?: number;
+  creator_display_name?: string | null;
 }
 
 export interface RecipeSummary {
-	id: number;
-	name: string;
-	description?: string;
-	image_url?: string;
-	recipe_data?: any;
-	cuisine?: string;
-	category?: string;
-	total_time_minutes?: number;
-	source_type: 'imported' | 'manual' | 'ai-generated';
-	created_at: string;
-	creator_display_name?: string | null;
-	deleted_at?: string;
+  id: number;
+  name: string;
+  description?: string;
+  image_url?: string;
+  recipe_data?: any;
+  cuisine?: string;
+  category?: string;
+  total_time_minutes?: number;
+  source_type: "imported" | "manual" | "ai-generated";
+  created_at: string;
+  creator_display_name?: string | null;
+  deleted_at?: string;
 }
 
 export interface RecipeSearchResult {
-	recipes: RecipeSummary[];
-	total: number;
-	page: number;
-	per_page: number;
-	total_pages: number;
-	has_next: boolean;
-	has_prev: boolean;
+  recipes: RecipeSummary[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
 }
 
 export interface RecipeSearchParams {
-	query?: string;
-	cuisine?: string[];
-	category?: string[];
-	source_type?: string[];
-	collection_ids?: number[];
-	max_time_minutes?: number;
-	min_time_minutes?: number;
-	sort_by?: 'recently_added' | 'alphabetical' | 'time_asc' | 'time_desc';
-	page?: number;
-	per_page?: number;
+  query?: string;
+  cuisine?: string[];
+  category?: string[];
+  source_type?: string[];
+  collection_ids?: number[];
+  max_time_minutes?: number;
+  min_time_minutes?: number;
+  sort_by?: "recently_added" | "alphabetical" | "time_asc" | "time_desc";
+  page?: number;
+  per_page?: number;
 }
 
 export interface RecipeCreate {
-	name: string;
-	description?: string;
-	image_url?: string;
-	recipe_data: any;
-	source_url?: string;
-	source_type?: 'imported' | 'manual' | 'ai-generated';
-	cuisine?: string;
-	category?: string;
-	total_time_minutes?: number;
-	collection_ids?: number[];
+  name: string;
+  description?: string;
+  image_url?: string;
+  recipe_data: any;
+  source_url?: string;
+  source_type?: "imported" | "manual" | "ai-generated";
+  cuisine?: string;
+  category?: string;
+  total_time_minutes?: number;
+  collection_ids?: number[];
 }
 
 export interface RecipeUpdate {
-	name?: string;
-	description?: string;
-	image_url?: string;
-	recipe_data?: any;
-	cuisine?: string;
-	category?: string;
-	total_time_minutes?: number;
-	collection_ids?: number[];
+  name?: string;
+  description?: string;
+  image_url?: string;
+  recipe_data?: any;
+  cuisine?: string;
+  category?: string;
+  total_time_minutes?: number;
+  collection_ids?: number[];
 }
 
 /**
  * Search and filter recipes
  */
-export async function searchRecipes(params: RecipeSearchParams = {}): Promise<RecipeSearchResult> {
-	const queryString = buildQueryString(params);
-	return apiRequest<RecipeSearchResult>(`/recipes/search${queryString}`);
+export async function searchRecipes(
+  params: RecipeSearchParams = {},
+): Promise<RecipeSearchResult> {
+  const queryString = buildQueryString(params);
+  return apiRequest<RecipeSearchResult>(`/recipes/search${queryString}`);
 }
 
 /**
  * Get a single recipe by ID
  */
 export async function getRecipe(id: number): Promise<Recipe> {
-	return apiRequest<Recipe>(`/recipes/${id}`);
+  return apiRequest<Recipe>(`/recipes/${id}`);
 }
 
 /**
  * Create a new recipe
  */
 export async function createRecipe(data: RecipeCreate): Promise<Recipe> {
-	return apiRequest<Recipe>('/recipes/', {
-		method: 'POST',
-		body: JSON.stringify(data)
-	});
+  return apiRequest<Recipe>("/recipes/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
 /**
  * Update an existing recipe
  */
-export async function updateRecipe(id: number, data: RecipeUpdate): Promise<Recipe> {
-	return apiRequest<Recipe>(`/recipes/${id}`, {
-		method: 'PATCH',
-		body: JSON.stringify(data)
-	});
+export async function updateRecipe(
+  id: number,
+  data: RecipeUpdate,
+): Promise<Recipe> {
+  return apiRequest<Recipe>(`/recipes/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 }
 
 /**
  * Delete a recipe (soft delete by default)
  */
-export async function deleteRecipe(id: number, permanent: boolean = false): Promise<void> {
-	const queryString = permanent ? '?permanent=true' : '';
-	return apiRequest<void>(`/recipes/${id}${queryString}`, {
-		method: 'DELETE'
-	});
+export async function deleteRecipe(
+  id: number,
+  permanent: boolean = false,
+): Promise<void> {
+  const queryString = permanent ? "?permanent=true" : "";
+  return apiRequest<void>(`/recipes/${id}${queryString}`, {
+    method: "DELETE",
+  });
 }
 
 /**
  * Restore a soft-deleted recipe
  */
 export async function restoreRecipe(id: number): Promise<Recipe> {
-	return apiRequest<Recipe>(`/recipes/${id}/restore`, {
-		method: 'POST'
-	});
+  return apiRequest<Recipe>(`/recipes/${id}/restore`, {
+    method: "POST",
+  });
 }
 
 /**
  * Duplicate a recipe
  */
 export async function duplicateRecipe(id: number): Promise<Recipe> {
-	return apiRequest<Recipe>(`/recipes/${id}/duplicate`, {
-		method: 'POST'
-	});
+  return apiRequest<Recipe>(`/recipes/${id}/duplicate`, {
+    method: "POST",
+  });
 }
 
 /**
  * Get trashed recipes
  */
 export async function getTrashedRecipes(): Promise<RecipeSummary[]> {
-	return apiRequest<RecipeSummary[]>('/recipes/trash/list');
+  return apiRequest<RecipeSummary[]>("/recipes/trash/list");
 }
 
 /**
  * Import recipes from JSON file
  */
 export async function importRecipes(
-	file: File,
-	duplicateHandling: 'skip' | 'update' | 'create' = 'skip',
-	collectionId?: number
+  file: File,
+  duplicateHandling: "skip" | "update" | "create" = "skip",
+  collectionId?: number,
 ): Promise<{ success: boolean; message: string; details: any }> {
-	const formData = new FormData();
-	formData.append('file', file);
-	formData.append('duplicate_handling', duplicateHandling);
-	if (collectionId) {
-		formData.append('collection_id', collectionId.toString());
-	}
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("duplicate_handling", duplicateHandling);
+  if (collectionId) {
+    formData.append("collection_id", collectionId.toString());
+  }
 
-	return apiRequest<{ success: boolean; message: string; details: any }>('/import/recipes', {
-		method: 'POST',
-		body: formData,
-		headers: {} // Let browser set Content-Type for FormData
-	});
+  return apiRequest<{ success: boolean; message: string; details: any }>(
+    "/import/recipes",
+    {
+      method: "POST",
+      body: formData,
+      headers: {}, // Let browser set Content-Type for FormData
+    },
+  );
 }
 
 /**
  * Export a single recipe
  */
 export async function exportRecipe(
-	id: number,
-	format: 'json' | 'markdown' | 'text' | 'pdf'
+  id: number,
+  format: "json" | "markdown" | "text" | "pdf",
 ): Promise<Blob> {
-	const { API_V1_URL } = await import('$lib/config');
+  const { API_V1_URL } = await import("$lib/config");
 
-	const response = await fetch(`${API_V1_URL}/recipes/${id}/export?format=${format}`, {
-		credentials: 'include' // Send cookies for authentication
-	});
+  const response = await fetch(
+    `${API_V1_URL}/recipes/${id}/export?format=${format}`,
+    {
+      credentials: "include", // Send cookies for authentication
+    },
+  );
 
-	if (!response.ok) {
-		const errorText = await response.text();
-		const detailedMessage = errorText ? ` - ${errorText}` : '';
-		throw new Error(`Export failed: ${response.statusText}${detailedMessage}`);
-	}
+  if (!response.ok) {
+    const errorText = await response.text();
+    const detailedMessage = errorText ? ` - ${errorText}` : "";
+    throw new Error(`Export failed: ${response.statusText}${detailedMessage}`);
+  }
 
-	return response.blob();
+  return response.blob();
 }

@@ -1,59 +1,59 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-	content: ['./src/**/*.{html,js,svelte,ts}'],
-	theme: {
-		extend: {
-			colors: {
-				// Theme-aware colors using CSS variables
-				'brand-primary': {
-					DEFAULT: 'var(--primary-500)',
-					50: 'var(--primary-50)',
-					100: 'var(--primary-100)',
-					200: 'var(--primary-200)',
-					300: 'var(--primary-300)',
-					400: 'var(--primary-400)',
-					500: 'var(--primary-500)',
-					600: 'var(--primary-600)',
-					700: 'var(--primary-700)',
-					800: 'var(--primary-800)',
-					900: 'var(--primary-900)'
-				},
-				'brand-accent': {
-					DEFAULT: 'var(--accent-500)',
-					50: 'var(--accent-50)',
-					100: 'var(--accent-100)',
-					200: 'var(--accent-200)',
-					300: 'var(--accent-300)',
-					400: 'var(--accent-400)',
-					500: 'var(--accent-500)',
-					600: 'var(--accent-600)',
-					700: 'var(--accent-700)',
-					800: 'var(--accent-800)',
-					900: 'var(--accent-900)'
-				}
-			},
-			fontFamily: {
-				sans: ['Inter', 'system-ui', 'sans-serif'],
-				display: ['Playfair Display', 'Georgia', 'serif']
-			},
-			spacing: {
-				xs: 'var(--space-xs)',
-				sm: 'var(--space-sm)',
-				md: 'var(--space-md)',
-				lg: 'var(--space-lg)',
-				xl: 'var(--space-xl)',
-				'2xl': 'var(--space-2xl)',
-				'3xl': 'var(--space-3xl)'
-			},
-			borderRadius: {
-				DEFAULT: 'var(--radius-md)',
-				sm: 'var(--radius-sm)',
-				md: 'var(--radius-md)',
-				lg: 'var(--radius-lg)',
-				xl: 'var(--radius-xl)',
-				full: 'var(--radius-full)'
-			}
-		}
-	},
-	plugins: [require('@tailwindcss/forms'), require('@tailwindcss/typography')]
+  content: ["./src/**/*.{html,js,svelte,ts}"],
+  theme: {
+    extend: {
+      colors: {
+        // Theme-aware colors using CSS variables
+        "brand-primary": {
+          DEFAULT: "var(--primary-500)",
+          50: "var(--primary-50)",
+          100: "var(--primary-100)",
+          200: "var(--primary-200)",
+          300: "var(--primary-300)",
+          400: "var(--primary-400)",
+          500: "var(--primary-500)",
+          600: "var(--primary-600)",
+          700: "var(--primary-700)",
+          800: "var(--primary-800)",
+          900: "var(--primary-900)",
+        },
+        "brand-accent": {
+          DEFAULT: "var(--accent-500)",
+          50: "var(--accent-50)",
+          100: "var(--accent-100)",
+          200: "var(--accent-200)",
+          300: "var(--accent-300)",
+          400: "var(--accent-400)",
+          500: "var(--accent-500)",
+          600: "var(--accent-600)",
+          700: "var(--accent-700)",
+          800: "var(--accent-800)",
+          900: "var(--accent-900)",
+        },
+      },
+      fontFamily: {
+        sans: ["Inter", "system-ui", "sans-serif"],
+        display: ["Playfair Display", "Georgia", "serif"],
+      },
+      spacing: {
+        xs: "var(--space-xs)",
+        sm: "var(--space-sm)",
+        md: "var(--space-md)",
+        lg: "var(--space-lg)",
+        xl: "var(--space-xl)",
+        "2xl": "var(--space-2xl)",
+        "3xl": "var(--space-3xl)",
+      },
+      borderRadius: {
+        DEFAULT: "var(--radius-md)",
+        sm: "var(--radius-sm)",
+        md: "var(--radius-md)",
+        lg: "var(--radius-lg)",
+        xl: "var(--radius-xl)",
+        full: "var(--radius-full)",
+      },
+    },
+  },
+  plugins: [require("@tailwindcss/forms"), require("@tailwindcss/typography")],
 };
