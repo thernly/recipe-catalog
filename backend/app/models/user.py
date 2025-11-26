@@ -1,6 +1,6 @@
 """User model."""
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, event
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import relationship

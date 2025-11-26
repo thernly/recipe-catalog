@@ -19,6 +19,7 @@ from app.api import (
     users,
 )
 
+
 # Create v1 router
 api_v1_router = APIRouter(prefix="/api/v1")
 

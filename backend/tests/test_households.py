@@ -1,11 +1,9 @@
 """Tests for household functionality."""
 
-from datetime import UTC, datetime
-
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models._utils import ensure_utc, is_expired
+from app.models._utils import is_expired
 from app.models.user import User
 from app.services import household as household_service
 

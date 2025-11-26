@@ -11,11 +11,9 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.database import Base
 
@@ -85,7 +83,6 @@ def test_migrations_on_existing_database():
         engine.dispose()
 
         # Get alembic config and verify head exists
-        config = get_alembic_config(database_url)
         backend_dir = Path(__file__).resolve().parents[1]
         script_config = Config(str(backend_dir / "alembic.ini"))
         script_config.set_main_option("script_location", str(backend_dir / "alembic"))

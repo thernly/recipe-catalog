@@ -5,8 +5,9 @@ FastAPI backend for recipe management.
 
 from contextlib import asynccontextmanager
 
+import structlog
 from fastapi import FastAPI, Request, status
-from fastapi.exceptions import RequestValidationError
+from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -151,8 +152,6 @@ async def limit_request_size(request: Request, call_next):
 
 
 # Exception handlers
-from fastapi.exceptions import HTTPException
-import structlog
 
 
 @app.exception_handler(HTTPException)
