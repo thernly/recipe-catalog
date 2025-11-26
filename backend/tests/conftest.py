@@ -139,6 +139,12 @@ async def test_user_headers(client: AsyncClient):
 
 
 @pytest_asyncio.fixture
+async def auth_headers(test_user_headers):
+    """Alias for test_user_headers to match test expectations."""
+    return test_user_headers
+
+
+@pytest_asyncio.fixture
 async def test_household(client: AsyncClient, test_user_headers: dict):
     """Create a test household and return its data."""
     # Get the user's household (created automatically on registration)
