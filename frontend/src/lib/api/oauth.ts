@@ -24,6 +24,7 @@ export interface LinkedProvider {
 export async function getAvailableProviders(): Promise<ProviderInfo[]> {
   return apiRequest<ProviderInfo[]>("/auth/providers", {
     method: "GET",
+    requireAuth: false,
   });
 }
 
