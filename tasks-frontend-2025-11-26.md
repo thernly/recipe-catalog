@@ -16,7 +16,7 @@ This task list addresses the issues identified in the frontend assessment. Tasks
 ## 🔥 High Priority Tasks (Weeks 1-2)
 
 ### Task 1: Replace alert() and confirm() with Modal Components
-**Priority:** Critical | **Effort:** 4-6 hours
+**Priority:** Critical | **Effort:** 4-6 hours | **Status:** ✅ Completed
 
 **Goal:** Remove all native browser dialogs and replace with custom modal components.
 
@@ -55,10 +55,18 @@ This task list addresses the issues identified in the frontend assessment. Tasks
 - `lib/components/CollectionsSidebar.svelte:55,67,71`
 - Search codebase for all `confirm(` and `alert(` calls
 
+**Implementation Notes (Completed 2025-11-26):**
+- ✅ Created `ConfirmDialog.svelte` with dialog element for accessibility
+- ✅ Created `dialog.ts` store with show() and close() methods
+- ✅ Added ConfirmDialog to root layout
+- ✅ Replaced ALL confirm() calls across 13 files
+- ✅ Ensured all dialogs have descriptive titles and clear messages
+- ✅ Added success toast notifications after confirmed actions
+
 ---
 
 ### Task 2: Add Toast Notification System
-**Priority:** Critical | **Effort:** 3-4 hours
+**Priority:** Critical | **Effort:** 3-4 hours | **Status:** ✅ Completed
 
 **Goal:** Replace alert() messages with non-blocking toast notifications.
 
@@ -90,6 +98,15 @@ This task list addresses the issues identified in the frontend assessment. Tasks
 - Success: "Recipe deleted successfully"
 - Error: "Failed to save recipe. Please try again."
 - Info: "Changes saved"
+
+**Implementation Notes (Completed 2025-11-26):**
+- ✅ Created `Toast.svelte` with auto-dismiss (5 second duration)
+- ✅ Created `toast.ts` store with success/error/info/warning methods
+- ✅ Added Toast component to root layout
+- ✅ Replaced ALL alert() calls across 22 files
+- ✅ Implemented color-coded notifications (green, red, yellow, blue)
+- ✅ Added manual dismiss button (× close icon)
+- ✅ Used svelte transitions for smooth fade/fly animations
 
 ---
 
