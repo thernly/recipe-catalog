@@ -100,7 +100,34 @@ async def validate_collection_ownership(
             )
 
 
-@router.post("/", response_model=RecipeSchema, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=RecipeSchema,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        201: {"description": "Recipe successfully created"},
+        401: {
+            "description": "Not authenticated",
+            "content": {"application/json": {"example": {"error_code": "unauthorized", "message": "Not authenticated", "details": {}}}},
+        },
+        400: {
+            "description": "Invalid collection ID or validation error",
+            "content": {
+                "application/json": {
+                    "example": {"error_code": "invalid_input", "message": "Collection 123 does not belong to you or your household", "details": {}}
+                }
+            },
+        },
+        422: {
+            "description": "Validation error - invalid request format",
+            "content": {
+                "application/json": {
+                    "example": {"error_code": "validation_error", "message": "Validation error", "details": {"errors": [{"field": "name", "message": "Field required"}]}}
+                }
+            },
+        },
+    },
+)
 async def create_recipe(
     recipe_data: RecipeCreate,
     current_user: User = Depends(get_current_user),
@@ -110,14 +137,26 @@ async def create_recipe(
     """
     Create a new recipe.
 
+    Creates a new recipe in the authenticated user's household. The recipe can optionally be
+    added to one or more collections that the user owns or belongs to their household.
+
+    **Authentication:** Required (Bearer token)
+
+    **Rate Limit:** None
+
     Args:
-        recipe_data: Recipe creation data
+        recipe_data: Recipe creation data (name, ingredients, instructions, etc.)
         current_user: The authenticated user
         household: The user's household
         db: Database session
 
     Returns:
-        Recipe: The created recipe
+        Recipe: The created recipe object
+
+    Raises:
+        HTTPException 401: If not authenticated
+        HTTPException 400: If collection_ids contains IDs not owned by user/household
+        HTTPException 422: If request data is invalid
     """
     # Sanitize user input to prevent XSS attacks
     sanitized_name = sanitize_html(recipe_data.name) if recipe_data.name else None
