@@ -208,6 +208,20 @@ After successful deployment:
 
 ## Troubleshooting
 
+### Git Permission Errors During Update
+
+If you see `error: insufficient permission for adding an object to repository database .git/objects`:
+
+```bash
+# Fix repository ownership (run as root)
+chown -R recipe-app:recipe-app /opt/recipe-catalog
+
+# Then retry the update
+bash /opt/recipe-catalog/scripts/proxmox/update-app.sh
+```
+
+This happens if some git repository files were created by root instead of the `recipe-app` user. The update script now automatically fixes this, but you can run the command above manually if needed.
+
 ### Script Fails During Python Installation
 
 If Python installation via UV fails:

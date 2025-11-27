@@ -225,6 +225,10 @@ if [[ "$SKIP_GIT" == false ]]; then
     if [[ ! -d ".git" ]]; then
         log_warning "Not a git repository, skipping git pull"
     else
+        # Fix ownership of repository files to prevent permission errors
+        log "Ensuring correct file ownership..."
+        chown -R "$APP_USER:$APP_USER" "$APP_DIR" || log_warning "Could not fix all file permissions"
+        
         # Preserve .env files by temporarily moving them
         log "Protecting configuration files from git operations..."
         TEMP_ENV_DIR=$(mktemp -d)
