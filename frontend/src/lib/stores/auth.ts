@@ -5,6 +5,7 @@ import { writable, derived } from "svelte/store";
 import { browser } from "$app/environment";
 import { API_V1_URL } from "$lib/config";
 import type { User } from "$lib/types";
+import { logger } from "$lib/utils/logger";
 
 interface AuthState {
   user: User | null;
@@ -123,7 +124,7 @@ function createAuthStore() {
           credentials: "include",
         });
       } catch (error) {
-        console.error("Logout request failed:", error);
+        logger.error("Logout request failed:", error);
         // Continue with local logout even if backend call fails
       }
 

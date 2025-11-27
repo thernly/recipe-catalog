@@ -5,6 +5,8 @@
 	import { getPreferences, updatePreferences } from '$lib/api/users';
 	import type { User, Theme } from '$lib/types';
 	import { UtensilsCrossed, Palette, Briefcase, Sparkles } from 'lucide-svelte';
+	import { logger } from '$lib/utils/logger';
+	import { handleError } from '$lib/utils/errors';
 
 	let user: User | null = null;
 	let currentTheme: Theme = 'classic';
@@ -21,7 +23,7 @@
 				document.documentElement.setAttribute('data-theme', currentTheme);
 			})
 			.catch((err) => {
-				console.log('Could not load theme preferences, using default');
+				logger.warn('Could not load theme preferences, using default', err);
 			});
 
 		return unsubscribe;
@@ -41,7 +43,7 @@
 		try {
 			await updatePreferences({ theme: newTheme });
 		} catch (err) {
-			console.error('Failed to save theme preference:', err);
+			handleError(err, 'Failed to save theme preference');
 		}
 	}
 </script>
