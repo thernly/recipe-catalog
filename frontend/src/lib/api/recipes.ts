@@ -4,6 +4,7 @@
 
 import { apiRequest, buildQueryString } from "./client";
 import type { RecipeData, RecipeSortBy, RecipeSourceType } from "$lib/types";
+import { FETCH_CREDENTIALS } from "$lib/constants";
 
 export interface Recipe {
   id: number;
@@ -202,7 +203,7 @@ export async function exportRecipe(
   const response = await fetch(
     `${API_V1_URL}/recipes/${id}/export?format=${format}`,
     {
-      credentials: "include", // Send cookies for authentication
+      credentials: FETCH_CREDENTIALS, // Send cookies for authentication
     },
   );
 

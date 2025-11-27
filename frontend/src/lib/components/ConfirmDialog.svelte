@@ -8,10 +8,13 @@
 	export let onCancel: () => void = () => {};
 
 	let dialogElement: HTMLDialogElement;
+	let cancelButton: HTMLButtonElement;
 
 	$: if (dialogElement) {
 		if (open) {
 			dialogElement.showModal();
+			// Focus the cancel button when dialog opens for keyboard accessibility
+			setTimeout(() => cancelButton?.focus(), 0);
 		} else {
 			dialogElement.close();
 		}
@@ -29,29 +32,50 @@
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === 'Escape') {
 			handleCancel();
+		} else if (event.key === 'Enter' && event.target === cancelButton) {
+			// Allow Enter on cancel button
+			handleCancel();
 		}
 	}
 
 	onMount(() => {
 		if (open) {
 			dialogElement.showModal();
+			setTimeout(() => cancelButton?.focus(), 0);
 		}
 	});
 </script>
 
-<dialog bind:this={dialogElement} on:keydown={handleKeydown} class="confirm-dialog">
+<dialog
+	bind:this={dialogElement}
+	on:keydown={handleKeydown}
+	class="confirm-dialog"
+	aria-labelledby="dialog-title"
+	aria-describedby="dialog-message"
+>
 	<div class="dialog-content">
-		<h2 class="dialog-title">
+		<h2 id="dialog-title" class="dialog-title">
 			{title}
 		</h2>
-		<p class="dialog-message">
+		<p id="dialog-message" class="dialog-message">
 			{message}
 		</p>
 		<div class="dialog-actions">
-			<button type="button" on:click={handleCancel} class="btn-cancel">
+			<button
+				bind:this={cancelButton}
+				type="button"
+				on:click={handleCancel}
+				class="btn-cancel"
+				aria-label="Cancel action"
+			>
 				Cancel
 			</button>
-			<button type="button" on:click={handleConfirm} class="btn-confirm">
+			<button
+				type="button"
+				on:click={handleConfirm}
+				class="btn-confirm"
+				aria-label="Confirm action"
+			>
 				Confirm
 			</button>
 		</div>

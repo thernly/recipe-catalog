@@ -5,6 +5,7 @@
 import { auth } from "$lib/stores/auth";
 import { API_V1_URL } from "$lib/config";
 import { browser } from "$app/environment";
+import { FETCH_CREDENTIALS } from "$lib/constants";
 
 const API_URL = API_V1_URL;
 
@@ -67,7 +68,7 @@ async function refreshAccessToken(): Promise<boolean> {
     try {
       const response = await fetch(`${API_URL}/auth/refresh`, {
         method: "POST",
-        credentials: "include", // Send cookies
+        credentials: FETCH_CREDENTIALS, // Send cookies
       });
 
       if (!response.ok) {
@@ -124,7 +125,7 @@ export async function apiRequest<T>(
     const response = await fetch(url, {
       ...fetchOptions,
       headers,
-      credentials: "include", // Always send cookies
+      credentials: FETCH_CREDENTIALS, // Always send cookies
     });
 
     // Handle 401 Unauthorized - try to refresh token
@@ -137,7 +138,7 @@ export async function apiRequest<T>(
         const retryResponse = await fetch(url, {
           ...fetchOptions,
           headers,
-          credentials: "include",
+          credentials: FETCH_CREDENTIALS,
         });
 
         if (!retryResponse.ok) {
@@ -179,7 +180,7 @@ export async function apiRequest<T>(
         const retryResponse = await fetch(url, {
           ...fetchOptions,
           headers,
-          credentials: "include",
+          credentials: FETCH_CREDENTIALS,
         });
 
         if (!retryResponse.ok) {

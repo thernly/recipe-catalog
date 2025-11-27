@@ -5,6 +5,8 @@ import { writable, derived } from "svelte/store";
 import { browser } from "$app/environment";
 import { API_V1_URL } from "$lib/config";
 import type { User } from "$lib/types";
+import { logger } from "$lib/utils/logger";
+import { FETCH_CREDENTIALS } from "$lib/constants";
 
 interface AuthState {
   user: User | null;
@@ -45,7 +47,7 @@ function createAuthStore() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
-          credentials: "include", // Send and receive cookies
+          credentials: FETCH_CREDENTIALS, // Send and receive cookies
         });
 
         if (!response.ok) {
@@ -56,7 +58,7 @@ function createAuthStore() {
         // Login successful - cookies are set automatically
         // Fetch user profile
         const userResponse = await fetch(`${API_V1_URL}/users/me`, {
-          credentials: "include", // Send cookies
+          credentials: FETCH_CREDENTIALS, // Send cookies
         });
 
         if (!userResponse.ok) {
@@ -96,7 +98,7 @@ function createAuthStore() {
             password,
             display_name: displayName || null,
           }),
-          credentials: "include",
+          credentials: FETCH_CREDENTIALS,
         });
 
         if (!response.ok) {
@@ -120,10 +122,10 @@ function createAuthStore() {
         // Call backend logout to clear cookies
         await fetch(`${API_V1_URL}/auth/logout`, {
           method: "POST",
-          credentials: "include",
+          credentials: FETCH_CREDENTIALS,
         });
       } catch (error) {
-        console.error("Logout request failed:", error);
+        logger.error("Logout request failed:", error);
         // Continue with local logout even if backend call fails
       }
 
@@ -162,7 +164,7 @@ function createAuthStore() {
 
       try {
         const response = await fetch(`${API_V1_URL}/users/me`, {
-          credentials: "include", // Send cookies
+          credentials: FETCH_CREDENTIALS, // Send cookies
         });
 
         if (!response.ok) {

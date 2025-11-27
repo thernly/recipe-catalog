@@ -11,6 +11,8 @@
 	import CollectionsSidebar from '$lib/components/CollectionsSidebar.svelte';
 	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
+	import { Download, Search, Folder, Grid, List, UtensilsCrossed, AlertCircle, Loader2 } from 'lucide-svelte';
+	import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEBOUNCE_DELAY } from '$lib/constants';
 
 	let searchResult: RecipeSearchResult | null = null;
 	let loading = true;
@@ -27,8 +29,8 @@
 	let searchParams: RecipeSearchParams = {
 		query: '',
 		sort_by: 'recently_added',
-		page: 1,
-		per_page: 24
+		page: DEFAULT_PAGE,
+		per_page: DEFAULT_PAGE_SIZE
 	};
 
 	// Filter values
@@ -70,16 +72,16 @@
 
 		clearTimeout(searchTimeout);
 		searchTimeout = setTimeout(() => {
-			searchParams.page = 1;
+			searchParams.page = DEFAULT_PAGE;
 			loadRecipes();
-		}, 300);
+		}, DEBOUNCE_DELAY);
 	}
 
 	// Handle sort change
 	function handleSortChange(e: Event) {
 		const target = e.target as HTMLSelectElement;
 		searchParams.sort_by = target.value as RecipeSortBy;
-		searchParams.page = 1;
+		searchParams.page = DEFAULT_PAGE;
 		loadRecipes();
 	}
 
@@ -142,7 +144,7 @@
 		selectedSourceTypes = filters.selectedSourceTypes;
 		maxTime = filters.maxTime;
 		minTime = filters.minTime;
-		searchParams.page = 1; // Reset to first page when filters change
+		searchParams.page = DEFAULT_PAGE; // Reset to first page when filters change
 		loadRecipes();
 	}
 
@@ -175,40 +177,43 @@
 				<div class="flex items-center gap-2">
 					<button
 						on:click={() => goto('/import')}
-						class="import-btn"
-						title="Import recipes"
+						class="import-btn flex items-center gap-2"
+						aria-label="Import recipes"
 					>
-						📥 Import
+						<Download size={16} aria-hidden="true" />
+						<span>Import</span>
 					</button>
 					<button
 						on:click={() => (showCollections = !showCollections)}
-						class="filter-toggle-btn"
-						title={showCollections ? 'Hide collections' : 'Show collections'}
+						class="filter-toggle-btn flex items-center gap-2"
+						aria-label={showCollections ? 'Hide collections' : 'Show collections'}
 					>
-						📁 {showCollections ? 'Hide' : 'Show'} Collections
+						<Folder size={16} aria-hidden="true" />
+						<span>{showCollections ? 'Hide' : 'Show'} Collections</span>
 					</button>
 					<button
 						on:click={() => (showFilters = !showFilters)}
-						class="filter-toggle-btn"
-						title={showFilters ? 'Hide filters' : 'Show filters'}
+						class="filter-toggle-btn flex items-center gap-2"
+						aria-label={showFilters ? 'Hide filters' : 'Show filters'}
 					>
-						🔍 {showFilters ? 'Hide' : 'Show'} Filters
+						<Search size={16} aria-hidden="true" />
+						<span>{showFilters ? 'Hide' : 'Show'} Filters</span>
 					</button>
 					<button
 						on:click={() => toggleViewMode('grid')}
 						class="view-btn"
 						class:active={viewMode === 'grid'}
-						title="Grid view"
+						aria-label="Grid view"
 					>
-						⊞
+						<Grid size={20} aria-hidden="true" />
 					</button>
 					<button
 						on:click={() => toggleViewMode('list')}
 						class="view-btn"
 						class:active={viewMode === 'list'}
-						title="List view"
+						aria-label="List view"
 					>
-						≡
+						<List size={20} aria-hidden="true" />
 					</button>
 				</div>
 			</div>
@@ -278,13 +283,17 @@
 		{#if loading}
 			<!-- Loading state -->
 			<div class="text-center py-16">
-				<div class="text-4xl mb-4">⏳</div>
+				<div class="flex justify-center mb-4" style="color: var(--text-400);">
+					<Loader2 size={48} class="animate-spin" aria-hidden="true" />
+				</div>
 				<p class="text-lg" style="color: var(--text-600);">Loading recipes...</p>
 			</div>
 		{:else if error}
 			<!-- Error state -->
 			<div class="text-center py-16">
-				<div class="text-4xl mb-4">⚠️</div>
+				<div class="flex justify-center mb-4" style="color: var(--error-500);">
+					<AlertCircle size={48} aria-hidden="true" />
+				</div>
 				<p class="text-lg mb-2" style="color: var(--text-900);">Failed to load recipes</p>
 				<p class="text-sm mb-4" style="color: var(--text-600);">{error}</p>
 				<button on:click={loadRecipes} class="btn btn-primary">Try Again</button>
@@ -292,7 +301,9 @@
 		{:else if searchResult && searchResult.recipes.length === 0}
 			<!-- Empty state -->
 			<div class="text-center py-16">
-				<div class="text-6xl mb-4">🍽️</div>
+				<div class="flex justify-center mb-4" style="color: var(--text-400);">
+					<UtensilsCrossed size={64} aria-hidden="true" />
+				</div>
 				<h2 class="text-2xl font-semibold mb-2" style="color: var(--text-900);">
 					No recipes yet
 				</h2>
@@ -303,8 +314,9 @@
 					<button on:click={() => goto('/recipes/new')} class="btn btn-primary">
 						+ Add Recipe
 					</button>
-					<button on:click={() => goto('/import')} class="btn btn-secondary">
-						📥 Import Recipes
+					<button on:click={() => goto('/import')} class="btn btn-secondary flex items-center gap-2">
+						<Download size={16} aria-hidden="true" />
+						<span>Import Recipes</span>
 					</button>
 				</div>
 			</div>
