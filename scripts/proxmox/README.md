@@ -8,6 +8,10 @@ This directory contains automation scripts for deploying Recipe Catalog.
 
 Fully automated deployment script for installing Recipe Catalog on a Proxmox LXC container running Debian 12.
 
+### `update-app.sh` - Automated Application Updates
+
+Automated update script for safely updating Recipe Catalog to the latest version with automatic database backups.
+
 #### Features
 
 ✅ **Automated Installation**
@@ -326,7 +330,71 @@ sudo systemctl reload nginx
 
 ## Updating the Application
 
-To update to the latest version:
+### Automated Update (Recommended)
+
+Use the update script for safe, automated updates with automatic database backups:
+
+```bash
+# Standard update from git
+sudo bash /opt/recipe-catalog/scripts/proxmox/update-app.sh
+
+# Update from specific branch
+sudo bash update-app.sh --branch develop
+
+# Update without pulling from git (for local development)
+sudo bash update-app.sh --skip-git
+
+# Update without backup (not recommended)
+sudo bash update-app.sh --skip-backup
+```
+
+**What the script does:**
+
+1. **Backs up critical data:**
+   - Creates timestamped database backup (keeps last 10)
+   - Backs up backend and frontend `.env` files
+2. Stops backend service
+3. **Protects configuration files:**
+   - Temporarily moves `.env` files before git operations
+   - Pulls latest code from git
+   - Restores `.env` files (preserves your settings)
+4. Updates backend dependencies with UV
+5. Runs database migrations
+6. **Verifies database integrity** after migrations
+7. Updates frontend dependencies
+8. Builds frontend production bundle
+9. Restarts services
+10. Verifies service health
+
+**Safety Features:**
+
+- ✅ **`.env` files are never overwritten** - moved before git pull, restored after
+- ✅ **Database backups** before any migrations
+- ✅ **Database integrity checks** after migrations
+- ✅ **Automatic rollback** if database corruption detected
+- ✅ **Detailed rollback instructions** in case of issues
+- ✅ **Service verification** before declaring success
+
+**Script options:**
+
+- `--skip-git`: Skip git pull (use for local development)
+- `--skip-backup`: Skip database backup (not recommended)
+- `--branch <name>`: Specify git branch (default: main)
+- `--help`: Show usage information
+
+**Features:**
+
+- Automatic database backups in `/opt/recipe-catalog-backups/`
+- **Preserves `.env` configuration files** (never overwritten)
+- Database integrity verification after migrations
+- Automatic rollback on database corruption
+- Detailed logging to `/var/log/recipe-catalog-update.log`
+- Service health verification
+- Complete rollback instructions if issues occur
+
+### Manual Update
+
+To update manually (if you prefer step-by-step control):
 
 ```bash
 # Stop services

@@ -673,6 +673,37 @@ echo "0 2 * * * /usr/local/bin/backup-recipe-db.sh" | crontab -
 
 ### Update Application
 
+**Automated Update (Recommended):**
+
+Use the automated update script for safe updates with automatic database backups:
+
+```bash
+# Standard update from git
+sudo bash /opt/recipe-catalog/scripts/proxmox/update-app.sh
+
+# Update from specific branch
+sudo bash /opt/recipe-catalog/scripts/proxmox/update-app.sh --branch develop
+
+# Update without pulling from git (for local development)
+sudo bash /opt/recipe-catalog/scripts/proxmox/update-app.sh --skip-git
+```
+
+**Safety Features:**
+
+- ✅ Automatic database backups (keeps last 10)
+- ✅ Backs up `.env` configuration files
+- ✅ Protects `.env` files from git operations (moved before pull, restored after)
+- ✅ Database integrity verification after migrations
+- ✅ Automatic rollback if database corruption detected
+- ✅ Detailed logging to `/var/log/recipe-catalog-update.log`
+- ✅ Complete rollback instructions if issues occur
+
+See [`scripts/proxmox/README.md`](README.md) for complete update script documentation.
+
+**Manual Update:**
+
+If you prefer step-by-step control:
+
 ```bash
 # Stop backend service
 systemctl stop recipe-catalog-backend
@@ -682,10 +713,10 @@ cd /opt/recipe-catalog
 git pull
 
 # Update backend dependencies
-su - recipe-app -c "cd /opt/recipe-catalog/backend && uv sync"
+su - recipe-app -c "cd /opt/recipe-catalog/backend && ~/.local/bin/uv sync"
 
 # Run database migrations
-su - recipe-app -c "cd /opt/recipe-catalog/backend && uv run alembic upgrade head"
+su - recipe-app -c "cd /opt/recipe-catalog/backend && ~/.local/bin/uv run alembic upgrade head"
 
 # Rebuild frontend
 su - recipe-app -c "cd /opt/recipe-catalog/frontend && pnpm install && pnpm build"
