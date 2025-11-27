@@ -79,6 +79,18 @@
 		return '';
 	}
 
+	function handleBackToRecipes() {
+		// Check if we came from the recipes page by looking at the referrer
+		const referrer = document.referrer;
+		if (referrer && referrer.includes('/recipes') && !referrer.includes('/recipes/')) {
+			// Go back to preserve search state
+			window.history.back();
+		} else {
+			// Navigate to recipes page
+			goto('/recipes');
+		}
+	}
+
 	async function handleDelete() {
 		if (!recipe) return;
 
@@ -199,7 +211,7 @@
 			<div class="text-4xl mb-4">⚠️</div>
 			<p class="text-lg mb-2" style="color: var(--text-900);">Recipe not found</p>
 			<p class="text-sm mb-4" style="color: var(--text-600);">{error || 'This recipe may have been deleted.'}</p>
-			<button on:click={() => goto('/recipes')} class="btn btn-primary">Back to Recipes</button>
+			<button on:click={handleBackToRecipes} class="btn btn-primary">Back to Recipes</button>
 		</div>
 	{:else}
 		<!-- Recipe content -->
@@ -208,7 +220,7 @@
 			<div class="recipe-header">
 				<div class="container-custom py-6">
 					<button
-						on:click={() => goto('/recipes')}
+						on:click={handleBackToRecipes}
 						class="text-sm mb-4 flex items-center gap-2"
 						style="color: var(--text-600);"
 					>
