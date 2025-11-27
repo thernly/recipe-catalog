@@ -3,9 +3,31 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import type { User } from '$lib/types';
+	import { getUserStats, type UserStats } from '$lib/api/users';
 	import { BookOpen, Star, Folder, Plus, Search, Download, Upload, Rocket, Check, Hand } from 'lucide-svelte';
 
 	let user: User | null = null;
+	let stats: UserStats | null = null;
+	let loadingStats = true;
+
+	async function loadStats() {
+		loadingStats = true;
+		try {
+			stats = await getUserStats();
+		} catch (err) {
+			console.error('Failed to load stats:', err);
+			// Set default stats if loading fails
+			stats = {
+				total_recipes: 0,
+				total_collections: 0,
+				recipes_imported: 0,
+				recipes_manual: 0,
+				recipes_this_month: 0
+			};
+		} finally {
+			loadingStats = false;
+		}
+	}
 
 	onMount(() => {
 		const unsubscribe = auth.subscribe((state) => {
@@ -13,6 +35,8 @@
 				goto('/auth/login');
 			} else {
 				user = state.user;
+				// Load stats when user is available
+				loadStats();
 			}
 		});
 
@@ -54,7 +78,9 @@
 						<div class="flex justify-center mb-2" style="color: var(--text-400);">
 							<BookOpen size={48} aria-hidden="true" />
 						</div>
-						<h3 class="text-2xl font-bold mb-1" style="color: var(--text-900);">0</h3>
+						<h3 class="text-2xl font-bold mb-1" style="color: var(--text-900);">
+							{loadingStats ? '...' : stats?.total_recipes ?? 0}
+						</h3>
 						<p style="color: var(--text-600);">Total Recipes</p>
 					</div>
 
@@ -62,7 +88,9 @@
 						<div class="flex justify-center mb-2" style="color: var(--text-400);">
 							<Star size={48} aria-hidden="true" />
 						</div>
-						<h3 class="text-2xl font-bold mb-1" style="color: var(--text-900);">0</h3>
+						<h3 class="text-2xl font-bold mb-1" style="color: var(--text-900);">
+							{loadingStats ? '...' : 0}
+						</h3>
 						<p style="color: var(--text-600);">Favorites</p>
 					</div>
 
@@ -70,7 +98,9 @@
 						<div class="flex justify-center mb-2" style="color: var(--text-400);">
 							<Folder size={48} aria-hidden="true" />
 						</div>
-						<h3 class="text-2xl font-bold mb-1" style="color: var(--text-900);">1</h3>
+						<h3 class="text-2xl font-bold mb-1" style="color: var(--text-900);">
+							{loadingStats ? '...' : stats?.total_collections ?? 0}
+						</h3>
 						<p style="color: var(--text-600);">Collections</p>
 					</div>
 				</div>
