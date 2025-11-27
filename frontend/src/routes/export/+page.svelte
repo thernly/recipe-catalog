@@ -3,7 +3,7 @@
 	import { browser } from '$app/environment';
 	import { getUserStats } from '$lib/api/users';
 	import type { UserStats } from '$lib/api/users';
-	import { API_BASE_URL } from '$lib/config';
+	import { API_V1_URL } from '$lib/config';
 	import ExportCard from '$lib/components/export/ExportCard.svelte';
 
 	let stats: UserStats | null = null;
@@ -37,8 +37,8 @@
 		try {
 			// Build URL with format parameter (only if format is provided)
 			const url = format
-				? `${API_BASE_URL}/api/export/${endpoint}?format=${format}`
-				: `${API_BASE_URL}/api/export/${endpoint}`;
+				? `${API_V1_URL}/export/${endpoint}?format=${format}`
+				: `${API_V1_URL}/export/${endpoint}`;
 
 			// Fetch the export using cookie-based authentication
 			const response = await fetch(url, {
