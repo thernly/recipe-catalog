@@ -231,7 +231,7 @@
 
 	{#if loading}
 		<div class="flex justify-center items-center py-12">
-			<div class="text-gray-600">Loading shopping list...</div>
+			<div style="color: var(--text-600);">Loading shopping list...</div>
 		</div>
 	{:else if shoppingList}
 		<!-- Header -->
@@ -249,7 +249,8 @@
 					/>
 					<textarea
 						bind:value={editedDescription}
-						class="w-full text-gray-600 border border-gray-300 rounded px-3 py-2 mt-2"
+						class="w-full rounded px-3 py-2 mt-2"
+					style="color: var(--text-600); border: 1px solid var(--neutral-300); background: var(--neutral-white);"
 						rows="2"
 						placeholder="Description (optional)"
 					></textarea>
@@ -266,7 +267,8 @@
 								editedName = shoppingList?.name || '';
 								editedDescription = shoppingList?.description || '';
 							}}
-							class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+							class="px-3 py-1 rounded"
+						style="background: var(--neutral-200); color: var(--text-900);"
 						>
 							Cancel
 						</button>
@@ -277,7 +279,7 @@
 					<div class="flex-1">
 						<h1 class="text-3xl font-bold mb-2">{shoppingList.name}</h1>
 						{#if shoppingList.description}
-							<p class="text-gray-600">{shoppingList.description}</p>
+							<p style="color: var(--text-600);">{shoppingList.description}</p>
 						{/if}
 					</div>
 					<button
@@ -395,7 +397,11 @@
 						/>
 
 						<!-- Item details -->
-						<div class="flex-1 {item.checked ? 'line-through text-gray-500' : ''}">
+						<div
+						class="flex-1"
+						class:line-through={item.checked}
+						style="{item.checked ? 'color: var(--text-500);' : ''}"
+					>
 							<div class="font-medium">{item.item_name}</div>
 							<div class="text-sm text-gray-600">
 								{#if item.quantity}
@@ -436,7 +442,7 @@
 		{/if}
 	{:else}
 		<div class="text-center py-12">
-			<p class="text-gray-600">Shopping list not found.</p>
+			<p style="color: var(--text-600);">Shopping list not found.</p>
 			<a href="/shopping-lists" class="text-blue-600 hover:underline mt-4 inline-block">
 				← Back to Lists
 			</a>
