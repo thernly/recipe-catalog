@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
 	import { searchRecipes, deleteRecipe, type RecipeSearchParams } from '$lib/api/recipes';
 	import type { RecipeSearchResult, RecipeSummary } from '$lib/api/recipes';
@@ -40,6 +41,51 @@
 	let maxTime: number | undefined;
 	let minTime: number | undefined;
 
+	// Update URL with current search params
+	function updateURL() {
+		if (!browser) return;
+
+		const params = new URLSearchParams();
+
+		if (searchParams.query) params.set('q', searchParams.query);
+		if (searchParams.sort_by && searchParams.sort_by !== 'recently_added') params.set('sort', searchParams.sort_by);
+		if (searchParams.page && searchParams.page > 1) params.set('page', searchParams.page.toString());
+		if (selectedCuisines.length > 0) params.set('cuisine', selectedCuisines.join(','));
+		if (selectedCategories.length > 0) params.set('category', selectedCategories.join(','));
+		if (selectedSourceTypes.length > 0) params.set('source', selectedSourceTypes.join(','));
+		if (maxTime) params.set('maxTime', maxTime.toString());
+		if (minTime) params.set('minTime', minTime.toString());
+
+		const newURL = params.toString() ? `/recipes?${params.toString()}` : '/recipes';
+		window.history.replaceState({}, '', newURL);
+	}
+
+	// Load search params from URL
+	function loadSearchParamsFromURL() {
+		if (!browser) return;
+
+		const urlParams = $page.url.searchParams;
+
+		searchParams.query = urlParams.get('q') || '';
+		searchParams.sort_by = (urlParams.get('sort') as RecipeSortBy) || 'recently_added';
+		searchParams.page = parseInt(urlParams.get('page') || '1');
+
+		const cuisineParam = urlParams.get('cuisine');
+		if (cuisineParam) selectedCuisines = cuisineParam.split(',');
+
+		const categoryParam = urlParams.get('category');
+		if (categoryParam) selectedCategories = categoryParam.split(',');
+
+		const sourceParam = urlParams.get('source');
+		if (sourceParam) selectedSourceTypes = sourceParam.split(',');
+
+		const maxTimeParam = urlParams.get('maxTime');
+		if (maxTimeParam) maxTime = parseInt(maxTimeParam);
+
+		const minTimeParam = urlParams.get('minTime');
+		if (minTimeParam) minTime = parseInt(minTimeParam);
+	}
+
 	// Load recipes
 	async function loadRecipes() {
 		loading = true;
@@ -56,6 +102,7 @@
 			};
 
 			searchResult = await searchRecipes(params);
+			updateURL();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load recipes';
 			console.error('Failed to load recipes:', err);
@@ -157,6 +204,9 @@
 				viewMode = savedViewMode;
 			}
 		}
+
+		// Load search params from URL
+		loadSearchParamsFromURL();
 
 		loadRecipes();
 	});
