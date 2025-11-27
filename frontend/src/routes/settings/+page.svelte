@@ -20,6 +20,7 @@
 	import DangerZoneSection from '$lib/components/settings/DangerZoneSection.svelte';
 	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
+	import { User as UserIcon, Palette, Lock, Home, BarChart3, Search, AlertTriangle } from 'lucide-svelte';
 
 	let user: User | null = null;
 	let preferences: UserPreferences | null = null;
@@ -125,53 +126,60 @@
 				<!-- Sidebar navigation -->
 				<aside class="settings-sidebar">
 					<button
-						class="sidebar-link"
+						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'profile'}
 						on:click={() => (activeSection = 'profile')}
 					>
-						👤 Profile
+						<UserIcon size={18} aria-hidden="true" />
+						<span>Profile</span>
 					</button>
 					<button
-						class="sidebar-link"
+						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'preferences'}
 						on:click={() => (activeSection = 'preferences')}
 					>
-						🎨 Preferences
+						<Palette size={18} aria-hidden="true" />
+						<span>Preferences</span>
 					</button>
 					<button
-						class="sidebar-link"
+						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'security'}
 						on:click={() => (activeSection = 'security')}
 					>
-						🔒 Security
+						<Lock size={18} aria-hidden="true" />
+						<span>Security</span>
 					</button>
 					<button
-						class="sidebar-link"
+						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'household'}
 						on:click={() => (activeSection = 'household')}
 					>
-						🏠 Household
+						<Home size={18} aria-hidden="true" />
+						<span>Household</span>
 					</button>
 					<button
-						class="sidebar-link"
+						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'stats'}
 						on:click={() => (activeSection = 'stats')}
 					>
-						📊 Statistics
+						<BarChart3 size={18} aria-hidden="true" />
+						<span>Statistics</span>
 					</button>
 					<button
-						class="sidebar-link"
+						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'filters'}
 						on:click={() => (activeSection = 'filters')}
 					>
-						🔍 Filters
+						<Search size={18} aria-hidden="true" />
+						<span>Filters</span>
 					</button>
 					<button
-						class="sidebar-link danger"
+						class="sidebar-link danger flex items-center gap-2"
 						class:active={activeSection === 'danger'}
 						on:click={() => (activeSection = 'danger')}
 					>
-						⚠️ Danger Zone
+						<AlertTriangle size={18} aria-hidden="true" />
+						<span>Danger Zone</span>
 					</button>
 				</aside>
 

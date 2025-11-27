@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { RecipeSummary } from '$lib/api/recipes';
+	import { UtensilsCrossed, Clock, Star, Edit, Trash2, Download, PencilLine } from 'lucide-svelte';
 
 	export let recipe: RecipeSummary;
 	export let showActions: boolean = true;
@@ -47,10 +48,10 @@
 				<img src={recipe.image_url} alt={recipe.name} class="w-full h-full object-cover" />
 			{:else}
 				<div
-					class="w-full h-full flex items-center justify-center text-6xl"
-					style="background: var(--neutral-100);"
+					class="w-full h-full flex items-center justify-center"
+					style="background: var(--neutral-100); color: var(--text-400);"
 				>
-					🍽️
+					<UtensilsCrossed size={64} aria-hidden="true" />
 				</div>
 			{/if}
 		</div>
@@ -75,18 +76,25 @@
 
 			<div class="flex items-center justify-between mt-3">
 				{#if recipe.total_time_minutes}
-					<span class="text-sm" style="color: var(--text-600);">
-						🕐 {formatTime(recipe.total_time_minutes)}
+					<span class="text-sm flex items-center gap-1" style="color: var(--text-600);">
+						<Clock size={14} aria-hidden="true" />
+						<span>{formatTime(recipe.total_time_minutes)}</span>
 					</span>
 				{:else}
 					<span></span>
 				{/if}
 
 				<span
-					class="text-xs px-2 py-1 rounded"
+					class="text-xs px-2 py-1 rounded flex items-center gap-1"
 					style="background: var(--neutral-100); color: var(--text-600);"
 				>
-					{recipe.source_type === 'imported' ? '📥 Imported' : '✏️ Manual'}
+					{#if recipe.source_type === 'imported'}
+						<Download size={12} aria-hidden="true" />
+						<span>Imported</span>
+					{:else}
+						<PencilLine size={12} aria-hidden="true" />
+						<span>Manual</span>
+					{/if}
 				</span>
 			</div>
 		</div>
@@ -98,15 +106,15 @@
 			<button
 				on:click|stopPropagation={handleFavorite}
 				class="action-btn"
-				title="Add to favorites"
+				aria-label="Add to favorites"
 			>
-				⭐
+				<Star size={16} aria-hidden="true" />
 			</button>
-			<button on:click|stopPropagation={handleEdit} class="action-btn" title="Edit recipe">
-				✏️
+			<button on:click|stopPropagation={handleEdit} class="action-btn" aria-label="Edit recipe">
+				<Edit size={16} aria-hidden="true" />
 			</button>
-			<button on:click|stopPropagation={handleDelete} class="action-btn" title="Delete recipe">
-				🗑️
+			<button on:click|stopPropagation={handleDelete} class="action-btn" aria-label="Delete recipe">
+				<Trash2 size={16} aria-hidden="true" />
 			</button>
 		</div>
 	{/if}

@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { getPreferences, updatePreferences } from '$lib/api/users';
 	import type { User, Theme } from '$lib/types';
+	import { UtensilsCrossed, Palette, Briefcase, Sparkles } from 'lucide-svelte';
 
 	let user: User | null = null;
 	let currentTheme: Theme = 'classic';
@@ -51,7 +52,7 @@
 >
 	<div class="flex items-center gap-6">
 		<a href="/dashboard" class="flex items-center gap-3 hover:opacity-80 transition">
-			<span class="text-2xl">🍽️</span>
+			<UtensilsCrossed size={28} aria-hidden="true" />
 			<span class="font-semibold text-lg">Recipe Catalog</span>
 		</a>
 
@@ -70,9 +71,10 @@
 			</a>
 			<a
 				href="/ai-generate"
-				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-sm"
+				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-sm flex items-center gap-2"
 			>
-				✨ AI Generate
+				<Sparkles size={16} aria-hidden="true" />
+				<span>AI Generate</span>
 			</a>
 			<a
 				href="/meal-plans"
@@ -99,9 +101,13 @@
 		<button
 			on:click={toggleTheme}
 			class="px-3 py-2 rounded-md hover:bg-white/10 transition text-sm"
-			title="Toggle theme"
+			aria-label={currentTheme === 'classic' ? 'Switch to professional theme' : 'Switch to classic theme'}
 		>
-			{currentTheme === 'classic' ? '🎨' : '💼'}
+			{#if currentTheme === 'classic'}
+				<Palette size={20} aria-hidden="true" />
+			{:else}
+				<Briefcase size={20} aria-hidden="true" />
+			{/if}
 		</button>
 		{#if user}
 			<span class="text-sm">{user.email}</span>

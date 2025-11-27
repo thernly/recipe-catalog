@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import type { User } from '$lib/types';
+	import { BookOpen, Star, Folder, Plus, Search, Download, Upload, Rocket, Check, Hand } from 'lucide-svelte';
 
 	let user: User | null = null;
 
@@ -38,8 +39,9 @@
 			<div class="max-w-4xl mx-auto">
 				<!-- Welcome Header -->
 				<div class="mb-12">
-					<h1 class="text-4xl font-bold mb-2" style="color: var(--text-900);">
-						Welcome{user.display_name ? `, ${user.display_name}` : ''}! 👋
+					<h1 class="text-4xl font-bold mb-2 flex items-center gap-3" style="color: var(--text-900);">
+						<span>Welcome{user.display_name ? `, ${user.display_name}` : ''}!</span>
+						<Hand size={36} class="inline-block" aria-hidden="true" />
 					</h1>
 					<p class="text-lg" style="color: var(--text-600);">
 						Your personal recipe collection dashboard
@@ -49,19 +51,25 @@
 				<!-- Stats Cards -->
 				<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
 					<div class="card text-center">
-						<div class="text-4xl mb-2">📚</div>
+						<div class="flex justify-center mb-2" style="color: var(--text-400);">
+							<BookOpen size={48} aria-hidden="true" />
+						</div>
 						<h3 class="text-2xl font-bold mb-1" style="color: var(--text-900);">0</h3>
 						<p style="color: var(--text-600);">Total Recipes</p>
 					</div>
 
 					<div class="card text-center">
-						<div class="text-4xl mb-2">⭐</div>
+						<div class="flex justify-center mb-2" style="color: var(--text-400);">
+							<Star size={48} aria-hidden="true" />
+						</div>
 						<h3 class="text-2xl font-bold mb-1" style="color: var(--text-900);">0</h3>
 						<p style="color: var(--text-600);">Favorites</p>
 					</div>
 
 					<div class="card text-center">
-						<div class="text-4xl mb-2">📂</div>
+						<div class="flex justify-center mb-2" style="color: var(--text-400);">
+							<Folder size={48} aria-hidden="true" />
+						</div>
 						<h3 class="text-2xl font-bold mb-1" style="color: var(--text-900);">1</h3>
 						<p style="color: var(--text-600);">Collections</p>
 					</div>
@@ -73,25 +81,33 @@
 
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<button on:click={() => goto('/recipes/new')} class="btn btn-primary text-left p-6">
-							<div class="text-2xl mb-2">➕</div>
+							<div class="mb-2">
+								<Plus size={28} aria-hidden="true" />
+							</div>
 							<h3 class="font-semibold mb-1">Add Recipe</h3>
 							<p class="text-sm opacity-90">Manually add a new recipe</p>
 						</button>
 
 						<button on:click={() => goto('/recipes')} class="btn btn-secondary text-left p-6">
-							<div class="text-2xl mb-2">🔍</div>
+							<div class="mb-2">
+								<Search size={28} aria-hidden="true" />
+							</div>
 							<h3 class="font-semibold mb-1">Browse Recipes</h3>
 							<p class="text-sm opacity-90">View all your recipes</p>
 						</button>
 
 						<button on:click={() => goto('/import')} class="btn btn-secondary text-left p-6">
-							<div class="text-2xl mb-2">📥</div>
+							<div class="mb-2">
+								<Download size={28} aria-hidden="true" />
+							</div>
 							<h3 class="font-semibold mb-1">Import from Extension</h3>
 							<p class="text-sm opacity-90">Import recipes from websites</p>
 						</button>
 
 						<button on:click={() => goto('/export')} class="btn btn-secondary text-left p-6">
-							<div class="text-2xl mb-2">📤</div>
+							<div class="mb-2">
+								<Upload size={28} aria-hidden="true" />
+							</div>
 							<h3 class="font-semibold mb-1">Export Data</h3>
 							<p class="text-sm opacity-90">Download your recipes</p>
 						</button>
@@ -100,11 +116,15 @@
 
 				<!-- Getting Started -->
 				<div class="mt-12 p-6 rounded-lg" style="background: var(--accent-50);">
-					<h3 class="text-lg font-semibold mb-3" style="color: var(--accent-800);">
-						🚀 Getting Started
+					<h3 class="text-lg font-semibold mb-3 flex items-center gap-2" style="color: var(--accent-800);">
+						<Rocket size={20} aria-hidden="true" />
+						<span>Getting Started</span>
 					</h3>
 					<ul class="space-y-2" style="color: var(--accent-700);">
-						<li>✓ Account created successfully</li>
+						<li class="flex items-center gap-2">
+							<Check size={16} aria-hidden="true" />
+							<span>Account created successfully</span>
+						</li>
 						<li>• Add your first recipe to get started</li>
 						<li>• Install the browser extension to import recipes</li>
 						<li>• Create collections to organize your recipes</li>

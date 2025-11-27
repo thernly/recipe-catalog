@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { RecipeSummary } from '$lib/api/recipes';
+	import { UtensilsCrossed, Clock, Star, Edit, Trash2, Download, PencilLine } from 'lucide-svelte';
 
 	export let recipe: RecipeSummary;
 	export let onview: ((recipe: RecipeSummary) => void) | undefined = undefined;
@@ -46,10 +47,10 @@
 				<img src={recipe.image_url} alt={recipe.name} class="w-full h-full object-cover" />
 			{:else}
 				<div
-					class="w-full h-full flex items-center justify-center text-3xl"
-					style="background: var(--neutral-100);"
+					class="w-full h-full flex items-center justify-center"
+					style="background: var(--neutral-100); color: var(--text-400);"
 				>
-					🍽️
+					<UtensilsCrossed size={32} aria-hidden="true" />
 				</div>
 			{/if}
 		</button>
@@ -70,12 +71,21 @@
 					<span class="text-sm" style="color: var(--text-500);">• {recipe.category}</span>
 				{/if}
 				{#if recipe.total_time_minutes}
-					<span class="text-sm" style="color: var(--text-500);">
-						• 🕐 {formatTime(recipe.total_time_minutes)}
+					<span class="text-sm flex items-center gap-1" style="color: var(--text-500);">
+						<span>•</span>
+						<Clock size={14} aria-hidden="true" />
+						<span>{formatTime(recipe.total_time_minutes)}</span>
 					</span>
 				{/if}
-				<span class="text-xs" style="color: var(--text-500);">
-					• {recipe.source_type === 'imported' ? '📥 Imported' : '✏️ Manual'}
+				<span class="text-xs flex items-center gap-1" style="color: var(--text-500);">
+					<span>•</span>
+					{#if recipe.source_type === 'imported'}
+						<Download size={12} aria-hidden="true" />
+						<span>Imported</span>
+					{:else}
+						<PencilLine size={12} aria-hidden="true" />
+						<span>Manual</span>
+					{/if}
 				</span>
 			</div>
 		</button>
@@ -85,19 +95,19 @@
 			<button
 				on:click={handleFavorite}
 				class="action-btn-small"
-				title="Add to favorites"
+				aria-label="Add to favorites"
 			>
-				⭐
+				<Star size={16} aria-hidden="true" />
 			</button>
-			<button on:click={handleEdit} class="action-btn-small" title="Edit recipe">
-				✏️
+			<button on:click={handleEdit} class="action-btn-small" aria-label="Edit recipe">
+				<Edit size={16} aria-hidden="true" />
 			</button>
 			<button
 				on:click={handleDelete}
 				class="action-btn-small"
-				title="Delete recipe"
+				aria-label="Delete recipe"
 			>
-				🗑️
+				<Trash2 size={16} aria-hidden="true" />
 			</button>
 		</div>
 	</div>
