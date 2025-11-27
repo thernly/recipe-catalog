@@ -37,7 +37,7 @@
 	<button on:click={handleView} class="w-full text-left">
 		<!-- Image -->
 		<div class="recipe-card-image">
-			{#if recipe.recipe_data?.images?.[0]?.data}
+			{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
 				<img
 					src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
 					alt={recipe.name}

@@ -162,23 +162,23 @@
 		{:else}
 			<!-- Trash items -->
 			<div class="trash-list">
-				{#each recipes as recipe (recipe.id)}
-					<article class="trash-item">
-						<!-- Recipe info -->
-						<div class="flex items-start gap-4 flex-1">
-							{#if recipe.recipe_data?.images?.[0]?.data}
-								<div class="trash-item-thumbnail">
-									<img
-										src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
-										alt={recipe.name}
-										class="w-full h-full object-cover"
-									/>
-								</div>
-							{:else if recipe.image_url}
-								<div class="trash-item-thumbnail">
-									<img src={recipe.image_url} alt={recipe.name} class="w-full h-full object-cover" />
-								</div>
-							{:else}
+{#each recipes as recipe (recipe.id)}
+				<article class="trash-item">
+					<!-- Recipe info -->
+					<div class="flex items-start gap-4 flex-1">
+						{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
+							<div class="trash-item-thumbnail">
+								<img
+									src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
+									alt={recipe.name}
+									class="w-full h-full object-cover"
+								/>
+							</div>
+						{:else if recipe.image_url}
+							<div class="trash-item-thumbnail">
+								<img src={recipe.image_url} alt={recipe.name} class="w-full h-full object-cover" />
+							</div>
+						{:else}
 								<div class="trash-item-thumbnail">
 									<div
 										class="w-full h-full flex items-center justify-center text-3xl"

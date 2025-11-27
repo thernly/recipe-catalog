@@ -36,7 +36,7 @@
 	<div class="flex items-center gap-4 p-4">
 		<!-- Thumbnail -->
 		<button on:click={handleView} class="recipe-list-thumbnail flex-shrink-0">
-			{#if recipe.recipe_data?.images?.[0]?.data}
+			{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
 				<img
 					src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
 					alt={recipe.name}

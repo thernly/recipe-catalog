@@ -291,23 +291,21 @@
 				</div>
 			</div>
 
-			<!-- Main content -->
-			<div class="container-custom py-8">
-				<!-- Hero Image -->
-				{#if recipe.recipe_data?.images?.[0]?.data}
-					<div class="recipe-hero-image mb-6">
-						<img
-							src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
-							alt={recipe.name}
-						/>
-					</div>
-				{:else if recipe.image_url}
-					<div class="recipe-hero-image mb-6">
-						<img src={recipe.image_url} alt={recipe.name} />
-					</div>
-				{/if}
-
-				<!-- Description -->
+		<!-- Main content -->
+		<div class="container-custom py-8">
+			<!-- Hero Image -->
+			{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
+				<div class="recipe-hero-image mb-6">
+					<img
+						src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
+						alt={recipe.name}
+					/>
+				</div>
+			{:else if recipe.image_url}
+				<div class="recipe-hero-image mb-6">
+					<img src={recipe.image_url} alt={recipe.name} />
+				</div>
+			{/if}				<!-- Description -->
 				{#if recipe.description}
 					<p class="text-lg mb-6" style="color: var(--text-700);">{recipe.description}</p>
 				{/if}
