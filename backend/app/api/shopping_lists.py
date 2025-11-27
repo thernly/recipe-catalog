@@ -483,6 +483,15 @@ async def create_shopping_list(
     db.add(shopping_list)
     await db.commit()
     await db.refresh(shopping_list)
+
+    # Reload shopping list with items eagerly loaded to avoid lazy loading issues
+    result = await db.execute(
+        select(ShoppingList)
+        .where(ShoppingList.id == shopping_list.id)
+        .options(selectinload(ShoppingList.items))
+    )
+    shopping_list = result.scalar_one()
+
     return shopping_list
 
 
