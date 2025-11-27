@@ -11,10 +11,10 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, text
-
 from alembic.config import Config
 from alembic.script import ScriptDirectory
+from sqlalchemy import create_engine, text
+
 from app.core.database import Base
 
 

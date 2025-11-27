@@ -134,7 +134,7 @@ function createAuthStore() {
 
       // Redirect to login page if requested and in browser
       if (redirect && browser) {
-        window.location.href = "/auth/login";
+        globalThis.location.href = "/auth/login";
       }
     },
 
