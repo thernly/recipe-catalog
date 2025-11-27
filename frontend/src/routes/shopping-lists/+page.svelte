@@ -90,28 +90,31 @@
 		</div>
 
 		<!-- Filter tabs -->
-		<div class="flex gap-2 mb-6 border-b border-gray-200">
+		<div class="flex gap-2 mb-6 border-b" style="border-color: var(--neutral-200);">
 			<button
 				on:click={() => (statusFilter = 'active')}
-				class="px-4 py-2 font-medium border-b-2 transition-colors {statusFilter === 'active'
-					? 'border-blue-600 text-blue-600'
-					: 'border-transparent text-gray-600 hover:text-gray-900'}"
+				class="px-4 py-2 font-medium border-b-2 transition-colors"
+				style="{statusFilter === 'active'
+					? 'border-color: var(--accent-500); color: var(--accent-500);'
+					: 'border-color: transparent; color: var(--text-600);'}"
 			>
 				Active
 			</button>
 			<button
 				on:click={() => (statusFilter = 'archived')}
-				class="px-4 py-2 font-medium border-b-2 transition-colors {statusFilter === 'archived'
-					? 'border-blue-600 text-blue-600'
-					: 'border-transparent text-gray-600 hover:text-gray-900'}"
+				class="px-4 py-2 font-medium border-b-2 transition-colors"
+				style="{statusFilter === 'archived'
+					? 'border-color: var(--accent-500); color: var(--accent-500);'
+					: 'border-color: transparent; color: var(--text-600);'}"
 			>
 				Archived
 			</button>
 			<button
 				on:click={() => (statusFilter = 'all')}
-				class="px-4 py-2 font-medium border-b-2 transition-colors {statusFilter === 'all'
-					? 'border-blue-600 text-blue-600'
-					: 'border-transparent text-gray-600 hover:text-gray-900'}"
+				class="px-4 py-2 font-medium border-b-2 transition-colors"
+				style="{statusFilter === 'all'
+					? 'border-color: var(--accent-500); color: var(--accent-500);'
+					: 'border-color: transparent; color: var(--text-600);'}"
 			>
 				All
 			</button>
@@ -126,11 +129,11 @@
 
 	{#if loading}
 		<div class="flex justify-center items-center py-12">
-			<div class="text-gray-600">Loading shopping lists...</div>
+			<div style="color: var(--text-600);">Loading shopping lists...</div>
 		</div>
 	{:else if shoppingLists.length === 0}
 		<div class="text-center py-12">
-			<p class="text-gray-600 mb-4">No shopping lists found.</p>
+			<p class="mb-4" style="color: var(--text-600);">No shopping lists found.</p>
 			<button
 				on:click={openCreateDialog}
 				class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg"
@@ -143,15 +146,16 @@
 			{#each shoppingLists as list}
 				<a
 					href="/shopping-lists/{list.id}"
-					class="block bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow p-6"
+					class="block rounded-lg shadow-sm border hover:shadow-md transition-shadow p-6"
+					style="background: var(--neutral-white); border-color: var(--neutral-200);"
 				>
-					<h3 class="text-lg font-semibold mb-2 text-gray-900">{list.name}</h3>
+					<h3 class="text-lg font-semibold mb-2" style="color: var(--text-900);">{list.name}</h3>
 
 					{#if list.description}
-						<p class="text-sm text-gray-600 mb-3 line-clamp-2">{list.description}</p>
+						<p class="text-sm mb-3 line-clamp-2" style="color: var(--text-600);">{list.description}</p>
 					{/if}
 
-					<div class="flex items-center gap-4 text-sm text-gray-600">
+					<div class="flex items-center gap-4 text-sm" style="color: var(--text-600);">
 						<div class="flex items-center gap-1">
 							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
@@ -179,11 +183,11 @@
 						{/if}
 
 						{#if list.status === 'archived'}
-							<span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">Archived</span>
+							<span class="text-xs px-2 py-1 rounded" style="background: var(--neutral-100); color: var(--text-900);">Archived</span>
 						{/if}
 					</div>
 
-					<div class="text-xs text-gray-500 mt-3">
+					<div class="text-xs mt-3" style="color: var(--text-600);">
 						Created {new Date(list.created_at).toLocaleDateString()}
 					</div>
 				</a>
@@ -195,12 +199,12 @@
 <!-- Create List Dialog -->
 {#if showCreateDialog}
 	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-		<div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-			<h2 class="text-2xl font-bold mb-4">Create Shopping List</h2>
+		<div class="rounded-lg shadow-xl max-w-md w-full p-6" style="background: var(--neutral-white);">
+			<h2 class="text-2xl font-bold mb-4" style="color: var(--text-900);">Create Shopping List</h2>
 
 			<form on:submit|preventDefault={handleCreateList}>
 				<div class="mb-4">
-					<label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+					<label for="name" class="block text-sm font-medium mb-1" style="color: var(--text-900);">
 						List Name <span class="text-red-500">*</span>
 					</label>
 					<input
@@ -208,34 +212,38 @@
 						type="text"
 						bind:value={newListName}
 						required
-						class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+						class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+						style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900); --tw-ring-color: var(--accent-500);"
 						placeholder="e.g., Weekly Groceries"
 					/>
 				</div>
 
 				<div class="mb-6">
-					<label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+					<label for="description" class="block text-sm font-medium mb-1" style="color: var(--text-900);">
 					Description (optional)
 				</label>
 				<textarea
 					id="description"
 					bind:value={newListDescription}
 					rows="3"
-					class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+					class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+					style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900); --tw-ring-color: var(--accent-500);"
 					placeholder="Add any notes about this list..."
 				></textarea>
 			</div>				<div class="flex justify-end gap-3">
 					<button
 						type="button"
 						on:click={closeCreateDialog}
-						class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+						class="px-4 py-2 rounded-lg"
+						style="color: var(--text-900); background: var(--neutral-100); border: 1px solid var(--neutral-300);"
 						disabled={creating}
 					>
 						Cancel
 					</button>
 					<button
 						type="submit"
-						class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
+						class="px-4 py-2 text-white rounded-lg disabled:opacity-50"
+						style="background: var(--accent-500);"
 						disabled={creating || !newListName.trim()}
 					>
 						{creating ? 'Creating...' : 'Create List'}

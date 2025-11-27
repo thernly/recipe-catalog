@@ -167,8 +167,8 @@
 
 <div class="container mx-auto px-4 py-8 max-w-4xl">
 	<div class="mb-6">
-		<h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">AI Menu Suggestions</h1>
-		<p class="text-gray-600 dark:text-gray-400">
+		<h1 class="text-3xl font-bold  mb-2">AI Menu Suggestions</h1>
+		<p class="">
 			Generate personalized menu plans for your week using AI
 		</p>
 	</div>
@@ -181,10 +181,10 @@
 
 	{#if step === 'config'}
 		<!-- Configuration Step -->
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 space-y-6">
+		<div class="AI-MENU-BG-PRIMARY rounded-lg shadow-md p-6 space-y-6">
 			<!-- Time Range -->
 			<div>
-				<label for="days-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Number of Days</label><input id="days-input"
+				<label for="days-input" class="block text-sm font-medium  mb-2">Number of Days</label><input id="days-input"
 					type="number"
 					min="1"
 					max="14"
@@ -195,7 +195,7 @@
 
 			<!-- Meal Types -->
 			<div>
-				<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Meal Types to Include</div>
+				<div class="block text-sm font-medium  mb-2">Meal Types to Include</div>
 				<div class="grid grid-cols-2 md:grid-cols-4 gap-2">
 					{#each mealTypeOptions as mealType}
 						<button
@@ -205,7 +205,7 @@
 								mealType
 							)
 								? 'bg-blue-600 text-white border-blue-600'
-								: 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'}"
+								: 'bg-white dark:bg-gray-700  border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'}"
 						>
 							{mealType}
 						</button>
@@ -215,7 +215,7 @@
 
 			<!-- Dietary Preferences -->
 			<div>
-				<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dietary Preferences</div>
+				<div class="block text-sm font-medium  mb-2">Dietary Preferences</div>
 				<div class="grid grid-cols-2 md:grid-cols-3 gap-2">
 					{#each dietaryOptions as option}
 						<button
@@ -225,7 +225,7 @@
 								option
 							)
 								? 'bg-green-600 text-white border-green-600'
-								: 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'}"
+								: 'bg-white dark:bg-gray-700  border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'}"
 						>
 							{option}
 						</button>
@@ -235,7 +235,7 @@
 
 			<!-- Cuisine Preference -->
 			<div>
-				<label for="cuisine" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+				<label for="cuisine" class="block text-sm font-medium  mb-2">
 					Cuisine Preference (Optional)
 				</label>
 				<input
@@ -249,7 +249,7 @@
 
 			<!-- Generation Mode -->
 			<div>
-				<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Generation Mode</div>
+				<div class="block text-sm font-medium  mb-2">Generation Mode</div>
 				<div class="space-y-2">
 					<label class="flex items-start cursor-pointer">
 						<input
@@ -259,8 +259,8 @@
 							class="mt-1 mr-3"
 						/>
 						<div>
-							<div class="font-medium text-gray-900 dark:text-white">Catalog First</div>
-							<div class="text-sm text-gray-600 dark:text-gray-400">
+							<div class="font-medium ">Catalog First</div>
+							<div class="text-sm ">
 								Use recipes from your household catalog when possible
 							</div>
 						</div>
@@ -273,8 +273,8 @@
 							class="mt-1 mr-3"
 						/>
 						<div>
-							<div class="font-medium text-gray-900 dark:text-white">AI Only</div>
-							<div class="text-sm text-gray-600 dark:text-gray-400">
+							<div class="font-medium ">AI Only</div>
+							<div class="text-sm ">
 								Generate completely new recipe suggestions
 							</div>
 						</div>
@@ -287,7 +287,7 @@
 				<button
 					type="button"
 					on:click={() => goto('/meal-plans')}
-					class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+					class="px-4 py-2  hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
 				>
 					Cancel
 				</button>
@@ -303,10 +303,10 @@
 		</div>
 	{:else if step === 'preview'}
 		<!-- Preview Step -->
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+		<div class="AI-MENU-BG-PRIMARY rounded-lg shadow-md p-6">
 			<div class="mb-4">
-				<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Menu Suggestions</h2>
-				<p class="text-sm text-gray-600 dark:text-gray-400">
+				<h2 class="text-xl font-semibold  mb-2">Menu Suggestions</h2>
+				<p class="text-sm ">
 					Select the meals you want to add to your meal plan
 				</p>
 			</div>
@@ -316,7 +316,7 @@
 					{@const daySuggestions = getSuggestionsForDay(day)}
 					{#if daySuggestions.length > 0}
 						<div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-							<h3 class="font-medium text-gray-900 dark:text-white mb-3">
+							<h3 class="font-medium  mb-3">
 								{day <= 7 ? dayNames[day - 1] : `Day ${day}`}
 							</h3>
 							<div class="space-y-2">
@@ -334,11 +334,11 @@
 										<div class="flex-1">
 											<div class="flex items-start justify-between">
 												<div>
-													<div class="font-medium text-gray-900 dark:text-white capitalize">
+													<div class="font-medium  capitalize">
 														{suggestion.meal_type}: {suggestion.recipe_name}
 													</div>
 													{#if suggestion.description}
-														<div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+														<div class="text-sm  mt-1">
 															{suggestion.description}
 														</div>
 													{/if}
@@ -383,7 +383,7 @@
 				<button
 					type="button"
 					on:click={regenerate}
-					class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+					class="px-4 py-2  hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
 				>
 					Regenerate
 				</button>
@@ -391,7 +391,7 @@
 					<button
 						type="button"
 						on:click={goBack}
-						class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+						class="px-4 py-2  hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
 					>
 						Back
 					</button>
@@ -411,7 +411,10 @@
 	{/if}
 </div>
 
-
-
-
+<style>
+	/* Override hardcoded colors with theme variables for better contrast */
+	:global(.AI-MENU-BG-PRIMARY) {
+		background: var(--neutral-white) !important;
+	}
+</style>
 
