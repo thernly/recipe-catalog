@@ -39,31 +39,19 @@
 	});
 </script>
 
-<dialog
-	bind:this={dialogElement}
-	on:keydown={handleKeydown}
-	class="rounded-lg shadow-xl border border-gray-300 dark:border-gray-700 p-0 backdrop:bg-black backdrop:bg-opacity-50 max-w-md w-full"
->
-	<div class="p-6">
-		<h2 class="text-xl font-semibold mb-3 text-gray-900 dark:text-gray-100">
+<dialog bind:this={dialogElement} on:keydown={handleKeydown} class="confirm-dialog">
+	<div class="dialog-content">
+		<h2 class="dialog-title">
 			{title}
 		</h2>
-		<p class="text-gray-700 dark:text-gray-300 mb-6">
+		<p class="dialog-message">
 			{message}
 		</p>
-		<div class="flex gap-3 justify-end">
-			<button
-				type="button"
-				on:click={handleCancel}
-				class="px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 font-medium transition-colors"
-			>
+		<div class="dialog-actions">
+			<button type="button" on:click={handleCancel} class="btn-cancel">
 				Cancel
 			</button>
-			<button
-				type="button"
-				on:click={handleConfirm}
-				class="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
-			>
+			<button type="button" on:click={handleConfirm} class="btn-confirm">
 				Confirm
 			</button>
 		</div>
@@ -71,7 +59,71 @@
 </dialog>
 
 <style>
-	dialog::backdrop {
+	.confirm-dialog {
+		max-width: 28rem;
+		width: 100%;
+		padding: 0;
+		border: 1px solid var(--neutral-300);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-xl);
+		background: var(--neutral-white);
+	}
+
+	.confirm-dialog::backdrop {
 		background: rgba(0, 0, 0, 0.5);
+	}
+
+	.dialog-content {
+		padding: 1.5rem;
+	}
+
+	.dialog-title {
+		font-size: 1.25rem;
+		font-weight: 600;
+		margin-bottom: 0.75rem;
+		color: var(--text-900);
+	}
+
+	.dialog-message {
+		color: var(--text-900);
+		margin-bottom: 1.5rem;
+		line-height: 1.5;
+	}
+
+	.dialog-actions {
+		display: flex;
+		gap: 0.75rem;
+		justify-content: flex-end;
+	}
+
+	.btn-cancel {
+		padding: 0.5rem 1rem;
+		border-radius: var(--radius-md);
+		background: var(--neutral-100);
+		color: var(--text-900);
+		font-weight: 500;
+		border: 1px solid var(--neutral-300);
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+
+	.btn-cancel:hover {
+		background: var(--neutral-200);
+		border-color: var(--neutral-400);
+	}
+
+	.btn-confirm {
+		padding: 0.5rem 1rem;
+		border-radius: var(--radius-md);
+		background: #EF4444;
+		color: #FFFFFF;
+		font-weight: 500;
+		border: none;
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+
+	.btn-confirm:hover {
+		background: #DC2626;
 	}
 </style>

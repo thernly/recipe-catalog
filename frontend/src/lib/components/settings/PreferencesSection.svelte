@@ -133,7 +133,7 @@
 
 	<fieldset class="form-group" aria-describedby="dietary-preferences-help">
 		<legend class="form-label">Dietary Preferences</legend>
-		<p id="dietary-preferences-help" class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+		<p id="dietary-preferences-help" class="text-sm mb-2" style="color: var(--text-600);">
 			Select your dietary preferences to personalize AI-generated menu suggestions
 		</p>
 		<div class="dietary-options">
