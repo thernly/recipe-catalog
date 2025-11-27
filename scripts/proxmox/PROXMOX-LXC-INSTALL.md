@@ -9,7 +9,7 @@ This guide walks you through installing the Recipe Catalog application on a Debi
 ```bash
 # Download and run the automated deployment script
 cd /tmp
-wget https://raw.githubusercontent.com/yourusername/recipe-catalog/main/scripts/deploy-lxc.sh
+wget https://raw.githubusercontent.com/thernly/recipe-catalog/main/scripts/deploy-lxc.sh
 chmod +x deploy-lxc.sh
 sudo bash deploy-lxc.sh
 ```
