@@ -195,6 +195,12 @@
 		loadRecipes();
 	}
 
+	// Watch for URL changes (e.g., browser back/forward)
+	$: if (browser && $page.url) {
+		loadSearchParamsFromURL();
+		loadRecipes();
+	}
+
 	// Initialize
 	onMount(() => {
 		// Restore view mode from localStorage
@@ -204,11 +210,6 @@
 				viewMode = savedViewMode;
 			}
 		}
-
-		// Load search params from URL
-		loadSearchParamsFromURL();
-
-		loadRecipes();
 	});
 </script>
 
