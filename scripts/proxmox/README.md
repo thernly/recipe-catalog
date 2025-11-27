@@ -371,14 +371,15 @@ sudo bash update-app.sh --skip-backup
 3. **Protects configuration files:**
    - Temporarily moves `.env` files before git operations
    - Pulls latest code from git
-   - Restores `.env` files (preserves your settings)
-4. Updates backend dependencies with UV
-5. Runs database migrations
-6. **Verifies database integrity** after migrations
-7. Updates frontend dependencies
-8. Builds frontend production bundle
-9. Restarts services
-10. Verifies service health
+   - Restores `.env` files immediately (before migrations)
+4. Validates `.env` files are present before proceeding
+5. Updates backend dependencies with UV
+6. Runs database migrations
+7. **Verifies database integrity** after migrations
+8. Updates frontend dependencies
+9. Builds frontend production bundle
+10. Restarts services
+11. Verifies service health
 
 **Safety Features:**
 

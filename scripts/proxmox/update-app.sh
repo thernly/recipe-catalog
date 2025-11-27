@@ -247,7 +247,7 @@ if [[ "$SKIP_GIT" == false ]]; then
         su -s /bin/bash "$APP_USER" -c "cd $APP_DIR && git checkout $GIT_BRANCH" || error_exit "Failed to checkout branch: $GIT_BRANCH"
         su -s /bin/bash "$APP_USER" -c "cd $APP_DIR && git pull origin $GIT_BRANCH" || error_exit "Failed to pull from git"
         
-        # Restore .env files
+        # Restore .env files IMMEDIATELY (needed for migrations and builds)
         log "Restoring configuration files..."
         if [[ -f "$TEMP_ENV_DIR/backend.env" ]]; then
             mv "$TEMP_ENV_DIR/backend.env" "$APP_DIR/backend/.env" || error_exit "Failed to restore backend .env"
@@ -267,6 +267,11 @@ if [[ "$SKIP_GIT" == false ]]; then
     fi
 else
     log_warning "Skipping git pull (--skip-git flag)"
+fi
+
+# Ensure .env files exist (critical for migrations)
+if [[ ! -f "$APP_DIR/backend/.env" ]]; then
+    error_exit "Backend .env file not found! Cannot proceed with migrations."
 fi
 
 #===============================================================================
