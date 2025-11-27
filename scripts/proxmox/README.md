@@ -121,6 +121,7 @@ Before running the deployment script:
 - Installs UV package manager for Python
 - Installs Python 3.13 using UV (downloads pre-built binary, ~30 seconds)
 - Pins the project to use Python 3.13
+- Configures ENVIRONMENT=development for HTTP (required for cookies to work)
 
 ### 3. Backend Configuration
 
@@ -131,6 +132,7 @@ Before running the deployment script:
   - CORS settings
   - Email/SMTP settings
   - Rate limiting
+  - ENVIRONMENT=development (for HTTP deployments)
 - Initializes SQLite database with migrations
 
 ### 4. Frontend Configuration
@@ -165,13 +167,13 @@ After successful deployment:
 
 1. **Access the Application**
 
-   ```
+   ```text
    http://your-server-ip
    ```
 
 2. **View API Documentation**
 
-   ```
+   ```text
    http://your-server-ip/api/docs
    ```
 
@@ -274,6 +276,14 @@ Edit `/opt/recipe-catalog/backend/.env`:
 ```bash
 sudo nano /opt/recipe-catalog/backend/.env
 ```
+
+**Important Settings:**
+
+- `ENVIRONMENT`: Set to `development` for HTTP or `production` for HTTPS
+  - `development`: Allows cookies over HTTP (required for non-SSL deployments)
+  - `production`: Requires HTTPS for secure cookies
+- `ALLOWED_ORIGINS`: Must include your server IP/domain
+- `SECRET_KEY`: Keep this secure and unique
 
 After changes, restart the backend:
 

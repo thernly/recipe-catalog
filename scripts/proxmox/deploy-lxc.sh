@@ -456,6 +456,10 @@ setup_backend() {
 
     log "Generating environment configuration..."
     local secret_key=$(openssl rand -hex 32)
+    local environment="development"  # Use development for HTTP, production for HTTPS
+    
+    # Note: ENVIRONMENT=development allows cookies over HTTP
+    # Change to 'production' after setting up SSL/TLS
 
     cat > "$INSTALL_DIR/backend/.env" << EOF
 # Database Configuration
@@ -483,7 +487,7 @@ FROM_NAME=Recipe Catalog
 # Application Settings
 APP_NAME=Recipe Catalog
 FRONTEND_URL=http://${SERVER_IP}
-ENVIRONMENT=production
+ENVIRONMENT=development
 DEBUG=False
 
 # Rate Limiting
@@ -662,7 +666,8 @@ SyslogIdentifier=recipe-catalog-backend
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=true
+# ProtectHome disabled to allow access to /home/$APP_USER/.local/bin/uv
+# ProtectHome=true
 ReadWritePaths=$INSTALL_DIR/backend
 
 [Install]

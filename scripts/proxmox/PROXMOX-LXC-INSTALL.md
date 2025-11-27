@@ -209,7 +209,7 @@ FROM_NAME=Recipe Catalog
 # Application Settings
 APP_NAME=Recipe Catalog
 FRONTEND_URL=http://<your-server-ip>
-ENVIRONMENT=production
+ENVIRONMENT=development
 DEBUG=False
 
 # Rate Limiting
@@ -234,6 +234,7 @@ chmod 600 /opt/recipe-catalog/backend/.env
 
 - `<your-server-ip>`: Your container's IP address or domain
 - Email settings: Configure with your SMTP provider (see [Email Configuration](#email-configuration) section)
+- `ENVIRONMENT`: Set to `development` for HTTP or `production` for HTTPS (affects cookie security)
 
 ### 5. Initialize Database
 
@@ -271,13 +272,13 @@ su - recipe-app -c "cd /opt/recipe-catalog/frontend && pnpm install"
 ```bash
 # Create .env file
 cat > /opt/recipe-catalog/frontend/.env << 'EOF'
-VITE_API_URL=http://<your-server-ip>/api
+VITE_API_URL=http://<your-server-ip>
 VITE_APP_NAME=Recipe Catalog
 EOF
 
 # Replace <your-server-ip> with your actual IP or domain
-# Example: VITE_API_URL=http://192.168.1.100/api
-# For production with domain: VITE_API_URL=https://yourdomain.com/api
+# Example: VITE_API_URL=http://192.168.1.100
+# For production with domain: VITE_API_URL=https://yourdomain.com
 
 # Set proper permissions
 chown recipe-app:recipe-app /opt/recipe-catalog/frontend/.env
@@ -317,8 +318,8 @@ server {
     }
 
     # Backend API proxy
-    location /api {
-        proxy_pass http://127.0.0.1:8000;
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000/api/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -411,7 +412,7 @@ Type=simple
 User=recipe-app
 Group=recipe-app
 WorkingDirectory=/opt/recipe-catalog/backend
-Environment="PATH=/home/recipe-app/.local/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PATH=/home/recipe-app/.local/bin:/home/recipe-app/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="PYTHONUNBUFFERED=1"
 
 # Start command using UV
@@ -430,7 +431,8 @@ SyslogIdentifier=recipe-catalog-backend
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=true
+# ProtectHome disabled to allow access to /home/recipe-app/.local/bin/uv
+# ProtectHome=true
 ReadWritePaths=/opt/recipe-catalog/backend
 
 [Install]
