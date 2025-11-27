@@ -12,6 +12,7 @@
 	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
 	import { Download, Search, Folder, Grid, List, UtensilsCrossed, AlertCircle, Loader2 } from 'lucide-svelte';
+	import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEBOUNCE_DELAY } from '$lib/constants';
 
 	let searchResult: RecipeSearchResult | null = null;
 	let loading = true;
@@ -28,8 +29,8 @@
 	let searchParams: RecipeSearchParams = {
 		query: '',
 		sort_by: 'recently_added',
-		page: 1,
-		per_page: 24
+		page: DEFAULT_PAGE,
+		per_page: DEFAULT_PAGE_SIZE
 	};
 
 	// Filter values
@@ -71,16 +72,16 @@
 
 		clearTimeout(searchTimeout);
 		searchTimeout = setTimeout(() => {
-			searchParams.page = 1;
+			searchParams.page = DEFAULT_PAGE;
 			loadRecipes();
-		}, 300);
+		}, DEBOUNCE_DELAY);
 	}
 
 	// Handle sort change
 	function handleSortChange(e: Event) {
 		const target = e.target as HTMLSelectElement;
 		searchParams.sort_by = target.value as RecipeSortBy;
-		searchParams.page = 1;
+		searchParams.page = DEFAULT_PAGE;
 		loadRecipes();
 	}
 
@@ -143,7 +144,7 @@
 		selectedSourceTypes = filters.selectedSourceTypes;
 		maxTime = filters.maxTime;
 		minTime = filters.minTime;
-		searchParams.page = 1; // Reset to first page when filters change
+		searchParams.page = DEFAULT_PAGE; // Reset to first page when filters change
 		loadRecipes();
 	}
 

@@ -3,6 +3,7 @@
  */
 
 import { apiRequest } from "./client";
+import { FETCH_CREDENTIALS } from "$lib/constants";
 
 export interface Collection {
   id: number;
@@ -124,7 +125,7 @@ export async function exportCollectionPdf(collectionId: number): Promise<Blob> {
   const response = await fetch(
     `${API_V1_URL}/collections/${collectionId}/export/pdf`,
     {
-      credentials: "include", // Send cookies for authentication
+      credentials: FETCH_CREDENTIALS, // Send cookies for authentication
     },
   );
 
