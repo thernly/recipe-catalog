@@ -190,6 +190,20 @@ if [[ "$SKIP_BACKUP" == false ]]; then
         log_warning "Database file not found, skipping backup"
     fi
     
+    # Check if .env files exist before attempting backup
+    if [[ ! -f "$APP_DIR/backend/.env" ]]; then
+        log_error "CRITICAL: Backend .env file not found at: $APP_DIR/backend/.env"
+        log_error "The application cannot run without this file."
+        log_error ""
+        log_error "To recover, check if you have a backup:"
+        log_error "  ls -la $BACKUP_DIR/backend-env-*"
+        log_error ""
+        log_error "Or restore from a previous backup:"
+        log_error "  sudo cp $BACKUP_DIR/backend-env-YYYYMMDD-HHMMSS $APP_DIR/backend/.env"
+        log_error "  sudo chown $APP_USER:$APP_USER $APP_DIR/backend/.env"
+        error_exit "Cannot proceed without backend .env file"
+    fi
+    
     # Backup .env files (always preserve user configuration)
     log "Backing up configuration files..."
     if [[ -f "$APP_DIR/backend/.env" ]]; then
@@ -202,6 +216,7 @@ if [[ "$SKIP_BACKUP" == false ]]; then
     fi
 else
     log_warning "Skipping backups (--skip-backup flag)"
+    TIMESTAMP=$(date +'%Y%m%d-%H%M%S')
 fi
 
 #===============================================================================
@@ -253,15 +268,24 @@ if [[ "$SKIP_GIT" == false ]]; then
             mv "$TEMP_ENV_DIR/backend.env" "$APP_DIR/backend/.env" || error_exit "Failed to restore backend .env"
             chown "$APP_USER:$APP_USER" "$APP_DIR/backend/.env"
             log_success "Backend .env restored"
+        else
+            log_warning "Backend .env was not in temp directory"
         fi
         if [[ -f "$TEMP_ENV_DIR/frontend.env" ]]; then
             mv "$TEMP_ENV_DIR/frontend.env" "$APP_DIR/frontend/.env" || error_exit "Failed to restore frontend .env"
             chown "$APP_USER:$APP_USER" "$APP_DIR/frontend/.env"
             log_success "Frontend .env restored"
+        else
+            log_warning "Frontend .env was not in temp directory"
         fi
         
         # Clean up temp directory
         rm -rf "$TEMP_ENV_DIR"
+        
+        # Verify .env files exist after restoration
+        if [[ ! -f "$APP_DIR/backend/.env" ]]; then
+            error_exit "Backend .env file not found after git operations! Cannot proceed with migrations."
+        fi
         
         log_success "Code updated from git (configuration files preserved)"
     fi
@@ -269,10 +293,17 @@ else
     log_warning "Skipping git pull (--skip-git flag)"
 fi
 
-# Ensure .env files exist (critical for migrations)
+# Final validation: Ensure .env files exist (critical for migrations)
+log "Validating configuration files..."
+log "  Checking: $APP_DIR/backend/.env"
 if [[ ! -f "$APP_DIR/backend/.env" ]]; then
-    error_exit "Backend .env file not found! Cannot proceed with migrations."
+    log_error "Backend .env file not found at: $APP_DIR/backend/.env"
+    log_error "Directory contents:"
+    ls -la "$APP_DIR/backend/" | head -20 >> "$LOG_FILE"
+    log_error "Check backup: $BACKUP_DIR/backend-env-$TIMESTAMP"
+    error_exit "Backend .env file missing! Cannot proceed with migrations."
 fi
+log_success "Backend .env file exists"
 
 #===============================================================================
 # Update Backend
