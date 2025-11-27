@@ -24,7 +24,6 @@
 #===============================================================================
 
 set -e  # Exit on error
-
 # Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -36,6 +35,7 @@ NC='\033[0m' # No Color
 APP_DIR="/opt/recipe-catalog"
 APP_USER="recipe-app"
 BACKEND_SERVICE="recipe-catalog-backend"
+DATA_DIR="/opt/recipe-catalog/backend/data"
 NGINX_SERVICE="nginx"
 LOG_FILE="/var/log/recipe-catalog-update.log"
 BACKUP_DIR="/opt/recipe-catalog-backups"
@@ -88,23 +88,22 @@ Options:
 
 Examples:
     # Standard update from git
-    sudo bash update-app.sh
+    bash update-app.sh
 
     # Update from specific branch
-    sudo bash update-app.sh --branch develop
+    bash update-app.sh --branch develop
 
     # Update without pulling from git (local changes)
-    sudo bash update-app.sh --skip-git
+    bash update-app.sh --skip-git
 
     # Update without backup (not recommended)
-    sudo bash update-app.sh --skip-backup
+    bash update-app.sh --skip-backup
 
 For more information, see: scripts/proxmox/README.md
 
 EOF
     exit 0
 }
-
 #===============================================================================
 # Argument Parsing
 #===============================================================================
@@ -178,8 +177,8 @@ if [[ "$SKIP_BACKUP" == false ]]; then
     TIMESTAMP=$(date +'%Y%m%d-%H%M%S')
     BACKUP_FILE="$BACKUP_DIR/recipes-$TIMESTAMP.db"
     
-    if [[ -f "$APP_DIR/backend/recipes.db" ]]; then
-        cp "$APP_DIR/backend/recipes.db" "$BACKUP_FILE" || error_exit "Database backup failed"
+    if [[ -f "$DATA_DIR/recipes.db" ]]; then
+        cp "$DATA_DIR/recipes.db" "$BACKUP_FILE" || error_exit "Database backup failed"
         chown "$APP_USER:$APP_USER" "$BACKUP_FILE"
         log_success "Database backed up to: $BACKUP_FILE"
         
@@ -238,11 +237,11 @@ if [[ "$SKIP_GIT" == false ]]; then
         fi
         
         # Stash any other local changes (won't affect .env since we moved them)
-        sudo -u "$APP_USER" git stash save "Auto-stash before update $(date +'%Y-%m-%d %H:%M:%S')"
+        su -s /bin/bash "$APP_USER" -c "cd $APP_DIR && git stash save 'Auto-stash before update $(date +'%Y-%m-%d %H:%M:%S')'"
         
         # Pull latest changes
-        sudo -u "$APP_USER" git checkout "$GIT_BRANCH" || error_exit "Failed to checkout branch: $GIT_BRANCH"
-        sudo -u "$APP_USER" git pull origin "$GIT_BRANCH" || error_exit "Failed to pull from git"
+        su -s /bin/bash "$APP_USER" -c "cd $APP_DIR && git checkout $GIT_BRANCH" || error_exit "Failed to checkout branch: $GIT_BRANCH"
+        su -s /bin/bash "$APP_USER" -c "cd $APP_DIR && git pull origin $GIT_BRANCH" || error_exit "Failed to pull from git"
         
         # Restore .env files
         log "Restoring configuration files..."
@@ -280,24 +279,24 @@ if [[ ! -f "/home/$APP_USER/.local/bin/uv" ]]; then
 fi
 
 # Sync dependencies
-sudo -u "$APP_USER" /home/$APP_USER/.local/bin/uv sync || error_exit "Failed to sync backend dependencies"
+su -s /bin/bash "$APP_USER" -c "cd $APP_DIR/backend && /home/$APP_USER/.local/bin/uv sync" || error_exit "Failed to sync backend dependencies"
 log_success "Backend dependencies updated"
 
 # Run database migrations
 log "Running database migrations..."
-sudo -u "$APP_USER" /home/$APP_USER/.local/bin/uv run alembic upgrade head || error_exit "Database migration failed"
+su -s /bin/bash "$APP_USER" -c "cd $APP_DIR/backend && /home/$APP_USER/.local/bin/uv run alembic upgrade head" || error_exit "Database migration failed"
 log_success "Database migrations completed"
 
 # Verify database integrity after migration
 log "Verifying database integrity..."
-if command -v sqlite3 &> /dev/null && [[ -f "$APP_DIR/backend/recipes.db" ]]; then
-    if sqlite3 "$APP_DIR/backend/recipes.db" "PRAGMA integrity_check;" | grep -q "ok"; then
+if command -v sqlite3 &> /dev/null && [[ -f "$DATA_DIR/recipes.db" ]]; then
+    if sqlite3 "$DATA_DIR/recipes.db" "PRAGMA integrity_check;" | grep -q "ok"; then
         log_success "Database integrity check passed"
     else
         log_error "Database integrity check failed!"
         log_error "Restoring from backup: $BACKUP_FILE"
         if [[ -f "$BACKUP_FILE" ]]; then
-            cp "$BACKUP_FILE" "$APP_DIR/backend/recipes.db"
+            cp "$BACKUP_FILE" "$DATA_DIR/recipes.db"
             error_exit "Database corrupted - restored from backup. Migration may need manual intervention."
         else
             error_exit "Database corrupted and no backup available!"
@@ -321,12 +320,12 @@ if ! command -v pnpm &> /dev/null; then
 fi
 
 # Install dependencies
-sudo -u "$APP_USER" pnpm install || error_exit "Failed to install frontend dependencies"
+su -s /bin/bash "$APP_USER" -c "cd $APP_DIR/frontend && pnpm install" || error_exit "Failed to install frontend dependencies"
 log_success "Frontend dependencies updated"
 
 # Build frontend
 log "Building frontend..."
-sudo -u "$APP_USER" pnpm build || error_exit "Frontend build failed"
+su -s /bin/bash "$APP_USER" -c "cd $APP_DIR/frontend && pnpm build" || error_exit "Frontend build failed"
 log_success "Frontend build completed"
 
 #===============================================================================
