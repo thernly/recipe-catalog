@@ -360,3 +360,8 @@ seed-data/
 *.backup
 *.tmp
 *.temp
+
+# Assessments, task lists, and other working files
+docs/assessments/
+docs/task-lists/
+docs/tasks/
