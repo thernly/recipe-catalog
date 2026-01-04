@@ -525,7 +525,176 @@
 /* ============================================ */
 
 @media print {
-  .no-print {
+  /* Optimize page margins */
+  @page {
+    margin: 1cm;
+    size: auto;
+  }
+
+  /* Hide non-printable elements */
+  nav,
+  .sidebar,
+  button,
+  .no-print,
+  [data-print-hide],
+  img {
     display: none !important;
+  }
+
+  /* Reset body/container spacing */
+  body {
+    margin: 0;
+    padding: 0;
+    background: white;
+    color: black;
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+
+  .container,
+  main {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Compact recipe header */
+  h1 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 16pt;
+    page-break-after: avoid;
+  }
+
+  h2 {
+    margin-top: 0.75rem;
+    margin-bottom: 0.25rem;
+    font-size: 13pt;
+    page-break-after: avoid;
+  }
+
+  h3 {
+    margin-top: 0.5rem;
+    margin-bottom: 0.25rem;
+    font-size: 12pt;
+    page-break-after: avoid;
+  }
+
+  /* Compact metadata section */
+  .recipe-meta,
+  .recipe-details {
+    margin-bottom: 0.5rem;
+    padding: 0;
+  }
+
+  /* Make consolidated metadata card more compact */
+  .metadata-card-consolidated {
+    margin-bottom: 0.25rem !important;
+    padding: 0.25rem !important;
+    border: 1px solid #ccc;
+    background: transparent;
+  }
+
+  .metadata-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .metadata-item {
+    font-size: 9pt;
+    margin: 0;
+    padding: 0;
+  }
+
+  .metadata-label-inline,
+  .metadata-value-inline {
+    font-size: 9pt;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Reduce spacing in lists */
+  ul, ol {
+    margin: 0.25rem 0;
+    padding-left: 1.5rem;
+  }
+
+  li {
+    margin-bottom: 0.15rem;
+    page-break-inside: avoid;
+  }
+
+  /* Compact paragraphs */
+  p {
+    margin: 0.25rem 0;
+    page-break-inside: avoid;
+  }
+
+  /* Section spacing - allow natural flow */
+  section {
+    margin-bottom: 0.5rem;
+  }
+
+  /* Allow sections to break across pages naturally */
+  .card {
+    margin-bottom: 0.5rem;
+  }
+
+  /* Make instructions more compact */
+  .instruction-step {
+    margin-bottom: 0.25rem;
+    page-break-inside: avoid;
+  }
+
+  /* Keep ingredient items together but allow list to break */
+  .ingredient-checkbox {
+    display: none;
+  }
+
+  /* Remove shadows, borders, and backgrounds; force black text */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    color: black !important;
+  }
+
+  .card,
+  .recipe-card {
+    border: none;
+    box-shadow: none;
+    background: white;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Compact tags/categories */
+  .tags,
+  .categories {
+    margin: 0.25rem 0;
+  }
+
+  .tag,
+  .category {
+    display: inline-block;
+    margin-right: 0.25rem;
+    margin-bottom: 0.25rem;
+    padding: 0.1rem 0.3rem;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+  }
+
+  /* Optimize links */
+  a {
+    text-decoration: none;
+    color: black !important;
+  }
+
+  /* Show URLs for external links if needed */
+  a[href^="http"]:after {
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    font-style: italic;
   }
 }

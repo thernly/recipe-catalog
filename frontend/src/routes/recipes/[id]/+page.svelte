@@ -485,10 +485,10 @@
 							<Copy size={16} aria-hidden="true" />
 							<span>Duplicate</span>
 						</button>
-						<button on:click={handlePrint} class="btn btn-secondary flex items-center gap-2">
-							<Printer size={16} aria-hidden="true" />
-							<span>Print</span>
-						</button>
+					<button on:click={handlePrint} data-print-hide class="btn btn-secondary flex items-center gap-2">
+						<Printer size={16} aria-hidden="true" />
+						<span>Print</span>
+					</button>
 
 						<!-- Export dropdown -->
 						<div class="export-dropdown">
