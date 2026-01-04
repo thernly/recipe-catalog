@@ -49,7 +49,7 @@
 </script>
 
 <nav
-	class="sticky top-0 z-50 h-16 flex items-center justify-between px-6"
+	class="no-print sticky top-0 z-50 h-16 flex items-center justify-between px-6"
 	style="background: var(--color-navbar-bg); color: var(--color-navbar-text);"
 >
 	<div class="flex items-center gap-6">

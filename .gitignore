@@ -362,6 +362,6 @@ seed-data/
 *.temp
 
 # Assessments, task lists, and other working files
-docs/assessments/
-docs/task-lists/
-docs/tasks/
+/docs/assessments/
+/docs/task-lists/
+/docs/tasks/

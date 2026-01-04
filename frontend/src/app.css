@@ -466,3 +466,13 @@
     transform: translateY(-1px);
   }
 }
+
+/* ============================================ */
+/* Print Styles */
+/* ============================================ */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

@@ -142,7 +142,21 @@
 	// Handle recipe actions
 	function handleViewRecipe(e: CustomEvent) {
 		const recipe = e.detail as RecipeSummary;
-		goto(`/recipes/${recipe.id}`);
+		// Preserve current search state by building URL from current filters
+		const params = new URLSearchParams();
+		if (searchParams.query) params.set('q', searchParams.query);
+		if (searchParams.sort_by && searchParams.sort_by !== 'recently_added') params.set('sort', searchParams.sort_by);
+		if (searchParams.page && searchParams.page > 1) params.set('page', searchParams.page.toString());
+		if (selectedCuisines.length > 0) params.set('cuisine', selectedCuisines.join(','));
+		if (selectedCategories.length > 0) params.set('category', selectedCategories.join(','));
+		if (selectedSourceTypes.length > 0) params.set('source', selectedSourceTypes.join(','));
+		if (maxTime) params.set('maxTime', maxTime.toString());
+		if (minTime) params.set('minTime', minTime.toString());
+
+		const searchString = params.toString();
+		const currentUrl = searchString ? `/recipes?${searchString}` : '/recipes';
+		const returnUrl = encodeURIComponent(currentUrl);
+		goto(`/recipes/${recipe.id}?returnUrl=${returnUrl}`);
 	}
 
 	function handleEditRecipe(e: CustomEvent) {

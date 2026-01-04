@@ -80,14 +80,21 @@
 	}
 
 	function handleBackToRecipes() {
-		// Check if we came from the recipes page by looking at the referrer
-		const referrer = document.referrer;
-		if (referrer && referrer.includes('/recipes') && !referrer.includes('/recipes/')) {
-			// Go back to preserve search state
-			window.history.back();
+		// Check if we have a returnUrl query parameter first
+		const returnUrl = $page.url.searchParams.get('returnUrl');
+		if (returnUrl) {
+			// Use the explicit return URL (preserves search filters)
+			goto(decodeURIComponent(returnUrl));
 		} else {
-			// Navigate to recipes page
-			goto('/recipes');
+			// Fallback: Check if we came from the recipes page by looking at the referrer
+			const referrer = document.referrer;
+			if (referrer && referrer.includes('/recipes') && !referrer.includes('/recipes/')) {
+				// Go back to preserve search state
+				window.history.back();
+			} else {
+				// Navigate to recipes page
+				goto('/recipes');
+			}
 		}
 	}
 
