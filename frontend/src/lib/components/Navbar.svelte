@@ -54,45 +54,45 @@
 >
 	<div class="flex items-center gap-6">
 		<a href="/dashboard" class="flex items-center gap-3 hover:opacity-80 transition">
-			<UtensilsCrossed size={28} aria-hidden="true" />
-			<span class="font-semibold text-lg">Recipe Catalog</span>
+			<UtensilsCrossed size={32} aria-hidden="true" />
+			<span class="font-semibold text-xl">Recipe Catalog</span>
 		</a>
 
 		<div class="flex items-center gap-4 ml-4">
 			<a
 				href="/dashboard"
-				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-sm"
+				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-base font-medium"
 			>
 				Dashboard
 			</a>
 			<a
 				href="/recipes"
-				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-sm"
+				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-base font-medium"
 			>
 				Recipes
 			</a>
 			<a
 				href="/ai-generate"
-				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-sm flex items-center gap-2"
+				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-base font-medium flex items-center gap-2"
 			>
-				<Sparkles size={16} aria-hidden="true" />
+				<Sparkles size={18} aria-hidden="true" />
 				<span>AI Generate</span>
 			</a>
 			<a
 				href="/meal-plans"
-				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-sm"
+				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-base font-medium"
 			>
 				Meal Plans
 			</a>
 			<a
 				href="/export"
-				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-sm"
+				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-base font-medium"
 			>
 				Export
 			</a>
 			<a
 				href="/settings"
-				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-sm"
+				class="px-3 py-2 rounded-md hover:bg-white/10 transition text-base font-medium"
 			>
 				Settings
 			</a>
@@ -102,21 +102,21 @@
 	<div class="flex items-center gap-4">
 		<button
 			on:click={toggleTheme}
-			class="px-3 py-2 rounded-md hover:bg-white/10 transition text-sm"
+			class="px-3 py-2 rounded-md hover:bg-white/10 transition"
 			aria-label={currentTheme === 'classic' ? 'Switch to professional theme' : 'Switch to classic theme'}
 		>
 			{#if currentTheme === 'classic'}
-				<Palette size={20} aria-hidden="true" />
+				<Palette size={22} aria-hidden="true" />
 			{:else}
-				<Briefcase size={20} aria-hidden="true" />
+				<Briefcase size={22} aria-hidden="true" />
 			{/if}
 		</button>
 		{#if user}
-			<span class="text-sm">{user.email}</span>
+			<span class="text-base">{user.email}</span>
 		{/if}
 		<button
 			on:click={handleLogout}
-			class="px-4 py-2 rounded-md hover:bg-white/10 transition text-sm"
+			class="px-4 py-2 rounded-md hover:bg-white/10 transition text-base font-medium"
 		>
 			Logout
 		</button>

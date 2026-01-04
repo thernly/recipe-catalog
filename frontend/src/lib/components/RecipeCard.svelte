@@ -131,9 +131,9 @@
 	}
 
 	.recipe-card:hover {
-		box-shadow: var(--shadow-lg);
-		transform: translateY(-2px);
-		border-color: var(--neutral-300);
+		box-shadow: var(--shadow-warm-glow);
+		transform: translateY(-4px);
+		border-color: var(--accent-300);
 	}
 
 	.recipe-card-image {
@@ -143,11 +143,12 @@
 	}
 
 	.recipe-card-title {
-		font-size: 1.125rem;
+		font-family: var(--font-display);
+		font-size: 1.25rem;
 		font-weight: 600;
 		color: var(--text-900);
 		margin-bottom: 0.5rem;
-		line-height: 1.4;
+		line-height: 1.3;
 		display: -webkit-box;
 		line-clamp: 2;
 		-webkit-line-clamp: 2;
@@ -156,9 +157,9 @@
 	}
 
 	.recipe-card-description {
-		font-size: 0.875rem;
+		font-size: 1rem;
 		color: var(--text-600);
-		line-height: 1.5;
+		line-height: 1.6;
 		display: -webkit-box;
 		line-clamp: 2;
 		-webkit-line-clamp: 2;
@@ -196,26 +197,28 @@
 	}
 
 	.action-btn:hover {
-		background: var(--accent-50);
-		border-color: var(--accent-300);
+		background: var(--accent-100);
+		border-color: var(--accent-400);
 		transform: scale(1.1);
+		box-shadow: var(--shadow-md);
 	}
 
 	.badge {
 		display: inline-flex;
 		align-items: center;
-		padding: 0.25rem 0.75rem;
-		background: var(--color-badge-bg);
-		color: var(--color-badge-text);
+		padding: 0.375rem 0.875rem;
+		background: var(--accent-100);
+		color: var(--accent-800);
 		border-radius: var(--radius-full);
-		font-size: 0.75rem;
-		font-weight: 500;
+		font-family: var(--font-ui);
+		font-size: 0.6875rem;
+		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.025em;
+		letter-spacing: 0.05em;
 	}
 
 	.badge-secondary {
-		background: var(--neutral-100);
-		color: var(--text-600);
+		background: var(--neutral-200);
+		color: var(--text-700);
 	}
 </style>

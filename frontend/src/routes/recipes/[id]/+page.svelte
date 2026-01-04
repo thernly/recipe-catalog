@@ -6,6 +6,7 @@
 	import { generateFromRecipe, listShoppingLists, type ShoppingListSummary } from '$lib/api/shopping-lists';
 	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
+	import { ArrowLeft, Edit, Copy, ShoppingCart, Download, Printer, Trash2, Loader2, Globe, FileText } from 'lucide-svelte';
 
 	let recipe: Recipe | null = null;
 	let loading = true;
@@ -77,6 +78,15 @@
 		if (hours) return `${hours}h`;
 		if (minutes) return `${minutes}min`;
 		return '';
+	}
+
+	function formatNutritionLabel(key: string): string {
+		// Convert camelCase to Title Case with spaces
+		// e.g., "fatContent" -> "Fat Content"
+		return key
+			.replace(/([A-Z])/g, ' $1') // Add space before capital letters
+			.replace(/^./, (str) => str.toUpperCase()) // Capitalize first letter
+			.trim();
 	}
 
 	function handleBackToRecipes() {
@@ -209,7 +219,9 @@
 	{#if loading}
 		<!-- Loading state -->
 		<div class="container-custom py-16 text-center">
-			<div class="text-4xl mb-4">⏳</div>
+			<div class="flex justify-center mb-4" style="color: var(--accent-500);">
+				<Loader2 size={48} class="animate-spin" aria-hidden="true" />
+			</div>
 			<p class="text-lg" style="color: var(--text-600);">Loading recipe...</p>
 		</div>
 	{:else if error || !recipe}
@@ -223,95 +235,61 @@
 	{:else}
 		<!-- Recipe content -->
 		<div class="recipe-detail-container">
+			<!-- Back Button Bar -->
+			<div class="back-button-bar">
+				<div class="container-custom">
+					<button
+						on:click={handleBackToRecipes}
+						class="back-button"
+					>
+						<ArrowLeft size={20} aria-hidden="true" />
+						<span>Back to Recipes</span>
+					</button>
+				</div>
+			</div>
+
 			<!-- Header -->
 			<div class="recipe-header">
 				<div class="container-custom py-6">
-					<button
-						on:click={handleBackToRecipes}
-						class="text-sm mb-4 flex items-center gap-2"
-						style="color: var(--text-600);"
-					>
-						← Back to Recipes
-					</button>
+					<div>
+						<h1 class="text-3xl font-bold mb-3" style="color: var(--text-900);">
+							{recipe.name}
+						</h1>
 
-					<div class="flex justify-between items-start">
-						<div class="flex-1">
-							<h1 class="text-4xl font-bold mb-2" style="color: var(--text-900);">
-								{recipe.name}
-							</h1>
+						{#if recipe.source_url}
+							<p class="text-base mb-2" style="color: var(--text-600);">
+								Source: <a href={recipe.source_url} target="_blank" class="link">
+									{new URL(recipe.source_url).hostname}
+								</a>
+							</p>
+						{:else}
+							<p class="text-base mb-2" style="color: var(--text-600);">Personal Recipe</p>
+						{/if}
 
-							{#if recipe.source_url}
-								<p class="text-sm mb-2" style="color: var(--text-600);">
-									Source: <a href={recipe.source_url} target="_blank" class="link">
-										{new URL(recipe.source_url).hostname}
-									</a>
-								</p>
-							{:else}
-								<p class="text-sm mb-2" style="color: var(--text-600);">Personal Recipe</p>
+						<div class="flex items-center gap-3 text-sm" style="color: var(--text-500);">
+							<span class="flex items-center gap-1">
+								{#if recipe.source_type === 'imported'}
+									<Download size={14} aria-hidden="true" />
+									<span>Imported</span>
+								{:else}
+									<Edit size={14} aria-hidden="true" />
+									<span>Manual</span>
+								{/if}
+							</span>
+							{#if recipe.is_modified && recipe.source_type === 'imported'}
+								<span>• Modified</span>
 							{/if}
-
-							<div class="flex items-center gap-3 text-xs" style="color: var(--text-500);">
-								<span>{recipe.source_type === 'imported' ? '📥 Imported' : '✏️ Manual'}</span>
-								{#if recipe.is_modified && recipe.source_type === 'imported'}
-									<span>• Modified</span>
-								{/if}
-								<span>• Added {new Date(recipe.created_at).toLocaleDateString()}</span>
-								{#if recipe.creator_display_name}
-									<span>• Created by {recipe.creator_display_name}</span>
-								{/if}
-							</div>
-						</div>
-
-					<!-- Actions -->
-					<div class="flex gap-2">
-						<button on:click={() => goto(`/recipes/${recipe?.id}/edit`)} class="btn btn-secondary">
-							✏️ Edit
-							</button>
-							<button on:click={handleDuplicate} class="btn btn-secondary">📋 Duplicate</button>
-							<button
-								on:click={handleAddToShoppingList}
-								class="btn btn-secondary"
-								disabled={addingToList}
-							>
-								{addingToList ? '⏳' : '🛒'} Add to Shopping List
-							</button>
-
-							<!-- Export dropdown -->
-							<div class="export-dropdown">
-								<button
-									on:click={() => showExportMenu = !showExportMenu}
-									class="btn btn-secondary"
-									disabled={exporting}
-								>
-									{exporting ? '⏳' : '📤'} Export
-								</button>
-								{#if showExportMenu}
-									<div class="export-menu">
-										<button on:click={() => handleExport('pdf')} class="export-menu-item">
-											📄 PDF
-										</button>
-										<button on:click={() => handleExport('json')} class="export-menu-item">
-											JSON
-										</button>
-										<button on:click={() => handleExport('markdown')} class="export-menu-item">
-											Markdown
-										</button>
-										<button on:click={() => handleExport('text')} class="export-menu-item">
-											Plain Text
-										</button>
-									</div>
-								{/if}
-							</div>
-
-							<button on:click={handlePrint} class="btn btn-secondary">🖨️ Print</button>
-							<button on:click={handleDelete} class="btn btn-danger">🗑️ Delete</button>
+							<span>• Added {new Date(recipe.created_at).toLocaleDateString()}</span>
+							{#if recipe.creator_display_name}
+								<span>• Created by {recipe.creator_display_name}</span>
+							{/if}
 						</div>
 					</div>
 				</div>
 			</div>
 
 		<!-- Main content -->
-		<div class="container-custom py-8">
+		<div class="container-custom py-8 recipe-content">
 			<!-- Hero Image -->
 			{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
 				<div class="recipe-hero-image mb-6">
@@ -326,7 +304,7 @@
 				</div>
 			{/if}				<!-- Description -->
 				{#if recipe.description}
-					<p class="text-lg mb-6" style="color: var(--text-700);">{recipe.description}</p>
+					<p class="text-lg leading-relaxed mb-8" style="color: var(--text-700);">{recipe.description}</p>
 				{/if}
 
 				<!-- Consolidated Metadata card -->
@@ -433,16 +411,13 @@
 							Instructions
 						</h2>
 
-						<ol class="space-y-4">
+						<ol class="instructions-list">
 							{#each getInstructions(recipe) as instruction, index}
-								<li class="flex gap-3">
-									<span
-										class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold"
-										style="background: var(--accent-100); color: var(--accent-800);"
-									>
+								<li class="instruction-step">
+									<span class="step-number">
 										{index + 1}
 									</span>
-									<p class="flex-1 pt-1" style="color: var(--text-700);">
+									<p class="step-text">
 										{instruction}
 									</p>
 								</li>
@@ -468,13 +443,96 @@
 						<div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
 							{#each Object.entries(recipe.recipe_data.nutrition) as [key, value]}
 								<div>
-									<div class="text-sm" style="color: var(--text-600);">{key}</div>
+									<div class="text-sm" style="color: var(--text-600);">{formatNutritionLabel(key)}</div>
 									<div class="font-semibold" style="color: var(--text-900);">{value}</div>
 								</div>
 							{/each}
 						</div>
 					</details>
 				{/if}
+			</div>
+		</div>
+
+		<!-- Sticky Action Bar -->
+		<div class="sticky-action-bar no-print">
+			<div class="container-custom">
+				<div class="action-bar-content">
+					<!-- Primary Actions -->
+					<div class="action-group">
+						<button on:click={() => goto(`/recipes/${recipe?.id}/edit`)} class="btn btn-primary flex items-center gap-2">
+							<Edit size={18} aria-hidden="true" />
+							<span>Edit Recipe</span>
+						</button>
+						<button
+							on:click={handleAddToShoppingList}
+							class="btn btn-primary flex items-center gap-2"
+							disabled={addingToList}
+						>
+							{#if addingToList}
+								<Loader2 size={18} class="animate-spin" aria-hidden="true" />
+							{:else}
+								<ShoppingCart size={18} aria-hidden="true" />
+							{/if}
+							<span>Shopping List</span>
+						</button>
+					</div>
+
+					<!-- Utility Actions -->
+					<div class="action-group">
+						<button on:click={handleDuplicate} class="btn btn-secondary flex items-center gap-2">
+							<Copy size={16} aria-hidden="true" />
+							<span>Duplicate</span>
+						</button>
+						<button on:click={handlePrint} class="btn btn-secondary flex items-center gap-2">
+							<Printer size={16} aria-hidden="true" />
+							<span>Print</span>
+						</button>
+
+						<!-- Export dropdown -->
+						<div class="export-dropdown">
+							<button
+								on:click={() => showExportMenu = !showExportMenu}
+								class="btn btn-secondary flex items-center gap-2"
+								disabled={exporting}
+							>
+								{#if exporting}
+									<Loader2 size={16} class="animate-spin" aria-hidden="true" />
+								{:else}
+									<Download size={16} aria-hidden="true" />
+								{/if}
+								<span>Export</span>
+							</button>
+							{#if showExportMenu}
+								<div class="export-menu export-menu-up">
+									<button on:click={() => handleExport('pdf')} class="export-menu-item">
+										<FileText size={14} aria-hidden="true" />
+										<span>PDF</span>
+									</button>
+									<button on:click={() => handleExport('json')} class="export-menu-item">
+										<FileText size={14} aria-hidden="true" />
+										<span>JSON</span>
+									</button>
+									<button on:click={() => handleExport('markdown')} class="export-menu-item">
+										<FileText size={14} aria-hidden="true" />
+										<span>Markdown</span>
+									</button>
+									<button on:click={() => handleExport('text')} class="export-menu-item">
+										<FileText size={14} aria-hidden="true" />
+										<span>Plain Text</span>
+									</button>
+								</div>
+							{/if}
+						</div>
+					</div>
+
+					<!-- Danger Actions -->
+					<div class="action-group">
+						<button on:click={handleDelete} class="btn btn-danger flex items-center gap-2">
+							<Trash2 size={16} aria-hidden="true" />
+							<span>Delete</span>
+						</button>
+					</div>
+				</div>
 			</div>
 		</div>
 	{/if}
@@ -486,6 +544,42 @@
 		min-height: 100vh;
 	}
 
+	.recipe-content {
+		padding-bottom: 10rem; /* Space for sticky action bar on desktop */
+	}
+
+	.back-button-bar {
+		background: var(--neutral-white);
+		border-bottom: 1px solid var(--neutral-200);
+		padding: 1rem 0;
+	}
+
+	.back-button {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.75rem 1.5rem;
+		background: var(--accent-500);
+		color: white;
+		border: none;
+		border-radius: var(--radius-md);
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all var(--transition-base);
+		box-shadow: var(--shadow-sm);
+	}
+
+	.back-button:hover {
+		background: var(--accent-600);
+		transform: translateY(-1px);
+		box-shadow: var(--shadow-md);
+	}
+
+	.back-button:active {
+		transform: translateY(0);
+	}
+
 	.recipe-header {
 		background: var(--neutral-50);
 		border-bottom: 1px solid var(--neutral-200);
@@ -493,7 +587,7 @@
 
 	.recipe-hero-image {
 		width: 100%;
-		max-height: 250px;
+		max-height: 350px;
 		overflow: hidden;
 		background: var(--neutral-100);
 		display: flex;
@@ -501,42 +595,61 @@
 		justify-content: center;
 		border-radius: var(--radius-lg);
 		margin: 0 auto;
+		box-shadow: var(--shadow-md);
+		position: relative;
+	}
+
+	.recipe-hero-image::after {
+		content: '';
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		height: 40%;
+		background: linear-gradient(to top, rgba(0, 0, 0, 0.15), transparent);
+		pointer-events: none;
 	}
 
 	.recipe-hero-image img {
 		width: 100%;
-		height: auto;
+		height: 100%;
 		object-fit: cover;
+		aspect-ratio: 16 / 9;
 	}
 
 	.metadata-card-consolidated {
-		background: var(--neutral-50);
-		border: 1px solid var(--neutral-200);
-		border-radius: var(--radius-md);
-		padding: 1rem 1.5rem;
+		background: var(--primary-50);
+		border: 1px solid var(--neutral-300);
+		border-radius: var(--radius-lg);
+		padding: 1.5rem 2rem;
+		box-shadow: var(--shadow-sm);
 	}
 
 	.metadata-items {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 1.5rem;
+		gap: 2.5rem;
 		align-items: center;
 	}
 
 	.metadata-item {
 		display: flex;
-		align-items: center;
-		gap: 0.5rem;
+		align-items: baseline;
+		gap: 0.625rem;
 	}
 
 	.metadata-label-inline {
+		font-family: var(--font-ui);
 		font-size: 0.875rem;
 		color: var(--text-600);
 		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 
 	.metadata-value-inline {
-		font-size: 1rem;
+		font-family: var(--font-display);
+		font-size: 1.375rem;
 		font-weight: 600;
 		color: var(--text-900);
 	}
@@ -551,39 +664,143 @@
 
 	.equipment-list li {
 		background: var(--neutral-100);
-		padding: 0.5rem 1rem;
-		border-radius: var(--radius-md);
+		padding: 0.625rem 1.125rem;
+		border-radius: var(--radius-full);
+		font-family: var(--font-ui);
 		font-size: 0.875rem;
+		color: var(--text-700);
+		border: 1px solid var(--neutral-300);
+		transition: all var(--transition-fast);
+	}
+
+	.equipment-list li:hover {
+		background: var(--neutral-200);
+		border-color: var(--neutral-400);
 	}
 
 	.tag {
 		display: inline-flex;
 		align-items: center;
-		padding: 0.5rem 1rem;
-		background: var(--color-badge-bg);
-		color: var(--color-badge-text);
+		padding: 0.5rem 1.125rem;
+		background: var(--accent-100);
+		color: var(--accent-800);
 		border-radius: var(--radius-full);
-		font-size: 0.875rem;
-		font-weight: 500;
+		font-family: var(--font-ui);
+		font-size: 0.8125rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		transition: all var(--transition-fast);
+	}
+
+	.tag:hover {
+		background: var(--accent-200);
+		transform: translateY(-1px);
 	}
 
 	.tag-secondary {
-		background: var(--neutral-100);
+		background: var(--neutral-200);
 		color: var(--text-700);
+	}
+
+	.tag-secondary:hover {
+		background: var(--neutral-300);
 	}
 
 	.tag-outline {
 		background: transparent;
-		border: 1px solid var(--neutral-300);
+		border: 1.5px solid var(--neutral-400);
 		color: var(--text-600);
 	}
 
+	.tag-outline:hover {
+		border-color: var(--accent-500);
+		color: var(--accent-700);
+	}
+
 	.ingredient-checkbox {
+		appearance: none;
 		margin-top: 0.25rem;
-		width: 1.25rem;
-		height: 1.25rem;
+		width: 1.5rem;
+		height: 1.5rem;
 		cursor: pointer;
-		accent-color: var(--accent-500);
+		border: 2px solid var(--neutral-400);
+		border-radius: 50%;
+		background: var(--neutral-50);
+		transition: all var(--transition-base);
+		position: relative;
+		flex-shrink: 0;
+	}
+
+	.ingredient-checkbox:hover {
+		border-color: var(--accent-500);
+		background: var(--accent-50);
+	}
+
+	.ingredient-checkbox:checked {
+		background: var(--accent-500);
+		border-color: var(--accent-500);
+	}
+
+	.ingredient-checkbox:checked::after {
+		content: '';
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%) rotate(45deg);
+		width: 0.375rem;
+		height: 0.625rem;
+		border: solid var(--neutral-white);
+		border-width: 0 2px 2px 0;
+	}
+
+	/* Instructions Styling */
+	.instructions-list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+
+	.instruction-step {
+		display: flex;
+		gap: 1rem;
+		align-items: flex-start;
+		transition: all var(--transition-base);
+		padding: 0.75rem;
+		margin: -0.75rem;
+		border-radius: var(--radius-md);
+	}
+
+	.instruction-step:hover {
+		background: var(--primary-50);
+	}
+
+	.step-number {
+		flex-shrink: 0;
+		width: 2.5rem;
+		height: 2.5rem;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-family: var(--font-display);
+		font-size: 1.125rem;
+		font-weight: 600;
+		color: var(--neutral-white);
+		background: linear-gradient(135deg, var(--accent-500) 0%, var(--accent-600) 100%);
+		box-shadow: var(--shadow-md);
+	}
+
+	.step-text {
+		flex: 1;
+		font-size: 1.125rem;
+		line-height: 1.7;
+		color: var(--text-700);
+		margin: 0;
+		padding-top: 0.375rem;
 	}
 
 	.link {
@@ -630,7 +847,9 @@
 	}
 
 	.export-menu-item {
-		display: block;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
 		width: 100%;
 		padding: 0.75rem 1rem;
 		text-align: left;
@@ -648,6 +867,65 @@
 
 	.export-menu-item:not(:last-child) {
 		border-bottom: 1px solid var(--neutral-100);
+	}
+
+	.export-menu-up {
+		bottom: 100%;
+		top: auto;
+		margin-bottom: 0.5rem;
+		margin-top: 0;
+	}
+
+	/* Sticky Action Bar */
+	.sticky-action-bar {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		background: var(--neutral-white);
+		border-top: 2px solid var(--accent-500);
+		box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+		z-index: 40;
+		padding: 1rem 0;
+	}
+
+	.action-bar-content {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1.5rem;
+		flex-wrap: wrap;
+	}
+
+	.action-group {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.action-group:first-child {
+		flex: 1;
+	}
+
+	/* Responsive adjustments */
+	@media (max-width: 768px) {
+		.recipe-content {
+			padding-bottom: 20rem; /* More space on mobile since action bar is taller */
+		}
+
+		.action-bar-content {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.action-group {
+			justify-content: center;
+			width: 100%;
+		}
+
+		.action-group:first-child {
+			flex: none;
+		}
 	}
 
 	/* Print styles */

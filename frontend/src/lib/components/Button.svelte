@@ -25,7 +25,20 @@
 		align-items: center;
 		justify-content: center;
 		gap: 0.5rem;
-		transition: all var(--transition-fast);
+		font-family: var(--font-ui);
+		transition: all var(--transition-base);
+	}
+
+	.btn:hover:not(:disabled):not(.loading) {
+		transform: translateY(-1px);
+	}
+
+	.btn:active:not(:disabled):not(.loading) {
+		transform: translateY(0) scale(0.98);
+	}
+
+	.btn-primary:hover:not(:disabled):not(.loading) {
+		box-shadow: var(--shadow-warm-glow);
 	}
 
 	.btn.loading {

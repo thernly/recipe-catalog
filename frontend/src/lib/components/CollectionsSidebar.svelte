@@ -10,6 +10,7 @@
 		type CollectionCreate,
 		type CollectionUpdate
 	} from '$lib/api/collections';
+	import { getUserStats, type UserStats } from '$lib/api/users';
 	import CollectionModal from './CollectionModal.svelte';
 	import type { Collection } from '$lib/api/collections';
 	import { dialog } from '$lib/stores/dialog';
@@ -20,13 +21,23 @@
 	let showModal = false;
 	let editingCollection: Collection | null = null;
 	let deleting = false;
+	let stats: UserStats | null = null;
 
-	// Load collections on mount
+	// Load collections and stats on mount
 	onMount(() => {
 		if (!$collections.loaded) {
 			collections.load();
 		}
+		loadStats();
 	});
+
+	async function loadStats() {
+		try {
+			stats = await getUserStats();
+		} catch (err) {
+			console.error('Failed to load stats:', err);
+		}
+	}
 
 	function openCreateModal() {
 		editingCollection = null;
@@ -44,15 +55,16 @@
 		try {
 			if (editingCollection) {
 				// Update existing collection
-				const updated = await updateCollection(editingCollection.id, data as CollectionUpdate);
-				collections.updateCollection(updated.id, { ...updated, recipe_count: 0 });
+				await updateCollection(editingCollection.id, data as CollectionUpdate);
 				toast.success('Collection updated successfully');
 			} else {
 				// Create new collection
-				const created = await createCollection(data as CollectionCreate);
-				collections.add({ ...created, recipe_count: 0 });
+				await createCollection(data as CollectionCreate);
 				toast.success('Collection created successfully');
 			}
+
+			// Reload collections and stats to get updated counts
+			await Promise.all([collections.load(), loadStats()]);
 
 			showModal = false;
 			editingCollection = null;
@@ -81,6 +93,7 @@
 				try {
 					await deleteCollection(collection.id);
 					collections.remove(collection.id);
+					await loadStats(); // Reload stats after deletion
 					toast.success('Collection deleted successfully');
 
 					// Navigate away if we're viewing this collection
@@ -141,7 +154,7 @@
 							<span class="nav-icon">📚</span>
 							<span class="nav-label">All Recipes</span>
 							<span class="nav-count">
-								{$collections.collections.reduce((sum, c) => sum + c.recipe_count, 0)}
+								{stats?.total_recipes ?? 0}
 							</span>
 						</button>
 					</li>
