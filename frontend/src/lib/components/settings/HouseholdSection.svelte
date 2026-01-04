@@ -122,6 +122,7 @@
 
 	async function handleRemoveMember(userId: number, username: string) {
 		if (!household) return;
+		const householdId = household.id;
 
 		dialog.show({
 			title: 'Remove Member',
@@ -131,13 +132,13 @@
 				error = '';
 
 				try {
-					await removeMember(household.id, userId);
+					await removeMember(householdId, userId);
 					success = 'Member removed successfully';
 					toast.success('Member removed successfully');
 					setTimeout(() => (success = ''), 3000);
 
 					// Reload members
-					members = await getHouseholdMembers(household.id);
+					members = await getHouseholdMembers(householdId);
 				} catch (err) {
 					console.error('Failed to remove member:', err);
 					error = err instanceof Error ? err.message : 'Failed to remove member';
@@ -151,6 +152,7 @@
 
 	async function handleRevokeInvitation(invitationId: number, email: string) {
 		if (!household) return;
+		const householdId = household.id;
 
 		dialog.show({
 			title: 'Revoke Invitation',
@@ -161,13 +163,13 @@
 				success = '';
 
 				try {
-					await revokeInvitation(household.id, invitationId);
+					await revokeInvitation(householdId, invitationId);
 					success = 'Invitation revoked successfully';
 					toast.success('Invitation revoked successfully');
 					setTimeout(() => (success = ''), 3000);
 
 					// Reload invitations
-					invitations = await getHouseholdInvitations(household.id);
+					invitations = await getHouseholdInvitations(householdId);
 				} catch (err) {
 					console.error('Failed to revoke invitation:', err);
 					error = err instanceof Error ? err.message : 'Failed to revoke invitation';

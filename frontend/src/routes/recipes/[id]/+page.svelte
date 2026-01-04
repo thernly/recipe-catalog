@@ -110,13 +110,15 @@
 
 	async function handleDelete() {
 		if (!recipe) return;
+		const deleteId = recipe.id;
+		const deleteName = recipe.name;
 
 		dialog.show({
 			title: 'Delete Recipe',
-			message: `Are you sure you want to delete "${recipe.name}"? It will be moved to trash.`,
+			message: `Are you sure you want to delete "${deleteName}"? It will be moved to trash.`,
 			onConfirm: async () => {
 				try {
-					await deleteRecipe(recipe.id);
+					await deleteRecipe(deleteId);
 					toast.success('Recipe deleted successfully');
 					goto('/recipes');
 				} catch (err) {
@@ -930,7 +932,7 @@
 
 	/* Print styles */
 	@media print {
-		.recipe-header button,
+		.back-button,
 		.btn,
 		.btn-danger {
 			display: none;

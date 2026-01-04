@@ -56,11 +56,12 @@
 			return;
 		}
 
+		const recipeId = recipe.id;
 		dialog.show({
 			title: 'Cancel Editing',
 			message: 'Are you sure you want to cancel? Any unsaved changes will be lost.',
 			onConfirm: () => {
-				goto(`/recipes/${recipe.id}`);
+				goto(`/recipes/${recipeId}`);
 			}
 		});
 	}
