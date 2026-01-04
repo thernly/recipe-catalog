@@ -19,8 +19,8 @@ importers:
         specifier: ^0.5.19
         version: 0.5.19(tailwindcss@3.4.18)
       lucide-svelte:
-        specifier: ^0.555.0
-        version: 0.555.0(svelte@5.44.1)
+        specifier: ^0.562.0
+        version: 0.562.0(svelte@5.44.1)
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^7.0.0
@@ -1544,8 +1544,8 @@ packages:
     resolution: {integrity: sha512-B5Y16Jr9LB9dHVkh6ZevG+vAbOsNOYCX+sXvFWFu7B3Iz5mijW3zdbMyhsh8ANd2mSWBYdJgnqi+mL7/LrOPYg==}
     engines: {node: 20 || >=22}
 
-  lucide-svelte@0.555.0:
-    resolution: {integrity: sha512-2kWIcstKGgQObLGpYXmcYwm/Y83Am+AQcP7MnybrmaRU1+QUJ/WSEpv/wAbwaSkrWUiN1TX/9FuWQKLeEeWCrQ==}
+  lucide-svelte@0.562.0:
+    resolution: {integrity: sha512-kSJDH/55lf0mun/o4nqWBXOcq0fWYzPeIjbTD97ywoeumAB9kWxtM06gC7oynqjtK3XhAljWSz5RafIzPEYIQA==}
     peerDependencies:
       svelte: ^3 || ^4 || ^5.0.0-next.42
 
@@ -3478,7 +3478,7 @@ snapshots:
 
   lru-cache@11.2.4: {}
 
-  lucide-svelte@0.555.0(svelte@5.44.1):
+  lucide-svelte@0.562.0(svelte@5.44.1):
     dependencies:
       svelte: 5.44.1
 
