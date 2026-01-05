@@ -453,9 +453,9 @@ def _add_metadata_box(pdf: FPDF, items: list[tuple[str, str]]):
     pdf.set_text_color(*COLOR_BODY_TEXT)
 
     for label, value in items:
-        pdf.set_font(FONT_FAMILY, "B", FONT_SIZE_BODY)
+        pdf.set_font(pdf.font_family, "B", FONT_SIZE_BODY)
         pdf.cell(PDF_LABEL_WIDTH, line_height, f"{label}:")
-        pdf.set_font(FONT_FAMILY, "", FONT_SIZE_BODY)
+        pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
         pdf.cell(0, line_height, _clean_text(value), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
 
@@ -467,13 +467,13 @@ def _collect_metadata(schema_recipe: dict[str, Any]) -> list[tuple[str, str]]:
         items.append(("Yield", str(schema_recipe["recipeYield"])))
 
     if schema_recipe.get("prepTime"):
-        items.append(("Prep Time", schema_recipe["prepTime"]))
+        items.append(("Prep Time", _format_duration(schema_recipe["prepTime"])))
 
     if schema_recipe.get("cookTime"):
-        items.append(("Cook Time", schema_recipe["cookTime"]))
+        items.append(("Cook Time", _format_duration(schema_recipe["cookTime"])))
 
     if schema_recipe.get("totalTime"):
-        items.append(("Total Time", schema_recipe["totalTime"]))
+        items.append(("Total Time", _format_duration(schema_recipe["totalTime"])))
 
     if schema_recipe.get("recipeCategory"):
         categories = schema_recipe["recipeCategory"]
@@ -492,6 +492,54 @@ def _collect_metadata(schema_recipe: dict[str, Any]) -> list[tuple[str, str]]:
         items.append(("Source", schema_recipe["url"]))
 
     return items
+
+
+def _format_duration(duration_str: str) -> str:
+    """Convert ISO 8601 duration format to human-readable format.
+
+    Examples:
+        PT45M -> 45 minutes
+        PT3H45M -> 3 hours 45 minutes
+        PT1H30M -> 1 hour 30 minutes
+        PT4H -> 4 hours
+
+    Args:
+        duration_str: ISO 8601 duration string (e.g., 'PT45M', 'PT3H45M')
+
+    Returns:
+        Human-readable duration string
+    """
+    if not duration_str or not isinstance(duration_str, str):
+        return duration_str
+
+    # If it doesn't look like ISO 8601 format, return as-is
+    if not duration_str.startswith("PT"):
+        return duration_str
+
+    # Extract hours and minutes
+    import re
+
+    hours = 0
+    minutes = 0
+
+    # Match hours (e.g., '3H')
+    hour_match = re.search(r"(\d+)H", duration_str)
+    if hour_match:
+        hours = int(hour_match.group(1))
+
+    # Match minutes (e.g., '45M')
+    minute_match = re.search(r"(\d+)M", duration_str)
+    if minute_match:
+        minutes = int(minute_match.group(1))
+
+    # Build human-readable string
+    parts = []
+    if hours > 0:
+        parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+    if minutes > 0:
+        parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+
+    return " ".join(parts) if parts else duration_str
 
 
 def _replace_unicode_punctuation(text: str) -> tuple[str, bool]:
