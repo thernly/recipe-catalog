@@ -461,6 +461,9 @@ def _add_metadata_box(pdf: FPDF, items: list[tuple[str, str]]):
         pdf.cell(0, line_height, _clean_text(value))
         text_y += line_height
 
+    # Reset Y position to after the box
+    pdf.set_y(y + box_height)
+
 
 def _collect_metadata(schema_recipe: dict[str, Any]) -> list[tuple[str, str]]:
     """Collect metadata items from recipe."""
