@@ -20,6 +20,7 @@ from app.core.config import settings
 from app.core.database import Base, get_db
 from app.core.security import get_password_hash
 from app.main import app
+from app.models.household import Household, HouseholdMember
 from app.models.user import User
 
 
@@ -140,34 +141,52 @@ async def test_user_headers(client: AsyncClient):
 
 
 @pytest_asyncio.fixture
-async def auth_headers(test_user_headers):
-    """Alias for test_user_headers to match test expectations."""
-    return test_user_headers
+async def test_household(db: AsyncSession, test_user: User):
+    """Create a test household for test_user."""
+    household = Household(
+        name="Test Household",
+        owner_user_id=test_user.id,
+        max_members=10,
+    )
+    db.add(household)
+    await db.commit()
+    await db.refresh(household)
+
+    # Add user as household member
+    member = HouseholdMember(
+        household_id=household.id,
+        user_id=test_user.id,
+        role="owner",
+    )
+    db.add(member)
+    await db.commit()
+
+    # Return dict format for compatibility with existing tests
+    return {
+        "id": household.id,
+        "name": household.name,
+        "owner_user_id": household.owner_user_id,
+    }
 
 
 @pytest_asyncio.fixture
-async def test_household(client: AsyncClient, test_user_headers: dict):
-    """Create a test household and return its data."""
-    # Get the user's household (created automatically on registration)
-    response = await client.get("/api/v1/households/me", headers=test_user_headers)
-
-    if response.status_code == 200:
-        household = response.json()
-        return {
-            "id": household["id"],
-            "name": household["name"],
-            "owner_user_id": household["owner_user_id"],
-        }
-
-    # If no household exists, create one
-    create_response = await client.post(
-        "/api/v1/households/",
-        headers=test_user_headers,
-        json={"name": "Test Household"},
+async def auth_headers(client: AsyncClient, test_user: User, test_household: dict):
+    """Create auth headers for the test_user fixture."""
+    # Login with the test_user credentials
+    login_response = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "test@example.com", "password": "testpassword"},
     )
-    household = create_response.json()
-    return {
-        "id": household["id"],
-        "name": household["name"],
-        "owner_user_id": household["owner_user_id"],
-    }
+
+    if login_response.status_code != 200:
+        return {}
+
+    # Extract token from cookies
+    token = login_response.cookies.get("access_token")
+    csrf_token = login_response.cookies.get("csrf_token")
+
+    headers = {"Authorization": f"Bearer {token}"}
+    if csrf_token:
+        headers["X-CSRF-Token"] = csrf_token
+
+    return headers

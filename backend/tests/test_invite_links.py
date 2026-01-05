@@ -9,13 +9,11 @@ from app.services import household as household_service
 
 
 @pytest.mark.asyncio
-async def test_create_invite_link(
-    client: AsyncClient, test_user_headers: dict, test_household: dict
-):
+async def test_create_invite_link(client: AsyncClient, auth_headers: dict, test_household: dict):
     """Test creating an invite link."""
     response = await client.post(
         f"/api/v1/households/{test_household['id']}/invite-links",
-        headers=test_user_headers,
+        headers=auth_headers,
         json={"expires_in_days": 7},
     )
 
@@ -46,14 +44,12 @@ async def test_invite_code_format(db: AsyncSession, test_household: dict):
 
 
 @pytest.mark.asyncio
-async def test_get_invite_link_info(
-    client: AsyncClient, test_user_headers: dict, test_household: dict
-):
+async def test_get_invite_link_info(client: AsyncClient, auth_headers: dict, test_household: dict):
     """Test getting invite link information."""
     # Create invite link
     create_response = await client.post(
         f"/api/v1/households/{test_household['id']}/invite-links",
-        headers=test_user_headers,
+        headers=auth_headers,
         json={"expires_in_days": 7},
     )
     code = create_response.json()["code"]
@@ -71,7 +67,7 @@ async def test_get_invite_link_info(
 @pytest.mark.asyncio
 async def test_join_via_invite_code(
     client: AsyncClient,
-    test_user_headers: dict,
+    auth_headers: dict,
     test_household: dict,
 ):
     """Test joining a household via invite code."""
@@ -101,7 +97,7 @@ async def test_join_via_invite_code(
     # Create invite link from original household
     create_response = await client.post(
         f"/api/v1/households/{test_household['id']}/invite-links",
-        headers=test_user_headers,
+        headers=auth_headers,
         json={"expires_in_days": 7},
     )
     assert create_response.status_code == status.HTTP_201_CREATED
@@ -124,7 +120,7 @@ async def test_join_via_invite_code(
 @pytest.mark.asyncio
 async def test_invite_code_one_time_use(
     client: AsyncClient,
-    test_user_headers: dict,
+    auth_headers: dict,
     test_household: dict,
 ):
     """Test that invite codes can only be used once."""
@@ -167,7 +163,7 @@ async def test_invite_code_one_time_use(
     # Create invite link
     create_response = await client.post(
         f"/api/v1/households/{test_household['id']}/invite-links",
-        headers=test_user_headers,
+        headers=auth_headers,
         json={"expires_in_days": 7},
     )
     code = create_response.json()["code"]
@@ -193,14 +189,14 @@ async def test_invite_code_one_time_use(
 @pytest.mark.asyncio
 async def test_cannot_join_if_already_in_household(
     client: AsyncClient,
-    test_user_headers: dict,
+    auth_headers: dict,
     test_household: dict,
 ):
     """Test that users already in a household cannot join another."""
     # Create invite link
     create_response = await client.post(
         f"/api/v1/households/{test_household['id']}/invite-links",
-        headers=test_user_headers,
+        headers=auth_headers,
         json={"expires_in_days": 7},
     )
     code = create_response.json()["code"]
@@ -208,7 +204,7 @@ async def test_cannot_join_if_already_in_household(
     # Try to join (but already in a household)
     join_response = await client.post(
         "/api/v1/households/join",
-        headers=test_user_headers,
+        headers=auth_headers,
         json={"code": code},
     )
 

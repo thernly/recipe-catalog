@@ -3,10 +3,12 @@ PDF export utility for recipes and collections using fpdf2.
 """
 
 import html
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from fpdf import FPDF
+from fpdf import FPDF, XPos, YPos
 
+from app.core.config import settings
 from app.core.constants import (
     PDF_AUTO_PAGE_BREAK_MARGIN,
     PDF_BOX_WIDTH,
@@ -23,11 +25,96 @@ from app.core.constants import (
     PDF_PADDING,
     PDF_TOC_MIN_RECIPES,
 )
+from app.core.logging import get_logger
 from app.utils.recipe_format import convert_to_schema_org
 
 
 if TYPE_CHECKING:
     from app.models.recipe import Recipe
+
+
+# Logger for PDF export utilities
+logger = get_logger(__name__)
+
+# Font asset detection
+_FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
+
+
+def _locate_unicode_font() -> tuple[Path, Path | None, Path | None, str] | None:
+    """Locate a preferred Unicode font and its optional bold/italic variants.
+
+    Returns tuple (regular_path, bold_path_or_None, italic_path_or_None, family_name) or None.
+    """
+    for fname in settings.PDF_UNICODE_FONTS:
+        candidate = _FONT_DIR / fname
+        if candidate.exists():
+            # Normalize base name. If file is Named like 'NotoSans-Regular', strip the '-Regular' suffix
+            stem = candidate.stem
+            base = stem
+            if stem.lower().endswith("regular"):
+                base = stem[: -len("regular")]
+                base = base.rstrip("-_")
+
+            parent = candidate.parent
+            # Common bold/italic variants using base
+            bold_candidates = [
+                f"{base}-Bold.ttf",
+                f"{base}Bold.ttf",
+                f"{base}-B.ttf",
+                f"{base}-Bold.otf",
+                f"{base}Bold.otf",
+            ]
+            italic_candidates = [
+                f"{base}-Italic.ttf",
+                f"{base}Italic.ttf",
+                f"{base}-Oblique.ttf",
+                f"{base}-Italic.otf",
+            ]
+
+            bold_path = None
+            italic_path = None
+            for b in bold_candidates:
+                p = parent / b
+                if p.exists():
+                    bold_path = p
+                    break
+            for it in italic_candidates:
+                p = parent / it
+                if p.exists():
+                    italic_path = p
+                    break
+
+            # family name should not include '-Regular' suffix
+            family_name = base
+            logger.debug(
+                "located_unicode_font",
+                candidate=str(candidate),
+                bold=str(bold_path),
+                italic=str(italic_path),
+                family=family_name,
+            )
+            return candidate, bold_path, italic_path, family_name
+    return None
+
+
+_FONT_ASSETS = _locate_unicode_font()
+UNICODE_FONT_AVAILABLE = _FONT_ASSETS is not None
+_NOTO_REGULAR = _FONT_ASSETS[0] if UNICODE_FONT_AVAILABLE else None
+_NOTO_BOLD = _FONT_ASSETS[1] if UNICODE_FONT_AVAILABLE else None
+_NOTO_ITALIC = _FONT_ASSETS[2] if UNICODE_FONT_AVAILABLE else None
+_UNICODE_FONT_FAMILY = _FONT_ASSETS[3] if UNICODE_FONT_AVAILABLE else None
+
+# Common unicode punctuation replacements to safe ASCII equivalents
+_UNICODE_REPLACEMENTS = {
+    "\u2019": "'",  # right single quotation mark
+    "\u2018": "'",  # left single quotation mark
+    "\u201c": '"',  # left double quotation mark
+    "\u201d": '"',  # right double quotation mark
+    "\u2013": "-",  # en dash
+    "\u2014": "--",  # em dash
+    "\u2026": "...",  # ellipsis
+    "\u00a0": " ",  # non-breaking space
+}
 
 
 # Font constants
@@ -55,20 +142,66 @@ class RecipePDF(FPDF):
     """Custom PDF class for recipe formatting with Unicode support."""
 
     def __init__(self):
-        """Initialize PDF with Unicode font."""
+        """Initialize PDF with Unicode font if available."""
         super().__init__()
-        # Use built-in Unicode font support
-        # fpdf2 automatically handles Unicode when you don't restrict to core fonts
+        # Use built-in Unicode font support when available
         self.set_auto_page_break(auto=True, margin=PDF_AUTO_PAGE_BREAK_MARGIN)
+
+        if UNICODE_FONT_AVAILABLE:
+            try:
+                # Register detected font family (regular + bold/italic if present)
+                font_name = _UNICODE_FONT_FAMILY or "CustomUnicode"
+                # Register regular font using explicit keyword args per fpdf2 docs to avoid
+                # using the deprecated 'uni' parameter. Fall back to older positional
+                # signatures if necessary for compatibility with older fpdf2 versions.
+                try:
+                    self.add_font(family=font_name, style="", fname=str(_NOTO_REGULAR))
+                except TypeError:
+                    try:
+                        # Positional: family, style, fname
+                        self.add_font(font_name, "", str(_NOTO_REGULAR))
+                    except TypeError:
+                        # Older variant: family, fname
+                        self.add_font(font_name, str(_NOTO_REGULAR))
+
+                # Bold
+                if _NOTO_BOLD and _NOTO_BOLD.exists():
+                    try:
+                        self.add_font(family=font_name, style="B", fname=str(_NOTO_BOLD))
+                    except TypeError:
+                        try:
+                            self.add_font(font_name, "B", str(_NOTO_BOLD))
+                        except TypeError:
+                            self.add_font(font_name, str(_NOTO_BOLD))
+
+                # Italic
+                if _NOTO_ITALIC and _NOTO_ITALIC.exists():
+                    try:
+                        self.add_font(family=font_name, style="I", fname=str(_NOTO_ITALIC))
+                    except TypeError:
+                        try:
+                            self.add_font(font_name, "I", str(_NOTO_ITALIC))
+                        except TypeError:
+                            self.add_font(font_name, str(_NOTO_ITALIC))
+
+                self.font_family = font_name
+            except (OSError, RuntimeError, ValueError) as e:
+                logger.exception("failed_to_register_unicode_font", error=str(e))
+                # Fall back to core font
+                self.font_family = "Helvetica"
+        else:
+            self.font_family = "Helvetica"
+
+        # Set a default font so measurements work consistently
+        self.set_font(self.font_family, "", FONT_SIZE_BODY)
 
     def header(self):
         """Add header to each page (empty for now)."""
-        pass
 
     def footer(self):
         """Add page numbers to footer."""
         self.set_y(PDF_FOOTER_Y_POSITION)
-        self.set_font(FONT_FAMILY, "I", FONT_SIZE_FOOTER)
+        self.set_font(self.font_family, "I", FONT_SIZE_FOOTER)
         self.set_text_color(*COLOR_FOOTER_TEXT)
         self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
@@ -99,9 +232,7 @@ def generate_recipe_pdf(recipe: "Recipe") -> bytes:
     return bytes(output) if not isinstance(output, bytes) else output
 
 
-def generate_collection_pdf(
-    collection_name: str, collection_description: str, recipes: list["Recipe"]
-) -> bytes:
+def generate_collection_pdf(collection_name: str, collection_description: str, recipes: list["Recipe"]) -> bytes:
     """
     Generate a PDF for a collection of recipes.
 
@@ -141,23 +272,23 @@ def _add_collection_cover(pdf: FPDF, name: str, description: str):
     pdf.set_y(PDF_COVER_VERTICAL_POSITION)
 
     # Collection title
-    pdf.set_font(FONT_FAMILY, "B", FONT_SIZE_COVER_TITLE)
+    pdf.set_font(pdf.font_family, "B", FONT_SIZE_COVER_TITLE)
     pdf.set_text_color(*COLOR_PRIMARY_TEXT)
     pdf.multi_cell(0, 15, _clean_text(name), align="C")
 
     # Description
     if description:
         pdf.ln(10)
-        pdf.set_font(FONT_FAMILY, "", FONT_SIZE_DESCRIPTION)
+        pdf.set_font(pdf.font_family, "", FONT_SIZE_DESCRIPTION)
         pdf.set_text_color(*COLOR_SECONDARY_TEXT)
         pdf.multi_cell(0, 8, _clean_text(description), align="C")
 
 
 def _add_table_of_contents(pdf: FPDF, recipes: list["Recipe"]):
     """Add table of contents page."""
-    pdf.set_font(FONT_FAMILY, "B", FONT_SIZE_TOC_TITLE)
+    pdf.set_font(pdf.font_family, "B", FONT_SIZE_TOC_TITLE)
     pdf.set_text_color(*COLOR_PRIMARY_TEXT)
-    pdf.cell(0, 12, "Table of Contents", ln=True)
+    pdf.cell(0, 12, "Table of Contents", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(5)
 
     # Draw underline
@@ -167,7 +298,7 @@ def _add_table_of_contents(pdf: FPDF, recipes: list["Recipe"]):
     pdf.ln(8)
 
     # List recipes
-    pdf.set_font(FONT_FAMILY, "", FONT_SIZE_TOC_BODY)
+    pdf.set_font(pdf.font_family, "", FONT_SIZE_TOC_BODY)
     pdf.set_text_color(*COLOR_BODY_TEXT)
     for i, recipe in enumerate(recipes, 1):
         pdf.cell(10, 8, f"{i}.")
@@ -177,7 +308,7 @@ def _add_table_of_contents(pdf: FPDF, recipes: list["Recipe"]):
 def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
     """Add a single recipe to the PDF."""
     # Recipe title
-    pdf.set_font(FONT_FAMILY, "B", FONT_SIZE_TITLE)
+    pdf.set_font(pdf.font_family, "B", FONT_SIZE_TITLE)
     pdf.set_text_color(*COLOR_PRIMARY_TEXT)
     pdf.multi_cell(0, 10, _clean_text(schema_recipe.get("name", "Untitled Recipe")))
 
@@ -189,7 +320,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
 
     # Description
     if schema_recipe.get("description"):
-        pdf.set_font(FONT_FAMILY, "I", FONT_SIZE_DESCRIPTION)
+        pdf.set_font(pdf.font_family, "I", FONT_SIZE_DESCRIPTION)
         pdf.set_text_color(*COLOR_SECONDARY_TEXT)
         pdf.multi_cell(0, 6, _clean_text(schema_recipe["description"]))
         pdf.ln(3)
@@ -203,7 +334,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
     # Ingredients
     if schema_recipe.get("recipeIngredient"):
         _add_section_header(pdf, "Ingredients")
-        pdf.set_font(FONT_FAMILY, "", FONT_SIZE_BODY)
+        pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
         pdf.set_text_color(*COLOR_BODY_TEXT)
         for ingredient in schema_recipe["recipeIngredient"]:
             # Calculate available width accounting for margins and indentation
@@ -224,7 +355,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
         equipment_list = equipment if isinstance(equipment, list) else [equipment]
 
         _add_section_header(pdf, "Equipment")
-        pdf.set_font(FONT_FAMILY, "", FONT_SIZE_BODY)
+        pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
         pdf.set_text_color(*COLOR_BODY_TEXT)
         for item in equipment_list:
             # Calculate available width accounting for margins and indentation
@@ -245,7 +376,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
         instructions = schema_recipe["recipeInstructions"]
 
         if isinstance(instructions, list):
-            pdf.set_font(FONT_FAMILY, "", FONT_SIZE_BODY)
+            pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
             pdf.set_text_color(*COLOR_BODY_TEXT)
             for i, step in enumerate(instructions, 1):
                 step_text = step.get("text", str(step)) if isinstance(step, dict) else str(step)
@@ -261,7 +392,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
                 pdf.multi_cell(available_width, 6, f"{i}. {_clean_text(step_text)}")
                 pdf.set_x(left_margin)  # Reset to left margin for next item
         elif isinstance(instructions, str):
-            pdf.set_font(FONT_FAMILY, "", FONT_SIZE_BODY)
+            pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
             pdf.multi_cell(0, 6, _clean_text(instructions))
 
         pdf.ln(3)
@@ -269,7 +400,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
     # Notes
     if schema_recipe.get("notes"):
         _add_section_header(pdf, "Notes")
-        pdf.set_font(FONT_FAMILY, "", FONT_SIZE_BODY)
+        pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
         pdf.set_text_color(*COLOR_BODY_TEXT)
         pdf.multi_cell(0, 6, _clean_text(schema_recipe["notes"]))
         pdf.ln(3)
@@ -280,7 +411,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
         nutrition_items = [(key, value) for key, value in nutrition.items() if value]
         if nutrition_items:
             _add_section_header(pdf, "Nutrition Information")
-            pdf.set_font(FONT_FAMILY, "", FONT_SIZE_BODY)
+            pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
             pdf.set_text_color(*COLOR_BODY_TEXT)
 
             # Display in two columns
@@ -293,9 +424,9 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
 
 def _add_section_header(pdf: FPDF, title: str):
     """Add a section header."""
-    pdf.set_font(FONT_FAMILY, "B", FONT_SIZE_SECTION_HEADER)
+    pdf.set_font(pdf.font_family, "B", FONT_SIZE_SECTION_HEADER)
     pdf.set_text_color(*COLOR_PRIMARY_TEXT)
-    pdf.cell(0, 8, title, ln=True)
+    pdf.cell(0, 8, title, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
 
 
@@ -318,18 +449,14 @@ def _add_metadata_box(pdf: FPDF, items: list[tuple[str, str]]):
 
     # Add text
     pdf.set_xy(x + padding + 2, y + padding)
-    pdf.set_font(FONT_FAMILY, "", FONT_SIZE_BODY)
+    pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
     pdf.set_text_color(*COLOR_BODY_TEXT)
 
     for label, value in items:
         pdf.set_font(FONT_FAMILY, "B", FONT_SIZE_BODY)
         pdf.cell(PDF_LABEL_WIDTH, line_height, f"{label}:")
         pdf.set_font(FONT_FAMILY, "", FONT_SIZE_BODY)
-        pdf.cell(0, line_height, _clean_text(value), ln=True)
-        pdf.set_x(x + padding + 2)
-
-    # Move cursor below box
-    pdf.set_xy(x, y + box_height)
+        pdf.cell(0, line_height, _clean_text(value), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
 
 def _collect_metadata(schema_recipe: dict[str, Any]) -> list[tuple[str, str]]:
@@ -367,9 +494,27 @@ def _collect_metadata(schema_recipe: dict[str, Any]) -> list[tuple[str, str]]:
     return items
 
 
+def _replace_unicode_punctuation(text: str) -> tuple[str, bool]:
+    """Replace common Unicode punctuation with ASCII equivalents.
+
+    Returns a tuple of (new_text, changed_flag).
+    """
+    changed = False
+    for uni_char, repl in _UNICODE_REPLACEMENTS.items():
+        if uni_char in text:
+            text = text.replace(uni_char, repl)
+            changed = True
+    return text, changed
+
+
 def _clean_text(text: str) -> str:
     """
     Clean and unescape HTML entities in text for PDF output.
+
+    - Unescape HTML entities
+    - Replace common Unicode punctuation with ASCII equivalents
+    - Remove control characters
+    - Replace characters outside the Latin-1 range with '?'
 
     Args:
         text: Text that may contain HTML entities
@@ -383,8 +528,25 @@ def _clean_text(text: str) -> str:
     # Unescape HTML entities
     text = html.unescape(text)
 
-    # Remove any remaining problematic characters
-    # fpdf2 handles most characters well, but we'll strip control chars
+    # Replace smart punctuation (curly quotes, dashes, ellipsis, etc.)
+    text, changed = _replace_unicode_punctuation(text)
+    if changed:
+        logger.debug("replaced_unicode_punctuation_in_text")
+
+    # Remove control characters (keep common whitespace)
     text = "".join(char for char in text if ord(char) >= PDF_MIN_CHAR_CODE or char in "\n\r\t")
 
-    return text
+    # fpdf (core fonts) supports Latin-1 range. Replace characters outside 0-255 with '?' to avoid fpdf errors.
+    cleaned_chars = []
+    replaced_any = False
+    for char in text:
+        code = ord(char)
+        if code > 255:
+            cleaned_chars.append("?")
+            replaced_any = True
+        else:
+            cleaned_chars.append(char)
+    if replaced_any:
+        logger.warning("replaced_non_latin1_chars_in_text")
+
+    return "".join(cleaned_chars)

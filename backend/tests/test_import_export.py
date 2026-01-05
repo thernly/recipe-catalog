@@ -3,7 +3,7 @@ Tests for import and export endpoints
 """
 
 import json
-from datetime import UTC
+from datetime import UTC, datetime
 from io import BytesIO
 
 import pytest
@@ -16,6 +16,7 @@ from app.models.collection import Collection
 from app.models.household import Household, HouseholdMember
 from app.models.recipe import Recipe
 from app.models.user import User
+from app.utils.pdf_export import UNICODE_FONT_AVAILABLE
 
 
 @pytest_asyncio.fixture
@@ -43,20 +44,32 @@ async def test_household(db: AsyncSession, test_user: User):
 
 
 @pytest_asyncio.fixture
-async def auth_headers(client: AsyncClient, test_household: Household):
+async def auth_headers(client: AsyncClient, test_user: User, test_household: Household):
     """Authenticate test user (sets cookies automatically)."""
-    await client.post(
+    response = await client.post(
         "/api/v1/auth/login",
         json={
             "email": "test@example.com",
             "password": "testpassword",
         },
     )
-    return {}
+
+    if response.status_code != 200:
+        return {}
+
+    # Extract token from cookies
+    token = response.cookies.get("access_token")
+    csrf_token = response.cookies.get("csrf_token")
+
+    headers = {"Authorization": f"Bearer {token}"}
+    if csrf_token:
+        headers["X-CSRF-Token"] = csrf_token
+
+    return headers
 
 
 @pytest.mark.asyncio
-async def test_import_single_recipe_from_file(client: AsyncClient, auth_headers: dict):
+async def test_import_single_recipe_from_file(client: AsyncClient, auth_headers: dict, test_household: Household):
     """Test importing a single recipe from JSON file"""
     recipe_data = {
         "name": "Test Recipe",
@@ -75,7 +88,7 @@ async def test_import_single_recipe_from_file(client: AsyncClient, auth_headers:
     files = {"file": ("recipe.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "skip"}
 
-    response = await client.post("/api/v1/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files, headers=auth_headers)
 
     assert response.status_code == 200
     result = response.json()
@@ -85,7 +98,7 @@ async def test_import_single_recipe_from_file(client: AsyncClient, auth_headers:
 
 
 @pytest.mark.asyncio
-async def test_import_multiple_recipes_from_file(client: AsyncClient, auth_headers: dict):
+async def test_import_multiple_recipes_from_file(client: AsyncClient, auth_headers: dict, test_household: Household):
     """Test importing multiple recipes from JSON file"""
     recipes_data = [
         {
@@ -106,7 +119,7 @@ async def test_import_multiple_recipes_from_file(client: AsyncClient, auth_heade
     files = {"file": ("recipes.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "skip"}
 
-    response = await client.post("/api/v1/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files, headers=auth_headers)
 
     assert response.status_code == 200
     result = response.json()
@@ -115,12 +128,13 @@ async def test_import_multiple_recipes_from_file(client: AsyncClient, auth_heade
 
 @pytest.mark.asyncio
 async def test_import_duplicate_handling_skip(
-    client: AsyncClient, test_user, test_db, auth_headers: dict
+    client: AsyncClient, test_user, test_db, auth_headers: dict, test_household: Household
 ):
     """Test duplicate handling with 'skip' option"""
     # Create existing recipe
     existing_recipe = Recipe(
         user_id=test_user.id,
+        household_id=test_household.id,
         name="Existing Recipe",
         description="Already exists",
         recipe_data={"recipeIngredient": ["old ingredient"]},
@@ -139,7 +153,7 @@ async def test_import_duplicate_handling_skip(
     files = {"file": ("recipe.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "skip"}
 
-    response = await client.post("/api/v1/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files, headers=auth_headers)
 
     assert response.status_code == 200
     result = response.json()
@@ -149,12 +163,13 @@ async def test_import_duplicate_handling_skip(
 
 @pytest.mark.asyncio
 async def test_import_duplicate_handling_update(
-    client: AsyncClient, test_user, test_db, auth_headers: dict
+    client: AsyncClient, test_user, test_db, auth_headers: dict, test_household: Household
 ):
     """Test duplicate handling with 'update' option"""
     # Create existing recipe
     existing_recipe = Recipe(
         user_id=test_user.id,
+        household_id=test_household.id,
         name="Recipe to Update",
         description="Old description",
         recipe_data={"recipeIngredient": ["old ingredient"]},
@@ -174,7 +189,7 @@ async def test_import_duplicate_handling_update(
     files = {"file": ("recipe.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "update"}
 
-    response = await client.post("/api/v1/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files, headers=auth_headers)
 
     assert response.status_code == 200
     result = response.json()
@@ -189,12 +204,13 @@ async def test_import_duplicate_handling_update(
 
 @pytest.mark.asyncio
 async def test_import_duplicate_handling_create(
-    client: AsyncClient, test_user, test_db, auth_headers: dict
+    client: AsyncClient, test_user, test_db, auth_headers: dict, test_household: Household
 ):
     """Test duplicate handling with 'create' option (allows duplicates)"""
     # Create existing recipe
     existing_recipe = Recipe(
         user_id=test_user.id,
+        household_id=test_household.id,
         name="Duplicate Name",
         description="First one",
         recipe_data={},
@@ -213,9 +229,7 @@ async def test_import_duplicate_handling_create(
     files = {"file": ("recipe.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "create"}
 
-    response = await client.post(
-        "/api/v1/import/recipes", data=data, files=files, headers=auth_headers
-    )
+    response = await client.post("/api/v1/import/recipes", data=data, files=files, headers=auth_headers)
 
     assert response.status_code == 200
     result = response.json()
@@ -230,7 +244,9 @@ async def test_import_duplicate_handling_create(
 
 
 @pytest.mark.asyncio
-async def test_import_to_collection(client: AsyncClient, test_user, test_db, auth_headers: dict):
+async def test_import_to_collection(
+    client: AsyncClient, test_user, test_db, auth_headers: dict, test_household: Household
+):
     """Test importing recipes directly into a collection"""
     # Create collection
     collection = Collection(user_id=test_user.id, name="Test Collection", description="For imports")
@@ -247,12 +263,12 @@ async def test_import_to_collection(client: AsyncClient, test_user, test_db, aut
     files = {"file": ("recipe.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "skip", "collection_id": str(collection.id)}
 
-    response = await client.post("/api/v1/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files, headers=auth_headers)
 
     assert response.status_code == 200
 
     # Verify recipe is in collection
-    response = await client.get(f"/api/v1/collections/{collection.id}/recipes")
+    response = await client.get(f"/api/v1/collections/{collection.id}/recipes", headers=auth_headers)
     assert response.status_code == 200
     recipes = response.json()
     assert len(recipes) == 1
@@ -260,31 +276,31 @@ async def test_import_to_collection(client: AsyncClient, test_user, test_db, aut
 
 
 @pytest.mark.asyncio
-async def test_import_invalid_json(client: AsyncClient, auth_headers: dict):
+async def test_import_invalid_json(client: AsyncClient, auth_headers: dict, test_household: Household):
     """Test importing invalid JSON file"""
     files = {"file": ("invalid.json", BytesIO(b"not valid json"), "application/json")}
     data = {"duplicate_handling": "skip"}
 
-    response = await client.post("/api/v1/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files, headers=auth_headers)
 
     assert response.status_code == 400
     assert "Invalid JSON" in response.json()["message"]
 
 
 @pytest.mark.asyncio
-async def test_import_non_json_file(client: AsyncClient, auth_headers: dict):
+async def test_import_non_json_file(client: AsyncClient, auth_headers: dict, test_household: Household):
     """Test importing non-JSON file"""
     files = {"file": ("recipe.txt", BytesIO(b"some text"), "text/plain")}
     data = {"duplicate_handling": "skip"}
 
-    response = await client.post("/api/v1/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files, headers=auth_headers)
 
     assert response.status_code == 400
     assert "must be a JSON file" in response.json()["message"]
 
 
 @pytest.mark.asyncio
-async def test_import_recipes_json_endpoint(client: AsyncClient, auth_headers: dict):
+async def test_import_recipes_json_endpoint(client: AsyncClient, auth_headers: dict, test_household: Household):
     """Test importing recipes via JSON API endpoint (not file upload)"""
     recipes = [
         {"name": "API Recipe 1", "description": "From API", "recipeIngredient": ["ingredient 1"]},
@@ -307,11 +323,14 @@ async def test_import_recipes_json_endpoint(client: AsyncClient, auth_headers: d
 
 
 @pytest.mark.asyncio
-async def test_export_recipes_json(client: AsyncClient, test_user, test_db, auth_headers: dict):
+async def test_export_recipes_json(
+    client: AsyncClient, test_user, test_db, auth_headers: dict, test_household: Household
+):
     """Test exporting recipes as JSON"""
     # Create test recipes
     recipe1 = Recipe(
         user_id=test_user.id,
+        household_id=test_household.id,
         name="Export Recipe 1",
         description="First export",
         recipe_data={
@@ -321,6 +340,7 @@ async def test_export_recipes_json(client: AsyncClient, test_user, test_db, auth
     )
     recipe2 = Recipe(
         user_id=test_user.id,
+        household_id=test_household.id,
         name="Export Recipe 2",
         description="Second export",
         recipe_data={"recipeIngredient": ["ingredient 2"]},
@@ -328,7 +348,7 @@ async def test_export_recipes_json(client: AsyncClient, test_user, test_db, auth
     test_db.add_all([recipe1, recipe2])
     await test_db.commit()
 
-    response = await client.get("/api/v1/export/recipes?format=json")
+    response = await client.get("/api/v1/export/recipes?format=json", headers=auth_headers)
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
@@ -342,10 +362,13 @@ async def test_export_recipes_json(client: AsyncClient, test_user, test_db, auth
 
 
 @pytest.mark.asyncio
-async def test_export_recipes_markdown(client: AsyncClient, test_user, test_db, auth_headers: dict):
+async def test_export_recipes_markdown(
+    client: AsyncClient, test_user, test_db, auth_headers: dict, test_household: Household
+):
     """Test exporting recipes as Markdown"""
     recipe = Recipe(
         user_id=test_user.id,
+        household_id=test_household.id,
         name="Markdown Recipe",
         description="For markdown export",
         recipe_data={
@@ -357,7 +380,7 @@ async def test_export_recipes_markdown(client: AsyncClient, test_user, test_db, 
     test_db.add(recipe)
     await test_db.commit()
 
-    response = await client.get("/api/v1/export/recipes?format=markdown")
+    response = await client.get("/api/v1/export/recipes?format=markdown", headers=auth_headers)
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/markdown")
@@ -370,10 +393,13 @@ async def test_export_recipes_markdown(client: AsyncClient, test_user, test_db, 
 
 
 @pytest.mark.asyncio
-async def test_export_recipes_text(client: AsyncClient, test_user, test_db, auth_headers: dict):
+async def test_export_recipes_text(
+    client: AsyncClient, test_user, test_db, auth_headers: dict, test_household: Household
+):
     """Test exporting recipes as plain text"""
     recipe = Recipe(
         user_id=test_user.id,
+        household_id=test_household.id,
         name="Text Recipe",
         description="For text export",
         recipe_data={
@@ -384,7 +410,7 @@ async def test_export_recipes_text(client: AsyncClient, test_user, test_db, auth
     test_db.add(recipe)
     await test_db.commit()
 
-    response = await client.get("/api/v1/export/recipes?format=text")
+    response = await client.get("/api/v1/export/recipes?format=text", headers=auth_headers)
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/plain")
@@ -395,23 +421,30 @@ async def test_export_recipes_text(client: AsyncClient, test_user, test_db, auth
 
 
 @pytest.mark.asyncio
-async def test_export_collections_json(client: AsyncClient, test_user, test_db, auth_headers: dict):
+async def test_export_collections_json(
+    client: AsyncClient, test_user, test_db, auth_headers: dict, test_household: Household
+):
     """Test exporting collections as JSON"""
     # Create collection with recipes
-    collection = Collection(
-        user_id=test_user.id, name="Export Collection", description="Collection for export"
-    )
+    collection = Collection(user_id=test_user.id, name="Export Collection", description="Collection for export")
     test_db.add(collection)
     await test_db.commit()
 
-    # Add recipe to collection
-    recipe_data = {"name": "Collection Recipe", "description": "In collection", "recipe_data": {}}
-    response = await client.post("/api/v1/recipes/", json=recipe_data, headers=auth_headers)
-    recipe_id = response.json()["id"]
+    # Add recipe to collection - create recipe directly in database
+    recipe = Recipe(
+        user_id=test_user.id,
+        household_id=test_household.id,
+        name="Collection Recipe",
+        description="In collection",
+        recipe_data={},
+    )
+    test_db.add(recipe)
+    await test_db.commit()
+    await test_db.refresh(recipe)
 
     await client.post(
         f"/api/v1/collections/{collection.id}/recipes",
-        json={"recipe_id": recipe_id},
+        json={"recipe_id": recipe.id},
         headers=auth_headers,
     )
 
@@ -425,17 +458,13 @@ async def test_export_collections_json(client: AsyncClient, test_user, test_db, 
 
 
 @pytest.mark.asyncio
-async def test_export_collections_markdown(
-    client: AsyncClient, test_user, test_db, auth_headers: dict
-):
+async def test_export_collections_markdown(client: AsyncClient, test_user, test_db, auth_headers: dict):
     """Test exporting collections as Markdown"""
-    collection = Collection(
-        user_id=test_user.id, name="Markdown Collection", description="For markdown"
-    )
+    collection = Collection(user_id=test_user.id, name="Markdown Collection", description="For markdown")
     test_db.add(collection)
     await test_db.commit()
 
-    response = await client.get("/api/v1/export/collections?format=markdown")
+    response = await client.get("/api/v1/export/collections?format=markdown", headers=auth_headers)
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/markdown")
@@ -445,11 +474,12 @@ async def test_export_collections_markdown(
 
 
 @pytest.mark.asyncio
-async def test_export_all_data(client: AsyncClient, test_user, test_db, auth_headers: dict):
+async def test_export_all_data(client: AsyncClient, test_user, test_db, auth_headers: dict, test_household: Household):
     """Test exporting all user data"""
     # Create some data
     recipe = Recipe(
         user_id=test_user.id,
+        household_id=test_household.id,
         name="Complete Export Recipe",
         description="For complete export",
         recipe_data={},
@@ -458,7 +488,7 @@ async def test_export_all_data(client: AsyncClient, test_user, test_db, auth_hea
     test_db.add_all([recipe, collection])
     await test_db.commit()
 
-    response = await client.get("/api/v1/export/all")
+    response = await client.get("/api/v1/export/all", headers=auth_headers)
 
     assert response.status_code == 200
     data = json.loads(response.content)
@@ -472,11 +502,8 @@ async def test_export_all_data(client: AsyncClient, test_user, test_db, auth_hea
 
 
 @pytest.mark.asyncio
-async def test_export_excludes_deleted_recipes(
-    client: AsyncClient, test_user, test_db, auth_headers: dict
-):
+async def test_export_excludes_deleted_recipes(client: AsyncClient, test_user, test_db, auth_headers: dict):
     """Test that export excludes soft-deleted recipes"""
-    from datetime import datetime
 
     # Create normal recipe
     recipe1 = Recipe(
@@ -506,7 +533,153 @@ async def test_export_excludes_deleted_recipes(
 
 
 @pytest.mark.asyncio
-async def test_import_with_invalid_collection_id(client: AsyncClient, auth_headers: dict):
+async def test_export_recipe_pdf_without_image(
+    client: AsyncClient, test_user, test_db, auth_headers: dict, test_household: Household
+):
+    """Export a single recipe as PDF when it has no image"""
+    recipe = Recipe(
+        user_id=test_user.id,
+        household_id=test_household.id,
+        name="PDF No Image",
+        description="Recipe without image",
+        recipe_data={
+            "recipeIngredient": ["1 cup water"],
+            "recipeInstructions": [{"text": "Boil water"}],
+        },
+    )
+    test_db.add(recipe)
+    await test_db.commit()
+
+    response = await client.get(f"/api/v1/recipes/{recipe.id}/export?format=pdf", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content.startswith(b"%PDF")
+
+
+@pytest.mark.asyncio
+async def test_export_recipe_pdf_with_image(
+    client: AsyncClient, test_user, test_db, auth_headers: dict, test_household: Household
+):
+    """Export a single recipe as PDF when it has an embedded image"""
+    # Small 1x1 PNG base64
+    small_png_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII="
+
+    recipe = Recipe(
+        user_id=test_user.id,
+        household_id=test_household.id,
+        name="PDF With Image",
+        description="Recipe with embedded image",
+        recipe_data={
+            "recipeIngredient": ["1 cup water"],
+            "recipeInstructions": [{"text": "Boil water"}],
+            "images": [{"url": "http://example.com/image.png", "data": small_png_b64, "mimeType": "image/png"}],
+        },
+    )
+    test_db.add(recipe)
+    await test_db.commit()
+
+    response = await client.get(f"/api/v1/recipes/{recipe.id}/export?format=pdf", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content.startswith(b"%PDF")
+
+
+@pytest.mark.asyncio
+async def test_export_recipe_pdf_with_unicode_punctuation(
+    client: AsyncClient, test_user, test_db, auth_headers: dict, test_household: Household
+):
+    """Export a recipe containing smart quotes/em-dash/ellipsis - should succeed and not raise font error"""
+    name = "Chef’s Special — Today’s Soup"
+    description = "A rich and tasty soup… served fresh."
+
+    recipe = Recipe(
+        user_id=test_user.id,
+        household_id=test_household.id,
+        name=name,
+        description=description,
+        recipe_data={
+            "recipeIngredient": ["1 cup water"],
+            "recipeInstructions": [{"text": "Simmer and serve."}],
+        },
+    )
+    test_db.add(recipe)
+    await test_db.commit()
+
+    response = await client.get(f"/api/v1/recipes/{recipe.id}/export?format=pdf", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content.startswith(b"%PDF")
+
+
+@pytest.mark.asyncio
+async def test_export_recipe_pdf_non_latin_characters(
+    client: AsyncClient, test_user, test_db, auth_headers: dict, test_household: Household
+):
+    """Export a recipe with non-Latin characters (requires installed Unicode font)"""
+
+    if not UNICODE_FONT_AVAILABLE:
+        pytest.skip("Unicode font not available; skipping non-Latin export test")
+
+    name = "こんにちは 世界"  # Japanese: Hello world
+    description = "美味しいスープ"  # Japanese: delicious soup
+
+    recipe = Recipe(
+        user_id=test_user.id,
+        household_id=test_household.id,
+        name=name,
+        description=description,
+        recipe_data={
+            "recipeIngredient": ["1 cup water"],
+            "recipeInstructions": [{"text": "Serve warm."}],
+        },
+    )
+    test_db.add(recipe)
+    await test_db.commit()
+
+    response = await client.get(f"/api/v1/recipes/{recipe.id}/export?format=pdf", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content.startswith(b"%PDF")
+
+
+@pytest.mark.asyncio
+async def test_export_recipe_pdf_exporter_error(
+    client: AsyncClient, test_user, test_db, auth_headers: dict, test_household: Household, monkeypatch
+):
+    """When the exporter raises an exception, the endpoint returns 500 with generic message"""
+    recipe = Recipe(
+        user_id=test_user.id,
+        household_id=test_household.id,
+        name="PDF Error",
+        description="This will trigger an exporter error",
+        recipe_data={
+            "recipeIngredient": ["1 cup water"],
+            "recipeInstructions": [{"text": "Boil water"}],
+        },
+    )
+    test_db.add(recipe)
+    await test_db.commit()
+
+    # Monkeypatch the exporter to raise
+    def _raise_export(self, recipe):
+        raise Exception("boom")
+
+    monkeypatch.setattr("app.services.recipe_export.RecipeExporter.export_pdf", _raise_export)
+
+    response = await client.get(f"/api/v1/recipes/{recipe.id}/export?format=pdf", headers=auth_headers)
+
+    assert response.status_code == 500
+    data = response.json()
+    assert data["error_code"] == "INTERNAL_ERROR"
+    assert "Failed to generate PDF" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_import_with_invalid_collection_id(client: AsyncClient, auth_headers: dict, test_household: Household):
     """Test import fails with invalid collection ID"""
     recipe_data = {"name": "Test Recipe", "recipeIngredient": ["ingredient"]}
 
@@ -517,14 +690,14 @@ async def test_import_with_invalid_collection_id(client: AsyncClient, auth_heade
         "collection_id": "99999",  # Non-existent collection
     }
 
-    response = await client.post("/api/v1/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files, headers=auth_headers)
 
     assert response.status_code == 404
     assert "Collection not found" in response.json()["message"]
 
 
 @pytest.mark.asyncio
-async def test_import_handles_partial_failures(client: AsyncClient, auth_headers: dict):
+async def test_import_handles_partial_failures(client: AsyncClient, auth_headers: dict, test_household: Household):
     """Test that import handles partial failures gracefully"""
     recipes_data = [
         {
@@ -543,7 +716,7 @@ async def test_import_handles_partial_failures(client: AsyncClient, auth_headers
     files = {"file": ("recipes.json", BytesIO(json_content.encode()), "application/json")}
     data = {"duplicate_handling": "skip"}
 
-    response = await client.post("/api/v1/import/recipes", data=data, files=files)
+    response = await client.post("/api/v1/import/recipes", data=data, files=files, headers=auth_headers)
 
     assert response.status_code == 200
     result = response.json()

@@ -2,14 +2,18 @@
 Single recipe export operations.
 """
 
+import unicodedata
 from typing import Literal
+from urllib.parse import quote as _quote
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
+from app.core.logging import get_logger
 from app.models.household import Household
 from app.models.recipe import Recipe
 from app.models.user import User
@@ -17,13 +21,14 @@ from app.services.recipe_export import RecipeExporter
 
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 
 @router.get("/{recipe_id}/export")
 async def export_recipe(
     recipe_id: int,
-    format: Literal["json", "markdown", "text", "pdf"] = "json",
-    current_user: User = Depends(get_current_user),
+    fmt: Literal["json", "markdown", "text", "pdf"] = Query("json", alias="format"),
+    _current_user: User = Depends(get_current_user),
     household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
@@ -56,44 +61,81 @@ async def export_recipe(
     if not recipe:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
 
-    # Generate safe filename from recipe name
+    # Generate safe filename from recipe name (may include Unicode)
     safe_name = "".join(c if c.isalnum() or c in (" ", "-", "_") else "_" for c in recipe.name)
     safe_name = safe_name.replace(" ", "_").lower()[:50]  # Limit length
 
     # Use RecipeExporter service
     exporter = RecipeExporter()
 
-    if format == "pdf":
-        pdf_bytes = exporter.export_pdf(recipe)
+    if fmt == "pdf":
+        try:
+            pdf_bytes = exporter.export_pdf(recipe)
+        except Exception as e:
+            # Log full exception with stack trace for debugging
+            logger.exception("pdf_export_failed", recipe_id=recipe.id, error=str(e))
+            # Include exception details only in debug mode to avoid leaking internals in production
+            detail_msg = "Failed to generate PDF"
+            try:
+                if getattr(settings, "DEBUG", False):
+                    detail_msg = f"Failed to generate PDF: {str(e)}"
+            except Exception:
+                # If settings can't be imported for any reason, keep generic message
+                pass
+
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail_msg) from e
+
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
-            headers={"Content-Disposition": f'attachment; filename="{safe_name}.pdf"'},
+            headers={"Content-Disposition": _build_content_disposition(recipe.name, "pdf")},
         )
 
-    elif format == "json":
+    if fmt == "json":
         content = exporter.export_json(recipe)
         return Response(
             content=content,
             media_type="application/json",
-            headers={"Content-Disposition": f'attachment; filename="{safe_name}.json"'},
+            headers={"Content-Disposition": _build_content_disposition(recipe.name, "json")},
         )
 
-    elif format == "markdown":
+    if fmt == "markdown":
         content = exporter.export_markdown(recipe)
         return Response(
             content=content,
             media_type="text/markdown",
-            headers={"Content-Disposition": f'attachment; filename="{safe_name}.md"'},
+            headers={"Content-Disposition": _build_content_disposition(recipe.name, "md")},
         )
 
-    elif format == "text":
+    if fmt == "text":
         content = exporter.export_text(recipe)
         return Response(
             content=content,
             media_type="text/plain",
-            headers={"Content-Disposition": f'attachment; filename="{safe_name}.txt"'},
+            headers={"Content-Disposition": _build_content_disposition(recipe.name, "txt")},
         )
 
-    else:
-        raise HTTPException(status_code=400, detail="Invalid export format")
+    raise HTTPException(status_code=400, detail="Invalid export format")
+
+
+def _build_content_disposition(name: str, ext: str) -> str:
+    """Build a RFC5987-compatible Content-Disposition value with ASCII fallback.
+
+    Returns a header value like:
+    attachment; filename="fallback.pdf"; filename*=UTF-8''%E3%81%93.pdf
+    """
+
+    # ASCII fallback via NFKD normalization
+    normalized = unicodedata.normalize("NFKD", name)
+    ascii_fallback = normalized.encode("ascii", "ignore").decode("ascii")
+    fallback = "".join(c if c.isalnum() or c in (" ", "-", "_") else "_" for c in ascii_fallback)
+    fallback = fallback.replace(" ", "_").lower()[:50]
+    if not fallback:
+        fallback = "recipe"
+
+    # Percent-encode the UTF-8 filename for filename*
+
+    utf8_filename = _quote(f"{name}.{ext}", safe="")
+
+    # Use double quotes for outer string to avoid confusion with single quotes in filename*
+    return f"attachment; filename=\"{fallback}.{ext}\"; filename*=UTF-8''{utf8_filename}"
