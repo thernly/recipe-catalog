@@ -448,15 +448,18 @@ def _add_metadata_box(pdf: FPDF, items: list[tuple[str, str]]):
     pdf.rect(x, y, PDF_BOX_WIDTH, box_height, "DF")
 
     # Add text
-    pdf.set_xy(x + padding + 2, y + padding)
+    text_x = x + padding + 2
+    text_y = y + padding
     pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
     pdf.set_text_color(*COLOR_BODY_TEXT)
 
     for label, value in items:
+        pdf.set_xy(text_x, text_y)
         pdf.set_font(pdf.font_family, "B", FONT_SIZE_BODY)
         pdf.cell(PDF_LABEL_WIDTH, line_height, f"{label}:")
         pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
-        pdf.cell(0, line_height, _clean_text(value), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(0, line_height, _clean_text(value))
+        text_y += line_height
 
 
 def _collect_metadata(schema_recipe: dict[str, Any]) -> list[tuple[str, str]]:
