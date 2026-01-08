@@ -5,7 +5,7 @@
 	import { onMount } from 'svelte';
 	import { getPreferences, updatePreferences } from '$lib/api/users';
 	import type { User, Theme } from '$lib/types';
-	import { UtensilsCrossed, Palette, Briefcase, Sparkles } from 'lucide-svelte';
+	import { UtensilsCrossed, Leaf, Wine, Sparkles } from 'lucide-svelte';
 	import { logger } from '$lib/utils/logger';
 	import { handleError } from '$lib/utils/errors';
 
@@ -14,7 +14,7 @@
 	}
 
 	let user: User | null = null;
-	let currentTheme: Theme = 'classic';
+	let currentTheme: Theme = 'garden-fresh';
 
 	onMount(() => {
 		const unsubscribe = auth.subscribe((state) => {
@@ -40,13 +40,13 @@
 	}
 
 	async function toggleTheme() {
-		const newTheme = currentTheme === 'classic' ? 'professional' : 'classic';
-		currentTheme = newTheme;
+		const newTheme = currentTheme === 'garden-fresh' ? 'bistro' : 'garden-fresh';
+		currentTheme = newTheme as Theme;
 		document.documentElement.setAttribute('data-theme', newTheme);
 
 		// Save theme preference to backend
 		try {
-			await updatePreferences({ theme: newTheme });
+			await updatePreferences({ theme: newTheme as Theme });
 		} catch (err) {
 			handleError(err, 'Failed to save theme preference');
 		}
@@ -58,7 +58,7 @@
 	style="background: var(--color-navbar-bg); color: var(--color-navbar-text);"
 >
 	<div class="flex items-center gap-6">
-		<a href="/dashboard" class="flex items-center gap-3 hover:opacity-80 transition">
+		<a href="/dashboard" class="logo-link">
 			<UtensilsCrossed size={32} aria-hidden="true" />
 			<span class="font-semibold text-xl">Recipe Catalog</span>
 		</a>
@@ -90,12 +90,13 @@
 		<button
 			on:click={toggleTheme}
 			class="theme-toggle"
-			aria-label={currentTheme === 'classic' ? 'Switch to professional theme' : 'Switch to classic theme'}
+			aria-label={currentTheme === 'garden-fresh' ? 'Switch to Bistro theme' : 'Switch to Garden Fresh theme'}
+			title={currentTheme === 'garden-fresh' ? 'Garden Fresh theme' : 'Bistro theme'}
 		>
-			{#if currentTheme === 'classic'}
-				<Palette size={22} aria-hidden="true" />
+			{#if currentTheme === 'garden-fresh'}
+				<Leaf size={22} aria-hidden="true" />
 			{:else}
-				<Briefcase size={22} aria-hidden="true" />
+				<Wine size={22} aria-hidden="true" />
 			{/if}
 		</button>
 		{#if user}
@@ -108,6 +109,20 @@
 </nav>
 
 <style>
+	.logo-link {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		color: inherit;
+		text-decoration: none;
+		transition: opacity var(--transition-fast);
+	}
+
+	.logo-link:hover {
+		opacity: 0.8;
+		color: inherit;
+	}
+
 	.nav-link {
 		display: flex;
 		align-items: center;

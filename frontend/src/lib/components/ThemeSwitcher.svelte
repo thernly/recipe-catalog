@@ -7,12 +7,20 @@
 
 	const themes = [
 		{
-			id: 'light' as const,
-			name: 'Light',
-			description: 'Clean and simple light theme',
-			primary: '#3D4451',
-			accent: '#F59E0B',
-			preview: 'Charcoal & Saffron'
+			id: 'garden-fresh' as const,
+			name: 'Garden Fresh',
+			description: 'Fresh herb greens with warm terracotta accents, inspired by farmers markets',
+			primary: '#1B4332',
+			accent: '#D35400',
+			preview: 'Herb Green & Terracotta'
+		},
+		{
+			id: 'bistro' as const,
+			name: 'Bistro',
+			description: 'Sophisticated burgundy with champagne gold, inspired by upscale dining',
+			primary: '#722F37',
+			accent: '#C9B037',
+			preview: 'Burgundy & Gold'
 		},
 		{
 			id: 'dark' as const,
@@ -37,22 +45,14 @@
 			primary: '#6b7280',
 			accent: '#6b7280',
 			preview: 'Auto'
-		},
-		{
-			id: 'professional' as const,
-			name: 'Professional',
-			description: 'Bold navy with vibrant apricot highlights',
-			primary: '#1E3A5F',
-			accent: '#F97316',
-			preview: 'Navy & Apricot'
 		}
 	];
 
-	function getSystemTheme(): 'light' | 'dark' {
+	function getSystemTheme(): 'garden-fresh' | 'dark' {
 		if (typeof window !== 'undefined' && window.matchMedia) {
-			return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+			return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'garden-fresh';
 		}
-		return 'light';
+		return 'garden-fresh';
 	}
 
 	function applyTheme(themeId: string) {

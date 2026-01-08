@@ -12,6 +12,7 @@
 	let loading = true;
 	let error: string | null = null;
 	let checkedIngredients = new Set<number>();
+	let completedSteps = new Set<number>();
 	let showExportMenu = false;
 	let exporting = false;
 	let showAddToShoppingListDialog = false;
@@ -43,6 +44,18 @@
 		}
 		checkedIngredients = checkedIngredients; // Trigger reactivity
 	}
+
+	function toggleStep(index: number) {
+		if (completedSteps.has(index)) {
+			completedSteps.delete(index);
+		} else {
+			completedSteps.add(index);
+		}
+		completedSteps = completedSteps; // Trigger reactivity
+	}
+
+	$: instructionsCount = recipe ? getInstructions(recipe).length : 0;
+	$: stepsProgress = instructionsCount > 0 ? (completedSteps.size / instructionsCount) * 100 : 0;
 
 	function getIngredients(recipe: Recipe): string[] {
 		if (recipe.recipe_data?.recipeIngredient) {
@@ -409,17 +422,42 @@
 
 					<!-- Instructions -->
 					<div class="card">
-						<h2 class="text-2xl font-semibold mb-4" style="color: var(--text-900);">
-							Instructions
-						</h2>
+						<div class="instructions-header">
+							<h2 class="text-2xl font-semibold" style="color: var(--text-900);">
+								Instructions
+							</h2>
+							<span class="steps-counter">
+								{completedSteps.size} / {instructionsCount} steps
+							</span>
+						</div>
+
+						<!-- Progress bar -->
+						<div class="steps-progress-container">
+							<div class="steps-progress-bar" style="width: {stepsProgress}%"></div>
+						</div>
 
 						<ol class="instructions-list">
 							{#each getInstructions(recipe) as instruction, index}
-								<li class="instruction-step">
-									<span class="step-number">
-										{index + 1}
-									</span>
-									<p class="step-text">
+								<li
+									class="instruction-step"
+									class:completed={completedSteps.has(index)}
+								>
+									<button
+										class="step-number"
+										class:completed={completedSteps.has(index)}
+										on:click={() => toggleStep(index)}
+										aria-label="Mark step {index + 1} as {completedSteps.has(index) ? 'incomplete' : 'complete'}"
+									>
+										{#if completedSteps.has(index)}
+											<span class="step-check">✓</span>
+										{:else}
+											{index + 1}
+										{/if}
+									</button>
+									<p
+										class="step-text"
+										class:completed={completedSteps.has(index)}
+									>
 										{instruction}
 									</p>
 								</li>
@@ -589,15 +627,17 @@
 
 	.recipe-hero-image {
 		width: 100%;
-		max-height: 350px;
+		height: 50vh;
+		max-height: 500px;
+		min-height: 300px;
 		overflow: hidden;
 		background: var(--neutral-100);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		border-radius: var(--radius-lg);
+		border-radius: var(--radius-xl);
 		margin: 0 auto;
-		box-shadow: var(--shadow-md);
+		box-shadow: var(--shadow-lg);
 		position: relative;
 	}
 
@@ -607,16 +647,26 @@
 		bottom: 0;
 		left: 0;
 		right: 0;
-		height: 40%;
-		background: linear-gradient(to top, rgba(0, 0, 0, 0.15), transparent);
+		height: 60%;
+		background: linear-gradient(
+			to top,
+			rgba(0, 0, 0, 0.5) 0%,
+			rgba(0, 0, 0, 0.2) 40%,
+			transparent 100%
+		);
 		pointer-events: none;
+		border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 	}
 
 	.recipe-hero-image img {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
-		aspect-ratio: 16 / 9;
+		transition: transform var(--transition-slow);
+	}
+
+	.recipe-hero-image:hover img {
+		transform: scale(1.02);
 	}
 
 	.metadata-card-consolidated {
@@ -737,11 +787,13 @@
 	.ingredient-checkbox:hover {
 		border-color: var(--accent-500);
 		background: var(--accent-50);
+		transform: scale(1.05);
 	}
 
 	.ingredient-checkbox:checked {
 		background: var(--accent-500);
 		border-color: var(--accent-500);
+		animation: checkPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 	}
 
 	.ingredient-checkbox:checked::after {
@@ -749,14 +801,57 @@
 		position: absolute;
 		left: 50%;
 		top: 50%;
-		transform: translate(-50%, -50%) rotate(45deg);
+		transform: translate(-50%, -60%) rotate(45deg);
 		width: 0.375rem;
 		height: 0.625rem;
 		border: solid var(--neutral-white);
-		border-width: 0 2px 2px 0;
+		border-width: 0 2.5px 2.5px 0;
+		animation: checkmarkDraw 0.2s ease-out 0.1s both;
+	}
+
+	@keyframes checkPop {
+		0% { transform: scale(1); }
+		50% { transform: scale(1.2); }
+		100% { transform: scale(1); }
+	}
+
+	@keyframes checkmarkDraw {
+		0% { opacity: 0; transform: translate(-50%, -60%) rotate(45deg) scale(0); }
+		100% { opacity: 1; transform: translate(-50%, -60%) rotate(45deg) scale(1); }
 	}
 
 	/* Instructions Styling */
+	.instructions-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 1rem;
+	}
+
+	.steps-counter {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: var(--text-500);
+		background: var(--neutral-100);
+		padding: 0.375rem 0.75rem;
+		border-radius: var(--radius-full);
+	}
+
+	.steps-progress-container {
+		height: 6px;
+		background: var(--neutral-200);
+		border-radius: var(--radius-full);
+		margin-bottom: 1.5rem;
+		overflow: hidden;
+	}
+
+	.steps-progress-bar {
+		height: 100%;
+		background: linear-gradient(90deg, var(--accent-400), var(--accent-500));
+		border-radius: var(--radius-full);
+		transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
 	.instructions-list {
 		list-style: none;
 		padding: 0;
@@ -780,6 +875,10 @@
 		background: var(--primary-50);
 	}
 
+	.instruction-step.completed {
+		opacity: 0.7;
+	}
+
 	.step-number {
 		flex-shrink: 0;
 		width: 2.5rem;
@@ -794,6 +893,29 @@
 		color: var(--neutral-white);
 		background: linear-gradient(135deg, var(--accent-500) 0%, var(--accent-600) 100%);
 		box-shadow: var(--shadow-md);
+		border: none;
+		cursor: pointer;
+		transition: all var(--transition-base);
+	}
+
+	.step-number:hover {
+		transform: scale(1.1);
+		box-shadow: var(--shadow-lg);
+	}
+
+	.step-number.completed {
+		background: var(--color-success);
+		animation: stepComplete 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+	}
+
+	.step-check {
+		font-size: 1rem;
+	}
+
+	@keyframes stepComplete {
+		0% { transform: scale(1); }
+		50% { transform: scale(1.15); }
+		100% { transform: scale(1); }
 	}
 
 	.step-text {
@@ -803,6 +925,12 @@
 		color: var(--text-700);
 		margin: 0;
 		padding-top: 0.375rem;
+		transition: all var(--transition-base);
+	}
+
+	.step-text.completed {
+		text-decoration: line-through;
+		color: var(--text-400);
 	}
 
 	.link {

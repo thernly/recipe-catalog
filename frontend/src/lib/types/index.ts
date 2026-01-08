@@ -68,8 +68,12 @@ export type RecipeSourceType = "imported" | "manual" | "ai-generated";
 
 /**
  * Theme options
+ * - garden-fresh: Herb green with terracotta (also matches: classic, light)
+ * - bistro: Burgundy with champagne gold (also matches: professional)
+ * - dark: Dark mode
+ * - high-contrast: WCAG AAA compliant
  */
-export type Theme = "classic" | "professional";
+export type Theme = "garden-fresh" | "bistro" | "dark" | "high-contrast" | "classic" | "professional" | "light";
 
 /**
  * View mode options
