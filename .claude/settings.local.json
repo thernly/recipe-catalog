@@ -6,7 +6,8 @@
       "Bash(uv run ruff:*)",
       "Bash(uv run pytest:*)",
       "Bash(npm run build:*)",
-      "Skill(frontend-design:frontend-design)"
+      "Skill(frontend-design:frontend-design)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

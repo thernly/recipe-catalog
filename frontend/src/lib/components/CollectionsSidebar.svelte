@@ -269,8 +269,8 @@
 	}
 
 	.btn-icon {
-		width: 2rem;
-		height: 2rem;
+		width: 2.75rem;
+		height: 2.75rem;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -388,15 +388,15 @@
 	}
 
 	.action-btn {
-		width: 1.75rem;
-		height: 1.75rem;
+		width: 2.75rem;
+		height: 2.75rem;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		background: var(--neutral-white);
 		border: 1px solid var(--neutral-200);
 		border-radius: var(--radius-sm);
-		font-size: 0.875rem;
+		font-size: 1rem;
 		cursor: pointer;
 		transition: all var(--transition-fast);
 	}

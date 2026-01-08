@@ -182,8 +182,7 @@
 	<div class="actions-bar" style="text-align: center; margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
 		<button
 			on:click={() => goto('/ai-menu')}
-			class="btn-secondary"
-			style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;"
+			class="btn-ai-menu"
 		>
 			✨ AI Menu Suggestions
 		</button>
@@ -325,16 +324,19 @@
 	.meal-grid {
 		display: grid;
 		grid-template-columns: 150px repeat(4, 1fr);
-		gap: 1px;
-		background-color: #ddd;
-		border: 1px solid #ddd;
+		gap: var(--space-sm);
+		background-color: transparent;
+		border: 1px solid var(--neutral-200);
+		border-radius: var(--radius-lg);
+		overflow: hidden;
 	}
 
 	.grid-header {
-		background-color: #f5f5f5;
-		padding: 1rem;
+		background-color: var(--neutral-100);
+		padding: var(--space-md);
 		font-weight: 600;
 		text-align: center;
+		color: var(--text-700);
 	}
 
 	.meal-type-header {
@@ -342,91 +344,107 @@
 	}
 
 	.day-header {
-		background-color: #f9f9f9;
-		padding: 1rem;
+		background-color: var(--neutral-50);
+		padding: var(--space-md);
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
+		border-right: 1px solid var(--neutral-200);
 	}
 
 	.day-header.today {
-		background-color: #e3f2fd;
+		background: linear-gradient(135deg, var(--accent-50) 0%, var(--accent-100) 100%);
+		border-left: 3px solid var(--accent-500);
 		font-weight: 600;
 	}
 
 	.day-name {
 		font-weight: 600;
-		margin-bottom: 0.25rem;
+		margin-bottom: var(--space-xs);
+		color: var(--text-900);
 	}
 
 	.day-date {
 		font-size: 0.875rem;
-		color: #666;
+		color: var(--text-600);
+	}
+
+	.day-header.today .day-date {
+		color: var(--accent-700);
 	}
 
 	.meal-cell {
-		background-color: white;
-		padding: 0.75rem;
+		background-color: var(--neutral-white);
+		padding: var(--space-sm);
 		min-height: 100px;
 		cursor: pointer;
 		position: relative;
-		transition: background-color 0.2s;
+		transition: all var(--transition-base);
+		border: 1px dashed var(--neutral-300);
+		border-radius: var(--radius-md);
 	}
 
 	.meal-cell:hover {
-		background-color: #f9f9f9;
+		background-color: var(--accent-50);
+		border-color: var(--accent-300);
 	}
 
 	.meal-cell:focus {
-		outline: 2px solid #2196f3;
+		outline: 2px solid var(--accent-500);
 		outline-offset: -2px;
 	}
 
+	.meal-cell:has(.meal-item) {
+		border-style: solid;
+		border-color: var(--neutral-200);
+	}
+
 	.meal-item {
-		background-color: #e3f2fd;
-		border: 1px solid #90caf9;
-		border-radius: 4px;
-		padding: 0.5rem;
-		margin-bottom: 0.5rem;
+		background-color: var(--accent-50);
+		border: 1px solid var(--accent-200);
+		border-radius: var(--radius-md);
+		padding: var(--space-sm);
+		margin-bottom: var(--space-sm);
 		cursor: pointer;
-		transition: all 0.2s;
+		transition: all var(--transition-base);
 	}
 
 	.meal-item:hover {
-		background-color: #bbdefb;
+		background-color: var(--accent-100);
 		transform: translateY(-1px);
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		box-shadow: var(--shadow-sm);
 	}
 
 	.meal-item:focus {
-		outline: 2px solid #2196f3;
+		outline: 2px solid var(--accent-500);
 		outline-offset: 2px;
 	}
 
 	.meal-name {
 		font-weight: 500;
-		margin-bottom: 0.25rem;
+		margin-bottom: var(--space-xs);
+		color: var(--text-900);
 	}
 
 	.meal-servings {
 		font-size: 0.875rem;
-		color: #666;
+		color: var(--text-600);
 	}
 
 	.meal-notes {
 		font-size: 0.875rem;
-		margin-top: 0.25rem;
+		margin-top: var(--space-xs);
 	}
 
 	.add-meal-hint {
-		color: #999;
+		color: var(--text-400);
 		font-size: 0.875rem;
 		text-align: center;
-		padding: 0.5rem;
+		padding: var(--space-sm);
 	}
 
 	.meal-cell:hover .add-meal-hint {
-		color: #2196f3;
+		color: var(--accent-600);
 	}
 
 	.loading,
@@ -437,28 +455,45 @@
 	}
 
 	.error {
-		color: #d32f2f;
+		color: var(--color-error);
 	}
 
 	.btn-secondary {
-		padding: 0.5rem 1rem;
-		background-color: white;
-		border: 1px solid #ddd;
-		border-radius: 4px;
+		padding: var(--space-sm) var(--space-md);
+		background-color: var(--neutral-white);
+		border: 1px solid var(--neutral-300);
+		border-radius: var(--radius-md);
 		cursor: pointer;
-		transition: all 0.2s;
+		transition: all var(--transition-base);
 		font-size: 1rem;
+		color: var(--text-700);
 	}
 
 	.btn-secondary:hover {
-		background-color: #f5f5f5;
-		border-color: #999;
+		background-color: var(--neutral-100);
+		border-color: var(--neutral-400);
+	}
+
+	.btn-ai-menu {
+		background: linear-gradient(135deg, var(--accent-500) 0%, var(--accent-700) 100%);
+		color: var(--neutral-white);
+		border: none;
+		padding: var(--space-sm) var(--space-md);
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		transition: all var(--transition-base);
+		font-size: 1rem;
+	}
+
+	.btn-ai-menu:hover {
+		box-shadow: var(--shadow-warm-glow);
+		transform: translateY(-1px);
 	}
 
 	/* Mobile responsiveness */
 	@media (max-width: 768px) {
 		.meal-planning-container {
-			padding: 1rem;
+			padding: var(--space-md);
 		}
 
 		.header {
@@ -472,7 +507,7 @@
 
 		.meal-grid {
 			grid-template-columns: 1fr;
-			gap: 1rem;
+			gap: var(--space-md);
 			background-color: transparent;
 			border: none;
 		}
@@ -482,19 +517,20 @@
 		}
 
 		.day-header {
-			border-radius: 8px 8px 0 0;
-			border: 1px solid #ddd;
+			border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+			border: 1px solid var(--neutral-200);
 			border-bottom: none;
 		}
 
 		.meal-cell {
-			border: 1px solid #ddd;
+			border: 1px solid var(--neutral-200);
 			border-top: none;
+			border-radius: 0;
 		}
 
 		.meal-cell:last-child {
-			border-radius: 0 0 8px 8px;
-			margin-bottom: 1rem;
+			border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+			margin-bottom: var(--space-md);
 		}
 	}
 </style>

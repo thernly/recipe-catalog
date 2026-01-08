@@ -47,11 +47,9 @@
 			{:else if recipe.image_url}
 				<img src={recipe.image_url} alt={recipe.name} class="w-full h-full object-cover" />
 			{:else}
-				<div
-					class="w-full h-full flex items-center justify-center"
-					style="background: var(--neutral-100); color: var(--text-400);"
-				>
-					<UtensilsCrossed size={64} aria-hidden="true" />
+				<div class="empty-image-placeholder">
+					<span class="placeholder-initial">{recipe.name.charAt(0).toUpperCase()}</span>
+					<UtensilsCrossed size={28} aria-hidden="true" class="placeholder-icon" />
 				</div>
 			{/if}
 		</div>
@@ -137,7 +135,7 @@
 	}
 
 	.recipe-card-image {
-		aspect-ratio: 1;
+		aspect-ratio: 4 / 3;
 		overflow: hidden;
 		background: var(--neutral-100);
 	}
@@ -169,10 +167,10 @@
 
 	.recipe-card-actions {
 		position: absolute;
-		top: 0.5rem;
-		right: 0.5rem;
+		top: var(--space-sm);
+		right: var(--space-sm);
 		display: flex;
-		gap: 0.25rem;
+		gap: var(--space-xs);
 		opacity: 0;
 		transition: opacity var(--transition-fast);
 	}
@@ -182,8 +180,8 @@
 	}
 
 	.action-btn {
-		width: 2rem;
-		height: 2rem;
+		width: 2.75rem;
+		height: 2.75rem;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -220,5 +218,49 @@
 	.badge-secondary {
 		background: var(--neutral-200);
 		color: var(--text-700);
+	}
+
+	.empty-image-placeholder {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-sm);
+		background: linear-gradient(135deg, var(--neutral-100) 0%, var(--neutral-200) 100%);
+		color: var(--text-400);
+		position: relative;
+	}
+
+	.empty-image-placeholder::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background-image: radial-gradient(var(--neutral-300) 1px, transparent 1px);
+		background-size: 16px 16px;
+		opacity: 0.3;
+	}
+
+	.placeholder-initial {
+		width: 3rem;
+		height: 3rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--accent-100);
+		color: var(--accent-700);
+		border-radius: var(--radius-full);
+		font-family: var(--font-display);
+		font-size: 1.5rem;
+		font-weight: 600;
+		position: relative;
+		z-index: 1;
+	}
+
+	.empty-image-placeholder :global(.placeholder-icon) {
+		position: relative;
+		z-index: 1;
+		color: var(--text-400);
 	}
 </style>
