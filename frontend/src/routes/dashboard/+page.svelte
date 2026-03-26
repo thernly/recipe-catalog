@@ -4,7 +4,7 @@
 	import { onMount } from 'svelte';
 	import type { User } from '$lib/types';
 	import { getUserStats, type UserStats } from '$lib/api/users';
-	import { BookOpen, Star, Folder, Plus, Search, Download, Upload, Rocket, Check, Hand } from 'lucide-svelte';
+	import { BookOpen, Star, Folder, Plus, Search, Download, Upload, Rocket, Check, Hand, ChefHat, Sparkles, UtensilsCrossed } from 'lucide-svelte';
 
 	let user: User | null = null;
 	let stats: UserStats | null = null;
@@ -78,9 +78,11 @@
 						<div class="stat-icon" style="color: var(--accent-500);">
 							<BookOpen size={48} aria-hidden="true" />
 						</div>
-						<h3 class="stat-number">
-							{loadingStats ? '...' : stats?.total_recipes ?? 0}
-						</h3>
+						{#if loadingStats}
+							<div class="stat-number-skeleton"></div>
+						{:else}
+							<h3 class="stat-number">{stats?.total_recipes ?? 0}</h3>
+						{/if}
 						<p class="stat-label">Total Recipes</p>
 					</button>
 
@@ -88,9 +90,11 @@
 						<div class="stat-icon" style="color: var(--accent-500);">
 							<Star size={48} aria-hidden="true" />
 						</div>
-						<h3 class="stat-number">
-							{loadingStats ? '...' : 0}
-						</h3>
+						{#if loadingStats}
+							<div class="stat-number-skeleton"></div>
+						{:else}
+							<h3 class="stat-number">0</h3>
+						{/if}
 						<p class="stat-label">Favorites</p>
 					</button>
 
@@ -98,12 +102,49 @@
 						<div class="stat-icon" style="color: var(--accent-500);">
 							<Folder size={48} aria-hidden="true" />
 						</div>
-						<h3 class="stat-number">
-							{loadingStats ? '...' : stats?.total_collections ?? 0}
-						</h3>
+						{#if loadingStats}
+							<div class="stat-number-skeleton"></div>
+						{:else}
+							<h3 class="stat-number">{stats?.total_collections ?? 0}</h3>
+						{/if}
 						<p class="stat-label">Collections</p>
 					</button>
 				</div>
+
+				<!-- Empty State Hero (shown when no recipes) -->
+				{#if !loadingStats && stats?.total_recipes === 0}
+					<div class="empty-state-hero">
+						<div class="empty-state-graphic">
+							<div class="empty-icon-bg">
+								<ChefHat size={64} aria-hidden="true" />
+							</div>
+							<div class="empty-icon-accent accent-1">
+								<UtensilsCrossed size={24} aria-hidden="true" />
+							</div>
+							<div class="empty-icon-accent accent-2">
+								<Sparkles size={20} aria-hidden="true" />
+							</div>
+						</div>
+						<h2 class="empty-state-title">Your recipe collection awaits!</h2>
+						<p class="empty-state-description">
+							Start building your personal cookbook by adding your favorite recipes, importing from the web, or letting AI create something new.
+						</p>
+						<div class="empty-state-actions">
+							<button on:click={() => goto('/recipes/new')} class="btn btn-primary">
+								<Plus size={20} aria-hidden="true" />
+								<span>Add Your First Recipe</span>
+							</button>
+							<button on:click={() => goto('/import')} class="btn btn-secondary">
+								<Download size={20} aria-hidden="true" />
+								<span>Import from Web</span>
+							</button>
+							<button on:click={() => goto('/ai-generate')} class="btn btn-secondary">
+								<Sparkles size={20} aria-hidden="true" />
+								<span>AI Generate</span>
+							</button>
+						</div>
+					</div>
+				{/if}
 
 				<!-- Quick Actions -->
 				<div class="card">
@@ -286,5 +327,111 @@
 	.link:hover {
 		color: var(--accent-700);
 		border-bottom-color: var(--accent-600);
+	}
+
+	/* Skeleton Loading */
+	.stat-number-skeleton {
+		width: 60px;
+		height: 2.5rem;
+		background: linear-gradient(90deg, var(--neutral-200) 25%, var(--neutral-100) 50%, var(--neutral-200) 75%);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+		border-radius: var(--radius-md);
+		margin: 0 auto 0.5rem;
+	}
+
+	@keyframes shimmer {
+		0% { background-position: 200% 0; }
+		100% { background-position: -200% 0; }
+	}
+
+	/* Empty State Hero */
+	.empty-state-hero {
+		background: linear-gradient(135deg, var(--accent-50) 0%, var(--neutral-50) 100%);
+		border: 2px dashed var(--accent-200);
+		border-radius: var(--radius-xl);
+		padding: 3rem 2rem;
+		text-align: center;
+		margin-bottom: 2rem;
+	}
+
+	.empty-state-graphic {
+		position: relative;
+		width: 120px;
+		height: 120px;
+		margin: 0 auto 1.5rem;
+	}
+
+	.empty-icon-bg {
+		width: 100%;
+		height: 100%;
+		background: linear-gradient(135deg, var(--accent-100) 0%, var(--accent-200) 100%);
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--accent-600);
+		box-shadow: var(--shadow-md);
+	}
+
+	.empty-icon-accent {
+		position: absolute;
+		background: var(--neutral-white);
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: var(--shadow-sm);
+		color: var(--accent-500);
+	}
+
+	.empty-icon-accent.accent-1 {
+		width: 48px;
+		height: 48px;
+		top: -8px;
+		right: -8px;
+		animation: float 3s ease-in-out infinite;
+	}
+
+	.empty-icon-accent.accent-2 {
+		width: 40px;
+		height: 40px;
+		bottom: -4px;
+		left: -4px;
+		animation: float 3s ease-in-out infinite 1.5s;
+	}
+
+	@keyframes float {
+		0%, 100% { transform: translateY(0); }
+		50% { transform: translateY(-6px); }
+	}
+
+	.empty-state-title {
+		font-family: var(--font-display);
+		font-size: 1.75rem;
+		font-weight: 600;
+		color: var(--text-900);
+		margin-bottom: 0.75rem;
+	}
+
+	.empty-state-description {
+		font-size: 1.125rem;
+		color: var(--text-600);
+		max-width: 500px;
+		margin: 0 auto 2rem;
+		line-height: 1.6;
+	}
+
+	.empty-state-actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 1rem;
+	}
+
+	.empty-state-actions .btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
 	}
 </style>

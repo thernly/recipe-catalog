@@ -3,6 +3,7 @@
  */
 
 import { apiRequest } from "./client";
+import type { Theme } from "$lib/types";
 
 export interface User {
   id: number;
@@ -14,7 +15,7 @@ export interface User {
 }
 
 export interface UserPreferences {
-  theme: "classic" | "professional";
+  theme: Theme;
   default_view: "grid" | "list";
   default_sort: string;
   recipes_per_page: number;

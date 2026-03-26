@@ -59,54 +59,56 @@
 }
 
 /* ============================================ */
-/* Theme 1: Coral & Cream */
+/* Theme 1: Garden Fresh (Herb Green + Terracotta) */
+/* Inspired by farmers markets and garden-to-table */
 /* ============================================ */
 
 [data-theme="light"],
-[data-theme="classic"] {
-  /* Primary Palette (Charcoal - for text) */
-  --primary-50: #f8f9fa;
-  --primary-100: #e9ecef;
-  --primary-200: #dee2e6;
-  --primary-300: #ced4da;
-  --primary-400: #adb5bd;
-  --primary-500: #2d3748;
-  --primary-600: #1a202c;
-  --primary-700: #171923;
-  --primary-800: #0f1419;
-  --primary-900: #0a0c0f;
+[data-theme="classic"],
+[data-theme="garden-fresh"] {
+  /* Primary Palette (Deep Herb Green) */
+  --primary-50: #ecfdf5;
+  --primary-100: #d1fae5;
+  --primary-200: #a7f3d0;
+  --primary-300: #6ee7b7;
+  --primary-400: #34d399;
+  --primary-500: #1B4332;
+  --primary-600: #163a2b;
+  --primary-700: #122f23;
+  --primary-800: #0d241a;
+  --primary-900: #081912;
 
-  /* Accent Palette (Coral/Salmon) */
-  --accent-50: #fff5f5;
-  --accent-100: #ffe3e3;
-  --accent-200: #ffc9c9;
-  --accent-300: #ffa8a8;
-  --accent-400: #ff8787;
-  --accent-500: #ff6b6b;
-  --accent-600: #fa5252;
-  --accent-700: #f03e3e;
-  --accent-800: #e03131;
-  --accent-900: #c92a2a;
+  /* Accent Palette (Warm Terracotta/Tomato) */
+  --accent-50: #fef6f3;
+  --accent-100: #fde8e1;
+  --accent-200: #fbd0c3;
+  --accent-300: #f7a98e;
+  --accent-400: #f07d5a;
+  --accent-500: #D35400;
+  --accent-600: #b84700;
+  --accent-700: #9a3c00;
+  --accent-800: #7d3100;
+  --accent-900: #5f2500;
 
-  /* Neutral Palette (Soft Grays) */
-  --neutral-white: #ffffff;
-  --neutral-50: #fafaf9;
-  --neutral-100: #f5f5f4;
-  --neutral-200: #e7e5e4;
-  --neutral-300: #d6d3d1;
-  --neutral-400: #a8a29e;
-  --neutral-500: #78716c;
-  --neutral-600: #57534e;
-  --neutral-700: #44403c;
-  --neutral-800: #292524;
-  --neutral-900: #1c1917;
+  /* Neutral Palette (Warm Creams) */
+  --neutral-white: #fffdf9;
+  --neutral-50: #fefcf6;
+  --neutral-100: #faf7f0;
+  --neutral-200: #f0ebe0;
+  --neutral-300: #e0d8c8;
+  --neutral-400: #b8ad9a;
+  --neutral-500: #8a7f6e;
+  --neutral-600: #6b6254;
+  --neutral-700: #524a3f;
+  --neutral-800: #3a352c;
+  --neutral-900: #252119;
 
   /* Text Colors */
-  --text-900: #1c1917;
-  --text-700: #44403c;
-  --text-600: #57534e;
-  --text-500: #78716c;
-  --text-400: #a8a29e;
+  --text-900: #252119;
+  --text-700: #524a3f;
+  --text-600: #6b6254;
+  --text-500: #8a7f6e;
+  --text-400: #b8ad9a;
 
   /* Semantic Mappings */
   --color-navbar-bg: var(--primary-500);
@@ -120,71 +122,81 @@
   --color-btn-secondary-text: var(--primary-500);
   --color-badge-bg: var(--accent-100);
   --color-badge-text: var(--accent-800);
-  --color-link: var(--accent-500);
+  --color-link: var(--accent-600);
   --color-focus-ring: var(--accent-500);
+
+  /* Theme-specific warm shadow */
+  --shadow-warm-glow: 0 8px 16px -4px rgba(211, 84, 0, 0.25);
 }
 
 /* ============================================ */
-/* Theme 2: Professional Warm (Navy + Apricot) */
+/* Theme 2: Bistro (Burgundy + Champagne Gold)  */
+/* Inspired by upscale restaurant ambiance      */
 /* ============================================ */
 
-[data-theme="professional"] {
-  /* Primary Palette (Navy) */
-  --primary-50: #f0f4f8;
-  --primary-100: #d9e2ec;
-  --primary-200: #bcccdc;
-  --primary-300: #9fb3c8;
-  --primary-400: #829ab1;
-  --primary-500: #1e3a5f;
-  --primary-600: #172e4a;
-  --primary-700: #102235;
-  --primary-800: #0a1620;
-  --primary-900: #050a0f;
+[data-theme="professional"],
+[data-theme="bistro"] {
+  /* Primary Palette (Deep Burgundy/Wine) */
+  --primary-50: #fdf2f4;
+  --primary-100: #fce7eb;
+  --primary-200: #f9d0d9;
+  --primary-300: #f4a9ba;
+  --primary-400: #ec7693;
+  --primary-500: #722F37;
+  --primary-600: #5e272e;
+  --primary-700: #4a1f25;
+  --primary-800: #36171b;
+  --primary-900: #220f11;
 
-  /* Accent Palette (Apricot) */
-  --accent-50: #fff7ed;
-  --accent-100: #ffedd5;
-  --accent-200: #fed7aa;
-  --accent-300: #fdba74;
-  --accent-400: #fb923c;
-  --accent-500: #f97316;
-  --accent-600: #ea580c;
-  --accent-700: #c2410c;
-  --accent-800: #9a3412;
-  --accent-900: #7c2d12;
+  /* Accent Palette (Champagne Gold) */
+  --accent-50: #fefcf3;
+  --accent-100: #fdf8e1;
+  --accent-200: #faefc3;
+  --accent-300: #f5e29a;
+  --accent-400: #efd06a;
+  --accent-500: #C9B037;
+  --accent-600: #b09a2f;
+  --accent-700: #917e26;
+  --accent-800: #73631e;
+  --accent-900: #544915;
 
-  /* Neutral Palette */
-  --neutral-white: #ffffff;
-  --neutral-50: #f0f4f8;
-  --neutral-100: #e3e8ee;
-  --neutral-200: #d9e2ec;
-  --neutral-300: #bcccdc;
-  --neutral-400: #9fb3c8;
-  --neutral-500: #829ab1;
-  --neutral-600: #627d98;
-  --neutral-700: #486581;
-  --neutral-800: #334e68;
-  --neutral-900: #243b53;
+  /* Neutral Palette (Warm Ivory & Charcoal) */
+  --neutral-white: #fdfcfa;
+  --neutral-50: #faf8f5;
+  --neutral-100: #f5f2ed;
+  --neutral-200: #e8e3da;
+  --neutral-300: #d5cec2;
+  --neutral-400: #a89f8f;
+  --neutral-500: #7a7167;
+  --neutral-600: #5c554d;
+  --neutral-700: #44403a;
+  --neutral-800: #2e2b27;
+  --neutral-900: #1a1816;
 
   /* Text Colors */
-  --text-900: #1e3a5f;
-  --text-600: #627d98;
-  --text-500: #829ab1;
+  --text-900: #1a1816;
+  --text-700: #44403a;
+  --text-600: #5c554d;
+  --text-500: #7a7167;
+  --text-400: #a89f8f;
 
   /* Semantic Mappings */
   --color-navbar-bg: var(--primary-500);
-  --color-navbar-text: var(--neutral-white);
+  --color-navbar-text: #fdfcfa;
   --color-sidebar-bg: var(--neutral-50);
   --color-sidebar-active-bg: var(--accent-100);
   --color-sidebar-active-text: var(--accent-800);
   --color-btn-primary-bg: var(--accent-500);
-  --color-btn-primary-text: var(--neutral-white);
+  --color-btn-primary-text: #1a1816;
   --color-btn-secondary-bg: var(--neutral-100);
   --color-btn-secondary-text: var(--primary-500);
   --color-badge-bg: var(--accent-100);
   --color-badge-text: var(--accent-800);
-  --color-link: var(--accent-500);
+  --color-link: var(--primary-500);
   --color-focus-ring: var(--accent-500);
+
+  /* Theme-specific elegant shadow */
+  --shadow-warm-glow: 0 8px 16px -4px rgba(201, 176, 55, 0.3);
 }
 
 /* ============================================ */
