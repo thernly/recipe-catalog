@@ -64,11 +64,10 @@ recipe-catalog/
 │   │   ├── schemas/   # Pydantic schemas
 │   │   └── core/      # Core utilities
 │   ├── tests/
-│   └── requirements.txt
+│   └── pyproject.toml
 │
-├── database/          # Database schema and migrations
+├── database/          # Database schema and seed data
 │   ├── schema.sql     # SQLite schema
-│   ├── migrations/    # Alembic migrations
 │   └── seed.sql       # Test data
 │
 └── docs/              # Documentation
@@ -523,7 +522,7 @@ ls -lh backend/recipes.db
 ```bash
 # Via API (requires authentication)
 curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:8000/api/export/all?format=json > recipes.json
+  http://localhost:8000/api/v1/export/all?format=json > recipes.json
 
 # Direct database export
 sqlite3 recipes.db "SELECT * FROM recipes WHERE deleted_at IS NULL;" \
@@ -537,7 +536,7 @@ sqlite3 recipes.db "SELECT * FROM recipes WHERE deleted_at IS NULL;" \
 curl -X POST \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "file=@recipes.json" \
-  http://localhost:8000/api/import/json
+  http://localhost:8000/api/v1/import/recipes/json
 ```
 
 ### Troubleshooting
@@ -731,7 +730,7 @@ Refer to your platform's documentation for specific deployment steps.
 
 ## 🔒 Security
 
-- Passwords hashed with bcrypt
+- Passwords hashed with Argon2 (argon2-cffi)
 - JWT-based authentication with CSRF protection
 - HTTPS only in production
 - CORS properly configured
@@ -783,11 +782,6 @@ We use automated tools to keep dependencies secure and up-to-date:
 - Test application after updates
 - Update dependency versions in lockfiles
 
-**Known Issues**
-
-- `ecdsa` (dependency of `python-jose`): Security advisory GHSA-wj6h-64fc-37mp
-  - Future consideration: Replace `python-jose` with `PyJWT` for better security
-  - Tracked in tasks backlog
 
 ## 📖 Documentation
 
@@ -819,7 +813,7 @@ Built with ❤️ for home cooks who value privacy and organization.
 
 **Version**: 1.0.0
 **Status**: Production Ready - Advanced Features Included
-**Last Updated**: November 18, 2025
+**Last Updated**: May 9, 2026
 
 ## 🚢 Deployment
 
