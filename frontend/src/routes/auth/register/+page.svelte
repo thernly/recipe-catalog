@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import { getAvailableProviders, initiateOAuthFlow, type ProviderInfo } from '$lib/api/oauth';
+	import { Check, X, AlertCircle } from 'lucide-svelte';
 
 	let email = '';
 	let password = '';
@@ -14,33 +15,54 @@
 	let providers: ProviderInfo[] = [];
 	let loadingProviders = true;
 
+	// Field touched states for showing validation
+	let emailTouched = false;
+	let passwordTouched = false;
+	let confirmPasswordTouched = false;
+
+	// Shake animation trigger
+	let shakeError = false;
+
+	// Password validation states
+	$: passwordLength = password.length >= 12;
+	$: passwordUppercase = /[A-Z]/.test(password);
+	$: passwordLowercase = /[a-z]/.test(password);
+	$: passwordNumber = /[0-9]/.test(password);
+	$: passwordValid = passwordLength && passwordUppercase && passwordLowercase && passwordNumber;
+	$: passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
+	$: emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+	function triggerShake() {
+		shakeError = true;
+		setTimeout(() => shakeError = false, 500);
+	}
+
 	async function handleRegister() {
 		error = '';
 
-		// Validate passwords match
-		if (password !== confirmPassword) {
-			error = 'Passwords do not match';
+		// Mark all fields as touched
+		emailTouched = true;
+		passwordTouched = true;
+		confirmPasswordTouched = true;
+
+		// Validate email
+		if (!emailValid) {
+			error = 'Please enter a valid email address';
+			triggerShake();
 			return;
 		}
 
 		// Validate password strength
-		if (password.length < 12) {
-			error = 'Password must be at least 12 characters long';
+		if (!passwordValid) {
+			error = 'Password does not meet requirements';
+			triggerShake();
 			return;
 		}
 
-		if (!/[A-Z]/.test(password)) {
-			error = 'Password must contain at least one uppercase letter';
-			return;
-		}
-
-		if (!/[a-z]/.test(password)) {
-			error = 'Password must contain at least one lowercase letter';
-			return;
-		}
-
-		if (!/[0-9]/.test(password)) {
-			error = 'Password must contain at least one number';
+		// Validate passwords match
+		if (!passwordsMatch) {
+			error = 'Passwords do not match';
+			triggerShake();
 			return;
 		}
 
@@ -54,6 +76,7 @@
 			goto('/dashboard');
 		} catch (err: any) {
 			error = err.message || 'Registration failed. Please try again.';
+			triggerShake();
 		} finally {
 			loading = false;
 		}
@@ -156,24 +179,40 @@
 				</div>
 
 				<!-- Email -->
-				<div>
+				<div class="form-field">
 					<label for="email" class="block text-sm font-medium mb-2" style="color: var(--text-900);">
 						Email Address
 					</label>
-					<input
-						id="email"
-						type="email"
-						bind:value={email}
-						required
-						class="w-full px-4 py-3 rounded-md border border-neutral-300 focus:outline-none focus:ring-2"
-						style="border-color: var(--neutral-300); background: white;"
-						placeholder="you@example.com"
-						disabled={loading}
-					/>
+					<div class="input-wrapper">
+						<input
+							id="email"
+							type="email"
+							bind:value={email}
+							on:blur={() => emailTouched = true}
+							required
+							class="form-input"
+							class:valid={emailTouched && emailValid}
+							class:invalid={emailTouched && email.length > 0 && !emailValid}
+							placeholder="you@example.com"
+							disabled={loading}
+						/>
+						{#if emailTouched && email.length > 0}
+							<span class="input-icon" class:success={emailValid} class:error={!emailValid}>
+								{#if emailValid}
+									<Check size={18} />
+								{:else}
+									<AlertCircle size={18} />
+								{/if}
+							</span>
+						{/if}
+					</div>
+					{#if emailTouched && email.length > 0 && !emailValid}
+						<p class="field-error">Please enter a valid email address</p>
+					{/if}
 				</div>
 
 				<!-- Password -->
-				<div>
+				<div class="form-field">
 					<label
 						for="password"
 						class="block text-sm font-medium mb-2"
@@ -181,23 +220,58 @@
 					>
 						Password
 					</label>
-					<input
-						id="password"
-						type="password"
-						bind:value={password}
-						required
-						class="w-full px-4 py-3 rounded-md border border-neutral-300 focus:outline-none focus:ring-2"
-						style="border-color: var(--neutral-300); background: white;"
-						placeholder="••••••••"
-						disabled={loading}
-					/>
-					<p class="mt-2 text-xs" style="color: var(--text-500);">
-						Must be at least 12 characters with uppercase, lowercase, and numbers
-					</p>
+					<div class="input-wrapper">
+						<input
+							id="password"
+							type="password"
+							bind:value={password}
+							on:blur={() => passwordTouched = true}
+							required
+							class="form-input"
+							class:valid={passwordTouched && passwordValid}
+							class:invalid={passwordTouched && password.length > 0 && !passwordValid}
+							placeholder="••••••••"
+							disabled={loading}
+						/>
+						{#if passwordTouched && password.length > 0}
+							<span class="input-icon" class:success={passwordValid} class:error={!passwordValid}>
+								{#if passwordValid}
+									<Check size={18} />
+								{:else}
+									<AlertCircle size={18} />
+								{/if}
+							</span>
+						{/if}
+					</div>
+					<!-- Password requirements checklist -->
+					{#if password.length > 0 || passwordTouched}
+						<div class="password-requirements">
+							<div class="requirement" class:met={passwordLength}>
+								{#if passwordLength}<Check size={14} />{:else}<X size={14} />{/if}
+								<span>At least 12 characters</span>
+							</div>
+							<div class="requirement" class:met={passwordUppercase}>
+								{#if passwordUppercase}<Check size={14} />{:else}<X size={14} />{/if}
+								<span>One uppercase letter</span>
+							</div>
+							<div class="requirement" class:met={passwordLowercase}>
+								{#if passwordLowercase}<Check size={14} />{:else}<X size={14} />{/if}
+								<span>One lowercase letter</span>
+							</div>
+							<div class="requirement" class:met={passwordNumber}>
+								{#if passwordNumber}<Check size={14} />{:else}<X size={14} />{/if}
+								<span>One number</span>
+							</div>
+						</div>
+					{:else}
+						<p class="mt-2 text-xs" style="color: var(--text-500);">
+							Must be at least 12 characters with uppercase, lowercase, and numbers
+						</p>
+					{/if}
 				</div>
 
 				<!-- Confirm Password -->
-				<div>
+				<div class="form-field">
 					<label
 						for="confirmPassword"
 						class="block text-sm font-medium mb-2"
@@ -205,24 +279,41 @@
 					>
 						Confirm Password
 					</label>
-					<input
-						id="confirmPassword"
-						type="password"
-						bind:value={confirmPassword}
-						required
-						class="w-full px-4 py-3 rounded-md border border-neutral-300 focus:outline-none focus:ring-2"
-						style="border-color: var(--neutral-300); background: white;"
-						placeholder="••••••••"
-						disabled={loading}
-					/>
+					<div class="input-wrapper">
+						<input
+							id="confirmPassword"
+							type="password"
+							bind:value={confirmPassword}
+							on:blur={() => confirmPasswordTouched = true}
+							required
+							class="form-input"
+							class:valid={confirmPasswordTouched && passwordsMatch}
+							class:invalid={confirmPasswordTouched && confirmPassword.length > 0 && !passwordsMatch}
+							placeholder="••••••••"
+							disabled={loading}
+						/>
+						{#if confirmPasswordTouched && confirmPassword.length > 0}
+							<span class="input-icon" class:success={passwordsMatch} class:error={!passwordsMatch}>
+								{#if passwordsMatch}
+									<Check size={18} />
+								{:else}
+									<AlertCircle size={18} />
+								{/if}
+							</span>
+						{/if}
+					</div>
+					{#if confirmPasswordTouched && confirmPassword.length > 0 && !passwordsMatch}
+						<p class="field-error">Passwords do not match</p>
+					{/if}
 				</div>
 
 				<!-- Error Message -->
 				{#if error}
 					<div
-						class="p-4 rounded-md"
-						style="background: var(--color-error-bg); color: var(--color-error-text);"
+						class="error-message"
+						class:shake={shakeError}
 					>
+						<AlertCircle size={18} />
 						<p class="text-sm">{error}</p>
 					</div>
 				{/if}
@@ -253,3 +344,128 @@
 		</div>
 	</div>
 </div>
+
+<style>
+	.form-field {
+		margin-bottom: 0;
+	}
+
+	.input-wrapper {
+		position: relative;
+	}
+
+	.form-input {
+		width: 100%;
+		padding: 0.75rem 2.5rem 0.75rem 1rem;
+		border: 1px solid var(--neutral-300);
+		border-radius: var(--radius-md);
+		font-size: 1rem;
+		background: white;
+		transition: all var(--transition-fast);
+	}
+
+	.form-input:focus {
+		outline: none;
+		border-color: var(--accent-500);
+		box-shadow: 0 0 0 3px var(--accent-100);
+	}
+
+	.form-input.valid {
+		border-color: var(--success-500, #22c55e);
+	}
+
+	.form-input.valid:focus {
+		box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+	}
+
+	.form-input.invalid {
+		border-color: var(--error-500, #ef4444);
+	}
+
+	.form-input.invalid:focus {
+		box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+	}
+
+	.input-icon {
+		position: absolute;
+		right: 0.75rem;
+		top: 50%;
+		transform: translateY(-50%);
+		display: flex;
+		align-items: center;
+	}
+
+	.input-icon.success {
+		color: var(--success-500, #22c55e);
+	}
+
+	.input-icon.error {
+		color: var(--error-500, #ef4444);
+	}
+
+	.field-error {
+		margin-top: 0.375rem;
+		font-size: 0.8125rem;
+		color: var(--error-500, #ef4444);
+		animation: slideDown 0.2s ease-out;
+	}
+
+	@keyframes slideDown {
+		from {
+			opacity: 0;
+			transform: translateY(-0.25rem);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.password-requirements {
+		margin-top: 0.75rem;
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.375rem;
+	}
+
+	.requirement {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		font-size: 0.75rem;
+		color: var(--text-500);
+		transition: color var(--transition-fast);
+	}
+
+	.requirement.met {
+		color: var(--success-500, #22c55e);
+	}
+
+	.requirement.met :global(svg) {
+		color: var(--success-500, #22c55e);
+	}
+
+	.requirement:not(.met) :global(svg) {
+		color: var(--neutral-400);
+	}
+
+	.error-message {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 1rem;
+		border-radius: var(--radius-md);
+		background: var(--color-error-bg, #fef2f2);
+		color: var(--color-error-text, #dc2626);
+	}
+
+	.error-message.shake {
+		animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+	}
+
+	@keyframes shake {
+		0%, 100% { transform: translateX(0); }
+		10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+		20%, 40%, 60%, 80% { transform: translateX(4px); }
+	}
+</style>

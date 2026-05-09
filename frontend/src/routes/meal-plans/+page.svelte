@@ -205,7 +205,27 @@
 	</div>
 
 	{#if loading}
-		<div class="loading">Loading meal plan...</div>
+		<!-- Skeleton loading for meal plan grid -->
+		<div class="week-header">
+			<div class="skeleton-week-title"></div>
+		</div>
+		<div class="meal-grid" role="status" aria-label="Loading meal plan">
+			{#each dayNames as day, dayIndex}
+				<div class="day-column">
+					<div class="day-header">
+						<div class="skeleton-day-name"></div>
+						<div class="skeleton-date"></div>
+					</div>
+					{#each mealTypes as mealType}
+						<div class="meal-cell">
+							<div class="meal-type-header">{mealType}</div>
+							<div class="skeleton-meal"></div>
+						</div>
+					{/each}
+				</div>
+			{/each}
+		</div>
+		<p class="sr-only">Loading meal plan...</p>
 	{:else if error}
 		<div class="error">{error}</div>
 	{:else if mealPlan}
@@ -447,14 +467,10 @@
 		color: var(--accent-600);
 	}
 
-	.loading,
 	.error {
 		text-align: center;
 		padding: 2rem;
 		font-size: 1.125rem;
-	}
-
-	.error {
 		color: var(--color-error);
 	}
 
@@ -531,6 +547,75 @@
 		.meal-cell:last-child {
 			border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 			margin-bottom: var(--space-md);
+		}
+	}
+
+	/* Skeleton Loading */
+	.skeleton-week-title {
+		height: 1.75rem;
+		width: 280px;
+		background: linear-gradient(
+			90deg,
+			var(--neutral-100) 25%,
+			var(--neutral-200) 50%,
+			var(--neutral-100) 75%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+		border-radius: var(--radius-md);
+		margin: 0 auto;
+	}
+
+	.skeleton-day-name {
+		height: 1.125rem;
+		width: 80px;
+		background: linear-gradient(
+			90deg,
+			var(--neutral-100) 25%,
+			var(--neutral-200) 50%,
+			var(--neutral-100) 75%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+		border-radius: var(--radius-sm);
+		margin-bottom: 0.25rem;
+	}
+
+	.skeleton-date {
+		height: 0.875rem;
+		width: 50px;
+		background: linear-gradient(
+			90deg,
+			var(--neutral-100) 25%,
+			var(--neutral-200) 50%,
+			var(--neutral-100) 75%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+		border-radius: var(--radius-sm);
+	}
+
+	.skeleton-meal {
+		height: 3rem;
+		width: 100%;
+		background: linear-gradient(
+			90deg,
+			var(--neutral-100) 25%,
+			var(--neutral-200) 50%,
+			var(--neutral-100) 75%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+		border-radius: var(--radius-md);
+		margin-top: 0.5rem;
+	}
+
+	@keyframes shimmer {
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
 		}
 	}
 </style>

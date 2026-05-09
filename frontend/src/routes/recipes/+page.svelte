@@ -12,7 +12,7 @@
 	import CollectionsSidebar from '$lib/components/CollectionsSidebar.svelte';
 	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
-	import { Download, Search, Folder, Grid, List, UtensilsCrossed, AlertCircle, Loader2 } from 'lucide-svelte';
+	import { Download, Search, Folder, Grid, List, UtensilsCrossed, AlertCircle, Loader2, X, Clock } from 'lucide-svelte';
 	import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEBOUNCE_DELAY } from '$lib/constants';
 
 	let searchResult: RecipeSearchResult | null = null;
@@ -209,6 +209,44 @@
 		loadRecipes();
 	}
 
+	// Clear individual filter
+	function clearFilter(type: string, value?: string) {
+		if (type === 'cuisine' && value) {
+			selectedCuisines = selectedCuisines.filter(c => c !== value);
+		} else if (type === 'category' && value) {
+			selectedCategories = selectedCategories.filter(c => c !== value);
+		} else if (type === 'source' && value) {
+			selectedSourceTypes = selectedSourceTypes.filter(s => s !== value);
+		} else if (type === 'time') {
+			maxTime = undefined;
+			minTime = undefined;
+		} else if (type === 'search') {
+			searchParams.query = '';
+		}
+		searchParams.page = DEFAULT_PAGE;
+		loadRecipes();
+	}
+
+	// Clear all filters
+	function clearAllFilters() {
+		selectedCuisines = [];
+		selectedCategories = [];
+		selectedSourceTypes = [];
+		maxTime = undefined;
+		minTime = undefined;
+		searchParams.query = '';
+		searchParams.page = DEFAULT_PAGE;
+		loadRecipes();
+	}
+
+	// Check if any filters are active
+	$: hasActiveFilters = selectedCuisines.length > 0 ||
+		selectedCategories.length > 0 ||
+		selectedSourceTypes.length > 0 ||
+		maxTime !== undefined ||
+		minTime !== undefined ||
+		searchParams.query !== '';
+
 	// Watch for URL changes (e.g., browser back/forward)
 	$: if (browser && $page.url) {
 		loadSearchParamsFromURL();
@@ -309,10 +347,64 @@
 				</select>
 			</div>
 
+			<!-- Active Filter Chips -->
+			{#if hasActiveFilters}
+				<div class="filter-chips-container">
+					<div class="filter-chips">
+						{#if searchParams.query}
+							<button class="filter-chip" on:click={() => clearFilter('search')}>
+								<Search size={14} aria-hidden="true" />
+								<span>"{searchParams.query}"</span>
+								<X size={14} aria-hidden="true" />
+							</button>
+						{/if}
+						{#each selectedCuisines as cuisine}
+							<button class="filter-chip" on:click={() => clearFilter('cuisine', cuisine)}>
+								<span>{cuisine}</span>
+								<X size={14} aria-hidden="true" />
+							</button>
+						{/each}
+						{#each selectedCategories as category}
+							<button class="filter-chip" on:click={() => clearFilter('category', category)}>
+								<span>{category}</span>
+								<X size={14} aria-hidden="true" />
+							</button>
+						{/each}
+						{#each selectedSourceTypes as source}
+							<button class="filter-chip" on:click={() => clearFilter('source', source)}>
+								<span>{source === 'imported' ? 'Imported' : 'Manual Entry'}</span>
+								<X size={14} aria-hidden="true" />
+							</button>
+						{/each}
+						{#if maxTime !== undefined || minTime !== undefined}
+							<button class="filter-chip" on:click={() => clearFilter('time')}>
+								<Clock size={14} aria-hidden="true" />
+								<span>
+									{#if minTime && maxTime}
+										{minTime}-{maxTime} min
+									{:else if maxTime}
+										Under {maxTime} min
+									{:else if minTime}
+										Over {minTime} min
+									{/if}
+								</span>
+								<X size={14} aria-hidden="true" />
+							</button>
+						{/if}
+					</div>
+					<button class="clear-all-chips-btn" on:click={clearAllFilters}>
+						Clear All
+					</button>
+				</div>
+			{/if}
+
 			<!-- Active count -->
 			{#if searchResult}
 				<p class="mt-3 text-sm" style="color: var(--text-600);">
 					Showing {searchResult.recipes.length} of {searchResult.total} recipes
+					{#if hasActiveFilters}
+						<span style="color: var(--accent-600);">(filtered)</span>
+					{/if}
 				</p>
 			{/if}
 		</div>
@@ -346,13 +438,24 @@
 			<!-- Recipes Column -->
 			<div class="recipes-column">
 		{#if loading}
-			<!-- Loading state -->
-			<div class="text-center py-16">
-				<div class="flex justify-center mb-4" style="color: var(--text-400);">
-					<Loader2 size={48} class="animate-spin" aria-hidden="true" />
-				</div>
-				<p class="text-lg" style="color: var(--text-600);">Loading recipes...</p>
+			<!-- Skeleton loading state -->
+			<div class="recipe-grid" role="status" aria-label="Loading recipes">
+				{#each Array(8) as _, i}
+					<div class="skeleton-card">
+						<div class="skeleton-image"></div>
+						<div class="skeleton-content">
+							<div class="skeleton-title"></div>
+							<div class="skeleton-meta">
+								<div class="skeleton-tag"></div>
+								<div class="skeleton-tag"></div>
+							</div>
+							<div class="skeleton-description"></div>
+							<div class="skeleton-description short"></div>
+						</div>
+					</div>
+				{/each}
 			</div>
+			<p class="sr-only">Loading recipes...</p>
 		{:else if error}
 			<!-- Error state -->
 			<div class="text-center py-16">
@@ -599,6 +702,166 @@
 		.sidebar-column {
 			width: 100%;
 			flex: 1;
+		}
+	}
+
+	/* Filter Chips */
+	.filter-chips-container {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		margin-top: 1rem;
+		padding-top: 1rem;
+		border-top: 1px solid var(--neutral-200);
+	}
+
+	.filter-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		flex: 1;
+	}
+
+	.filter-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.375rem 0.625rem;
+		background: var(--accent-100);
+		border: 1px solid var(--accent-300);
+		border-radius: var(--radius-full);
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: var(--accent-800);
+		cursor: pointer;
+		transition: all var(--transition-fast);
+		animation: chipAppear 0.2s ease-out;
+	}
+
+	.filter-chip:hover {
+		background: var(--accent-200);
+		border-color: var(--accent-400);
+	}
+
+	.filter-chip:focus {
+		outline: none;
+		box-shadow: 0 0 0 2px var(--accent-300);
+	}
+
+	@keyframes chipAppear {
+		from {
+			opacity: 0;
+			transform: scale(0.8);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+
+	.clear-all-chips-btn {
+		padding: 0.375rem 0.75rem;
+		background: transparent;
+		border: 1px solid var(--neutral-300);
+		border-radius: var(--radius-md);
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: var(--text-600);
+		cursor: pointer;
+		transition: all var(--transition-fast);
+		white-space: nowrap;
+	}
+
+	.clear-all-chips-btn:hover {
+		background: var(--neutral-100);
+		border-color: var(--neutral-400);
+		color: var(--text-900);
+	}
+
+	/* Skeleton Loading */
+	.skeleton-card {
+		background: var(--neutral-white);
+		border-radius: var(--radius-lg);
+		overflow: hidden;
+		box-shadow: var(--shadow-sm);
+	}
+
+	.skeleton-image {
+		aspect-ratio: 4 / 3;
+		background: linear-gradient(
+			90deg,
+			var(--neutral-100) 25%,
+			var(--neutral-200) 50%,
+			var(--neutral-100) 75%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+	}
+
+	.skeleton-content {
+		padding: 1rem;
+	}
+
+	.skeleton-title {
+		height: 1.5rem;
+		width: 70%;
+		background: linear-gradient(
+			90deg,
+			var(--neutral-100) 25%,
+			var(--neutral-200) 50%,
+			var(--neutral-100) 75%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+		border-radius: var(--radius-sm);
+		margin-bottom: 0.75rem;
+	}
+
+	.skeleton-meta {
+		display: flex;
+		gap: 0.5rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.skeleton-tag {
+		height: 1.25rem;
+		width: 4rem;
+		background: linear-gradient(
+			90deg,
+			var(--neutral-100) 25%,
+			var(--neutral-200) 50%,
+			var(--neutral-100) 75%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+		border-radius: var(--radius-full);
+	}
+
+	.skeleton-description {
+		height: 0.875rem;
+		width: 100%;
+		background: linear-gradient(
+			90deg,
+			var(--neutral-100) 25%,
+			var(--neutral-200) 50%,
+			var(--neutral-100) 75%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+		border-radius: var(--radius-sm);
+		margin-bottom: 0.5rem;
+	}
+
+	.skeleton-description.short {
+		width: 60%;
+	}
+
+	@keyframes shimmer {
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
 		}
 	}
 </style>

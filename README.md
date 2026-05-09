@@ -130,6 +130,13 @@ pnpm dev
 # or: npm run dev
 ```
 
+If you use `pnpm` v11+, dependency install scripts are blocked until they are explicitly approved. This repo includes the required approvals in [frontend/pnpm-workspace.yaml](frontend/pnpm-workspace.yaml) for `esbuild`, `sharp`, and `workerd`. If `pnpm install` fails with `ERR_PNPM_IGNORED_BUILDS`, confirm those entries are still set to `true`, or run:
+
+```bash
+pnpm approve-builds esbuild sharp workerd
+pnpm install
+```
+
 Frontend runs on `http://localhost:5173`
 
 ### First Steps
@@ -142,6 +149,7 @@ Frontend runs on `http://localhost:5173`
 ### Backend Setup
 
 ```bash
+# Run the remaining backend commands from the backend/ directory.
 cd backend
 
 # Install dependencies with uv
@@ -173,8 +181,14 @@ EOF
 # Run database migrations
 uv run alembic upgrade head
 
-# Start the server
+# Start the server (must be run from backend/)
 uv run uvicorn app.main:app --reload
+```
+
+If your prompt still shows the repo root (for example `C:\source\recipe-catalog`) instead of `...\backend`, the import path will fail with `ModuleNotFoundError: No module named 'app'`. In that case, either run `cd backend` first or start the server from the repo root with:
+
+```bash
+uv run --directory backend uvicorn app.main:app --reload
 ```
 
 Backend runs on `http://localhost:8000`

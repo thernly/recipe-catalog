@@ -28,12 +28,19 @@
 	$: isAuthPage = $page.url.pathname === '/' || $page.url.pathname.startsWith('/auth');
 </script>
 
+<!-- Skip to main content link (accessibility) -->
+<a href="#main-content" class="skip-link">
+	Skip to main content
+</a>
+
 <!-- Show Navbar only for authenticated users and not on landing/auth pages -->
 {#if user && !isAuthPage}
 	<Navbar />
 {/if}
 
-<slot />
+<main id="main-content">
+	<slot />
+</main>
 
 <!-- Global components -->
 <ConfirmDialog
