@@ -25,6 +25,7 @@ from app.core.security import (
     generate_refresh_token,
     get_password_hash,
     get_refresh_token_expiry,
+    hash_token,
     verify_password,
 )
 from app.models._utils import is_expired
@@ -190,7 +191,7 @@ async def register(
         # Generate and store refresh token
         refresh_token_value = generate_refresh_token()
         refresh_token = RefreshToken(
-            token=refresh_token_value,
+            token=hash_token(refresh_token_value),
             user_id=new_user.id,
             expires_at=get_refresh_token_expiry(),
             revoked=False,
@@ -377,7 +378,7 @@ async def login(
     # Generate and store refresh token
     refresh_token_value = generate_refresh_token()
     refresh_token = RefreshToken(
-        token=refresh_token_value,
+        token=hash_token(refresh_token_value),
         user_id=user.id,
         expires_at=get_refresh_token_expiry(),
         revoked=False,
@@ -455,8 +456,11 @@ async def refresh_token(
 
     # Look up the refresh token with row-level lock to prevent race conditions
     # The with_for_update() ensures that concurrent refresh requests will be serialized
+    hashed_refresh_token_value = hash_token(refresh_token_value)
     result = await db.execute(
-        select(RefreshToken).where(RefreshToken.token == refresh_token_value).with_for_update()
+        select(RefreshToken)
+        .where(RefreshToken.token == hashed_refresh_token_value)
+        .with_for_update()
     )
     refresh_token_record = result.scalar_one_or_none()
 
@@ -502,7 +506,7 @@ async def refresh_token(
     # Generate new refresh token (token rotation for security)
     new_refresh_token_value = generate_refresh_token()
     new_refresh_token = RefreshToken(
-        token=new_refresh_token_value,
+        token=hash_token(new_refresh_token_value),
         user_id=user.id,
         expires_at=get_refresh_token_expiry(),
         revoked=False,
@@ -569,8 +573,9 @@ async def logout(
 
     if refresh_token_value:
         # Revoke the refresh token
+        hashed_refresh_token_value = hash_token(refresh_token_value)
         result = await db.execute(
-            select(RefreshToken).where(RefreshToken.token == refresh_token_value)
+            select(RefreshToken).where(RefreshToken.token == hashed_refresh_token_value)
         )
         refresh_token_record = result.scalar_one_or_none()
 
@@ -631,7 +636,7 @@ async def forgot_password(
         # Send email asynchronously
         await email_service.send_password_reset_email(
             to_email=user.email,
-            reset_token=reset_token.token,
+            reset_token=reset_token.raw_token,
             user_name=user.display_name,
         )
 
@@ -661,8 +666,9 @@ async def reset_password(
     from app.models.token import PasswordResetToken
 
     # Find token
+    hashed_request_token = hash_token(request.token)
     result = await db.execute(
-        select(PasswordResetToken).where(PasswordResetToken.token == request.token)
+        select(PasswordResetToken).where(PasswordResetToken.token == hashed_request_token)
     )
     reset_token = result.scalar_one_or_none()
 
@@ -705,7 +711,10 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
     from app.models.token import VerificationToken
 
     # Find token
-    result = await db.execute(select(VerificationToken).where(VerificationToken.token == token))
+    hashed_token = hash_token(token)
+    result = await db.execute(
+        select(VerificationToken).where(VerificationToken.token == hashed_token)
+    )
     verification_token = result.scalar_one_or_none()
 
     if not verification_token or not verification_token.is_valid():
@@ -778,7 +787,7 @@ async def resend_verification(
     # Send email asynchronously
     await email_service.send_verification_email(
         to_email=user.email,
-        verification_token=verification_token.token,
+        verification_token=verification_token.raw_token,
         user_name=user.display_name,
     )
 

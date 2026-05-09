@@ -4,6 +4,7 @@ Security utilities for password hashing and JWT tokens.
 
 import secrets
 from datetime import UTC, datetime, timedelta
+from hashlib import sha256
 from typing import Any
 
 import bleach
@@ -140,6 +141,11 @@ def get_refresh_token_expiry() -> datetime:
         Datetime object for configured days from now
     """
     return datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+
+def hash_token(token: str) -> str:
+    """Hash bearer tokens before database storage."""
+    return sha256(token.encode("utf-8")).hexdigest()
 
 
 def is_safe_redirect_url(url: str) -> bool:

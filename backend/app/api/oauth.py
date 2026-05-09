@@ -22,6 +22,7 @@ from app.core.security import (
     generate_csrf_token,
     generate_refresh_token,
     get_refresh_token_expiry,
+    hash_token,
     is_safe_redirect_url,
 )
 from app.models.identity_provider import IdentityProvider
@@ -102,7 +103,7 @@ async def authorize_provider(
     redirect_uri = f"{settings.OAUTH_REDIRECT_URI}/{provider}"
 
     # Redirect to provider's authorization URL
-    return await client.authorize_redirect(request, redirect_uri, state=oauth_state.token)
+    return await client.authorize_redirect(request, redirect_uri, state=oauth_state.raw_token)
 
 
 @router.get("/{provider}/callback")
@@ -153,7 +154,8 @@ async def oauth_callback(
         )
 
     # Retrieve state from database
-    result = await db.execute(select(OAuthState).where(OAuthState.token == state_token))
+    hashed_state_token = hash_token(state_token)
+    result = await db.execute(select(OAuthState).where(OAuthState.token == hashed_state_token))
     oauth_state = result.scalar_one_or_none()
 
     if not oauth_state:
@@ -234,7 +236,7 @@ async def oauth_callback(
             # Generate and store refresh token
             refresh_token_value = generate_refresh_token()
             refresh_token = RefreshToken(
-                token=refresh_token_value,
+                token=hash_token(refresh_token_value),
                 user_id=user.id,
                 expires_at=get_refresh_token_expiry(),
                 revoked=False,
@@ -311,7 +313,7 @@ async def oauth_callback(
             # Generate and store refresh token
             refresh_token_value = generate_refresh_token()
             refresh_token = RefreshToken(
-                token=refresh_token_value,
+                token=hash_token(refresh_token_value),
                 user_id=existing_user.id,
                 expires_at=get_refresh_token_expiry(),
                 revoked=False,
@@ -408,7 +410,7 @@ async def oauth_callback(
         # Generate and store refresh token
         refresh_token_value = generate_refresh_token()
         refresh_token = RefreshToken(
-            token=refresh_token_value,
+            token=hash_token(refresh_token_value),
             user_id=new_user.id,
             expires_at=get_refresh_token_expiry(),
             revoked=False,

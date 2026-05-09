@@ -14,6 +14,7 @@ dependencies = [
     "email-validator==2.3.0",
     "fastapi[standard]==0.128.0",
     "fpdf2>=2.7.0",
+    "greenlet>=3.0.0",
     "httpx==0.28.1",
     "pydantic==2.12.5",
     "pydantic-settings==2.12.0",

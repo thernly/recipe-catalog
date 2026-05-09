@@ -232,7 +232,9 @@ def generate_recipe_pdf(recipe: "Recipe") -> bytes:
     return bytes(output) if not isinstance(output, bytes) else output
 
 
-def generate_collection_pdf(collection_name: str, collection_description: str, recipes: list["Recipe"]) -> bytes:
+def generate_collection_pdf(
+    collection_name: str, collection_description: str, recipes: list["Recipe"]
+) -> bytes:
     """
     Generate a PDF for a collection of recipes.
 

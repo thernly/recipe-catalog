@@ -83,7 +83,9 @@ async def export_recipe(
                 # If settings can't be imported for any reason, keep generic message
                 pass
 
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail_msg) from e
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail_msg
+            ) from e
 
         return Response(
             content=pdf_bytes,

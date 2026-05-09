@@ -688,7 +688,17 @@ def generate_invite_code() -> str:
     Returns:
         A code in the format "word1-word2-word3"
     """
-    words = [_random_word.word(include_parts_of_speech=["nouns"]) for _ in range(3)]
+    words = []
+    for _ in range(3):
+        # Exclude compound words containing hyphens to keep the code format unambiguous
+        for _ in range(20):
+            w = _random_word.word(include_parts_of_speech=["nouns"])
+            if "-" not in w:
+                words.append(w)
+                break
+        else:
+            # Fallback: strip hyphens if no simple word found in 20 attempts
+            words.append(_random_word.word(include_parts_of_speech=["nouns"]).replace("-", ""))
     return "-".join(words)
 
 

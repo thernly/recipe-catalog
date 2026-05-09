@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import JSON, Column, DateTime, Integer, String
 
 from app.core.database import Base
+from app.core.security import hash_token
 from app.models._utils import utc_now
 
 
@@ -46,7 +47,7 @@ class OAuthState(Base):
             is_safe_redirect_url() before calling this method to prevent
             open redirect vulnerabilities.
         """
-        token = cls.generate_token()
+        raw_token = cls.generate_token()
         expires_at = datetime.now(UTC) + timedelta(minutes=minutes_valid)
         data = {
             "provider": provider,
@@ -54,11 +55,13 @@ class OAuthState(Base):
             "redirect_url": redirect_url,
         }
 
-        return cls(
-            token=token,
+        instance = cls(
+            token=hash_token(raw_token),
             data=data,
             expires_at=expires_at,
         )
+        instance.raw_token = raw_token
+        return instance
 
     def is_valid(self) -> bool:
         """Check if state token is still valid."""

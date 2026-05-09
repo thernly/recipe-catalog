@@ -365,3 +365,6 @@ seed-data/
 /docs/assessments/
 /docs/task-lists/
 /docs/tasks/
+.assessments/
+.task-lists/
+.tasks/

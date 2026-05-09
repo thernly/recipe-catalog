@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from httpx import AsyncClient
 
+from app.core.security import hash_token
 from app.models.identity_provider import IdentityProvider
 from app.models.user import User
 
@@ -154,8 +155,8 @@ async def test_oauth_callback_new_user_flow(mock_create_client, client: AsyncCli
     from app.models.oauth_state import OAuthState
 
     oauth_state = OAuthState.create_state(provider="google", link_user_id=None)
-    # Use a fixed token for testing
-    oauth_state.token = "test_state"
+    # Use a fixed token for testing (store hash, send raw value to callback)
+    oauth_state.token = hash_token("test_state")
     test_db.add(oauth_state)
     await test_db.commit()
 
@@ -206,7 +207,7 @@ async def test_oauth_callback_auto_link_existing_user(
     from app.models.oauth_state import OAuthState
 
     oauth_state = OAuthState.create_state(provider="google", link_user_id=None)
-    oauth_state.token = "test_state"
+    oauth_state.token = hash_token("test_state")
     test_db.add(oauth_state)
     await test_db.commit()
 
@@ -259,7 +260,7 @@ async def test_oauth_callback_unverified_email_rejects_link(
     from app.models.oauth_state import OAuthState
 
     oauth_state = OAuthState.create_state(provider="google", link_user_id=None)
-    oauth_state.token = "test_state"
+    oauth_state.token = hash_token("test_state")
     test_db.add(oauth_state)
     await test_db.commit()
 
@@ -331,7 +332,7 @@ async def test_oauth_callback_state_mismatch(client: AsyncClient, test_db):
 
     # Create state for google
     oauth_state = OAuthState.create_state(provider="google", link_user_id=None)
-    oauth_state.token = "test_state"
+    oauth_state.token = hash_token("test_state")
     test_db.add(oauth_state)
     await test_db.commit()
 
@@ -373,7 +374,7 @@ async def test_oauth_creates_default_household(mock_create_client, client: Async
     from app.models.oauth_state import OAuthState
 
     oauth_state = OAuthState.create_state(provider="google", link_user_id=None)
-    oauth_state.token = "test_state_household"
+    oauth_state.token = hash_token("test_state_household")
     test_db.add(oauth_state)
     await test_db.commit()
 

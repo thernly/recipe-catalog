@@ -157,7 +157,10 @@ class ResendVerificationRequest(BaseModel):
 class UserPreferencesBase(BaseModel):
     """Base user preferences schema."""
 
-    theme: str = Field("light", pattern="^(light|dark|high-contrast|system|classic|professional|garden-fresh|bistro)$")
+    theme: str = Field(
+        "light",
+        pattern="^(light|dark|high-contrast|system|classic|professional|garden-fresh|bistro)$",
+    )
     default_view: str = Field("grid", pattern="^(grid|list)$")
     default_sort: str = "recently_added"
     recipes_per_page: int = Field(24, ge=12, le=100)
