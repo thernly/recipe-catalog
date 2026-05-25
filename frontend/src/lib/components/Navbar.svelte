@@ -5,7 +5,7 @@
 	import { onMount } from 'svelte';
 	import { getPreferences, updatePreferences } from '$lib/api/users';
 	import type { User, Theme } from '$lib/types';
-	import { UtensilsCrossed, Leaf, Wine, Sparkles } from 'lucide-svelte';
+	import { UtensilsCrossed, Leaf, Wine, Sparkles } from '@lucide/svelte';
 	import { logger } from '$lib/utils/logger';
 	import { handleError } from '$lib/utils/errors';
 

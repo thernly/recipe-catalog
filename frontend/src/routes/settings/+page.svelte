@@ -20,7 +20,7 @@
 	import DangerZoneSection from '$lib/components/settings/DangerZoneSection.svelte';
 	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
-	import { User as UserIcon, Palette, Lock, Home, BarChart3, Search, AlertTriangle } from 'lucide-svelte';
+	import { User as UserIcon, Palette, Lock, Home, BarChart3, Search, AlertTriangle } from '@lucide/svelte';
 
 	let user: User | null = null;
 	let preferences: UserPreferences | null = null;

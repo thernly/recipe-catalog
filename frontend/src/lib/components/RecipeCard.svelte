@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { RecipeSummary } from '$lib/api/recipes';
-	import { UtensilsCrossed, Clock, Star, Edit, Trash2, Download, PencilLine } from 'lucide-svelte';
+	import { UtensilsCrossed, Clock, Star, Edit, Trash2, Download, PencilLine } from '@lucide/svelte';
 
 	export let recipe: RecipeSummary;
 	export let showActions: boolean = true;

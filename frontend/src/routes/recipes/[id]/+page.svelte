@@ -6,7 +6,7 @@
 	import { generateFromRecipe, listShoppingLists, type ShoppingListSummary } from '$lib/api/shopping-lists';
 	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
-	import { ArrowLeft, Edit, Copy, ShoppingCart, Download, Printer, Trash2, Loader2, Globe, FileText } from 'lucide-svelte';
+	import { ArrowLeft, Edit, Copy, ShoppingCart, Download, Printer, Trash2, Loader2, Globe, FileText } from '@lucide/svelte';
 
 	let recipe: Recipe | null = null;
 	let loading = true;

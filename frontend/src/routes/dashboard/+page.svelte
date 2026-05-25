@@ -4,7 +4,7 @@
 	import { onMount } from 'svelte';
 	import type { User } from '$lib/types';
 	import { getUserStats, type UserStats } from '$lib/api/users';
-	import { BookOpen, Star, Folder, Plus, Search, Download, Upload, Rocket, Check, Hand, ChefHat, Sparkles, UtensilsCrossed } from 'lucide-svelte';
+	import { BookOpen, Star, Folder, Plus, Search, Download, Upload, Rocket, Check, Hand, ChefHat, Sparkles, UtensilsCrossed } from '@lucide/svelte';
 
 	let user: User | null = null;
 	let stats: UserStats | null = null;

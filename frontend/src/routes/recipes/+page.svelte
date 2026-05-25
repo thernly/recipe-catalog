@@ -12,7 +12,7 @@
 	import CollectionsSidebar from '$lib/components/CollectionsSidebar.svelte';
 	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
-	import { Download, Search, Folder, Grid, List, UtensilsCrossed, AlertCircle, Loader2 } from 'lucide-svelte';
+	import { Download, Search, Folder, Grid, List, UtensilsCrossed, AlertCircle, Loader2 } from '@lucide/svelte';
 	import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEBOUNCE_DELAY } from '$lib/constants';
 
 	let searchResult: RecipeSearchResult | null = null;
