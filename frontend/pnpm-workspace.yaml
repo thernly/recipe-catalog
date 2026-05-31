@@ -6,7 +6,7 @@ allowBuilds:
 overrides:
   cookie: ">=0.7.0"
   esbuild: ">=0.24.3"
-  undici: ">=6.24.0"
+  undici: "^7.25.0"
   ws: ">=8.20.1"
 
 peerDependencyRules:

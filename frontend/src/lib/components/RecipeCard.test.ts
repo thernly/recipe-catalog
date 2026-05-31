@@ -185,7 +185,8 @@ describe("RecipeCard", () => {
       props: { recipe: recipeNoImage },
     });
 
-    expect(getByText("🍽️")).toBeTruthy();
+    // Placeholder renders first letter of recipe name
+    expect(getByText(mockRecipe.name.charAt(0).toUpperCase())).toBeTruthy();
   });
 
   it("should dispatch view event when card is clicked", async () => {
@@ -203,11 +204,11 @@ describe("RecipeCard", () => {
 
   it("should dispatch edit event when edit button clicked", async () => {
     const editHandler = vi.fn();
-    const { getByTitle } = render(RecipeCard, {
+    const { getByRole } = render(RecipeCard, {
       props: { recipe: mockRecipe, onedit: editHandler },
     });
 
-    const editButton = getByTitle("Edit recipe");
+    const editButton = getByRole("button", { name: "Edit recipe" });
     await fireEvent.click(editButton);
 
     expect(editHandler).toHaveBeenCalled();
@@ -216,11 +217,11 @@ describe("RecipeCard", () => {
 
   it("should dispatch delete event when delete button clicked", async () => {
     const deleteHandler = vi.fn();
-    const { getByTitle } = render(RecipeCard, {
+    const { getByRole } = render(RecipeCard, {
       props: { recipe: mockRecipe, ondelete: deleteHandler },
     });
 
-    const deleteButton = getByTitle("Delete recipe");
+    const deleteButton = getByRole("button", { name: "Delete recipe" });
     await fireEvent.click(deleteButton);
 
     expect(deleteHandler).toHaveBeenCalled();
@@ -229,11 +230,11 @@ describe("RecipeCard", () => {
 
   it("should dispatch favorite event when favorite button clicked", async () => {
     const favoriteHandler = vi.fn();
-    const { getByTitle } = render(RecipeCard, {
+    const { getByRole } = render(RecipeCard, {
       props: { recipe: mockRecipe, onfavorite: favoriteHandler },
     });
 
-    const favoriteButton = getByTitle("Add to favorites");
+    const favoriteButton = getByRole("button", { name: "Add to favorites" });
     await fireEvent.click(favoriteButton);
 
     expect(favoriteHandler).toHaveBeenCalled();
@@ -241,33 +242,33 @@ describe("RecipeCard", () => {
   });
 
   it("should show action buttons by default", () => {
-    const { getByTitle } = render(RecipeCard, {
+    const { getByRole } = render(RecipeCard, {
       props: { recipe: mockRecipe },
     });
 
-    expect(getByTitle("Edit recipe")).toBeTruthy();
-    expect(getByTitle("Delete recipe")).toBeTruthy();
-    expect(getByTitle("Add to favorites")).toBeTruthy();
+    expect(getByRole("button", { name: "Edit recipe" })).toBeTruthy();
+    expect(getByRole("button", { name: "Delete recipe" })).toBeTruthy();
+    expect(getByRole("button", { name: "Add to favorites" })).toBeTruthy();
   });
 
   it("should hide action buttons when showActions is false", () => {
-    const { queryByTitle } = render(RecipeCard, {
+    const { queryByRole } = render(RecipeCard, {
       props: { recipe: mockRecipe, showActions: false },
     });
 
-    expect(queryByTitle("Edit recipe")).toBeNull();
-    expect(queryByTitle("Delete recipe")).toBeNull();
-    expect(queryByTitle("Add to favorites")).toBeNull();
+    expect(queryByRole("button", { name: "Edit recipe" })).toBeNull();
+    expect(queryByRole("button", { name: "Delete recipe" })).toBeNull();
+    expect(queryByRole("button", { name: "Add to favorites" })).toBeNull();
   });
 
   it("should prevent card click when action button is clicked", async () => {
     const viewHandler = vi.fn();
     const editHandler = vi.fn();
-    const { getByTitle } = render(RecipeCard, {
+    const { getByRole } = render(RecipeCard, {
       props: { recipe: mockRecipe, onview: viewHandler, onedit: editHandler },
     });
 
-    const editButton = getByTitle("Edit recipe");
+    const editButton = getByRole("button", { name: "Edit recipe" });
     await fireEvent.click(editButton);
 
     // Edit should be called, but not view
