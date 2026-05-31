@@ -8,7 +8,9 @@
       "Bash(npm run build:*)",
       "Skill(frontend-design:frontend-design)",
       "Bash(cat:*)",
-      "Bash(npm run check:*)"
+      "Bash(npm run check:*)",
+      "Bash(git *)",
+      "Bash(pnpm test *)"
     ],
     "deny": [],
     "ask": []
