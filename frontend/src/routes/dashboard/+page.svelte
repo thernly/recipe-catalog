@@ -199,7 +199,7 @@
 						{#if !loadingStats && stats}
 							{#if stats.total_recipes === 0}
 								<li class="flex items-center gap-2">
-									<span class="w-4 h-4 rounded-full border-2 border-current flex-shrink-0" aria-hidden="true"></span>
+									<span class="w-4 h-4 rounded-full border-2 border-current shrink-0" aria-hidden="true"></span>
 									<a href="/recipes/new" class="link font-medium">Add your first recipe</a>
 									<span class="text-sm">to get started</span>
 								</li>
@@ -210,12 +210,12 @@
 								</li>
 							{/if}
 							<li class="flex items-center gap-2">
-								<span class="w-4 h-4 rounded-full border-2 border-current flex-shrink-0" aria-hidden="true"></span>
+								<span class="w-4 h-4 rounded-full border-2 border-current shrink-0" aria-hidden="true"></span>
 								<a href="/import" class="link font-medium">Install the browser extension</a>
 								<span class="text-sm">to import recipes from websites</span>
 							</li>
 							<li class="flex items-center gap-2">
-								<span class="w-4 h-4 rounded-full border-2 border-current flex-shrink-0" aria-hidden="true"></span>
+								<span class="w-4 h-4 rounded-full border-2 border-current shrink-0" aria-hidden="true"></span>
 								<a href="/ai-generate" class="link font-medium">Try AI recipe generation</a>
 								<span class="text-sm">to create custom recipes</span>
 							</li>

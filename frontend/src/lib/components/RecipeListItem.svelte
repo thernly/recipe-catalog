@@ -36,7 +36,7 @@
 <article class="recipe-list-item group">
 	<div class="flex items-center gap-4 p-4">
 		<!-- Thumbnail -->
-		<button on:click={handleView} class="recipe-list-thumbnail flex-shrink-0">
+		<button on:click={handleView} class="recipe-list-thumbnail shrink-0">
 			{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
 				<img
 					src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
@@ -91,7 +91,7 @@
 		</button>
 
 		<!-- Actions -->
-		<div class="flex items-center gap-2 flex-shrink-0">
+		<div class="flex items-center gap-2 shrink-0">
 			<button
 				on:click={handleFavorite}
 				class="action-btn-small"
