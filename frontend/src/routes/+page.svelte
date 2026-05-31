@@ -40,13 +40,13 @@
 		<div class="flex items-center gap-4">
 			<a
 				href="/auth/login"
-				class="px-4 py-2 rounded-md hover:bg-white/10 transition text-sm"
+				class="px-4 py-2 rounded-md hover:bg-white/10 transition text-sm text-white"
 			>
 				Sign In
 			</a>
 			<a
 				href="/auth/register"
-				class="px-4 py-2 rounded-md hover:bg-white/10 transition text-sm"
+				class="px-4 py-2 rounded-md hover:bg-white/10 transition text-sm text-white"
 			>
 				Sign Up
 			</a>
@@ -103,37 +103,6 @@
 				</div>
 			</div>
 
-			<!-- Status Info -->
-			<div class="mt-16 p-6 rounded-lg" style="background: var(--accent-50);">
-				<p class="text-sm font-semibold" style="color: var(--accent-800);">
-					🚧 Currently in Development
-				</p>
-				<p class="text-sm mt-2" style="color: var(--accent-700);">
-					This project is being built with SvelteKit + FastAPI + SQLite. Check back soon!
-				</p>
-			</div>
-
-			<!-- Tech Stack -->
-			<div class="mt-12">
-				<h2 class="text-2xl font-semibold mb-6">Built With Modern Technology</h2>
-				<div class="flex flex-wrap justify-center gap-4">
-					<span class="px-4 py-2 rounded-full" style="background: var(--neutral-200);">
-						SvelteKit
-					</span>
-					<span class="px-4 py-2 rounded-full" style="background: var(--neutral-200);">
-						FastAPI
-					</span>
-					<span class="px-4 py-2 rounded-full" style="background: var(--neutral-200);">
-						SQLite/D1
-					</span>
-					<span class="px-4 py-2 rounded-full" style="background: var(--neutral-200);">
-						Tailwind CSS
-					</span>
-					<span class="px-4 py-2 rounded-full" style="background: var(--neutral-200);">
-						Cloudflare
-					</span>
-				</div>
-			</div>
 		</div>
 	</main>
 
