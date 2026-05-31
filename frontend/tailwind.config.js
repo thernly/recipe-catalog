@@ -32,19 +32,6 @@ export default {
           900: "var(--accent-900)",
         },
       },
-      fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        display: ["Playfair Display", "Georgia", "serif"],
-      },
-      spacing: {
-        xs: "var(--space-xs)",
-        sm: "var(--space-sm)",
-        md: "var(--space-md)",
-        lg: "var(--space-lg)",
-        xl: "var(--space-xl)",
-        "2xl": "var(--space-2xl)",
-        "3xl": "var(--space-3xl)",
-      },
       borderRadius: {
         DEFAULT: "var(--radius-md)",
         sm: "var(--radius-sm)",
