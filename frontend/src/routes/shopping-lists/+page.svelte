@@ -198,7 +198,7 @@
 
 <!-- Create List Dialog -->
 {#if showCreateDialog}
-	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+	<div class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
 		<div class="rounded-lg shadow-xl max-w-md w-full p-6" style="background: var(--neutral-white);">
 			<h2 class="text-2xl font-bold mb-4" style="color: var(--text-900);">Create Shopping List</h2>
 
