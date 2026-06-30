@@ -3,6 +3,9 @@ allowBuilds:
   sharp: false
   workerd: false
 
+minimumReleaseAgeExclude:
+  - vite@8.1.1
+
 overrides:
   cookie: ">=0.7.0"
   esbuild: ">=0.24.3"
