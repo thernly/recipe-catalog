@@ -7,7 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "aiosmtplib>=5.1.2",
     "aiosqlite==0.22.1",
-    "alembic==1.19.0",
+    "alembic==1.19.1",
     "argon2-cffi==25.1.0",
     "authlib>=1.7.2",
     "bleach>=6.4.0",
@@ -25,9 +25,9 @@ dependencies = [
     "pyjwt[crypto]>=2.13.0",
     "python-multipart==0.0.32",
     "slowapi>=0.1.10",
-    "sqlalchemy==2.0.51",
+    "sqlalchemy==2.0.52",
     "structlog>=26.1.0",
-    "uvicorn[standard]==0.52.1",
+    "uvicorn[standard]==0.52.3",
     "wonderwords==3.0.1",
 ]
 
