@@ -99,8 +99,9 @@ async def authorize_provider(
     await db.commit()
     await db.refresh(oauth_state)
 
-    # Build redirect URI
-    redirect_uri = f"{settings.OAUTH_REDIRECT_URI}/{provider}"
+    # Build redirect URI -- must match the callback route registered below
+    # ("/{provider}/callback" under this router's /api/v1/auth prefix).
+    redirect_uri = f"{settings.OAUTH_REDIRECT_BASE_URL}/{provider}/callback"
 
     # Redirect to provider's authorization URL
     return await client.authorize_redirect(request, redirect_uri, state=oauth_state.raw_token)

@@ -2,7 +2,9 @@
 Application configuration settings.
 """
 
-from pydantic import field_validator
+import os
+
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.constants import MIN_SECRET_KEY_LENGTH
@@ -74,7 +76,9 @@ class Settings(BaseSettings):
     MICROSOFT_CLIENT_SECRET: str = ""
     GITHUB_CLIENT_ID: str = ""
     GITHUB_CLIENT_SECRET: str = ""
-    OAUTH_REDIRECT_URI: str = "http://localhost:8000/api/auth/callback"
+    # Base URL of the auth API. The provider callback path -- "/{provider}/callback"
+    # -- is appended to this, so it must NOT include the callback segment itself.
+    OAUTH_REDIRECT_BASE_URL: str = "http://localhost:8000/api/v1/auth"
 
     # AI / OpenRouter
     OPENROUTER_API_KEY: str = ""
@@ -160,6 +164,35 @@ class Settings(BaseSettings):
                 "Generate a secure key with: openssl rand -hex 32"
             )
         return v
+
+    @field_validator("OAUTH_REDIRECT_BASE_URL")
+    @classmethod
+    def validate_oauth_redirect_base_url(cls, v: str) -> str:
+        """Reject values that already include the callback path."""
+        normalized = v.rstrip("/")
+        if normalized.endswith("/callback"):
+            raise ValueError(
+                "OAUTH_REDIRECT_BASE_URL must be the auth API base URL "
+                "(e.g. http://localhost:8000/api/v1/auth). The '/{provider}/callback' "
+                "path is appended automatically."
+            )
+        return normalized
+
+    @model_validator(mode="after")
+    def reject_legacy_oauth_redirect_uri(self) -> "Settings":
+        """
+        Fail loudly if the removed OAUTH_REDIRECT_URI is still set.
+
+        Its value pointed at a route that never existed, so silently ignoring it
+        would leave OAuth broken with no indication why.
+        """
+        if os.environ.get("OAUTH_REDIRECT_URI"):
+            raise ValueError(
+                "OAUTH_REDIRECT_URI has been replaced by OAUTH_REDIRECT_BASE_URL. "
+                "Set OAUTH_REDIRECT_BASE_URL to the auth API base URL "
+                "(e.g. https://your-domain.com/api/v1/auth) and unset OAUTH_REDIRECT_URI."
+            )
+        return self
 
     @field_validator("ALLOWED_ORIGINS")
     @classmethod

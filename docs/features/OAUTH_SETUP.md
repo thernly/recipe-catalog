@@ -30,11 +30,11 @@ Feature 14 adds support for:
 
 ### API Endpoints
 
-- `GET /api/auth/providers` - List available OAuth providers
-- `GET /api/auth/{provider}/authorize` - Initiate OAuth flow
-- `GET /api/auth/{provider}/callback` - Handle OAuth callback
-- `GET /api/auth/me/providers` - List user's linked providers
-- `DELETE /api/auth/providers/{id}` - Unlink a provider
+- `GET /api/v1/auth/providers` - List available OAuth providers
+- `GET /api/v1/auth/{provider}/authorize` - Initiate OAuth flow
+- `GET /api/v1/auth/{provider}/callback` - Handle OAuth callback
+- `GET /api/v1/auth/me/providers` - List user's linked providers
+- `DELETE /api/v1/auth/providers/{id}` - Unlink a provider
 
 ## Provider Setup
 
@@ -51,8 +51,8 @@ Feature 14 adds support for:
 6. Create OAuth 2.0 Client ID:
    - Application type: Web application
    - Authorized redirect URIs:
-     - `http://localhost:8000/api/auth/callback/google` (development)
-     - `https://your-domain.com/api/auth/callback/google` (production)
+     - `http://localhost:8000/api/v1/auth/google/callback` (development)
+     - `https://your-domain.com/api/v1/auth/google/callback` (production)
 7. Copy Client ID and Client Secret
 
 **Environment Variables:**
@@ -68,7 +68,7 @@ GOOGLE_CLIENT_SECRET=your-client-secret
 3. Click "New registration"
    - Name: Recipe Catalog
    - Supported account types: "Accounts in any organizational directory and personal Microsoft accounts"
-   - Redirect URI: Web → `http://localhost:8000/api/auth/callback/microsoft`
+   - Redirect URI: Web → `http://localhost:8000/api/v1/auth/microsoft/callback`
 4. After creation, note the "Application (client) ID"
 5. Go to "Certificates & secrets" → "New client secret"
    - Description: Recipe Catalog Backend
@@ -89,7 +89,7 @@ MICROSOFT_CLIENT_SECRET=your-client-secret
 2. Click "New OAuth App"
    - Application name: Recipe Catalog
    - Homepage URL: `http://localhost:5173` (development)
-   - Authorization callback URL: `http://localhost:8000/api/auth/callback/github`
+   - Authorization callback URL: `http://localhost:8000/api/v1/auth/github/callback`
 3. Copy Client ID and generate Client Secret
 
 **Environment Variables:**
@@ -116,7 +116,7 @@ GITHUB_CLIENT_ID=your-github-client-id
 GITHUB_CLIENT_SECRET=your-github-client-secret
 
 # OAuth Redirect URI base (must match provider configuration)
-OAUTH_REDIRECT_URI=http://localhost:8000/api/auth/callback
+OAUTH_REDIRECT_BASE_URL=http://localhost:8000/api/v1/auth
 ```
 
 ### Frontend Configuration
@@ -159,9 +159,9 @@ The frontend needs to be configured to:
 ### Manual Testing
 
 1. Start the backend server: `cd backend && uv run uvicorn app.main:app --reload`
-2. Visit http://localhost:8000/api/auth/providers to see configured providers
+2. Visit http://localhost:8000/api/v1/auth/providers to see configured providers
 3. Test OAuth flow:
-   - Navigate to http://localhost:8000/api/auth/google/authorize
+   - Navigate to http://localhost:8000/api/v1/auth/google/authorize
    - Complete Google authentication
    - Verify redirect to callback and token generation
 4. Test account linking:
@@ -172,13 +172,13 @@ The frontend needs to be configured to:
 ### Production Deployment
 
 **Important:** Update redirect URIs in all provider configurations to use production URLs:
-- Google: `https://your-domain.com/api/auth/callback/google`
-- Microsoft: `https://your-domain.com/api/auth/callback/microsoft`
-- GitHub: `https://your-domain.com/api/auth/callback/github`
+- Google: `https://your-domain.com/api/v1/auth/google/callback`
+- Microsoft: `https://your-domain.com/api/v1/auth/microsoft/callback`
+- GitHub: `https://your-domain.com/api/v1/auth/github/callback`
 
-Update `OAUTH_REDIRECT_URI` in production environment:
+Update `OAUTH_REDIRECT_BASE_URL` in production environment:
 ```bash
-OAUTH_REDIRECT_URI=https://your-domain.com/api/auth/callback
+OAUTH_REDIRECT_BASE_URL=https://your-domain.com/api/v1/auth
 ```
 
 ## Troubleshooting
@@ -199,7 +199,7 @@ OAUTH_REDIRECT_URI=https://your-domain.com/api/auth/callback
 - Then link additional provider from settings
 
 ### OAuth callback URL mismatch
-- Verify OAUTH_REDIRECT_URI matches provider configuration exactly
+- Verify OAUTH_REDIRECT_BASE_URL matches provider configuration exactly
 - Include protocol (http:// or https://)
 - Ensure no trailing slashes
 

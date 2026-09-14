@@ -12,13 +12,18 @@ This guide provides instructions for integrating with the Recipe Catalog API's r
 
 ## Authentication
 
-### JWT Bearer Token Authentication
+### Cookie Session Authentication
 
-The Recipe Catalog API uses JWT (JSON Web Token) bearer authentication. All API requests must include a valid access token in the Authorization header.
+The API authenticates with httpOnly cookies. Logging in sets an `access_token`
+cookie that your HTTP client's cookie jar sends automatically. The token is never
+exposed to JavaScript and is **not** returned in the response body.
 
-### Getting an Access Token
+State-changing requests (POST, PUT, PATCH, DELETE) additionally require a CSRF
+token, using the double-submit cookie pattern.
 
-**Endpoint**: `POST /api/auth/login`
+### Logging In
+
+**Endpoint**: `POST /api/v1/auth/login`
 
 **Request Body**:
 
@@ -33,39 +38,50 @@ The Recipe Catalog API uses JWT (JSON Web Token) bearer authentication. All API 
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer",
-  "user": {
-    "id": 1,
-    "email": "user@example.com",
-    "display_name": "John Doe",
-    "is_active": true,
-    "is_verified": true
-  }
+  "message": "Login successful",
+  "csrf_token": "a1b2c3d4..."
 }
 ```
 
-**Token Expiration**: Access tokens expire after 30 minutes (default configuration).
+The response sets three cookies:
 
-### Using the Access Token
+| Cookie | Readable by JS | Lifetime |
+|---|---|---|
+| `access_token` | No (httpOnly) | 15 minutes (`ACCESS_TOKEN_EXPIRE_MINUTES`) |
+| `refresh_token` | No (httpOnly) | 30 days (`REFRESH_TOKEN_EXPIRE_DAYS`) |
+| `csrf_token` | Yes | 30 days |
 
-Include the access token in the `Authorization` header of all API requests:
+### Making Authenticated Requests
+
+Send the cookies with every request, and include the CSRF token in an
+`X-CSRF-Token` header on state-changing methods:
 
 ```http
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Cookie: access_token=<...>; csrf_token=<...>
+X-CSRF-Token: <csrf_token>
 ```
+
+Omitting the CSRF header on a POST, PUT, PATCH, or DELETE returns
+`403 csrf_token_invalid`, even when authentication is otherwise valid.
+
+**Token expiration**: access tokens expire after 15 minutes. Call
+`POST /api/v1/auth/refresh` to issue a new one from the `refresh_token` cookie.
+
+**Bearer alternative**: the API also accepts `Authorization: Bearer <jwt>` if you
+hold a token by other means, but login does not return one — the cookie session
+above is the supported path. CSRF protection applies either way.
 
 ---
 
 ## Import Recipes Endpoint
 
-### `POST /api/import/recipes/json`
+### `POST /api/v1/import/recipes/json`
 
 Import one or more recipes from JSON data in Schema.org Recipe format.
 
 #### Authentication Required
 
-✅ Yes - Must include valid JWT bearer token
+✅ Yes - Requires a logged-in cookie session plus an `X-CSRF-Token` header
 
 #### Rate Limiting
 
@@ -77,7 +93,8 @@ Import one or more recipes from JSON data in Schema.org Recipe format.
 **Headers**:
 
 ```http
-Authorization: Bearer <access_token>
+Cookie: access_token=<...>; csrf_token=<...>
+X-CSRF-Token: <csrf_token>
 Content-Type: application/json
 ```
 
@@ -216,7 +233,8 @@ Missing or invalid authentication token.
 }
 ```
 
-**Solution**: Ensure you've included a valid JWT token in the Authorization header.
+**Solution**: Log in again to refresh the `access_token` cookie. Access tokens
+expire after 15 minutes; `POST /api/v1/auth/refresh` issues a new one.
 
 ### 404 Not Found
 
@@ -396,18 +414,18 @@ import json
 class RecipeCatalogClient:
     def __init__(self, base_url: str):
         self.base_url = base_url
-        self.access_token = None
+        self.session = requests.Session()  # holds the auth cookies
+        self.csrf_token = None
     
     def login(self, email: str, password: str) -> bool:
-        """Authenticate and store access token."""
-        response = requests.post(
-            f"{self.base_url}/api/auth/login",
+        """Authenticate. Cookies are stored on the session; keep the CSRF token."""
+        response = self.session.post(
+            f"{self.base_url}/api/v1/auth/login",
             json={"email": email, "password": password}
         )
-        
+
         if response.status_code == 200:
-            data = response.json()
-            self.access_token = data["access_token"]
+            self.csrf_token = response.json()["csrf_token"]
             return True
         return False
     
@@ -418,11 +436,11 @@ class RecipeCatalogClient:
         collection_id: int = None
     ) -> dict:
         """Import recipes to Recipe Catalog."""
-        if not self.access_token:
+        if not self.csrf_token:
             raise Exception("Not authenticated. Call login() first.")
-        
+
         headers = {
-            "Authorization": f"Bearer {self.access_token}",
+            "X-CSRF-Token": self.csrf_token,
             "Content-Type": "application/json"
         }
         
@@ -434,8 +452,8 @@ class RecipeCatalogClient:
         if collection_id:
             payload["collection_id"] = collection_id
         
-        response = requests.post(
-            f"{self.base_url}/api/import/recipes/json",
+        response = self.session.post(
+            f"{self.base_url}/api/v1/import/recipes/json",
             headers=headers,
             json=payload
         )
@@ -496,7 +514,7 @@ interface ImportResult {
 
 class RecipeCatalogClient {
   private baseUrl: string;
-  private accessToken: string | null = null;
+  private csrfToken: string | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -504,15 +522,16 @@ class RecipeCatalogClient {
 
   async login(email: string, password: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/auth/login`, {
+      const response = await fetch(`${this.baseUrl}/api/v1/auth/login`, {
         method: 'POST',
+        credentials: 'include',  // required: auth travels in cookies
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
 
       if (response.ok) {
         const data = await response.json();
-        this.accessToken = data.access_token;
+        this.csrfToken = data.csrf_token;
         return true;
       }
       return false;
@@ -527,7 +546,7 @@ class RecipeCatalogClient {
     duplicateHandling: 'skip' | 'update' | 'create' = 'skip',
     collectionId?: number
   ): Promise<ImportResult> {
-    if (!this.accessToken) {
+    if (!this.csrfToken) {
       throw new Error('Not authenticated. Call login() first.');
     }
 
@@ -540,10 +559,11 @@ class RecipeCatalogClient {
       payload.collection_id = collectionId;
     }
 
-    const response = await fetch(`${this.baseUrl}/api/import/recipes/json`, {
+    const response = await fetch(`${this.baseUrl}/api/v1/import/recipes/json`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
+        'X-CSRF-Token': this.csrfToken,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
@@ -583,17 +603,19 @@ console.log(`Failed: ${result.details.failed}`);
 ### cURL Example
 
 ```bash
-# Step 1: Login and get access token
-TOKEN=$(curl -X POST http://localhost:8000/api/auth/login \
+# Step 1: Log in, saving cookies to a jar and keeping the CSRF token
+CSRF=$(curl -X POST http://localhost:8000/api/v1/auth/login \
+  -c cookies.txt \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
     "password": "password"
-  }' | jq -r '.access_token')
+  }' | jq -r '.csrf_token')
 
-# Step 2: Import recipes
-curl -X POST http://localhost:8000/api/import/recipes/json \
-  -H "Authorization: Bearer $TOKEN" \
+# Step 2: Import recipes, sending the cookies back plus the CSRF header
+curl -X POST http://localhost:8000/api/v1/import/recipes/json \
+  -b cookies.txt \
+  -H "X-CSRF-Token: $CSRF" \
   -H "Content-Type: application/json" \
   -d '{
     "recipes": [
@@ -637,25 +659,36 @@ curl -X POST http://localhost:8000/api/import/recipes/json \
 
 ### Token Storage Best Practices
 
+The `access_token` and `refresh_token` are httpOnly cookies — your extension
+cannot read them, and does not need to. The browser attaches them to requests
+as long as you send credentials. Only the CSRF token needs storing.
+
 **Chrome Extension Example**:
 
 ```javascript
-// Store token
-await chrome.storage.local.set({ accessToken: token });
+// Store the CSRF token returned by login
+await chrome.storage.local.set({ csrfToken });
 
-// Retrieve token
-const { accessToken } = await chrome.storage.local.get(['accessToken']);
+// Retrieve it for state-changing requests
+const { csrfToken } = await chrome.storage.local.get(['csrfToken']);
 
-// Clear token on logout
-await chrome.storage.local.remove('accessToken');
+await fetch(`${baseUrl}/api/v1/import/recipes/json`, {
+  method: 'POST',
+  credentials: 'include',            // sends the httpOnly auth cookies
+  headers: { 'X-CSRF-Token': csrfToken, 'Content-Type': 'application/json' },
+  body: JSON.stringify(payload)
+});
+
+// Clear on logout
+await chrome.storage.local.remove('csrfToken');
 ```
 
 **Security Notes**:
 
 - Use `chrome.storage.local` (not `localStorage` in content scripts)
-- Never expose tokens in console logs
-- Clear tokens on logout
-- Implement token expiration handling
+- Request host permissions for the API origin so cookies are sent
+- Clear the stored CSRF token on logout
+- Handle 401s by calling `POST /api/v1/auth/refresh`, then retrying once
 
 ---
 
@@ -665,12 +698,12 @@ await chrome.storage.local.remove('accessToken');
 
 1. Create a new collection called "Recipe Catalog API"
 2. Set collection variable `baseUrl` = `http://localhost:8000`
-3. Set collection variable `accessToken` (will be set after login)
+3. Set collection variable `csrfToken` (will be set after login)
 
 ### Login Request
 
 ```http
-POST {{baseUrl}}/api/auth/login
+POST {{baseUrl}}/api/v1/auth/login
 Content-Type: application/json
 
 {
@@ -679,14 +712,15 @@ Content-Type: application/json
 }
 
 // In Tests tab, add:
-pm.collectionVariables.set("accessToken", pm.response.json().access_token);
+pm.collectionVariables.set("csrfToken", pm.response.json().csrf_token);
+// Auth cookies are stored by the client's cookie jar automatically.
 ```
 
 ### Import Request
 
 ```http
-POST {{baseUrl}}/api/import/recipes/json
-Authorization: Bearer {{accessToken}}
+POST {{baseUrl}}/api/v1/import/recipes/json
+X-CSRF-Token: {{csrfToken}}
 Content-Type: application/json
 
 {
@@ -715,7 +749,7 @@ Content-Type: application/json
 **Issue**: "Collection not found"
 
 - **Cause**: Invalid collection ID or collection belongs to different user
-- **Solution**: Verify collection ID with `GET /api/collections` endpoint
+- **Solution**: Verify collection ID with `GET /api/v1/collections/` endpoint
 
 **Issue**: Import succeeds but no recipes created
 
