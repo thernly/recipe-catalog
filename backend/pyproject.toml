@@ -22,7 +22,7 @@ dependencies = [
     "pytest-asyncio==1.4.0",
     "pytest-cov==7.1.0",
     "python-dotenv==1.2.3",
-    "pyjwt[crypto]>=2.13.0",
+    "pyjwt[crypto]>=2.14.0",
     "python-multipart==0.0.32",
     "slowapi>=0.1.10",
     "sqlalchemy==2.0.52",
