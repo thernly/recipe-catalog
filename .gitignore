@@ -254,6 +254,7 @@ alembic/versions/
 *.sql
 *.dump
 backups/
+recipes.db.bak*
 
 # Cloudflare D1
 .wrangler/
@@ -368,3 +369,6 @@ seed-data/
 .assessments/
 .task-lists/
 .tasks/
+
+# Serena
+.serena/
