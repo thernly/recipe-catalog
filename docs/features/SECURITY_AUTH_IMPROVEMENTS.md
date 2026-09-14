@@ -58,7 +58,7 @@ Unified authentication security across both app-based (email/password) and OAuth
 ### 3. Modern CSRF Protection via SameSite Cookies
 
 **Current Implementation**:
-Both app login (`/api/auth/login`) and OAuth login set cookies with:
+Both app login (`/api/v1/auth/login`) and OAuth login set cookies with:
 ```python
 response.set_cookie(
     key="access_token",
@@ -127,30 +127,30 @@ response.set_cookie(
 ```
 User submits credentials
     ↓
-POST /api/auth/login
+POST /api/v1/auth/login
     ↓
 Backend validates password
     ↓
 Sets access_token + refresh_token cookies (HttpOnly, Secure, SameSite=Strict)
     ↓
-Returns {"message": "Login successful"}
+Returns {"message": "Login successful", "csrf_token": "..."}
 ```
 
 ### OAuth/IdP Login
 ```
 User clicks "Sign in with Google"
     ↓
-GET /api/auth/google/authorize → Redirects to Google
+GET /api/v1/auth/google/authorize → Redirects to Google
     ↓
 User authenticates with Google
     ↓
-Google redirects to /api/auth/google/callback
+Google redirects to /api/v1/auth/google/callback
     ↓
 Backend validates OAuth response
     ↓
 Sets access_token + refresh_token cookies (HttpOnly, Secure, SameSite=Strict)
     ↓
-Returns {"message": "Login successful"}
+Returns {"message": "Login successful", "csrf_token": "..."}
 ```
 
 ### Protected API Request
