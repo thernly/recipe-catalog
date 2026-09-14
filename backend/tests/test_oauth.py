@@ -414,3 +414,49 @@ async def test_oauth_creates_default_household(mock_create_client, client: Async
     )
     membership = result.scalar_one()
     assert membership.role == "owner"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("provider", ["google", "microsoft", "github"])
+@patch("app.core.oauth.oauth.create_client")
+async def test_authorize_redirect_uri_matches_a_real_callback_route(
+    mock_create_client, provider: str, client: AsyncClient
+):
+    """
+    The redirect_uri handed to the provider must resolve to a route that exists.
+
+    Regression test: the redirect_uri was previously built as
+    "{base}/{provider}", which produced a path no route was registered for, so
+    providers sent users back to a 404 and OAuth could never complete. Asserting
+    the callback path directly (as the other tests do) does not catch this --
+    only comparing what we send the provider against the app's routing table.
+    """
+    from urllib.parse import urlparse
+
+    from starlette.responses import RedirectResponse
+
+    mock_client = AsyncMock()
+    # Return a real response so the endpoint has something serializable to hand back.
+    mock_client.authorize_redirect = AsyncMock(
+        return_value=RedirectResponse(url="https://provider.example/authorize")
+    )
+    mock_create_client.return_value = mock_client
+
+    await client.get(f"/api/v1/auth/{provider}/authorize")
+
+    # Capture the redirect_uri passed to Authlib.
+    assert mock_client.authorize_redirect.await_count == 1
+    _call_args, call_kwargs = mock_client.authorize_redirect.call_args
+    redirect_uri = call_kwargs.get("redirect_uri") or _call_args[1]
+
+    path = urlparse(redirect_uri).path
+    assert path == f"/api/v1/auth/{provider}/callback"
+
+    # The path must actually resolve in the app. A 404 here means providers would
+    # send users to a dead URL -- the original bug. Any handled status is fine;
+    # we are checking routing, not the (unstarted) OAuth exchange itself.
+    landing = await client.get(path)
+    assert landing.status_code != 404, (
+        f"redirect_uri {redirect_uri!r} resolves to {path!r}, which returns 404 -- "
+        f"providers would send users to a dead URL"
+    )
