@@ -15,7 +15,10 @@ from alembic import context
 # Add parent directory to path to import app
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-# Import all models (needed for metadata detection)
+# Importing app.models registers every model on Base.metadata. Without it,
+# target_metadata below is empty and --autogenerate emits a migration that drops
+# every table. Covered by tests/test_migrations.py::test_env_py_metadata_is_populated.
+import app.models  # noqa: F401
 from app.core.config import settings
 from app.core.database import Base
 
