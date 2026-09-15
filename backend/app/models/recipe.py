@@ -6,6 +6,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -58,4 +59,12 @@ class Recipe(Base):
     household = relationship("Household", back_populates="recipes")
     collections = relationship(
         "RecipeCollection", back_populates="recipe", cascade="all, delete-orphan"
+    )
+
+    # Composite indexes for the household-scoped list and search queries.
+    # Created in migration 291505919b8f; declared here so --autogenerate does not
+    # propose dropping them.
+    __table_args__ = (
+        Index("idx_recipes_household_deleted", "household_id", "deleted_at"),
+        Index("idx_recipes_household_created", "household_id", "created_at"),
     )

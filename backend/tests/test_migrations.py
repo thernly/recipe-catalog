@@ -7,6 +7,8 @@ works correctly.
 """
 
 import os
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -139,3 +141,45 @@ def test_all_migration_files_are_valid_python():
             compile(code, str(migration_file), "exec")
         except SyntaxError as e:
             pytest.fail(f"Migration file {migration_file.name} has syntax error: {e}")
+
+
+def test_env_py_metadata_is_populated():
+    """Alembic's target_metadata must see every model, or autogenerate drops tables.
+
+    alembic/env.py sets target_metadata = Base.metadata, which is only populated
+    for models that have been imported. This runs in a subprocess because the
+    test suite's conftest imports several models itself, so an in-process check
+    would pass even when env.py's own imports miss them.
+    """
+    backend_dir = Path(__file__).resolve().parents[1]
+    env_py = backend_dir / "alembic" / "env.py"
+
+    # Replay exactly the app imports env.py performs, then count mapped tables.
+    app_imports = [
+        line.strip()
+        for line in env_py.read_text().splitlines()
+        if line.startswith(("import app", "from app"))
+    ]
+    assert app_imports, "env.py performs no app imports"
+
+    script = "\n".join(
+        [*app_imports, "from app.core.database import Base", "print(len(Base.metadata.tables))"]
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=backend_dir,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "DATABASE_URL": "sqlite+aiosqlite:///:memory:"},
+    )
+
+    assert result.returncode == 0, f"env.py imports failed:\n{result.stderr}"
+
+    table_count = int(result.stdout.strip().splitlines()[-1])
+    expected = len(Base.metadata.tables)
+    assert table_count == expected, (
+        f"env.py's imports register {table_count} tables on Base.metadata but the "
+        f"models define {expected}. --autogenerate would drop the missing ones. "
+        "Ensure alembic/env.py imports app.models."
+    )
