@@ -14,13 +14,14 @@
 	import ProfileSection from '$lib/components/settings/ProfileSection.svelte';
 	import PreferencesSection from '$lib/components/settings/PreferencesSection.svelte';
 	import SecuritySection from '$lib/components/settings/SecuritySection.svelte';
+	import ApiTokensSection from '$lib/components/settings/ApiTokensSection.svelte';
 	import HouseholdSection from '$lib/components/settings/HouseholdSection.svelte';
 	import StatsSection from '$lib/components/settings/StatsSection.svelte';
 	import FiltersSection from '$lib/components/settings/FiltersSection.svelte';
 	import DangerZoneSection from '$lib/components/settings/DangerZoneSection.svelte';
 	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
-	import { User as UserIcon, Palette, Lock, Home, BarChart3, Search, AlertTriangle } from '@lucide/svelte';
+	import { User as UserIcon, Palette, Lock, KeyRound, Home, BarChart3, Search, AlertTriangle } from '@lucide/svelte';
 
 	let user: User | null = null;
 	let preferences: UserPreferences | null = null;
@@ -29,7 +30,7 @@
 	let error: string | null = null;
 
 	// Active section
-	let activeSection: 'profile' | 'preferences' | 'security' | 'household' | 'stats' | 'filters' | 'danger' = 'profile';
+	let activeSection: 'profile' | 'preferences' | 'security' | 'api-tokens' | 'household' | 'stats' | 'filters' | 'danger' = 'profile';
 
 	// Helper function to apply theme
 	function applyTheme(themeId: string) {
@@ -151,6 +152,14 @@
 					</button>
 					<button
 						class="sidebar-link flex items-center gap-2"
+						class:active={activeSection === 'api-tokens'}
+						on:click={() => (activeSection = 'api-tokens')}
+					>
+						<KeyRound size={18} aria-hidden="true" />
+						<span>API Tokens</span>
+					</button>
+					<button
+						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'household'}
 						on:click={() => (activeSection = 'household')}
 					>
@@ -191,6 +200,8 @@
 						<PreferencesSection {preferences} on:update={handlePreferencesUpdate} />
 					{:else if activeSection === 'security'}
 						<SecuritySection />
+					{:else if activeSection === 'api-tokens'}
+						<ApiTokensSection />
 					{:else if activeSection === 'household'}
 						<HouseholdSection />
 					{:else if activeSection === 'stats'}

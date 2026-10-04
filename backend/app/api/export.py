@@ -47,7 +47,7 @@ async def export_recipes(
 
     if format == "json":
         # Export as JSON in Schema.org Recipe format
-        recipes_schema_org = [convert_to_schema_org(recipe) for recipe in recipes]
+        recipes_schema_org = [await convert_to_schema_org(recipe) for recipe in recipes]
 
         # Return as downloadable JSON file
         # Export as array of recipes (not wrapped in object)
@@ -70,7 +70,7 @@ async def export_recipes(
 
         for recipe in recipes:
             # Convert to schema.org format to get all fields
-            schema_recipe = convert_to_schema_org(recipe)
+            schema_recipe = await convert_to_schema_org(recipe)
 
             lines.append(f"# {schema_recipe['name']}\n")
 
@@ -205,7 +205,7 @@ async def export_recipes(
 
         for recipe in recipes:
             # Convert to schema.org format to get all fields
-            schema_recipe = convert_to_schema_org(recipe)
+            schema_recipe = await convert_to_schema_org(recipe)
 
             lines.append(f"\n{schema_recipe['name'].upper()}")
             lines.append("=" * len(schema_recipe["name"]))

@@ -6,15 +6,16 @@ import base64
 import re
 from typing import Any
 
-import httpx
-
+from app.core.config import settings
+from app.core.constants import MAX_FETCHED_IMAGE_BYTES
 from app.core.logging import get_logger
+from app.utils.safe_fetch import SafeFetchError, safe_fetch
 
 
 logger = get_logger(__name__)
 
 
-def convert_to_schema_org(recipe_db: Any) -> dict[str, Any]:
+async def convert_to_schema_org(recipe_db: Any) -> dict[str, Any]:
     """
     Convert internal recipe format to Schema.org Recipe JSON-LD format.
 
@@ -32,7 +33,7 @@ def convert_to_schema_org(recipe_db: Any) -> dict[str, Any]:
         images = stored_images
     elif recipe_db.image_url:
         # Legacy support: fetch and encode if no stored images
-        images = _convert_images_to_schema(recipe_db.image_url)
+        images = await _convert_images_to_schema(recipe_db.image_url)
     else:
         images = []
 
@@ -63,7 +64,7 @@ def convert_to_schema_org(recipe_db: Any) -> dict[str, Any]:
     return schema_recipe
 
 
-def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, Any]:
+async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, Any]:
     """
     Convert Schema.org Recipe JSON-LD format to internal recipe format.
 
@@ -94,7 +95,7 @@ def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, Any]:
 
             # If no base64 data but URL exists, fetch it
             if url and not data:
-                fetched_image = _fetch_and_encode_image(url)
+                fetched_image = await _fetch_and_encode_image(url)
                 if fetched_image:
                     images_data.append(fetched_image)
                 else:
@@ -109,7 +110,7 @@ def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, Any]:
                 image_url = url
         elif isinstance(img, str):
             # Just a URL string - fetch and encode it
-            fetched_image = _fetch_and_encode_image(img)
+            fetched_image = await _fetch_and_encode_image(img)
             if fetched_image:
                 images_data.append(fetched_image)
             else:
@@ -182,9 +183,12 @@ def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _fetch_and_encode_image(image_url: str) -> dict[str, str] | None:
+async def _fetch_and_encode_image(image_url: str | None) -> dict[str, str] | None:
     """
     Fetch an image from URL and encode it to base64.
+
+    The fetch goes through `safe_fetch`, which refuses non-public addresses and caps
+    size, redirects, time and content type.
 
     Args:
         image_url: URL of the image to fetch
@@ -196,31 +200,23 @@ def _fetch_and_encode_image(image_url: str) -> dict[str, str] | None:
         return None
 
     try:
-        with httpx.Client(timeout=10) as client:
-            response = client.get(
-                image_url,
-                headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                },
-            )
-            response.raise_for_status()
-
-            # Get MIME type from headers
-            content_type = response.headers.get("Content-Type", "image/jpeg")
-
-            # Encode to base64
-            base64_data = base64.b64encode(response.content).decode("utf-8")
-
-            return {"url": image_url, "data": base64_data, "mimeType": content_type}
-    except (httpx.HTTPError, httpx.RequestError, ValueError) as e:
-        logger.warning(f"Failed to fetch image from {image_url}: {str(e)}")
+        result = await safe_fetch(
+            image_url,
+            max_bytes=MAX_FETCHED_IMAGE_BYTES,
+            allowed_content_types=settings.ALLOWED_IMAGE_TYPES,
+        )
+    except SafeFetchError as e:
+        logger.warning("image_fetch_failed", url=image_url, reason=str(e))
         return None
     except Exception:
-        logger.exception(f"Unexpected error fetching image: {image_url}")
+        logger.exception("image_fetch_unexpected_error", url=image_url)
         return None
 
+    base64_data = base64.b64encode(result.content).decode("utf-8")
+    return {"url": image_url, "data": base64_data, "mimeType": result.content_type}
 
-def _convert_images_to_schema(image_url: str | None) -> list[dict[str, str]]:
+
+async def _convert_images_to_schema(image_url: str | None) -> list[dict[str, str]]:
     """
     Convert image URL to Schema.org image format with base64 data.
     Legacy function for backward compatibility.
@@ -234,7 +230,7 @@ def _convert_images_to_schema(image_url: str | None) -> list[dict[str, str]]:
     if not image_url:
         return []
 
-    fetched = _fetch_and_encode_image(image_url)
+    fetched = await _fetch_and_encode_image(image_url)
     if fetched:
         return [fetched]
 

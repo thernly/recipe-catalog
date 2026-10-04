@@ -92,7 +92,9 @@ A recipe's content lives in a single `recipe_data` JSON column in **schema.org/R
 
 **Auth is cookie-based**: login sets httpOnly `access_token` + `refresh_token` cookies plus a readable `csrf_token`. `get_current_user` accepts an `Authorization: Bearer` header first (used by tests and API clients) and falls back to the cookie. JWT via PyJWT, Argon2 hashing, OAuth via Authlib (Google/Microsoft/GitHub). Email verification and password reset use time-limited DB-stored tokens; refresh tokens are rows in `refresh_tokens`.
 
-**CSRF**: double-submit cookie. State-changing methods (POST/PUT/PATCH/DELETE) must send `X-CSRF-Token` matching the `csrf_token` cookie. `CSRF_EXEMPT_PATHS` in `app/middleware/csrf.py` covers login/register/logout/OAuth; the whole check is skipped when `ENVIRONMENT == "testing"`.
+**Personal API tokens** (`app/models/api_token.py`, managed at `/api/v1/users/me/api-tokens`): `rcat_`-prefixed, stored as SHA-256 hashes, no expiry, revocable. They authenticate only the intake routes (`/api/v1/intake`, `/api/v1/intake/check`) via `get_intake_user`; `get_current_user` rejects them because they are not JWTs. Server-side fetches of user-supplied URLs (e.g. import images) must go through `app/utils/safe_fetch.py`.
+
+**CSRF**: double-submit cookie. State-changing methods (POST/PUT/PATCH/DELETE) must send `X-CSRF-Token` matching the `csrf_token` cookie. `CSRF_EXEMPT_PATHS` in `app/middleware/csrf.py` covers login/register/logout/OAuth; requests to `/api/v1/intake*` carrying a personal API token bearer also skip it (cookie-authenticated intake requests do not); the whole check is skipped when `ENVIRONMENT == "testing"`.
 
 **Error envelope**: every handler path (HTTPException, `AppException`, validation, unhandled) returns `{"error_code", "message", "details", "correlation_id"}`. Raise `AppException` subclasses from `app/core/exceptions.py` rather than shaping responses by hand; the frontend's `ApiError` reads `error_code`/`details`.
 

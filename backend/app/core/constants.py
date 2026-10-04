@@ -37,6 +37,16 @@ AUTH_RATE_LIMIT_TEST_MODE = "10000/hour"  # Effectively unlimited for tests
 # File Upload Constraints (defined in settings, documented here for reference)
 # MAX_UPLOAD_SIZE_MB: 10 MB maximum upload size
 
+# Outbound fetching (app/utils/safe_fetch.py)
+SAFE_FETCH_TIMEOUT_SECONDS = 10.0  # Per-request timeout for outbound fetches
+SAFE_FETCH_MAX_REDIRECTS = 3  # Each redirect target is re-validated before following
+MAX_FETCHED_IMAGE_BYTES = 5 * 1024 * 1024  # Size cap for images fetched during import
+
+# Personal API tokens (app/models/api_token.py)
+API_TOKEN_PREFIX = "rcat_"  # Marks a bearer value as a personal API token, not a JWT
+API_TOKEN_BYTES = 32  # Random bytes in a personal API token
+MAX_API_TOKENS_PER_USER = 20  # Active (unrevoked) tokens a user may hold
+
 # Pagination
 DEFAULT_PAGE_SIZE = 20  # Default number of items per page
 MAX_PAGE_SIZE = 100  # Maximum items per page

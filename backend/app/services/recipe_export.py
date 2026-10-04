@@ -12,7 +12,7 @@ from app.utils.recipe_format import convert_to_schema_org
 class RecipeExporter:
     """Service for exporting recipes to various formats."""
 
-    def export_json(self, recipe: Recipe) -> str:
+    async def export_json(self, recipe: Recipe) -> str:
         """
         Export recipe as JSON in Schema.org Recipe format.
 
@@ -22,10 +22,10 @@ class RecipeExporter:
         Returns:
             JSON string representation
         """
-        schema_recipe = convert_to_schema_org(recipe)
+        schema_recipe = await convert_to_schema_org(recipe)
         return json.dumps(schema_recipe, indent=2)
 
-    def export_markdown(self, recipe: Recipe) -> str:
+    async def export_markdown(self, recipe: Recipe) -> str:
         """
         Export recipe as Markdown.
 
@@ -35,7 +35,7 @@ class RecipeExporter:
         Returns:
             Markdown formatted string
         """
-        schema_recipe = convert_to_schema_org(recipe)
+        schema_recipe = await convert_to_schema_org(recipe)
         lines = [f"# {schema_recipe['name']}\n"]
 
         if schema_recipe.get("description"):
@@ -91,7 +91,7 @@ class RecipeExporter:
 
         return "\n".join(lines)
 
-    def export_text(self, recipe: Recipe) -> str:
+    async def export_text(self, recipe: Recipe) -> str:
         """
         Export recipe as plain text.
 
@@ -101,7 +101,7 @@ class RecipeExporter:
         Returns:
             Plain text formatted string
         """
-        schema_recipe = convert_to_schema_org(recipe)
+        schema_recipe = await convert_to_schema_org(recipe)
         lines = [
             f"{schema_recipe['name'].upper()}",
             "=" * len(schema_recipe["name"]),
@@ -153,7 +153,7 @@ class RecipeExporter:
 
         return "\n".join(lines)
 
-    def export_pdf(self, recipe: Recipe) -> bytes:
+    async def export_pdf(self, recipe: Recipe) -> bytes:
         """
         Export recipe as PDF.
 
@@ -166,7 +166,7 @@ class RecipeExporter:
         # Lazy import to avoid requiring WeasyPrint dependencies when not using PDF export
         from app.utils.pdf_export import generate_recipe_pdf
 
-        return generate_recipe_pdf(recipe)
+        return await generate_recipe_pdf(recipe)
 
     def _format_metadata(self, schema_recipe: dict[str, Any], markdown: bool = False) -> list[str]:
         """
