@@ -3,20 +3,15 @@
 	import { goto } from '$app/navigation';
 	import {
 		getCurrentWeekMealPlan,
-		addPlannedMeal,
-		deletePlannedMeal,
 		getWeekStart,
 		formatDateISO,
 		getWeekDates,
 		type MealPlan,
-		type PlannedMeal,
-		type PlannedMealCreate
+		type PlannedMeal
 	} from '$lib/api/meal-plans';
-	import { searchRecipes, type RecipeSummary } from '$lib/api/recipes';
 	import { generateFromMealPlan, createShoppingList } from '$lib/api/shopping-lists';
 	import AddMealDialog from './AddMealDialog.svelte';
 	import EditMealDialog from './EditMealDialog.svelte';
-	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
 
 	let mealPlan: MealPlan | null = null;

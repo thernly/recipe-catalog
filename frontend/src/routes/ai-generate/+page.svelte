@@ -3,7 +3,6 @@
 	import { generateRecipe } from '$lib/api/ai';
 	import { createRecipe, type RecipeCreate } from '$lib/api/recipes';
 	import RecipeForm from '$lib/components/RecipeForm.svelte';
-	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
 
 	let step: 'input' | 'preview' = 'input';

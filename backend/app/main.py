@@ -65,7 +65,7 @@ app = FastAPI(
 
 # Add rate limiter to app state
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]  # slowapi types the handler for its own exception
 
 # Configure CORS
 app.add_middleware(
@@ -135,10 +135,10 @@ async def limit_request_size(request: Request, call_next):
     content_length = request.headers.get("content-length")
 
     if content_length:
-        content_length = int(content_length)
+        content_length_bytes = int(content_length)
         max_size = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024  # Convert MB to bytes
 
-        if content_length > max_size:
+        if content_length_bytes > max_size:
             return JSONResponse(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 content={

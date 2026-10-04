@@ -6,7 +6,6 @@
 		initiateOAuthFlow,
 		type LinkedProvider
 	} from '$lib/api/oauth';
-	import { auth } from '$lib/stores/auth';
 	import { onMount } from 'svelte';
 	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';

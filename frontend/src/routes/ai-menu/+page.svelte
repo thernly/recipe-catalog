@@ -320,7 +320,7 @@
 								{day <= 7 ? dayNames[day - 1] : `Day ${day}`}
 							</h3>
 							<div class="space-y-2">
-								{#each daySuggestions as suggestion, idx}
+								{#each daySuggestions as suggestion}
 									{@const suggestionIndex = suggestions.indexOf(suggestion)}
 									<label
 										class="flex items-start p-3 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"

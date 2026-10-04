@@ -120,7 +120,7 @@ All errors should follow the standardized format defined in `app/schemas/common.
 {
     "error_code": "machine_readable_code",
     "message": "Human-readable error message",
-    "details": {}  # Optional additional context
+    "details": {},  # Optional additional context
 }
 ```
 

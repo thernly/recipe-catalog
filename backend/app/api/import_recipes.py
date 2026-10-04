@@ -246,7 +246,7 @@ async def import_recipes(
     await validate_file_size(file)
 
     # Validate file type
-    if not file.filename.endswith(".json"):
+    if not file.filename.endswith(".json"):  # type: ignore[union-attr]  # latent: upload without a filename raises
         raise HTTPException(status_code=400, detail="File must be a JSON file")
 
     # Read and parse JSON

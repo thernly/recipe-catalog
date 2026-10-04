@@ -4,9 +4,10 @@ Shopping List API endpoints.
 
 import re
 from fractions import Fraction
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import Result, Select, and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -363,10 +364,10 @@ def consolidate_ingredients(
         List of consolidated ingredient dicts
     """
     # Group by (base_ingredient_name, normalized_unit)
-    consolidated: dict[tuple[str, str | None], dict] = {}
+    consolidated: dict[tuple[str, str | None], dict[str, Any]] = {}
 
     for ing in ingredients_data:
-        name = ing.get("name", "").strip()
+        name = ing.get("name", "").strip()  # type: ignore[union-attr]  # latent: an explicit None name raises
         if not name:
             continue
 
@@ -519,7 +520,7 @@ async def list_shopping_lists(
         List[ShoppingListSummary]: List of shopping list summaries
     """
     # Use a single query with JOIN and aggregation to avoid N+1 queries
-    query = (
+    query: Select[Any] = (
         select(
             ShoppingList.id,
             ShoppingList.household_id,
@@ -835,7 +836,7 @@ async def add_item_to_list(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found")
 
     # Get max display order
-    max_order_result = await db.execute(
+    max_order_result: Result[Any] = await db.execute(
         select(func.max(ShoppingListItem.display_order)).where(ShoppingListItem.list_id == list_id)
     )
     max_order = max_order_result.scalar() or 0

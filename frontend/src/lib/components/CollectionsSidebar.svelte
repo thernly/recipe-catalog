@@ -20,6 +20,7 @@
 
 	let showModal = false;
 	let editingCollection: Collection | null = null;
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- written but not yet read by the template
 	let deleting = false;
 	let stats: UserStats | null = null;
 

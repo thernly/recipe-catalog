@@ -20,6 +20,8 @@ pnpm test:watch   # Vitest (watch mode)
 
 Run a single test file: `pnpm test src/lib/components/RecipeCard.test.ts`
 
+`pnpm lint` (flat config in `frontend/eslint.config.js`) exits 0 with warnings: `svelte/require-each-key`, `svelte/prefer-svelte-reactivity` and `no-explicit-any` are existing debt downgraded to `warn` — do not add new ones. `pnpm format` rewrites every file; much of `src/` has never been formatted, so format only the files you touch (`pnpm exec prettier --write <file>`) unless a repo-wide reformat is the point of the change.
+
 `frontend/` is its own pnpm workspace root (`frontend/pnpm-workspace.yaml`, `frontend/pnpm-lock.yaml`) — there is no root-level `package.json`. Always install and run from inside `frontend/`.
 
 ### Backend (`cd backend` first)
@@ -38,6 +40,8 @@ uv run alembic revision --autogenerate -m "description"  # new migration
 ```
 
 Always use `uv run` — never `pip install` or bare `python`.
+
+mypy runs without the SQLAlchemy plugin (removed in SQLAlchemy 2.1). Models still use legacy `Column(...)` attributes, so `pyproject.toml` has a `[[tool.mypy.overrides]]` block that disables `arg-type`, `assignment` and `return-value` for the modules that touch model attributes directly. New modules are checked in full; do not add to that list — use `Mapped[...]` / `mapped_column` in new models instead.
 
 The app **will not start** against an out-of-date database: `init_db()` reads `alembic_version` and raises unless it matches the Alembic head. It deliberately does not create tables from model metadata (that would leave the DB unstamped and break later upgrades). After pulling migrations, run `uv run alembic upgrade head`.
 

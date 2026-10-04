@@ -119,7 +119,8 @@ def sanitize_html(text: str) -> str:
     if not text:
         return text
     # Strip all HTML tags - allow plain text only
-    return bleach.clean(text, tags=[], strip=True)
+    cleaned: str = bleach.clean(text, tags=[], strip=True)
+    return cleaned
 
 
 # Refresh Token Utilities

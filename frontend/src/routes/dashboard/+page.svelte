@@ -46,6 +46,7 @@
 		return unsubscribe;
 	});
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- not wired to the template yet
 	function handleLogout() {
 		auth.logout();
 		goto('/');

@@ -2,13 +2,13 @@
 Custom exception classes for consistent error handling.
 """
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from fastapi import status
 
 
-class ErrorCode(str, Enum):
+class ErrorCode(StrEnum):
     """Standard error codes for API responses."""
 
     # Resource errors

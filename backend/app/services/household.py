@@ -2,6 +2,7 @@
 
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy import and_, func, select
@@ -412,6 +413,8 @@ async def send_invitation_email(db: AsyncSession, invitation: HouseholdInvitatio
         invitation: Invitation to send
     """
     household = await get_household(db, invitation.household_id)
+    # household_id is a non-null FK, so the lookup cannot miss; narrows the type for mypy.
+    assert household is not None
     inviter_result = await db.execute(select(User).where(User.id == invitation.inviter_user_id))
     inviter = inviter_result.scalar_one()
 
@@ -632,6 +635,8 @@ async def decline_invitation(db: AsyncSession, token: str, user_id: int) -> None
     user = user_result.scalar_one()
 
     household = await get_household(db, invitation.household_id)
+    # household_id is a non-null FK, so the lookup cannot miss; narrows the type for mypy.
+    assert household is not None
 
     if user.email != invitation.invitee_email and user_id != household.owner_user_id:
         raise HTTPException(
@@ -871,7 +876,7 @@ async def join_via_invite_link(db: AsyncSession, code: str, user_id: int) -> Hou
     return member
 
 
-async def leave_household(db: AsyncSession, user_id: int) -> dict:
+async def leave_household(db: AsyncSession, user_id: int) -> dict[str, Any]:
     """
     Remove a user from their household.
 
@@ -918,7 +923,7 @@ async def leave_household(db: AsyncSession, user_id: int) -> dict:
             )
         )
     )
-    other_members_count = other_members_result.scalar()
+    other_members_count = other_members_result.scalar_one()
 
     if is_owner and other_members_count > 0:
         raise HTTPException(

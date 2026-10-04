@@ -19,7 +19,6 @@
 	import StatsSection from '$lib/components/settings/StatsSection.svelte';
 	import FiltersSection from '$lib/components/settings/FiltersSection.svelte';
 	import DangerZoneSection from '$lib/components/settings/DangerZoneSection.svelte';
-	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
 	import { User as UserIcon, Palette, Lock, KeyRound, Home, BarChart3, Search, AlertTriangle } from '@lucide/svelte';
 

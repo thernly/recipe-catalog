@@ -47,7 +47,7 @@
 	{/if}
 
 	<div class="dynamic-list">
-		{#each instructions as instruction, index}
+		{#each instructions as _instruction, index}
 			<div class="dynamic-list-item">
 				<div class="flex gap-2">
 					<span class="item-number">{index + 1}</span>

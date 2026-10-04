@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { toasts } from '$lib/stores/toast';
-	import { fade, fly } from 'svelte/transition';
+	import { fly } from 'svelte/transition';
 
 	function getIcon(type: string) {
 		switch (type) {

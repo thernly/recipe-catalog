@@ -29,7 +29,7 @@
 	{/if}
 
 	<div class="dynamic-list">
-		{#each ingredients as ingredient, index}
+		{#each ingredients as _ingredient, index}
 			<div class="dynamic-list-item">
 				<span class="item-number">{index + 1}</span>
 				<input

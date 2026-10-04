@@ -9,7 +9,9 @@
 	let customCategories: string[] = [];
 	let newCuisine = '';
 	let newCategory = '';
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- written but not yet read by the template
 	let loading = false;
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- written but not yet read by the template
 	let saving = false;
 
 	const defaultCuisines = [

@@ -10,7 +10,7 @@ from PIL import Image
 from app.core.config import settings
 
 
-async def validate_file_size(file: UploadFile, max_size_mb: int = None) -> None:
+async def validate_file_size(file: UploadFile, max_size_mb: int | None = None) -> None:
     """
     Validate that uploaded file size is within allowed limit.
 

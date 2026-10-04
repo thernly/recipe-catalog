@@ -68,7 +68,6 @@ indent-style = "space"
 
 [tool.mypy]
 python_version = "3.13"
-plugins = ["sqlalchemy.ext.mypy.plugin"]
 warn_return_any = true
 warn_unused_configs = true
 warn_redundant_casts = true
@@ -85,8 +84,38 @@ module = [
     "fpdf.*",
     "bleach.*",
     "authlib.*",
+    "wonderwords.*",
 ]
 ignore_missing_imports = true
+
+# Legacy-ORM relaxation. The SQLAlchemy mypy plugin was removed in 2.1, and the
+# models still declare attributes as `x = Column(...)` rather than
+# `x: Mapped[T] = mapped_column(...)`. Without the plugin mypy sees every model
+# attribute as `Column[T]`, so reading one into an `int`/`str` parameter is
+# [arg-type], writing one is [assignment], and returning a comparison on one
+# from a `-> bool` method is [return-value]. Those three codes are disabled
+# only in the modules below, which touch model attributes directly; every other
+# check still applies to them, and every other module is checked in full.
+# To retire an entry: migrate the models it uses to Mapped[...] and delete it.
+[[tool.mypy.overrides]]
+module = [
+    "app.api.auth",
+    "app.api.collections",
+    "app.api.households",
+    "app.api.import_recipes",
+    "app.api.intake",
+    "app.api.meal_plans",
+    "app.api.oauth",
+    "app.api.recipes.crud",
+    "app.api.shopping_lists",
+    "app.api.users",
+    "app.models.oauth_state",
+    "app.models.token",
+    "app.models.user",
+    "app.services.household",
+    "app.utils.pdf_export",
+]
+disable_error_code = ["arg-type", "assignment", "return-value"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

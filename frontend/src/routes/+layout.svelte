@@ -10,7 +10,7 @@
 	import type { User } from '$lib/types';
 
 	let user: User | null = null;
-	let isAuthPage = false;
+	let isAuthPage: boolean;
 
 	// Subscribe to auth state
 	onMount(() => {

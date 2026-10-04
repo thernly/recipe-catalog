@@ -3,10 +3,10 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { getRecipe, deleteRecipe, duplicateRecipe, exportRecipe, type Recipe } from '$lib/api/recipes';
-	import { generateFromRecipe, listShoppingLists, type ShoppingListSummary } from '$lib/api/shopping-lists';
+	import { generateFromRecipe, type ShoppingListSummary } from '$lib/api/shopping-lists';
 	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
-	import { ArrowLeft, Edit, Copy, ShoppingCart, Download, Printer, Trash2, Loader2, Globe, FileText } from '@lucide/svelte';
+	import { ArrowLeft, Edit, Copy, ShoppingCart, Download, Printer, Trash2, Loader2, FileText } from '@lucide/svelte';
 
 	let recipe: Recipe | null = null;
 	let loading = true;
@@ -15,7 +15,9 @@
 	let completedSteps = new Set<number>();
 	let showExportMenu = false;
 	let exporting = false;
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- written but not yet read by the template
 	let showAddToShoppingListDialog = false;
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- written but not yet read by the template
 	let shoppingLists: ShoppingListSummary[] = [];
 	let addingToList = false;
 
