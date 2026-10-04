@@ -4,6 +4,8 @@ Get recipes into the **Recipe Catalog** cleanly: direct from the **Recipe Siphon
 
 > **Status (2026-10-04):** design settled over four question rounds with the owner, after reading both repos. Earlier drafts are kept beside this file as `recipe-intake-autopilot.v0.1.md` and `.v0.2.md`. Building happens in a separate session inside the two repos; this doc is the handoff.
 >
+> **Progress (2026-10-04):** C1 is merged in the catalog (safe fetch, API tokens, intake and token-check routes, CSRF skip; `recipe-catalog` PR 362). C2 is merged in the siphon (`recipe-siphon` PR 99). Still to do from phase 0: L1a and L1b, the end-to-end checks against a real deployment.
+>
 > Repos: `github.com/thernly/recipe-catalog`, `github.com/thernly/recipe-siphon`.
 
 ## 1. Problem
@@ -32,9 +34,9 @@ Underneath all of them: today a recipe is downloaded from the siphon as JSON and
 
 **Siphon** (browser extension, no external dependencies)
 - Extracts via JSON-LD, Microdata, RDFa, then a heuristic HTML fallback (`extractors/html-fallback.js`, `divider-sections.js`).
-- Posts one recipe to `/api/recipes/import` with a bearer token and checks the token at `/api/auth/validate`. The catalog has neither route and no API-token feature.
+- Posts one recipe to `/api/v1/intake` with a bearer token and checks the token at `/api/v1/intake/check` (changed from `/api/recipes/import` and `/api/auth/validate`, which the catalog never had). The catalog now serves both routes and has API tokens.
 - Its policy allows HTTPS connections only (satisfied by the LAN setup).
-- `docs/API_INTEGRATION.md` specifies the request and response shapes it expects (`created | updated | skipped`).
+- `docs/API_INTEGRATION.md` specifies the request and response shapes it expects (`created | skipped | needs_review`; the doc no longer lists `updated`).
 
 ## 3. Goals, non-goals, targets
 
@@ -108,7 +110,7 @@ The routes are pinned here so the catalog (C1) and siphon (C2) work can proceed 
 - Both sit under `/api/v1/intake`, so a token's scope is that one prefix.
 - **Success body:** `{"success": true, "status": "created" | "skipped" | "needs_review", "id": <recipe id or null>, "message": "...", "url": "<link to the recipe or the Imports page>"}`. `needs_review` arrives in phase 2.
 - **Error body:** the catalog's standard envelope, `{"error_code", "message", "details", "correlation_id"}`. The siphon shows `message`.
-- The siphon changes its two route constants (`/api/recipes/import` and `/api/auth/validate`) and learns the new status.
+- **Built (C1, C2):** the catalog serves both routes and returns `created` or `skipped` today, with `url` built from `FRONTEND_URL`. The siphon uses both routes, treats `needs_review` as a success (shows `message` with a link to `url`), and shows the error envelope's `message`. The catalog does not return `needs_review` until phase 2.
 
 ### 4.4 Cleanup (no model)
 
@@ -236,8 +238,8 @@ Cloud steps (C) are one pull request each, one repo per session, tests passing w
 | Order | Step | Where | Work | Phase |
 |---|---|---|---|---|
 | 0 | **L0** | local, manual | Download one recipe as JSON from the siphon and keep it. It settles the payload-key question in §11 before C1 and becomes the test payload for L1a | 0 |
-| 1 | C1 | cloud, catalog | Safe-fetch helper; API tokens and settings UI; intake and token-check routes; CSRF skip for token requests | 0 |
-| 1 | C2 | cloud, siphon | Point at the new routes; token check. Runs in parallel with C1 | 0 |
+| 1 | C1 (done) | cloud, catalog | Safe-fetch helper; API tokens and settings UI; intake and token-check routes; CSRF skip for token requests | 0 |
+| 1 | C2 (done) | cloud, siphon | Point at the new routes; token check. Runs in parallel with C1 | 0 |
 | 2 | **L1a** | local, Claude Code | After C1 only: deploy the C1 branch (`scripts/proxmox/update-app.sh --branch <name>` in the container), create a token, POST the L0 file to the intake route, confirm the recipe saved. Checks the token, the CSRF skip, and the reverse proxy | 0 |
 | 3 | **L1b** | local, manual | After C2: load the new siphon build in the browser, enter the token, import a recipe from a live page | 0 |
 | 4 | C3 | cloud, catalog | Shared cleanup module on every write path; parsed ingredients; in-repo test lines; eval harness that reads a git-ignored folder; backfill script with dry-run report | 1 |
@@ -245,7 +247,7 @@ Cloud steps (C) are one pull request each, one repo per session, tests passing w
 | 6 | C3b | cloud, catalog | Parser fixes from L2, if the numbers or the report call for them | 1 |
 | 7 | **L2b** | local | Re-run the harness; when satisfied, back up and apply the backfill | 1 |
 | 8 | C4 | cloud, catalog | `intake_jobs`, review triggers, household URL duplicates, Imports page | 2 |
-| 9 | C5 | cloud, siphon | Handle `needs_review` | 2 |
+| 9 | C5 | cloud, siphon | `needs_review` display is already in C2; remaining work is limited to any Imports page links from phase 2 | 2 |
 | 10 | C6 | cloud, catalog | Schema-constrained model call; intake model setting; per-user limit; cost logging; ingredient-line fallback | 3 |
 | 11 | **L3** | local | Deploy; exercise the Imports page with real imports, including a duplicate and a flagged one; set the OpenRouter credit limit and data policy; run the candidate models over the eval set; set the intake model | 2, 3 |
 | 12 | C7 | cloud, catalog | Paste-text form; extraction with grounding checks | 4 |
