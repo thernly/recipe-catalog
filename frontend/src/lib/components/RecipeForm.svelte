@@ -212,6 +212,7 @@
 	}
 
 	// Watch for changes to trigger auto-save
+	// eslint-disable-next-line @typescript-eslint/no-unused-expressions -- lists reactive dependencies
 	$: name, description, scheduleAutoSave();
 </script>
 
@@ -419,7 +420,7 @@
 			<h2 class="section-title">Equipment</h2>
 
 			<div class="dynamic-list">
-				{#each equipment as item, index}
+				{#each equipment as _item, index}
 					<div class="dynamic-list-item">
 						<input
 							type="text"

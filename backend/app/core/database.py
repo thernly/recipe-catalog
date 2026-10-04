@@ -4,10 +4,11 @@ Database configuration and session management.
 
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -15,8 +16,11 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
+
 # Create base class for models
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
+
 
 # Create async engine with connection pooling configuration
 # Pool settings optimized for typical web application workloads:
@@ -24,7 +28,7 @@ Base = declarative_base()
 # - max_overflow: Additional connections allowed above pool_size (default: 10)
 # - pool_pre_ping: Verify connections before using them (prevents stale connections)
 # Note: SQLite doesn't support connection pooling, so these params are only for PostgreSQL/MySQL
-engine_kwargs = {
+engine_kwargs: dict[str, Any] = {
     "echo": settings.DEBUG,
     "future": True,
 }
@@ -133,7 +137,7 @@ async def cleanup_expired_data(session: AsyncSession) -> int:
     """
     from app.models.oauth_state import OAuthState
 
-    deleted_count = await OAuthState.cleanup_expired(session)
+    deleted_count: int = await OAuthState.cleanup_expired(session)
     return deleted_count
 
 

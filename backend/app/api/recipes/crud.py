@@ -3,6 +3,7 @@ Recipe CRUD operations.
 """
 
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import delete, select
@@ -23,7 +24,7 @@ from app.schemas.recipe import RecipeCreate, RecipeUpdate
 router = APIRouter()
 
 
-def sanitize_recipe_data(data: dict) -> dict:
+def sanitize_recipe_data(data: dict[str, Any]) -> dict[str, Any]:
     """
     Sanitize user-facing text fields in recipe data.
 

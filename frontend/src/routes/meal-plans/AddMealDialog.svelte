@@ -82,7 +82,6 @@
 </script>
 
 <div class="modal-overlay" on:click={handleClose} on:keydown={(e) => e.key === 'Escape' && handleClose()} role="presentation">
-	<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 	<div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation role="dialog" tabindex="0" aria-modal="true">
 		<div class="modal-header">
 			<h2>Add Meal</h2>

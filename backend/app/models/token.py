@@ -4,6 +4,7 @@ Token models for email verification and password reset
 
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
@@ -17,6 +18,11 @@ class VerificationToken(Base):
     """Email verification token"""
 
     __tablename__ = "verification_tokens"
+
+    if TYPE_CHECKING:
+        # Plain instance attribute set by the create_* classmethod; never persisted.
+        # Declared for mypy only: a bare annotation would be read as a mapped column.
+        raw_token: str
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
@@ -56,6 +62,11 @@ class PasswordResetToken(Base):
     """Password reset token"""
 
     __tablename__ = "password_reset_tokens"
+
+    if TYPE_CHECKING:
+        # Plain instance attribute set by the create_* classmethod; never persisted.
+        # Declared for mypy only: a bare annotation would be read as a mapped column.
+        raw_token: str
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)

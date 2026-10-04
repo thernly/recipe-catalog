@@ -32,7 +32,7 @@ def configure_logging() -> None:
     )
 
     # Build processor chain
-    processors = [
+    processors: list[structlog.types.Processor] = [
         # Add log level
         structlog.stdlib.add_log_level,
         # Add timestamp
@@ -77,4 +77,5 @@ def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     Returns:
         Configured structured logger
     """
-    return structlog.get_logger(name)
+    logger: structlog.stdlib.BoundLogger = structlog.get_logger(name)
+    return logger

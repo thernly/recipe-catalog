@@ -186,7 +186,7 @@ function createAuthStore() {
           user,
           isLoading: false,
         }));
-      } catch (error) {
+      } catch {
         // Network error - preserve existing user state
         update((state) => ({
           ...state,

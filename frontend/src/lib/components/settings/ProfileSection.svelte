@@ -2,7 +2,6 @@
 	import type { User } from '$lib/api/users';
 	import { updateProfile } from '$lib/api/users';
 	import { createEventDispatcher } from 'svelte';
-	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
 
 	export let user: User;

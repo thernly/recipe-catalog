@@ -99,10 +99,10 @@ def _locate_unicode_font() -> tuple[Path, Path | None, Path | None, str] | None:
 
 _FONT_ASSETS = _locate_unicode_font()
 UNICODE_FONT_AVAILABLE = _FONT_ASSETS is not None
-_NOTO_REGULAR = _FONT_ASSETS[0] if UNICODE_FONT_AVAILABLE else None
-_NOTO_BOLD = _FONT_ASSETS[1] if UNICODE_FONT_AVAILABLE else None
-_NOTO_ITALIC = _FONT_ASSETS[2] if UNICODE_FONT_AVAILABLE else None
-_UNICODE_FONT_FAMILY = _FONT_ASSETS[3] if UNICODE_FONT_AVAILABLE else None
+_NOTO_REGULAR = _FONT_ASSETS[0] if _FONT_ASSETS else None
+_NOTO_BOLD = _FONT_ASSETS[1] if _FONT_ASSETS else None
+_NOTO_ITALIC = _FONT_ASSETS[2] if _FONT_ASSETS else None
+_UNICODE_FONT_FAMILY = _FONT_ASSETS[3] if _FONT_ASSETS else None
 
 # Common unicode punctuation replacements to safe ASCII equivalents
 _UNICODE_REPLACEMENTS = {

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
 	import { getUserStats } from '$lib/api/users';
 	import type { UserStats } from '$lib/api/users';
 	import { API_V1_URL } from '$lib/config';

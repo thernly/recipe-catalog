@@ -2,7 +2,7 @@
  * Meal Planning API endpoints
  */
 
-import { apiRequest, buildQueryString } from "./client";
+import { apiRequest } from "./client";
 
 export interface PlannedMeal {
   id: number;

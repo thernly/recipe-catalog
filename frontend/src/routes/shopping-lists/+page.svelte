@@ -70,6 +70,7 @@
 		newListDescription = '';
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-expressions -- lists reactive dependencies
 	$: statusFilter, loadShoppingLists();
 </script>
 

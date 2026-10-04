@@ -91,7 +91,7 @@ class AIService:
                 # Parse the JSON response
                 import json
 
-                recipe_data = json.loads(content)
+                recipe_data: dict[str, Any] = json.loads(content)
 
                 # Log usage for monitoring (without sensitive data)
                 logger.info(
@@ -251,7 +251,8 @@ Important:
                     f"AI menu generated successfully. Tokens used: {result.get('usage', {}).get('total_tokens', 'unknown')}"
                 )
 
-                return menu_data.get("suggestions", [])
+                suggestions: list[dict[str, Any]] = menu_data.get("suggestions", [])
+                return suggestions
 
             except httpx.HTTPStatusError as e:
                 logger.error(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")

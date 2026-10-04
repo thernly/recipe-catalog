@@ -1,0 +1,6 @@
+.svelte-kit/
+build/
+dist/
+.wrangler/
+node_modules/
+pnpm-lock.yaml

@@ -3,9 +3,10 @@ Meal Planning API endpoints.
 """
 
 from datetime import date, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import and_, func, select
+from sqlalchemy import Select, and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -70,7 +71,7 @@ async def list_meal_plans(
         List[MealPlanSummary]: List of meal plan summaries
     """
     # Use a single query with JOIN and aggregation to avoid N+1 queries
-    query = (
+    query: Select[Any] = (
         select(
             MealPlan.id,
             MealPlan.household_id,

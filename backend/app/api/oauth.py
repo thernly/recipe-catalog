@@ -208,13 +208,13 @@ async def oauth_callback(
         user_data = extract_user_info(provider, userinfo)
 
         # Check if this provider account is already linked
-        result = await db.execute(
+        idp_result = await db.execute(
             select(IdentityProvider).where(
                 IdentityProvider.provider_name == provider,
                 IdentityProvider.provider_subject == user_data["subject"],
             )
         )
-        existing_idp = result.scalar_one_or_none()
+        existing_idp = idp_result.scalar_one_or_none()
 
         if existing_idp:
             # Update last used timestamp
@@ -278,7 +278,7 @@ async def oauth_callback(
 
         # Check if email already exists (for account linking)
         email_result = await db.execute(
-            select(User).where(User.email == user_data["email"].lower())
+            select(User).where(User.email == user_data["email"].lower())  # type: ignore[union-attr]  # latent: provider may return no email
         )
         existing_user = email_result.scalar_one_or_none()
 
@@ -355,7 +355,7 @@ async def oauth_callback(
 
         # Create new user account
         new_user = User(
-            email=user_data["email"].lower(),
+            email=user_data["email"].lower(),  # type: ignore[union-attr]  # latent: provider may return no email
             hashed_password=None,  # Passwordless account
             display_name=user_data["display_name"],
             is_active=True,

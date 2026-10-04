@@ -79,6 +79,7 @@ describe("Auth Store", () => {
     });
 
     // Manually set a user first (simulating logged in state)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- documents the intended state; the store cannot be seeded from outside
     const mockUser = {
       id: 1,
       email: "test@example.com",

@@ -3,7 +3,6 @@
 	import { updatePreferences } from '$lib/api/users';
 	import { createEventDispatcher } from 'svelte';
 	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
-	import { dialog } from '$lib/stores/dialog';
 	import { toast } from '$lib/stores/toast';
 
 	export let preferences: UserPreferences;

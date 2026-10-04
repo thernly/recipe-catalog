@@ -2,6 +2,7 @@
 
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, Column, DateTime, Integer, String
 
@@ -14,6 +15,11 @@ class OAuthState(Base):
     """OAuth state token storage for CSRF protection."""
 
     __tablename__ = "oauth_states"
+
+    if TYPE_CHECKING:
+        # Plain instance attribute set by the create_* classmethod; never persisted.
+        # Declared for mypy only: a bare annotation would be read as a mapped column.
+        raw_token: str
 
     id = Column(Integer, primary_key=True, index=True)
     token = Column(String(64), unique=True, index=True, nullable=False)
@@ -30,8 +36,8 @@ class OAuthState(Base):
     def create_state(
         cls,
         provider: str,
-        link_user_id: int = None,
-        redirect_url: str = None,
+        link_user_id: int | None = None,
+        redirect_url: str | None = None,
         minutes_valid: int = 10,
     ):
         """Create a new OAuth state token.
