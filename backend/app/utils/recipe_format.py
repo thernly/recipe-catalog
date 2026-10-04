@@ -3,12 +3,12 @@ Utilities for converting between internal recipe format and Schema.org Recipe JS
 """
 
 import base64
-import re
 from typing import Any
 
 from app.core.config import settings
 from app.core.constants import MAX_FETCHED_IMAGE_BYTES
 from app.core.logging import get_logger
+from app.services.recipe_cleanup import parse_duration_minutes
 from app.utils.safe_fetch import SafeFetchError, safe_fetch
 
 
@@ -249,38 +249,6 @@ def _ensure_array(value: Any) -> list[str]:
     return []
 
 
-def _parse_duration_to_minutes(duration: str) -> int | None:
-    """
-    Parse ISO 8601 duration or simple time string to minutes.
-
-    Examples:
-        "PT30M" -> 30
-        "PT1H30M" -> 90
-        "30 minutes" -> 30
-        "1 hour 30 minutes" -> 90
-    """
-    if not duration:
-        return None
-
-    # Try ISO 8601 format (PT30M, PT1H30M, etc.)
-    iso_pattern = r"PT(?:(\d+)H)?(?:(\d+)M)?"
-    match = re.match(iso_pattern, duration)
-    if match:
-        hours = int(match.group(1) or 0)
-        minutes = int(match.group(2) or 0)
-        return hours * 60 + minutes
-
-    # Try simple format (30 minutes, 1 hour 30 minutes, etc.)
-    total = 0
-
-    # Extract hours
-    hour_match = re.search(r"(\d+)\s*(?:hour|hr)s?", duration, re.IGNORECASE)
-    if hour_match:
-        total += int(hour_match.group(1)) * 60
-
-    # Extract minutes
-    min_match = re.search(r"(\d+)\s*(?:minute|min)s?", duration, re.IGNORECASE)
-    if min_match:
-        total += int(min_match.group(1))
-
-    return total if total > 0 else None
+def _parse_duration_to_minutes(duration: str | None) -> int | None:
+    """Parse an ISO 8601 or prose duration to minutes (see `parse_duration_minutes`)."""
+    return parse_duration_minutes(duration)

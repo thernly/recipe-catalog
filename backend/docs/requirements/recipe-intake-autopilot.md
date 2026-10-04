@@ -274,6 +274,15 @@ Steps 8 to 10 run back to back in the cloud with no local stop, since nothing re
 - **Outside git (ignored folder):** an export of the owner's catalog, plus the siphon's 12 failing pages saved as text. Real recipes are other people's text and stay out of the repo.
 - One test compares output with hand-checked expectations and reports the two target numbers. Run it whenever the parser, a prompt, or the model changes.
 
+**Built (C3).** In-repo lines: `backend/tests/test_ingredient_parser.py`. Harness: `backend/app/services/intake_eval.py`, run with `backend/scripts/intake_eval.py`; the folder is `backend/eval-data/` (git-ignored) or `INTAKE_EVAL_DIR`. For L2, from `backend/`:
+
+1. Put the catalog export (`GET /api/v1/export/recipes?format=json`) in `eval-data/inputs/`. Save the 12 failing pages as text in `eval-data/pages/` for phase 4; this harness does not read them.
+2. `uv run python scripts/intake_eval.py draft` writes one case per recipe to `eval-data/cases/`, prefilled with the current output.
+3. Hand-check each case: correct `expected`, mark junk lines `"ignore": true`, set `"checked": true`.
+4. `uv run python scripts/intake_eval.py run` prints the two numbers and every mismatch. `uv run pytest tests/test_intake_eval.py -s -k eval_set` does the same as a test (`INTAKE_EVAL_STRICT=1` makes it fail below target).
+
+"Needs no edits" is measured as: yield, times and every ingredient line match the hand-checked case.
+
 ## 9. Backfill
 
 A one-off script at the end of phase 1, deterministic only.
@@ -283,6 +292,13 @@ A one-off script at the end of phase 1, deterministic only.
 3. On approval the script backs up the database and applies everything in one run, with an option to exclude listed recipes.
 
 Model parsing of leftover lines in old recipes waits until shopping lists use parsed ingredients.
+
+**Built (C3).** `backend/scripts/backfill_cleanup.py` (logic in `app/services/recipe_backfill.py`). From `backend/`, so `.env` is read:
+
+- `uv run python scripts/backfill_cleanup.py` is the dry run. It writes `backfill-report-<timestamp>.md` (git-ignored) and changes nothing.
+- `--exclude 12,40` or `--exclude-file ids.txt` leaves recipes out; `--include-deleted` also cleans the trash.
+- `--apply` first copies the SQLite file to `recipes.db.bak-<timestamp>` with SQLite's backup API, then writes every change in one transaction. Stop the app before applying. Applied recipes keep `updated_at` and `is_modified`.
+- Running it again after applying reports nothing to change.
 
 ## 10. Deferred and parked
 

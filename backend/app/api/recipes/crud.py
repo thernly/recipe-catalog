@@ -19,6 +19,7 @@ from app.models.recipe import Recipe
 from app.models.user import User
 from app.schemas.recipe import Recipe as RecipeSchema
 from app.schemas.recipe import RecipeCreate, RecipeUpdate
+from app.services.recipe_cleanup import clean_recipe_data, derive_total_time_minutes
 
 
 router = APIRouter()
@@ -178,7 +179,11 @@ async def create_recipe(
     sanitized_description = (
         sanitize_html(recipe_data.description) if recipe_data.description else None
     )
-    sanitized_recipe_data = sanitize_recipe_data(recipe_data.recipe_data)
+    # Shared cleanup: yield, times, parsedIngredients
+    cleaned_recipe_data = clean_recipe_data(sanitize_recipe_data(recipe_data.recipe_data)).data
+    total_time_minutes = recipe_data.total_time_minutes
+    if total_time_minutes is None:
+        total_time_minutes = derive_total_time_minutes(cleaned_recipe_data)
 
     # Create recipe
     new_recipe = Recipe(
@@ -187,12 +192,12 @@ async def create_recipe(
         name=sanitized_name,
         description=sanitized_description,
         image_url=recipe_data.image_url,
-        recipe_data=sanitized_recipe_data,
+        recipe_data=cleaned_recipe_data,
         source_url=recipe_data.source_url,
         source_type=recipe_data.source_type,
         cuisine=recipe_data.cuisine,
         category=recipe_data.category,
-        total_time_minutes=recipe_data.total_time_minutes,
+        total_time_minutes=total_time_minutes,
         imported_at=datetime.now(UTC) if recipe_data.source_type == "imported" else None,
     )
 
@@ -305,7 +310,17 @@ async def update_recipe(
     if "description" in update_data and update_data["description"]:
         update_data["description"] = sanitize_html(update_data["description"])
     if "recipe_data" in update_data and update_data["recipe_data"]:
-        update_data["recipe_data"] = sanitize_recipe_data(update_data["recipe_data"])
+        # Shared cleanup. Unchanged ingredient lines keep their stored model parses; the
+        # previous entries come from the database, never from the request.
+        stored: dict[str, Any] = recipe.recipe_data if isinstance(recipe.recipe_data, dict) else {}
+        previous_parsed = stored.get("parsedIngredients")
+        update_data["recipe_data"] = clean_recipe_data(
+            sanitize_recipe_data(update_data["recipe_data"]), previous_parsed
+        ).data
+        if "total_time_minutes" not in update_data:
+            derived_total = derive_total_time_minutes(update_data["recipe_data"])
+            if derived_total is not None:
+                update_data["total_time_minutes"] = derived_total
 
     for field, value in update_data.items():
         setattr(recipe, field, value)

@@ -256,6 +256,10 @@ alembic/versions/
 backups/
 recipes.db.bak*
 
+# Recipe cleanup eval set and backfill reports (real recipes stay out of git)
+backend/eval-data/
+backfill-report-*.md
+
 # Cloudflare D1
 .wrangler/
 wrangler.toml.local

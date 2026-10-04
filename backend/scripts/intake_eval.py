@@ -1,0 +1,58 @@
+"""
+Recipe cleanup eval harness (design doc §8). See app/services/intake_eval.py for the
+eval-data layout.
+
+Usage (from backend/):
+    uv run python scripts/intake_eval.py draft          # write cases for new inputs
+    uv run python scripts/intake_eval.py run            # score checked cases
+    uv run python scripts/intake_eval.py run --strict   # exit 1 below the targets
+
+The folder defaults to backend/eval-data/ (git-ignored); override with --dir or
+INTAKE_EVAL_DIR.
+"""
+
+import argparse
+import sys
+from pathlib import Path
+
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from app.services.intake_eval import (  # noqa: E402
+    draft_cases,
+    eval_dir_from_env,
+    format_report,
+    run_eval,
+)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("command", choices=["draft", "run"])
+    parser.add_argument("--dir", type=Path, default=None, help="eval-data folder")
+    parser.add_argument("--show", type=int, default=20, help="mismatches to print")
+    parser.add_argument("--strict", action="store_true", help="exit 1 if below targets")
+    args = parser.parse_args()
+
+    eval_dir = args.dir or eval_dir_from_env()
+    if not eval_dir.exists():
+        print(f"Eval folder not found: {eval_dir}", file=sys.stderr)
+        return 2
+
+    if args.command == "draft":
+        written = draft_cases(eval_dir)
+        print(f"Wrote {len(written)} draft case(s) to {eval_dir / 'cases'}")
+        for path in written:
+            print(f"  {path.name}")
+        print('Check each one, correct "expected", and set "checked": true.')
+        return 0
+
+    report = run_eval(eval_dir)
+    print(format_report(report, show=args.show))
+    if args.strict and not report.meets_targets():
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
