@@ -524,7 +524,9 @@ async def export_collection_pdf(
         )
 
     # Generate PDF
-    pdf_bytes = generate_collection_pdf(collection.name, collection.description or "", recipes)
+    pdf_bytes = await generate_collection_pdf(
+        collection.name, collection.description or "", recipes
+    )
 
     # Generate safe filename
     safe_name = "".join(c if c.isalnum() or c in (" ", "-", "_") else "_" for c in collection.name)

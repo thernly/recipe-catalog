@@ -7,11 +7,13 @@ from fastapi import APIRouter
 
 from app.api import (
     ai,
+    api_tokens,
     auth,
     collections,
     export,
     households,
     import_recipes,
+    intake,
     meal_plans,
     oauth,
     recipes,
@@ -27,10 +29,12 @@ api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 api_v1_router.include_router(oauth.router, prefix="/auth", tags=["OAuth"])
 api_v1_router.include_router(users.router, prefix="/users", tags=["Users"])
+api_v1_router.include_router(api_tokens.router, prefix="/users/me/api-tokens", tags=["API Tokens"])
 api_v1_router.include_router(recipes.router, prefix="/recipes", tags=["Recipes"])
 api_v1_router.include_router(collections.router, prefix="/collections", tags=["Collections"])
 api_v1_router.include_router(export.router, prefix="/export", tags=["Export"])
 api_v1_router.include_router(import_recipes.router, prefix="/import", tags=["Import"])
+api_v1_router.include_router(intake.router, prefix="/intake", tags=["Intake"])
 api_v1_router.include_router(households.router, prefix="/households", tags=["Households"])
 api_v1_router.include_router(meal_plans.router, prefix="/meal-plans", tags=["Meal Plans"])
 api_v1_router.include_router(

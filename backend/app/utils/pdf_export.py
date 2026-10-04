@@ -206,7 +206,7 @@ class RecipePDF(FPDF):
         self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
 
-def generate_recipe_pdf(recipe: "Recipe") -> bytes:
+async def generate_recipe_pdf(recipe: "Recipe") -> bytes:
     """
     Generate a PDF for a single recipe.
 
@@ -217,7 +217,7 @@ def generate_recipe_pdf(recipe: "Recipe") -> bytes:
         bytes: PDF file content
     """
     # Convert recipe to schema.org format
-    schema_recipe = convert_to_schema_org(recipe)
+    schema_recipe = await convert_to_schema_org(recipe)
 
     # Create PDF
     pdf = RecipePDF()
@@ -232,7 +232,7 @@ def generate_recipe_pdf(recipe: "Recipe") -> bytes:
     return bytes(output) if not isinstance(output, bytes) else output
 
 
-def generate_collection_pdf(
+async def generate_collection_pdf(
     collection_name: str, collection_description: str, recipes: list["Recipe"]
 ) -> bytes:
     """
@@ -261,7 +261,7 @@ def generate_collection_pdf(
     # Add each recipe
     for recipe in recipes:
         pdf.add_page()
-        schema_recipe = convert_to_schema_org(recipe)
+        schema_recipe = await convert_to_schema_org(recipe)
         _add_recipe_to_pdf(pdf, schema_recipe)
 
     output = pdf.output()

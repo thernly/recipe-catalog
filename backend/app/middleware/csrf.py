@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import settings
+from app.core.constants import API_TOKEN_PREFIX
 from app.core.security import verify_csrf_token
 
 
@@ -31,6 +32,27 @@ CSRF_EXEMPT_PATHS = [
 
 # HTTP methods that require CSRF protection (state-changing operations)
 CSRF_PROTECTED_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+# Paths where a personal API token may stand in for the CSRF check (see below)
+API_TOKEN_PATH_PREFIX = "/api/v1/intake"
+
+
+def is_api_token_request(request: Request) -> bool:
+    """
+    True for a request to the intake routes that carries a personal API token.
+
+    CSRF rides on ambient cookies; a token in the Authorization header is not ambient (a
+    cross-site page cannot set it without a CORS preflight), so these requests skip the
+    check. The token is not validated here: `get_intake_user` does that and, when a
+    token is present, never falls back to the session cookie, so a forged or bogus token
+    cannot turn into a cookie-authenticated request. Cookie-authenticated requests to the
+    same paths are still checked.
+    """
+    path = request.url.path
+    if path != API_TOKEN_PATH_PREFIX and not path.startswith(API_TOKEN_PATH_PREFIX + "/"):
+        return False
+    auth_header = request.headers.get("authorization", "")
+    return auth_header.startswith("Bearer " + API_TOKEN_PREFIX)
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):
@@ -56,6 +78,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         # Skip CSRF check for exempt paths
         path = request.url.path
         if any(path.startswith(exempt) for exempt in CSRF_EXEMPT_PATHS):
+            return await call_next(request)
+
+        # Skip CSRF check for personal-API-token requests to the intake routes
+        if is_api_token_request(request):
             return await call_next(request)
 
         # Get CSRF token from cookie and header

@@ -2,8 +2,9 @@
 Tests for recipe format conversion utilities
 """
 
+import base64
 from datetime import UTC, datetime
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -14,6 +15,7 @@ from app.utils.recipe_format import (
     convert_from_schema_org,
     convert_to_schema_org,
 )
+from app.utils.safe_fetch import FetchResult, SafeFetchError
 
 
 class MockRecipe:
@@ -33,7 +35,7 @@ class MockRecipe:
         self.created_at = kwargs.get("created_at", datetime.now(UTC))
 
 
-def test_convert_to_schema_org_basic():
+async def test_convert_to_schema_org_basic():
     """Test basic conversion to Schema.org format"""
     recipe = MockRecipe(
         name="Chocolate Cake",
@@ -45,7 +47,7 @@ def test_convert_to_schema_org_basic():
         },
     )
 
-    result = convert_to_schema_org(recipe)
+    result = await convert_to_schema_org(recipe)
 
     assert result["name"] == "Chocolate Cake"
     assert result["description"] == "Delicious chocolate cake"
@@ -54,7 +56,7 @@ def test_convert_to_schema_org_basic():
     assert result["recipeYield"] == "8 servings"
 
 
-def test_convert_to_schema_org_with_times():
+async def test_convert_to_schema_org_with_times():
     """Test conversion with cooking times"""
     recipe = MockRecipe(
         name="Quick Pasta",
@@ -65,14 +67,14 @@ def test_convert_to_schema_org_with_times():
         },
     )
 
-    result = convert_to_schema_org(recipe)
+    result = await convert_to_schema_org(recipe)
 
     assert result["prepTime"] == "PT10M"
     assert result["cookTime"] == "PT20M"
     assert result["totalTime"] == "PT30M"
 
 
-def test_convert_to_schema_org_with_category_cuisine():
+async def test_convert_to_schema_org_with_category_cuisine():
     """Test conversion with category and cuisine"""
     recipe = MockRecipe(
         name="Pizza",
@@ -81,13 +83,13 @@ def test_convert_to_schema_org_with_category_cuisine():
         recipe_data={},
     )
 
-    result = convert_to_schema_org(recipe)
+    result = await convert_to_schema_org(recipe)
 
     assert "Dinner" in result["recipeCategory"]
     assert "Italian" in result["recipeCuisine"]
 
 
-def test_convert_to_schema_org_with_nutrition():
+async def test_convert_to_schema_org_with_nutrition():
     """Test conversion with nutrition info"""
     recipe = MockRecipe(
         name="Healthy Salad",
@@ -100,26 +102,26 @@ def test_convert_to_schema_org_with_nutrition():
         },
     )
 
-    result = convert_to_schema_org(recipe)
+    result = await convert_to_schema_org(recipe)
 
     assert result["nutrition"]["calories"] == "250"
     assert result["nutrition"]["proteinContent"] == "10g"
 
 
-def test_convert_to_schema_org_with_rating():
+async def test_convert_to_schema_org_with_rating():
     """Test conversion with aggregate rating"""
     recipe = MockRecipe(
         name="Popular Recipe",
         recipe_data={"aggregateRating": {"ratingValue": "4.5", "ratingCount": "100"}},
     )
 
-    result = convert_to_schema_org(recipe)
+    result = await convert_to_schema_org(recipe)
 
     assert result["aggregateRating"]["ratingValue"] == "4.5"
     assert result["aggregateRating"]["ratingCount"] == "100"
 
 
-def test_convert_from_schema_org_basic():
+async def test_convert_from_schema_org_basic():
     """Test basic conversion from Schema.org format"""
     schema_recipe = {
         "name": "Test Recipe",
@@ -128,14 +130,14 @@ def test_convert_from_schema_org_basic():
         "recipeInstructions": [{"text": "Mix"}, {"text": "Bake"}],
     }
 
-    result = convert_from_schema_org(schema_recipe)
+    result = await convert_from_schema_org(schema_recipe)
 
     assert result["name"] == "Test Recipe"
     assert result["description"] == "A test recipe"
     assert result["recipe_data"]["recipeIngredient"] == ["1 cup flour", "2 eggs"]
 
 
-def test_convert_from_schema_org_with_times():
+async def test_convert_from_schema_org_with_times():
     """Test conversion from Schema.org with time parsing"""
     schema_recipe = {
         "name": "Timed Recipe",
@@ -144,14 +146,14 @@ def test_convert_from_schema_org_with_times():
         "totalTime": "PT45M",
     }
 
-    result = convert_from_schema_org(schema_recipe)
+    result = await convert_from_schema_org(schema_recipe)
 
     assert result["total_time_minutes"] == 45
     assert result["recipe_data"]["prepTime"] == "PT15M"
     assert result["recipe_data"]["cookTime"] == "PT30M"
 
 
-def test_convert_from_schema_org_time_calculation():
+async def test_convert_from_schema_org_time_calculation():
     """Test total time calculation from prep and cook times"""
     schema_recipe = {
         "name": "Recipe",
@@ -160,19 +162,19 @@ def test_convert_from_schema_org_time_calculation():
         # No totalTime specified
     }
 
-    result = convert_from_schema_org(schema_recipe)
+    result = await convert_from_schema_org(schema_recipe)
 
     assert result["total_time_minutes"] == 60  # 20 + 40
 
 
-def test_convert_from_schema_org_category_array():
+async def test_convert_from_schema_org_category_array():
     """Test conversion with category as array"""
     schema_recipe = {
         "name": "Recipe",
         "recipeCategory": ["Dinner", "Main Course"],
     }
 
-    result = convert_from_schema_org(schema_recipe)
+    result = await convert_from_schema_org(schema_recipe)
 
     # Should take first category
     assert result["category"] == "Dinner"
@@ -180,37 +182,37 @@ def test_convert_from_schema_org_category_array():
     assert result["recipe_data"]["recipeCategory"] == ["Dinner", "Main Course"]
 
 
-def test_convert_from_schema_org_cuisine_string():
+async def test_convert_from_schema_org_cuisine_string():
     """Test conversion with cuisine as string"""
     schema_recipe = {
         "name": "Recipe",
         "recipeCuisine": "Mexican",
     }
 
-    result = convert_from_schema_org(schema_recipe)
+    result = await convert_from_schema_org(schema_recipe)
 
     assert result["cuisine"] == "Mexican"
 
 
-def test_convert_from_schema_org_sets_source_type():
+async def test_convert_from_schema_org_sets_source_type():
     """Test that conversion sets source_type to 'imported'"""
     schema_recipe = {
         "name": "Imported Recipe",
     }
 
-    result = convert_from_schema_org(schema_recipe)
+    result = await convert_from_schema_org(schema_recipe)
 
     assert result["source_type"] == "imported"
 
 
-def test_convert_from_schema_org_with_url():
+async def test_convert_from_schema_org_with_url():
     """Test conversion with source URL"""
     schema_recipe = {
         "name": "Recipe",
         "url": "https://example.com/recipe",
     }
 
-    result = convert_from_schema_org(schema_recipe)
+    result = await convert_from_schema_org(schema_recipe)
 
     assert result["source_url"] == "https://example.com/recipe"
 
@@ -292,99 +294,110 @@ def test_ensure_array_preserves_list():
     assert result == original
 
 
-@patch("app.utils.recipe_format.httpx.Client")
-def test_fetch_and_encode_image_success(mock_client_class):
+@patch("app.utils.recipe_format.safe_fetch", new_callable=AsyncMock)
+async def test_fetch_and_encode_image_success(mock_safe_fetch):
     """Test successful image fetch and encoding"""
-    # Mock the response
-    mock_response = Mock()
-    mock_response.content = b"fake image data"
-    mock_response.headers = {"Content-Type": "image/png"}
-    mock_response.raise_for_status = Mock()
+    mock_safe_fetch.return_value = FetchResult(
+        url="https://example.com/image.png", content=b"fake image data", content_type="image/png"
+    )
 
-    # Mock the client
-    mock_client = Mock()
-    mock_client.get.return_value = mock_response
-    mock_client.__enter__ = Mock(return_value=mock_client)
-    mock_client.__exit__ = Mock(return_value=False)
-    mock_client_class.return_value = mock_client
-
-    result = _fetch_and_encode_image("https://example.com/image.png")
+    result = await _fetch_and_encode_image("https://example.com/image.png")
 
     assert result is not None
     assert result["url"] == "https://example.com/image.png"
     assert result["mimeType"] == "image/png"
-    assert "data" in result
-    assert len(result["data"]) > 0  # Base64 encoded data
+    assert base64.b64decode(result["data"]) == b"fake image data"
+    # The fetch is size-capped and restricted to the configured image types
+    kwargs = mock_safe_fetch.call_args.kwargs
+    assert kwargs["max_bytes"] > 0
+    assert "image/png" in kwargs["allowed_content_types"]
 
 
-@patch("app.utils.recipe_format.httpx.Client")
-def test_fetch_and_encode_image_failure(mock_client_class):
+@patch("app.utils.recipe_format.safe_fetch", new_callable=AsyncMock)
+async def test_fetch_and_encode_image_refused(mock_safe_fetch):
+    """A URL refused by the safe-fetch helper is stored without data"""
+    mock_safe_fetch.side_effect = SafeFetchError("Refusing to fetch from non-public address")
+
+    assert await _fetch_and_encode_image("http://169.254.169.254/latest") is None
+
+
+@patch("app.utils.recipe_format.safe_fetch", new_callable=AsyncMock)
+async def test_fetch_and_encode_image_failure(mock_safe_fetch):
     """Test image fetch failure handling"""
-    # Mock the client to raise an error
-    mock_client = Mock()
-    mock_client.get.side_effect = Exception("Network error")
-    mock_client.__enter__ = Mock(return_value=mock_client)
-    mock_client.__exit__ = Mock(return_value=False)
-    mock_client_class.return_value = mock_client
+    mock_safe_fetch.side_effect = Exception("Network error")
 
-    result = _fetch_and_encode_image("https://example.com/image.png")
+    result = await _fetch_and_encode_image("https://example.com/image.png")
 
     assert result is None
 
 
-def test_fetch_and_encode_image_empty_url():
+async def test_fetch_and_encode_image_empty_url():
     """Test fetch with empty URL"""
-    assert _fetch_and_encode_image("") is None
-    assert _fetch_and_encode_image(None) is None
+    assert await _fetch_and_encode_image("") is None
+    assert await _fetch_and_encode_image(None) is None
 
 
-def test_convert_from_schema_org_with_equipment():
+async def test_convert_from_schema_org_private_image_url_not_fetched():
+    """An image URL pointing at a private address is kept but never fetched"""
+    with patch("app.utils.safe_fetch.httpx.AsyncClient") as client_class:
+        result = await convert_from_schema_org(
+            {"name": "Recipe", "image": "http://127.0.0.1:8000/admin.png"}
+        )
+
+    client_class.return_value.__aenter__.return_value.send.assert_not_called()
+    assert result["image_url"] == "http://127.0.0.1:8000/admin.png"
+    assert result["recipe_data"]["images"] == [
+        {"url": "http://127.0.0.1:8000/admin.png", "data": "", "mimeType": "image/jpeg"}
+    ]
+
+
+async def test_convert_from_schema_org_with_equipment():
     """Test conversion with equipment field"""
     schema_recipe = {
         "name": "Recipe",
         "equipment": ["Stand mixer", "Baking pan"],
     }
 
-    result = convert_from_schema_org(schema_recipe)
+    result = await convert_from_schema_org(schema_recipe)
 
     assert result["recipe_data"]["equipment"] == ["Stand mixer", "Baking pan"]
 
 
-def test_convert_from_schema_org_with_notes():
+async def test_convert_from_schema_org_with_notes():
     """Test conversion with notes field"""
     schema_recipe = {
         "name": "Recipe",
         "notes": "Can be made ahead and frozen",
     }
 
-    result = convert_from_schema_org(schema_recipe)
+    result = await convert_from_schema_org(schema_recipe)
 
     assert result["recipe_data"]["notes"] == "Can be made ahead and frozen"
 
 
-def test_convert_from_schema_org_with_keywords():
+async def test_convert_from_schema_org_with_keywords():
     """Test conversion with keywords"""
     schema_recipe = {
         "name": "Recipe",
         "keywords": "quick, easy, vegetarian",
     }
 
-    result = convert_from_schema_org(schema_recipe)
+    result = await convert_from_schema_org(schema_recipe)
 
     assert result["recipe_data"]["keywords"] == "quick, easy, vegetarian"
 
 
-def test_convert_from_schema_org_missing_name():
+async def test_convert_from_schema_org_missing_name():
     """Test conversion with missing name raises ValueError"""
     schema_recipe = {
         "description": "A recipe without a name",
     }
 
     with pytest.raises(ValueError, match="Recipe name is required"):
-        convert_from_schema_org(schema_recipe)
+        await convert_from_schema_org(schema_recipe)
 
 
-def test_convert_to_schema_org_preserves_all_fields():
+async def test_convert_to_schema_org_preserves_all_fields():
     """Test that conversion to Schema.org preserves all stored fields"""
     recipe = MockRecipe(
         name="Complete Recipe",
@@ -401,7 +414,7 @@ def test_convert_to_schema_org_preserves_all_fields():
         },
     )
 
-    result = convert_to_schema_org(recipe)
+    result = await convert_to_schema_org(recipe)
 
     assert result["recipeIngredient"] == ["ingredient"]
     assert result["recipeInstructions"] == [{"text": "step"}]
@@ -412,27 +425,29 @@ def test_convert_to_schema_org_preserves_all_fields():
     assert result["recipeYield"] == "4"
 
 
-def test_convert_from_schema_org_handles_string_images():
+async def test_convert_from_schema_org_handles_string_images():
     """Test conversion handles image as string URL"""
     schema_recipe = {
         "name": "Recipe",
         "image": "https://example.com/image.jpg",
     }
 
-    with patch("app.utils.recipe_format._fetch_and_encode_image") as mock_fetch:
+    with patch(
+        "app.utils.recipe_format._fetch_and_encode_image", new_callable=AsyncMock
+    ) as mock_fetch:
         mock_fetch.return_value = {
             "url": "https://example.com/image.jpg",
             "data": "base64data",
             "mimeType": "image/jpeg",
         }
 
-        result = convert_from_schema_org(schema_recipe)
+        result = await convert_from_schema_org(schema_recipe)
 
         assert result["image_url"] == "https://example.com/image.jpg"
         assert len(result["recipe_data"]["images"]) == 1
 
 
-def test_convert_from_schema_org_handles_dict_images():
+async def test_convert_from_schema_org_handles_dict_images():
     """Test conversion handles image as dict with URL and data"""
     schema_recipe = {
         "name": "Recipe",
@@ -445,14 +460,14 @@ def test_convert_from_schema_org_handles_dict_images():
         ],
     }
 
-    result = convert_from_schema_org(schema_recipe)
+    result = await convert_from_schema_org(schema_recipe)
 
     assert result["image_url"] == "https://example.com/image.jpg"
     assert len(result["recipe_data"]["images"]) == 1
     assert result["recipe_data"]["images"][0]["data"] == "base64encodeddata"
 
 
-def test_round_trip_conversion():
+async def test_round_trip_conversion():
     """Test converting to Schema.org and back preserves data"""
     original_recipe = MockRecipe(
         name="Round Trip Recipe",
@@ -467,10 +482,10 @@ def test_round_trip_conversion():
     )
 
     # Convert to Schema.org
-    schema_format = convert_to_schema_org(original_recipe)
+    schema_format = await convert_to_schema_org(original_recipe)
 
     # Convert back
-    internal_format = convert_from_schema_org(schema_format)
+    internal_format = await convert_from_schema_org(schema_format)
 
     # Verify key fields preserved
     assert internal_format["name"] == "Round Trip Recipe"

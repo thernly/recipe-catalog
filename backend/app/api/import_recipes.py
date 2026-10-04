@@ -100,23 +100,26 @@ async def _import_recipes_internal(
         db: Database session
 
     Returns:
-        Dictionary containing import results and statistics
+        Dictionary containing import results and statistics. `items` has one entry per
+        recipe that did not fail: its index, status (created, updated or skipped) and
+        recipe id (the existing recipe's id when skipped).
     """
     # Track import results
-    results = {
+    results: dict[str, Any] = {
         "total": len(recipes_data),
         "created": 0,
         "updated": 0,
         "skipped": 0,
         "failed": 0,
         "errors": [],
+        "items": [],
     }
 
     # Process each recipe
     for idx, recipe_data in enumerate(recipes_data):
         try:
             # Convert from Schema.org format to internal format
-            recipe_dict = convert_from_schema_org(recipe_data)
+            recipe_dict = await convert_from_schema_org(recipe_data)
 
             # Check for duplicate by name
             existing_recipe = None
@@ -132,6 +135,9 @@ async def _import_recipes_internal(
             if existing_recipe:
                 if duplicate_handling == "skip":
                     results["skipped"] += 1
+                    results["items"].append(
+                        {"index": idx, "status": "skipped", "recipe_id": existing_recipe.id}
+                    )
                     continue
                 elif duplicate_handling == "update":
                     # Update existing recipe
@@ -147,6 +153,9 @@ async def _import_recipes_internal(
 
                     results["updated"] += 1
                     recipe_to_add = existing_recipe
+                    results["items"].append(
+                        {"index": idx, "status": "updated", "recipe_id": existing_recipe.id}
+                    )
             else:
                 # Create new recipe
                 new_recipe = Recipe(
@@ -164,8 +173,13 @@ async def _import_recipes_internal(
                     imported_at=datetime.now(UTC),
                 )
                 db.add(new_recipe)
+                # Flush to assign the id reported in items
+                await db.flush()
                 results["created"] += 1
                 recipe_to_add = new_recipe
+                results["items"].append(
+                    {"index": idx, "status": "created", "recipe_id": new_recipe.id}
+                )
 
             # Add to collection if specified
             if collection and recipe_to_add:

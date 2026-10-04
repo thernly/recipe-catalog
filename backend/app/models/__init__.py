@@ -1,5 +1,6 @@
 """Database models."""
 
+from app.models.api_token import ApiToken
 from app.models.collection import Collection, RecipeCollection
 from app.models.household import Household, HouseholdInvitation, HouseholdMember
 from app.models.identity_provider import IdentityProvider
@@ -30,4 +31,5 @@ __all__ = [
     "ShoppingList",
     "ShoppingListItem",
     "RefreshToken",
+    "ApiToken",
 ]

@@ -70,7 +70,7 @@ async def export_recipe(
 
     if fmt == "pdf":
         try:
-            pdf_bytes = exporter.export_pdf(recipe)
+            pdf_bytes = await exporter.export_pdf(recipe)
         except Exception as e:
             # Log full exception with stack trace for debugging
             logger.exception("pdf_export_failed", recipe_id=recipe.id, error=str(e))
@@ -94,7 +94,7 @@ async def export_recipe(
         )
 
     if fmt == "json":
-        content = exporter.export_json(recipe)
+        content = await exporter.export_json(recipe)
         return Response(
             content=content,
             media_type="application/json",
@@ -102,7 +102,7 @@ async def export_recipe(
         )
 
     if fmt == "markdown":
-        content = exporter.export_markdown(recipe)
+        content = await exporter.export_markdown(recipe)
         return Response(
             content=content,
             media_type="text/markdown",
@@ -110,7 +110,7 @@ async def export_recipe(
         )
 
     if fmt == "text":
-        content = exporter.export_text(recipe)
+        content = await exporter.export_text(recipe)
         return Response(
             content=content,
             media_type="text/plain",

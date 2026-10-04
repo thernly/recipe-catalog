@@ -53,6 +53,7 @@ class User(Base):
     refresh_tokens = relationship(
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"
     )
+    api_tokens = relationship("ApiToken", back_populates="user", cascade="all, delete-orphan")
 
     def is_locked(self) -> bool:
         """
