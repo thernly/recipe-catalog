@@ -156,6 +156,44 @@ async def test_intake_skips_duplicate_name(client: AsyncClient, token_headers: d
     assert body["url"].endswith(f"/recipes/{first['id']}")
 
 
+async def test_intake_updates_duplicate_when_requested(
+    client: AsyncClient, token_headers: dict, db: AsyncSession
+):
+    client.cookies.clear()
+    first = (await client.post(INTAKE_URL, json=SIPHON_RECIPE, headers=token_headers)).json()
+    improved = {**SIPHON_RECIPE, "notes": "Rinse the lentils first."}
+    second = await client.post(
+        INTAKE_URL, params={"on_duplicate": "update"}, json=improved, headers=token_headers
+    )
+
+    assert second.status_code == 200
+    body = second.json()
+    assert body["status"] == "updated"
+    assert body["id"] == first["id"]
+
+    db.expire_all()
+    recipe = (await db.execute(select(Recipe).where(Recipe.id == first["id"]))).scalar_one()
+    assert recipe.recipe_data["notes"] == "Rinse the lentils first."
+    count = (await db.execute(select(Recipe).where(Recipe.name == "Weeknight Dal"))).scalars().all()
+    assert len(count) == 1
+
+
+async def test_intake_update_creates_when_no_duplicate(client: AsyncClient, token_headers: dict):
+    client.cookies.clear()
+    response = await client.post(
+        INTAKE_URL, params={"on_duplicate": "update"}, json=SIPHON_RECIPE, headers=token_headers
+    )
+    assert response.json()["status"] == "created"
+
+
+async def test_intake_rejects_unknown_on_duplicate(client: AsyncClient, token_headers: dict):
+    client.cookies.clear()
+    response = await client.post(
+        INTAKE_URL, params={"on_duplicate": "create"}, json=SIPHON_RECIPE, headers=token_headers
+    )
+    assert response.status_code == 422
+
+
 async def test_intake_recipe_visible_to_session(
     client: AsyncClient, test_user_headers: dict, token_headers: dict
 ):
