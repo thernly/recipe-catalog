@@ -12,6 +12,7 @@ from app.services.intake_eval import (
     eval_dir_from_env,
     format_report,
     run_eval,
+    write_originals,
 )
 
 
@@ -128,6 +129,105 @@ def test_draft_drops_schema_org_image_data(tmp_path):
     result = draft_cases(tmp_path)
 
     assert "image" not in _load(result.written[0])["input"]
+
+
+def _many_recipes(tmp_path, count=30):
+    (tmp_path / "inputs").mkdir(parents=True)
+    recipes = [{"name": f"Recipe {i}", "recipeIngredient": [f"{i} eggs"]} for i in range(count)]
+    (tmp_path / "inputs" / "export.json").write_text(json.dumps(recipes))
+    return tmp_path
+
+
+def _drafted_sources(eval_dir):
+    return {_load(p)["source"] for p in (eval_dir / "cases").glob("*.json")}
+
+
+def test_draft_sample_is_repeatable(tmp_path):
+    first = _many_recipes(tmp_path / "a")
+    second = _many_recipes(tmp_path / "b")
+
+    result = draft_cases(first, sample_size=5)
+    draft_cases(second, sample_size=5)
+
+    assert result.sampled == 5
+    assert len(result.written) == 5
+    assert result.recipes_found == 30
+    assert _drafted_sources(first) == _drafted_sources(second)
+
+
+def test_draft_sample_grows_without_dropping_earlier_picks(tmp_path):
+    eval_dir = _many_recipes(tmp_path)
+    draft_cases(eval_dir, sample_size=5)
+    small = _drafted_sources(eval_dir)
+
+    result = draft_cases(eval_dir, sample_size=8)
+
+    assert result.already_drafted == 5
+    assert len(result.written) == 3
+    assert small < _drafted_sources(eval_dir)
+
+
+def test_draft_sample_depends_on_seed(tmp_path):
+    one = _many_recipes(tmp_path / "a")
+    two = _many_recipes(tmp_path / "b")
+    draft_cases(one, sample_size=5, seed=1)
+    draft_cases(two, sample_size=5, seed=2)
+    assert _drafted_sources(one) != _drafted_sources(two)
+
+
+def test_draft_sample_larger_than_inputs_takes_all(tmp_path):
+    eval_dir = _many_recipes(tmp_path, count=3)
+    assert len(draft_cases(eval_dir, sample_size=40).written) == 3
+
+
+def test_originals_match_case_names_and_omit_image_data(tmp_path):
+    backup = {
+        "recipes": [
+            {
+                "id": 7,
+                "name": "Soup",
+                "recipe_data": {
+                    "recipeIngredient": ["2 cups stock"],
+                    "images": [{"url": "u", "data": "A" * 5000, "mimeType": "image/jpeg"}],
+                },
+            },
+            {"id": 8, "name": "Soup", "recipe_data": {"recipeIngredient": ["1 leek"]}},
+        ]
+    }
+    (tmp_path / "inputs").mkdir()
+    (tmp_path / "inputs" / "backup.json").write_text(json.dumps(backup))
+    draft_cases(tmp_path)
+
+    result = write_originals(tmp_path)
+
+    assert result.written == 2
+    assert result.missing == []
+    names = sorted(p.name for p in (tmp_path / "originals").glob("*.json"))
+    assert names == sorted(p.name for p in (tmp_path / "cases").glob("*.json"))
+    assert names == ["soup-2.json", "soup.json"]
+
+    first = _load(tmp_path / "originals" / "soup.json")
+    assert first["id"] == 7
+    assert first["recipe_data"]["images"][0] == {
+        "url": "u",
+        "data": "<5000 characters of image data omitted>",
+        "mimeType": "image/jpeg",
+    }
+    assert _load(tmp_path / "originals" / "soup-2.json")["id"] == 8
+
+
+def test_originals_report_cases_whose_source_is_gone(tmp_path):
+    draft_dir = _many_recipes(tmp_path, count=2)
+    draft_cases(draft_dir)
+    (draft_dir / "inputs" / "export.json").write_text(json.dumps([RECIPES[0]]))
+    (draft_dir / "cases" / "broken.json").write_text("{nope")
+
+    result = write_originals(draft_dir)
+
+    assert result.written == 1
+    assert len(result.missing) == 2
+    assert any("broken.json: not valid JSON" in m for m in result.missing)
+    assert any("not found" in m for m in result.missing)
 
 
 def test_draft_explains_why_nothing_was_found(tmp_path):

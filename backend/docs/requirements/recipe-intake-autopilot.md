@@ -279,9 +279,10 @@ Steps 8 to 10 run back to back in the cloud with no local stop, since nothing re
 **Built (C3).** In-repo lines: `backend/tests/test_ingredient_parser.py`. Harness: `backend/app/services/intake_eval.py`, run with `backend/scripts/intake_eval.py`; the folder is `backend/eval-data/` (git-ignored) or `INTAKE_EVAL_DIR`. For L2, from `backend/`:
 
 1. Put a catalog export in `eval-data/inputs/`: the Export page's complete backup (`complete_backup_<date>.json`) or the recipes export in JSON. Image data is dropped from the cases; the collections export has no recipe content and is skipped. Save the 12 failing pages as text in `eval-data/pages/` for phase 4; this harness does not read them.
-2. `uv run python scripts/intake_eval.py draft` writes one case per recipe to `eval-data/cases/`, prefilled with the current output.
-3. Hand-check each case: correct `expected`, mark junk lines `"ignore": true`, set `"checked": true`.
-4. `uv run python scripts/intake_eval.py run` prints the two numbers and every mismatch. `uv run pytest tests/test_intake_eval.py -s -k eval_set` does the same as a test (`INTAKE_EVAL_STRICT=1` makes it fail below target).
+2. `uv run python scripts/intake_eval.py draft --sample 40` writes cases for a repeatable random sample of 40 recipes to `eval-data/cases/`, prefilled with the current output. About 40 recipes (~400 lines) is enough to measure line accuracy within a few percent; a larger `--sample` keeps the earlier picks and adds more (`--seed` changes the draw). Without `--sample` it drafts every recipe.
+3. `uv run python scripts/intake_eval.py originals` writes each case's source record, with image data omitted, to `eval-data/originals/` under the same file name as the case, for side-by-side comparison.
+4. Hand-check each case: correct `expected`, mark junk lines `"ignore": true`, set `"checked": true`.
+5. `uv run python scripts/intake_eval.py run` prints the two numbers and every mismatch. `uv run pytest tests/test_intake_eval.py -s -k eval_set` does the same as a test (`INTAKE_EVAL_STRICT=1` makes it fail below target).
 
 "Needs no edits" is measured as: yield, times and every ingredient line match the hand-checked case.
 
