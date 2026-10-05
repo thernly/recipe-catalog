@@ -20,6 +20,7 @@ from app.models.collection import Collection, RecipeCollection
 from app.models.household import Household
 from app.models.recipe import Recipe
 from app.models.user import User
+from app.services.recipe_cleanup import clean_recipe_data, derive_total_time_minutes
 from app.utils.file_validation import validate_file_size
 from app.utils.recipe_format import convert_from_schema_org
 
@@ -131,6 +132,18 @@ async def _import_recipes_internal(
                     .where(Recipe.deleted_at.is_(None))
                 )
                 existing_recipe = result.scalar_one_or_none()
+
+            if not (existing_recipe and duplicate_handling == "skip"):
+                # Shared cleanup: yield, times, parsedIngredients. On update, keep the
+                # existing recipe's model-parsed lines for unchanged ingredient text.
+                previous_parsed = (
+                    (existing_recipe.recipe_data or {}).get("parsedIngredients")
+                    if existing_recipe
+                    else None
+                )
+                cleaned = clean_recipe_data(recipe_dict["recipe_data"], previous_parsed)
+                recipe_dict["recipe_data"] = cleaned.data
+                recipe_dict["total_time_minutes"] = derive_total_time_minutes(cleaned.data)
 
             if existing_recipe:
                 if duplicate_handling == "skip":

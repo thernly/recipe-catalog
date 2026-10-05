@@ -4,7 +4,7 @@ Get recipes into the **Recipe Catalog** cleanly: direct from the **Recipe Siphon
 
 > **Status (2026-10-04):** design settled over four question rounds with the owner, after reading both repos. Earlier drafts are kept beside this file as `recipe-intake-autopilot.v0.1.md` and `.v0.2.md`. Building happens in a separate session inside the two repos; this doc is the handoff.
 >
-> **Progress (2026-10-04):** C1 is merged in the catalog (safe fetch, API tokens, intake and token-check routes, CSRF skip; `recipe-catalog` PR 362). C2 is merged in the siphon (`recipe-siphon` PR 99). Still to do from phase 0: L1a and L1b, the end-to-end checks against a real deployment.
+> **Progress (2026-10-04):** Phase 0 is done. C1 is merged in the catalog (safe fetch, API tokens, intake and token-check routes, CSRF skip; `recipe-catalog` PR 362), and C2 in the siphon (`recipe-siphon` PR 99). L1a and L1b passed: the owner saved and updated recipes in the deployed catalog through the siphon, which exercised the token, the CSRF skip and the reverse proxy. After C1 and C2, intake gained `?on_duplicate=update` (catalog) and the siphon sends it by default, with an options checkbox to turn it off (siphon PRs 100–103). Next: C3.
 >
 > Repos: `github.com/thernly/recipe-catalog`, `github.com/thernly/recipe-siphon`.
 
@@ -36,7 +36,9 @@ Underneath all of them: today a recipe is downloaded from the siphon as JSON and
 - Extracts via JSON-LD, Microdata, RDFa, then a heuristic HTML fallback (`extractors/html-fallback.js`, `divider-sections.js`).
 - Posts one recipe to `/api/v1/intake` with a bearer token and checks the token at `/api/v1/intake/check` (changed from `/api/recipes/import` and `/api/auth/validate`, which the catalog never had). The catalog now serves both routes and has API tokens.
 - Its policy allows HTTPS connections only (satisfied by the LAN setup).
-- `docs/API_INTEGRATION.md` specifies the request and response shapes it expects (`created | skipped | needs_review`; the doc no longer lists `updated`).
+- `docs/API_INTEGRATION.md` specifies the request and response shapes it expects (`created | updated | skipped | needs_review`).
+- Re-sending a recipe updates the existing one by default (`?on_duplicate=update`); the "Update recipes that already exist" option turns that off, and the catalog then skips the duplicate.
+- Sends `equipment` and `notes`, the keys the catalog reads (§11).
 
 ## 3. Goals, non-goals, targets
 
@@ -110,7 +112,8 @@ The routes are pinned here so the catalog (C1) and siphon (C2) work can proceed 
 - Both sit under `/api/v1/intake`, so a token's scope is that one prefix.
 - **Success body:** `{"success": true, "status": "created" | "skipped" | "needs_review", "id": <recipe id or null>, "message": "...", "url": "<link to the recipe or the Imports page>"}`. `needs_review` arrives in phase 2.
 - **Error body:** the catalog's standard envelope, `{"error_code", "message", "details", "correlation_id"}`. The siphon shows `message`.
-- **Built (C1, C2):** the catalog serves both routes and returns `created` or `skipped` today, with `url` built from `FRONTEND_URL`. The siphon uses both routes, treats `needs_review` as a success (shows `message` with a link to `url`), and shows the error envelope's `message`. The catalog does not return `needs_review` until phase 2.
+- **Duplicates:** `POST /api/v1/intake?on_duplicate=skip|update` (default `skip`). On an exact-name match among the importer's own recipes, `skip` returns `skipped` with the existing recipe's id and `update` overwrites it and returns `updated`. The siphon sends `update` unless the user turns it off.
+- **Built (C1, C2, follow-ups):** the catalog serves both routes and returns `created`, `updated` or `skipped`, with `url` built from `FRONTEND_URL`. The siphon uses both routes, treats `needs_review` as a success (shows `message` with a link to `url`), and shows the error envelope's `message`. The catalog does not return `needs_review` until phase 2.
 
 ### 4.4 Cleanup (no model)
 
@@ -179,8 +182,8 @@ Two narrow uses, both through one new schema-constrained call added to `services
 
 ### 4.8 Duplicates
 
-- A normalized source-URL match anywhere in the household is a flag: the import goes to review with a link to the existing recipe.
-- The exact-name match stays as a weaker flag.
+- **The importer's own recipe with the same name is not a flag.** The `on_duplicate` setting decides (§4.3): overwrite by default, or skip when the user has turned updating off in the siphon. Decided by the owner on 2026-10-04; this replaces the earlier "exact-name match stays as a weaker flag".
+- A normalized source-URL match elsewhere in the household (another member's recipe, or the importer's own recipe under a different name) is a flag: the import goes to review with a link to the existing recipe. When the URL match is the same recipe the name match found, `on_duplicate` decides instead.
 - File upload keeps today's `skip | update | create` behavior.
 
 ## 5. Guardrails
@@ -237,11 +240,11 @@ Cloud steps (C) are one pull request each, one repo per session, tests passing w
 
 | Order | Step | Where | Work | Phase |
 |---|---|---|---|---|
-| 0 | **L0** | local, manual | Download one recipe as JSON from the siphon and keep it. It settles the payload-key question in §11 before C1 and becomes the test payload for L1a | 0 |
+| 0 | **L0** (not needed: the payload question was settled from the siphon's code, and L1b sent real payloads) | local, manual | Download one recipe as JSON from the siphon and keep it. It settles the payload-key question in §11 before C1 and becomes the test payload for L1a | 0 |
 | 1 | C1 (done) | cloud, catalog | Safe-fetch helper; API tokens and settings UI; intake and token-check routes; CSRF skip for token requests | 0 |
 | 1 | C2 (done) | cloud, siphon | Point at the new routes; token check. Runs in parallel with C1 | 0 |
-| 2 | **L1a** | local, Claude Code | After C1 only: deploy the C1 branch (`scripts/proxmox/update-app.sh --branch <name>` in the container), create a token, POST the L0 file to the intake route, confirm the recipe saved. Checks the token, the CSRF skip, and the reverse proxy | 0 |
-| 3 | **L1b** | local, manual | After C2: load the new siphon build in the browser, enter the token, import a recipe from a live page | 0 |
+| 2 | **L1a** (done) | local, Claude Code | After C1 only: deploy the C1 branch (`scripts/proxmox/update-app.sh --branch <name>` in the container), create a token, POST the L0 file to the intake route, confirm the recipe saved. Checks the token, the CSRF skip, and the reverse proxy | 0 |
+| 3 | **L1b** (done) | local, manual | After C2: load the new siphon build in the browser, enter the token, import a recipe from a live page | 0 |
 | 4 | C3 | cloud, catalog | Shared cleanup module on every write path; parsed ingredients; in-repo test lines; eval harness that reads a git-ignored folder; backfill script with dry-run report | 1 |
 | 5 | **L2** | local | Build the eval set (catalog export, the 12 failing pages as text); run the harness on the regex parser; run the backfill dry-run report | 1 |
 | 6 | C3b | cloud, catalog | Parser fixes from L2, if the numbers or the report call for them | 1 |
@@ -271,6 +274,15 @@ Steps 8 to 10 run back to back in the cloud with no local stop, since nothing re
 - **Outside git (ignored folder):** an export of the owner's catalog, plus the siphon's 12 failing pages saved as text. Real recipes are other people's text and stay out of the repo.
 - One test compares output with hand-checked expectations and reports the two target numbers. Run it whenever the parser, a prompt, or the model changes.
 
+**Built (C3).** In-repo lines: `backend/tests/test_ingredient_parser.py`. Harness: `backend/app/services/intake_eval.py`, run with `backend/scripts/intake_eval.py`; the folder is `backend/eval-data/` (git-ignored) or `INTAKE_EVAL_DIR`. For L2, from `backend/`:
+
+1. Put the catalog export (`GET /api/v1/export/recipes?format=json`) in `eval-data/inputs/`. Save the 12 failing pages as text in `eval-data/pages/` for phase 4; this harness does not read them.
+2. `uv run python scripts/intake_eval.py draft` writes one case per recipe to `eval-data/cases/`, prefilled with the current output.
+3. Hand-check each case: correct `expected`, mark junk lines `"ignore": true`, set `"checked": true`.
+4. `uv run python scripts/intake_eval.py run` prints the two numbers and every mismatch. `uv run pytest tests/test_intake_eval.py -s -k eval_set` does the same as a test (`INTAKE_EVAL_STRICT=1` makes it fail below target).
+
+"Needs no edits" is measured as: yield, times and every ingredient line match the hand-checked case.
+
 ## 9. Backfill
 
 A one-off script at the end of phase 1, deterministic only.
@@ -280,6 +292,13 @@ A one-off script at the end of phase 1, deterministic only.
 3. On approval the script backs up the database and applies everything in one run, with an option to exclude listed recipes.
 
 Model parsing of leftover lines in old recipes waits until shopping lists use parsed ingredients.
+
+**Built (C3).** `backend/scripts/backfill_cleanup.py` (logic in `app/services/recipe_backfill.py`). From `backend/`, so `.env` is read:
+
+- `uv run python scripts/backfill_cleanup.py` is the dry run. It writes `backfill-report-<timestamp>.md` (git-ignored) and changes nothing.
+- `--exclude 12,40` or `--exclude-file ids.txt` leaves recipes out; `--include-deleted` also cleans the trash.
+- `--apply` first copies the SQLite file to `recipes.db.bak-<timestamp>` with SQLite's backup API, then writes every change in one transaction. Stop the app before applying. Applied recipes keep `updated_at` and `is_modified`.
+- Running it again after applying reports nothing to change.
 
 ## 10. Deferred and parked
 
@@ -298,7 +317,7 @@ Model parsing of leftover lines in old recipes waits until shopping lists use pa
 ## 11. To check at build time
 
 - Exact OpenRouter ids, prices, and structured-output support for the candidate models. A lookup on 2026-10-04 returned only a partial model listing that did not include them, so these are unverified here.
-- The siphon's real payload keys: its type definitions say `equipment` and `notes`, its API doc says `recipeEquipment` and `recipeNotes`; the catalog reads `equipment` and `notes`.
+- ~~The siphon's real payload keys.~~ Settled: the siphon's code sends `equipment` and `notes` (`src/formatters/recipe-formatter.js`), which the catalog reads. Only its API doc example said `recipeEquipment` and `recipeNotes`, and that doc has been corrected.
 - Whether the reverse proxy passes the client address, and whether the app reads it.
 - Catalog conventions that apply to all of this are in its `CLAUDE.md` and `AGENTS.md`: household scoping, Alembic rules, the error envelope, structlog style, `uv run`.
 
@@ -321,7 +340,7 @@ Model parsing of leftover lines in old recipes waits until shopping lists use pa
 | Cleanup writes | Yield and times overwritten; ingredient lines verbatim |
 | Failing pages | A button in the siphon; heuristics frozen |
 | Approval | The importer only |
-| Duplicates | Household URL match and name match are review flags |
+| Duplicates | Household URL match is a review flag; the importer's own same-name recipe follows `on_duplicate` (overwrite by default, user can switch to skip in the siphon) |
 | Model | Separate intake setting; cheapest candidate reaching 95% on the eval set |
 | Limits | Key credit limit, per-user hourly limit, no-retention provider policy |
 | File upload | Deterministic cleanup, direct save, no review |
