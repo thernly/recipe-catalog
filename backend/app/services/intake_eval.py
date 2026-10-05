@@ -21,13 +21,15 @@ A case file looks like:
     {
       "checked": false,
       "source": "inputs/export.json#3",
+      "id": 412,                       (catalog recipe id, when the export has one)
       "input": { ...schema.org recipe... },
       "expected": {
         "recipeYield": "4 servings",
         "prepTime": "PT15M",
         "parsedIngredients": [
-          {"quantity": 2, "quantityMax": null, "unit": "cup", "item": "flour",
-           "note": "sifted", "group": null},
+          {"raw": "For the cake:", "header": true, "group": "For the cake"},
+          {"raw": "2 cups flour, sifted", "quantity": 2, "quantityMax": null,
+           "unit": "cup", "item": "flour", "note": "sifted", "group": "For the cake"},
           ...
         ]
       }
@@ -51,6 +53,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from app.services.ingredient_parser import is_header_entry
 from app.services.recipe_cleanup import TIME_FIELDS, clean_recipe_data
 
 
@@ -117,6 +120,8 @@ class InputScan:
     files: int = 0
     recipes: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    # source -> catalog recipe id, for exports that carry one (the complete backup)
+    ids: dict[str, Any] = field(default_factory=dict)
 
 
 def _recipe_from_item(item: Any) -> dict[str, Any] | None:
@@ -180,7 +185,10 @@ def _load_inputs(eval_dir: Path) -> InputScan:
         for index, item in enumerate(_items_in_export(data)):
             recipe = _recipe_from_item(item)
             if recipe is not None:
-                scan.recipes.append((f"inputs/{path.name}#{index}", recipe))
+                source = f"inputs/{path.name}#{index}"
+                scan.recipes.append((source, recipe))
+                if isinstance(item, dict) and item.get("id") is not None:
+                    scan.ids[source] = item["id"]
                 found += 1
         if not found:
             scan.warnings.append(
@@ -195,7 +203,11 @@ def _load_inputs(eval_dir: Path) -> InputScan:
 def _expected_from_output(data: dict[str, Any]) -> dict[str, Any]:
     expected: dict[str, Any] = {f: data[f] for f in RECIPE_FIELDS if data.get(f) not in (None, "")}
     expected["parsedIngredients"] = [
-        {"raw": e["raw"], **{f: e.get(f) for f in COMPARED_FIELDS}}
+        (
+            {"raw": e["raw"], "header": True, "group": e.get("group")}
+            if is_header_entry(e)
+            else {"raw": e["raw"], **{f: e.get(f) for f in COMPARED_FIELDS}}
+        )
         for e in data.get("parsedIngredients", [])
     ]
     return expected
@@ -262,6 +274,7 @@ def draft_cases(
         case = {
             "checked": False,
             "source": source,
+            "id": scan.ids.get(source),
             "input": recipe,
             "expected": _expected_from_output(result.data),
         }
@@ -371,10 +384,18 @@ def _line_matches(expected: dict[str, Any], actual: dict[str, Any] | None) -> li
     """Return the names of fields that differ (empty when the line is correct)."""
     if actual is None:
         return ["missing"]
-    is_header = expected.get("item") is None and expected.get("group") is not None
-    if not is_header and actual.get("parsedBy") is None:
+    if is_header_entry(expected) or is_header_entry(actual):
+        if is_header_entry(expected) != is_header_entry(actual):
+            return ["header"]
+        return [] if _values_match(expected.get("group"), actual.get("group")) else ["group"]
+    if actual.get("parsedBy") is None:
         return ["unparsed"]
     return [f for f in COMPARED_FIELDS if not _values_match(expected.get(f), actual.get(f))]
+
+
+def _shown(entry: dict[str, Any]) -> dict[str, Any]:
+    """An entry as printed in a mismatch: everything but `raw` and `ignore`."""
+    return {k: v for k, v in entry.items() if k not in ("raw", "ignore")}
 
 
 def _score_lines(
@@ -400,12 +421,8 @@ def _score_lines(
                     case=case_name,
                     field=",".join(differing),
                     raw=raw,
-                    expected={f: expected.get(f) for f in COMPARED_FIELDS},
-                    actual=(
-                        {f: actual.get(f) for f in (*COMPARED_FIELDS, "parsedBy")}
-                        if actual
-                        else None
-                    ),
+                    expected=_shown(expected),
+                    actual=_shown(actual) if actual else None,
                 )
             )
         else:

@@ -145,7 +145,9 @@ A new key inside `recipe_data`, so there is no migration:
 
 - One entry per `recipeIngredient` line, in order. `raw` is set by code, never by a model.
 - `parsedBy` is `regex`, `model`, or `null` for a line nothing could parse.
-- Units come from the existing `normalize_unit` map; unknown units pass through.
+- Units come from the existing `normalize_unit` map; unknown units pass through. **Units are stored singular and canonical** (`ounce`, never `oz`/`ounces`), whatever the quantity, so they compare and add up (shopping lists); anything that displays them pluralizes. Decided by the owner on 2026-10-05.
+- **Group headers** ("For the apples:") get an entry marked `{"raw", "header": true, "group", "parsedBy"}` with no ingredient fields, so they cannot be mistaken for ingredients; the lines after them carry `"group"`. The group keeps the header's own text. Decided by the owner on 2026-10-05.
+- Alternative measures after a slash or in parentheses ("2 sticks/1 cup (226 grams) butter") keep the first measure as `quantity`/`unit` and move the rest to `note`.
 - **On every save:** lines whose `raw` text is unchanged keep their entry (including model-parsed ones); changed or new lines get the regex only. No model calls on ordinary edits.
 
 ### 4.6 Jobs and review

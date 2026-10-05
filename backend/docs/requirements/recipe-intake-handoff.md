@@ -60,13 +60,19 @@ checkbox switches to skip) and is not a review flag (§4.8, §12).
 
 ## Parser conventions to keep (or change deliberately in C3b)
 
-- Units are canonical and singular: `cup`, `tablespoon`, `teaspoon`, `gram`, `ounce`.
+- Units are canonical and singular whatever the quantity: `cup`, `tablespoon`,
+  `teaspoon`, `gram`, `ounce`. Owner confirmed (2026-10-05); display pluralizes.
+- Alternative measures ("2 sticks/1 cup (226 grams) butter") keep the first measure as
+  quantity and unit; the others go to `note`.
 - Size words stay in the item: "3 large eggs" gives `item: "large eggs"`.
 - Notes come from parentheses, the text after the first comma, and a trailing
   "to taste" / "optional" / "for garnish"; several are joined with `"; "`.
 - Ranges: "1-2" gives `quantity: 1, quantityMax: 2`.
-- Group headers ("For the dressing:", "FILLING", "--- Sauce ---") produce an entry with
-  `item: null` and `group` set, and set `group` on the lines after them.
+- Group headers ("For the dressing:", "FILLING", "--- Sauce ---") produce
+  `{"raw", "header": true, "group", "parsedBy"}` with no ingredient fields, and set
+  `group` on the lines after them. Owner confirmed this shape (2026-10-05).
+- Times stay ISO 8601 (`PT1H15M`) in the data; the app displays them readably. Owner
+  confirmed (2026-10-05).
 - Doubtful lines get `parsedBy: null` (numbers left in the item, "plus", unbalanced
   parentheses, sentence-length lines). These are the lines C6 will send to a model.
 - On save, unchanged lines keep stored **model** parses; regex entries are recomputed.

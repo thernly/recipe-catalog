@@ -69,6 +69,47 @@ def test_draft_writes_unchecked_cases_from_current_output(eval_dir):
     }
 
 
+def test_draft_case_id_is_null_without_catalog_ids(eval_dir):
+    draft_cases(eval_dir)
+    assert _load(eval_dir / "cases" / "toast.json")["id"] is None
+
+
+def _header_case(tmp_path, checked_edit=None):
+    (tmp_path / "inputs").mkdir()
+    recipe = {"name": "Tart", "recipeIngredient": ["For the apples:", "2 apples, sliced"]}
+    (tmp_path / "inputs" / "one.json").write_text(json.dumps(recipe))
+    draft_cases(tmp_path)
+    path = tmp_path / "cases" / "tart.json"
+    _check(path, checked_edit)
+    return path
+
+
+def test_draft_writes_headers_without_ingredient_fields(tmp_path):
+    path = _header_case(tmp_path)
+
+    lines = _load(path)["expected"]["parsedIngredients"]
+    assert lines[0] == {"raw": "For the apples:", "header": True, "group": "For the apples"}
+    assert lines[1]["group"] == "For the apples"
+    assert "header" not in lines[1]
+
+
+def test_headers_score_on_group_name(tmp_path):
+    _header_case(tmp_path)
+    report = run_eval(tmp_path)
+    assert (report.lines_correct, report.lines_total) == (2, 2)
+
+
+def test_header_mismatches_are_reported(tmp_path):
+    def treat_header_as_ingredient(expected):
+        expected["parsedIngredients"][0] = {"raw": "For the apples:", "item": "apples"}
+
+    _header_case(tmp_path, treat_header_as_ingredient)
+    report = run_eval(tmp_path)
+
+    assert report.lines_correct == 1
+    assert report.mismatches[0].field == "header"
+
+
 def test_draft_keeps_existing_cases(eval_dir):
     draft_cases(eval_dir)
     path = eval_dir / "cases" / "toast.json"
@@ -110,6 +151,7 @@ def test_draft_reads_complete_backup_and_drops_images(tmp_path):
     assert [p.name for p in result.written] == ["soup.json"]
     case = _load(result.written[0])
     assert case["source"] == "inputs/complete_backup_2026-10-05.json#0"
+    assert case["id"] == 7
     assert case["input"] == {
         "recipeYield": "6 6 servings",
         "recipeIngredient": ["2 cups stock"],
