@@ -6,6 +6,8 @@ Get recipes into the **Recipe Catalog** cleanly: direct from the **Recipe Siphon
 >
 > **Progress (2026-10-04):** Phase 0 is done. C1 is merged in the catalog (safe fetch, API tokens, intake and token-check routes, CSRF skip; `recipe-catalog` PR 362), and C2 in the siphon (`recipe-siphon` PR 99). L1a and L1b passed: the owner saved and updated recipes in the deployed catalog through the siphon, which exercised the token, the CSRF skip and the reverse proxy. After C1 and C2, intake gained `?on_duplicate=update` (catalog) and the siphon sends it by default, with an options checkbox to turn it off (siphon PRs 100–103). Next: C3.
 >
+> **Current status and next steps:** [`recipe-intake-handoff.md`](recipe-intake-handoff.md).
+>
 > Repos: `github.com/thernly/recipe-catalog`, `github.com/thernly/recipe-siphon`.
 
 ## 1. Problem
