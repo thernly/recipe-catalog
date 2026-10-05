@@ -5,8 +5,10 @@ Real recipes are other people's text, so the eval set lives outside git, in a
 git-ignored folder (default `backend/eval-data/`, or `INTAKE_EVAL_DIR`):
 
     eval-data/
-      inputs/     raw recipes as JSON: one schema.org object or an array, such as a
-                  catalog export (`/api/v1/export/recipes?format=json`)
+      inputs/     raw recipes as .json: the Export page's complete backup
+                  (`/api/v1/export/all`), the recipes export
+                  (`/api/v1/export/recipes?format=json`), a siphon download, or any
+                  schema.org recipe or array of them. Image data is dropped.
       cases/      one file per recipe, written by `draft` and hand-checked by the owner
       lines.json  optional extra ingredient lines: [{"raw": ..., "expected": {...}}]
       pages/      failing pages saved as text, for phase 4 extraction; not read here
@@ -102,15 +104,85 @@ def _slug(text: str) -> str:
     return slug[:60] or "recipe"
 
 
-def _load_inputs(eval_dir: Path) -> list[tuple[str, dict[str, Any]]]:
-    recipes: list[tuple[str, dict[str, Any]]] = []
-    for path in sorted((eval_dir / "inputs").glob("*.json")):
-        data = json.loads(path.read_text(encoding="utf-8"))
-        items = data if isinstance(data, list) else [data]
+@dataclass
+class InputScan:
+    """What `_load_inputs` found, so `draft` can explain a result of zero."""
+
+    files: int = 0
+    recipes: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+
+def _recipe_from_item(item: Any) -> dict[str, Any] | None:
+    """
+    Turn one exported item into a schema.org recipe, or None if it has no recipe content.
+
+    Accepts a schema.org recipe (recipes export, siphon download) and a catalog record
+    with `recipe_data` (the "complete backup" from /api/v1/export/all). Image data and any
+    stored `parsedIngredients` are dropped: images only bloat the case files, and the
+    eval must parse from the raw lines.
+    """
+    if not isinstance(item, dict):
+        return None
+    if isinstance(item.get("recipe_data"), dict):
+        recipe = {
+            **item["recipe_data"],
+            "name": item.get("name") or item["recipe_data"].get("name"),
+            "description": item.get("description") or "",
+            "url": item.get("source_url") or "",
+        }
+    else:
+        recipe = dict(item)
+    if not recipe.get("name") or not any(
+        key in recipe for key in ("recipeIngredient", "recipeYield", *TIME_FIELDS)
+    ):
+        return None
+    for key in ("image", "images", "parsedIngredients"):
+        recipe.pop(key, None)
+    return recipe
+
+
+def _load_inputs(eval_dir: Path) -> InputScan:
+    scan = InputScan()
+    inputs_dir = eval_dir / "inputs"
+    if not inputs_dir.is_dir():
+        scan.warnings.append(f"No inputs folder: create {inputs_dir} and put export files in it")
+        return scan
+
+    for path in sorted(inputs_dir.iterdir()):
+        if path.suffix.lower() != ".json":
+            if path.is_file() and not path.name.startswith("."):
+                scan.warnings.append(f"Skipped {path.name}: only .json files are read")
+            continue
+        scan.files += 1
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            scan.warnings.append(f"Skipped {path.name}: not valid JSON ({e})")
+            continue
+
+        # Array of recipes, a wrapper with a "recipes" array (complete backup), or one recipe
+        if isinstance(data, list):
+            items = data
+        elif isinstance(data, dict) and isinstance(data.get("recipes"), list):
+            items = data["recipes"]
+        else:
+            items = [data]
+
+        found = 0
         for index, item in enumerate(items):
-            if isinstance(item, dict) and item.get("name"):
-                recipes.append((f"inputs/{path.name}#{index}", item))
-    return recipes
+            recipe = _recipe_from_item(item)
+            if recipe is not None:
+                scan.recipes.append((f"inputs/{path.name}#{index}", recipe))
+                found += 1
+        if not found:
+            scan.warnings.append(
+                f"{path.name}: no recipes with content found. Use the recipes export "
+                "(JSON) or the complete backup; the collections export lists names only."
+            )
+    if scan.files == 0:
+        scan.warnings.append(f"No .json files in {inputs_dir}")
+    return scan
 
 
 def _expected_from_output(data: dict[str, Any]) -> dict[str, Any]:
@@ -122,7 +194,16 @@ def _expected_from_output(data: dict[str, Any]) -> dict[str, Any]:
     return expected
 
 
-def draft_cases(eval_dir: Path) -> list[Path]:
+@dataclass
+class DraftResult:
+    written: list[Path]
+    input_files: int
+    recipes_found: int
+    already_drafted: int
+    warnings: list[str]
+
+
+def draft_cases(eval_dir: Path) -> DraftResult:
     """Write a case for every input recipe that has none yet. Existing cases are kept."""
     cases_dir = eval_dir / "cases"
     cases_dir.mkdir(parents=True, exist_ok=True)
@@ -133,9 +214,12 @@ def draft_cases(eval_dir: Path) -> list[Path]:
         except json.JSONDecodeError:
             continue
 
+    scan = _load_inputs(eval_dir)
     written: list[Path] = []
-    for source, recipe in _load_inputs(eval_dir):
+    already = 0
+    for source, recipe in scan.recipes:
         if source in existing_sources:
+            already += 1
             continue
         base = _slug(str(recipe.get("name")))
         path = cases_dir / f"{base}.json"
@@ -152,7 +236,13 @@ def draft_cases(eval_dir: Path) -> list[Path]:
         }
         path.write_text(json.dumps(case, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         written.append(path)
-    return written
+    return DraftResult(
+        written=written,
+        input_files=scan.files,
+        recipes_found=len(scan.recipes),
+        already_drafted=already,
+        warnings=scan.warnings,
+    )
 
 
 # ----------------------------------------------------------------------------

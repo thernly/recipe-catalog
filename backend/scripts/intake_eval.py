@@ -40,11 +40,19 @@ def main() -> int:
         return 2
 
     if args.command == "draft":
-        written = draft_cases(eval_dir)
-        print(f"Wrote {len(written)} draft case(s) to {eval_dir / 'cases'}")
-        for path in written:
-            print(f"  {path.name}")
-        print('Check each one, correct "expected", and set "checked": true.')
+        result = draft_cases(eval_dir)
+        for warning in result.warnings:
+            print(f"Warning: {warning}", file=sys.stderr)
+        print(
+            f"Read {result.input_files} input file(s): {result.recipes_found} recipe(s), "
+            f"{result.already_drafted} already drafted."
+        )
+        print(f"Wrote {len(result.written)} draft case(s) to {eval_dir / 'cases'}")
+        if len(result.written) <= 20:
+            for path in result.written:
+                print(f"  {path.name}")
+        if result.written:
+            print('Check each one, correct "expected", and set "checked": true.')
         return 0
 
     report = run_eval(eval_dir)
