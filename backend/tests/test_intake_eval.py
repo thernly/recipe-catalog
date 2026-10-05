@@ -46,9 +46,11 @@ def _check(path, edit=None):
 
 
 def test_draft_writes_unchecked_cases_from_current_output(eval_dir):
-    written = draft_cases(eval_dir)
+    result = draft_cases(eval_dir)
 
-    assert sorted(p.name for p in written) == ["pancakes.json", "toast.json"]
+    assert sorted(p.name for p in result.written) == ["pancakes.json", "toast.json"]
+    assert (result.input_files, result.recipes_found, result.already_drafted) == (1, 2, 0)
+    assert result.warnings == []
     case = _load(eval_dir / "cases" / "pancakes.json")
     assert case["checked"] is False
     assert case["source"] == "inputs/export.json#0"
@@ -71,8 +73,81 @@ def test_draft_keeps_existing_cases(eval_dir):
     path = eval_dir / "cases" / "toast.json"
     _check(path)
 
-    assert draft_cases(eval_dir) == []
+    again = draft_cases(eval_dir)
+    assert again.written == []
+    assert again.already_drafted == 2
     assert _load(path)["checked"] is True
+
+
+def test_draft_reads_complete_backup_and_drops_images(tmp_path):
+    """The Export page's complete backup (/api/v1/export/all) nests recipe_data."""
+    backup = {
+        "export_type": "complete_backup",
+        "user": {"email": "a@b.c"},
+        "recipes": [
+            {
+                "id": 7,
+                "name": "Soup",
+                "description": "Warm",
+                "source_url": "https://example.com/soup",
+                "recipe_data": {
+                    "recipeYield": "6 6 servings",
+                    "recipeIngredient": ["2 cups stock"],
+                    "images": [{"url": "x", "data": "A" * 1000, "mimeType": "image/jpeg"}],
+                    "parsedIngredients": [{"raw": "2 cups stock", "parsedBy": "model"}],
+                },
+            },
+            {"id": 8, "name": "Empty", "recipe_data": {}},
+        ],
+        "collections": [],
+    }
+    (tmp_path / "inputs").mkdir()
+    (tmp_path / "inputs" / "complete_backup_2026-10-05.json").write_text(json.dumps(backup))
+
+    result = draft_cases(tmp_path)
+
+    assert [p.name for p in result.written] == ["soup.json"]
+    case = _load(result.written[0])
+    assert case["source"] == "inputs/complete_backup_2026-10-05.json#0"
+    assert case["input"] == {
+        "recipeYield": "6 6 servings",
+        "recipeIngredient": ["2 cups stock"],
+        "name": "Soup",
+        "description": "Warm",
+        "url": "https://example.com/soup",
+    }
+    assert case["expected"]["recipeYield"] == "6 servings"
+    assert case["expected"]["parsedIngredients"][0]["item"] == "stock"
+
+
+def test_draft_drops_schema_org_image_data(tmp_path):
+    (tmp_path / "inputs").mkdir()
+    recipe = {**RECIPES[1], "image": [{"url": "x", "data": "A" * 1000}]}
+    (tmp_path / "inputs" / "one.json").write_text(json.dumps(recipe))
+
+    result = draft_cases(tmp_path)
+
+    assert "image" not in _load(result.written[0])["input"]
+
+
+def test_draft_explains_why_nothing_was_found(tmp_path):
+    assert draft_cases(tmp_path).warnings[0].startswith("No inputs folder")
+
+    inputs = tmp_path / "inputs"
+    inputs.mkdir()
+    (inputs / "notes.txt").write_text("hello")
+    result = draft_cases(tmp_path)
+    assert any("only .json files" in w for w in result.warnings)
+    assert any("No .json files" in w for w in result.warnings)
+
+    (inputs / "bad.json").write_text("{not json")
+    (inputs / "collections.json").write_text(
+        json.dumps({"collections": [{"name": "Dinners", "recipes": [{"id": 1, "name": "X"}]}]})
+    )
+    result = draft_cases(tmp_path)
+    assert result.written == []
+    assert any("bad.json: not valid JSON" in w for w in result.warnings)
+    assert any("collections.json: no recipes with content" in w for w in result.warnings)
 
 
 def test_run_scores_only_checked_cases(eval_dir):
