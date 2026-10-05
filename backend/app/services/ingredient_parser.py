@@ -547,7 +547,7 @@ _UNIT_SPELLINGS = sorted(
 _UNIT_RE = re.compile(
     r"^(?P<unit>"
     + "|".join(re.escape(u).replace(r"\ ", r"\.?\s+") for u in _UNIT_SPELLINGS)
-    + r")\.?(?=\s|$|[,()])",
+    + r")\.?(?=\s|$|[,()/])",
     re.IGNORECASE,
 )
 
@@ -588,6 +588,39 @@ def _canonical_unit(spelling: str) -> str | None:
     key = re.sub(r"\.", "", spelling.lower())
     key = re.sub(r"\s+", " ", key).strip()
     return _EXTRA_UNIT_ALIASES.get(key) or normalize_unit(key)
+
+
+def _take_alternative_measures(text: str) -> tuple[str, list[str]]:
+    """
+    Strip alternative measures given after a slash, right after the unit:
+    "2 sticks/1 cup butter" or "8 oz / 225 g cheese". Returns the remaining text and
+    the alternatives ("1 cup", "225 g"), which become notes like parenthesized ones.
+    """
+    alternatives: list[str] = []
+    while text.startswith("/"):
+        rest = text[1:].lstrip()
+        quantity = _QUANTITY_RE.match(rest)
+        if not quantity:
+            break
+        after = rest[quantity.end() :].lstrip()
+        unit = _UNIT_RE.match(after)
+        if not unit:
+            break
+        alternatives.append(f"{quantity.group(0).strip()} {after[: unit.end()].strip()}")
+        text = after[unit.end() :].strip()
+    return text, alternatives
+
+
+def _make_header_entry(raw: str, group: str) -> dict[str, Any]:
+    """
+    A group header line ("For the apples:"). It carries no ingredient fields, so it
+    cannot be mistaken for an ingredient; `group` on the lines after it names the group.
+    """
+    return {"raw": raw, "header": True, "group": group, "parsedBy": PARSED_BY_REGEX}
+
+
+def is_header_entry(entry: dict[str, Any]) -> bool:
+    return bool(entry.get("header"))
 
 
 def _make_entry(
@@ -704,6 +737,8 @@ def parse_ingredient_line(raw: str) -> dict[str, Any]:
     ):
         unit = _canonical_unit(unit_match.group("unit"))
         text = text[unit_match.end() :].strip()
+        text, alternatives = _take_alternative_measures(text)
+        notes.extend(alternatives)
         text = re.sub(r"^of\s+", "", text, flags=re.IGNORECASE)
 
     # Notes in parentheses, anywhere in the remainder
@@ -774,8 +809,8 @@ def parse_ingredient_lines(
     """
     Build `parsedIngredients`: one entry per `recipeIngredient` line, in order.
 
-    Group headers produce an entry with `item` None and `group` set to the header's
-    name, and set `group` on the lines after them.
+    A group header produces `{"raw", "header": true, "group", "parsedBy"}` with no
+    ingredient fields, and sets `group` on the lines after it.
 
     `previous` is the recipe's stored `parsedIngredients`. A line whose raw text is
     unchanged keeps its previous entry when a model parsed it; regex entries are simply
@@ -802,7 +837,7 @@ def parse_ingredient_lines(
         header = detect_group_header(line)
         if header is not None:
             group = header
-            parsed.append(_make_entry(line, group=header))
+            parsed.append(_make_header_entry(line, header))
             continue
 
         kept = reusable.get(line)

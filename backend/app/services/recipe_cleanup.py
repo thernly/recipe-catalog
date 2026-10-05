@@ -18,7 +18,11 @@ from dataclasses import dataclass, field
 from fractions import Fraction
 from typing import Any
 
-from app.services.ingredient_parser import parse_ingredient_lines, unparsed_lines
+from app.services.ingredient_parser import (
+    is_header_entry,
+    parse_ingredient_lines,
+    unparsed_lines,
+)
 
 
 TIME_FIELDS = ("prepTime", "cookTime", "totalTime")
@@ -226,7 +230,7 @@ def clean_recipe_data(
     data["parsedIngredients"] = parsed
 
     ingredient_entries = [
-        e for e in parsed if str(e.get("raw", "")).strip() and not _is_header_entry(e)
+        e for e in parsed if str(e.get("raw", "")).strip() and not is_header_entry(e)
     ]
     missed = unparsed_lines(parsed)
     return CleanupResult(
@@ -236,7 +240,3 @@ def clean_recipe_data(
         parsed_lines=len(ingredient_entries) - len(missed),
         unparsed=missed,
     )
-
-
-def _is_header_entry(entry: dict[str, Any]) -> bool:
-    return entry.get("parsedBy") is not None and entry.get("item") is None

@@ -24,17 +24,21 @@ checkbox switches to skip) and is not a review flag (§4.8, §12).
 - The complete backup (`complete_backup_<date>.json` from the Export page) is in
   `backend/eval-data/inputs/`, and `uv run python scripts/intake_eval.py draft` has
   written about **1400 cases** to `backend/eval-data/cases/`. None are checked yet.
-- Hand-checking 1400 cases is not realistic. Proposed instead (waiting on the owner's
-  go-ahead to build):
-  1. **Sample.** Add `draft --sample N [--seed S]` so only a random, repeatable set of
-     about 40 recipes (~400 lines) is drafted or scored. That measures line accuracy to
-     within a few percent. The other cases can be deleted or ignored.
-  2. **Flag suspicious lines** in each drafted case (unparsed, notes, ranges, unusual
-     units), so the owner skims the flagged lines instead of every line.
-  3. **Model-assisted labelling, done locally.** A local Claude Code session (the recipes
+- Hand-checking 1400 cases is not realistic. The approach:
+  1. **Sample (built).** `draft --sample 40 [--seed S]` drafts a repeatable random set
+     of about 40 recipes (~400 lines), enough to measure line accuracy within a few
+     percent. To switch, delete the unchecked full set (`rm -r eval-data/cases`) and
+     re-draft with `--sample 40`.
+  2. **Originals (built).** `originals` writes each case's source record to
+     `eval-data/originals/<case name>.json`, image data omitted, for side-by-side
+     comparison.
+  3. **Flag suspicious lines** in each drafted case (unparsed, notes, ranges, unusual
+     units), so the owner skims the flagged lines instead of every line. Not built;
+     proposed.
+  4. **Model-assisted labelling, done locally.** A local Claude Code session (the recipes
      must not leave the owner's machine) fills in `expected` for the sampled cases and
      marks what it is unsure of; the owner audits and sets `"checked": true`.
-  4. **Coverage over all 1400 now:** the backfill dry run already lists every line the
+  5. **Coverage over all 1400 now:** the backfill dry run already lists every line the
      parser could not handle, with no hand-checking. C3b can start from that list.
 - Still to run: `uv run python scripts/backfill_cleanup.py` (dry run, writes
   `backfill-report-<timestamp>.md`). **Do not `--apply`** until the parser is agreed
@@ -44,7 +48,7 @@ checkbox switches to skip) and is not a review flag (§4.8, §12).
 
 1. Ask the owner for: the `intake_eval.py run` output (if any cases are checked), the
    backfill report's summary and its "Lines that did not parse" section, and whether
-   to build the sampling and flagging tooling above.
+   to build line flagging (item 3 above).
 2. If yes, build it on the catalog (small PR: `app/services/intake_eval.py`,
    `scripts/intake_eval.py`, `tests/test_intake_eval.py`).
 3. Then **C3b**: parser fixes in `app/services/ingredient_parser.py` driven by the
@@ -56,13 +60,19 @@ checkbox switches to skip) and is not a review flag (§4.8, §12).
 
 ## Parser conventions to keep (or change deliberately in C3b)
 
-- Units are canonical and singular: `cup`, `tablespoon`, `teaspoon`, `gram`, `ounce`.
+- Units are canonical and singular whatever the quantity: `cup`, `tablespoon`,
+  `teaspoon`, `gram`, `ounce`. Owner confirmed (2026-10-05); display pluralizes.
+- Alternative measures ("2 sticks/1 cup (226 grams) butter") keep the first measure as
+  quantity and unit; the others go to `note`.
 - Size words stay in the item: "3 large eggs" gives `item: "large eggs"`.
 - Notes come from parentheses, the text after the first comma, and a trailing
   "to taste" / "optional" / "for garnish"; several are joined with `"; "`.
 - Ranges: "1-2" gives `quantity: 1, quantityMax: 2`.
-- Group headers ("For the dressing:", "FILLING", "--- Sauce ---") produce an entry with
-  `item: null` and `group` set, and set `group` on the lines after them.
+- Group headers ("For the dressing:", "FILLING", "--- Sauce ---") produce
+  `{"raw", "header": true, "group", "parsedBy"}` with no ingredient fields, and set
+  `group` on the lines after them. Owner confirmed this shape (2026-10-05).
+- Times stay ISO 8601 (`PT1H15M`) in the data; the app displays them readably. Owner
+  confirmed (2026-10-05).
 - Doubtful lines get `parsedBy: null` (numbers left in the item, "plus", unbalanced
   parentheses, sentence-length lines). These are the lines C6 will send to a model.
 - On save, unchanged lines keep stored **model** parses; regex entries are recomputed.

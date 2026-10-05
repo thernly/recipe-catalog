@@ -59,6 +59,18 @@ PARSED_LINES = [
     ("1 cup (240 ml) milk", 1, None, "cup", "milk", "240 ml"),
     ("1 cup sugar (optional)", 1, None, "cup", "sugar", "optional"),
     ("2 onions (about 1 lb), sliced", 2, None, None, "onions", "about 1 lb; sliced"),
+    # Alternative measures after a slash
+    (
+        "2 sticks/1 cup (226 grams) unsalted butter, cubed and kept cold",
+        2,
+        None,
+        "stick",
+        "unsalted butter",
+        "1 cup; 226 grams; cubed and kept cold",
+    ),
+    ("8 oz / 225 g cheddar, grated", 8, None, "ounce", "cheddar", "225 g; grated"),
+    ("1 cup/240ml milk", 1, None, "cup", "milk", "240 ml"),
+    ("2/3 cup sugar", 0.667, None, "cup", "sugar", None),
     # Package sizes
     ("1 (14-ounce) can diced tomatoes", 1, None, "can", "diced tomatoes", "14-ounce"),
     ("1 15-ounce can black beans, rinsed", 1, None, "can", "black beans", "15-ounce; rinsed"),
@@ -185,9 +197,15 @@ def test_lines_get_groups_from_headers():
         "TOPPING",
         "TOPPING",
     ]
-    header = parsed[1]
-    assert header["item"] is None
-    assert header["parsedBy"] == PARSED_BY_REGEX
+    # A header is marked as one and carries no ingredient fields
+    assert parsed[1] == {
+        "raw": "For the dressing:",
+        "header": True,
+        "group": "For the dressing",
+        "parsedBy": PARSED_BY_REGEX,
+    }
+    assert "header" not in parsed[2]
+    assert parsed[2]["item"] == "olive oil"
 
 
 def test_one_entry_per_line_in_order():

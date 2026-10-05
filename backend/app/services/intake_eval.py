@@ -10,6 +10,9 @@ git-ignored folder (default `backend/eval-data/`, or `INTAKE_EVAL_DIR`):
                   (`/api/v1/export/recipes?format=json`), a siphon download, or any
                   schema.org recipe or array of them. Image data is dropped.
       cases/      one file per recipe, written by `draft` and hand-checked by the owner
+                  (`draft --sample N` drafts only a repeatable random sample)
+      originals/  written by `originals`: each case's source record, same file name as
+                  the case, image data omitted, for side-by-side comparison
       lines.json  optional extra ingredient lines: [{"raw": ..., "expected": {...}}]
       pages/      failing pages saved as text, for phase 4 extraction; not read here
 
@@ -18,13 +21,15 @@ A case file looks like:
     {
       "checked": false,
       "source": "inputs/export.json#3",
+      "id": 412,                       (catalog recipe id, when the export has one)
       "input": { ...schema.org recipe... },
       "expected": {
         "recipeYield": "4 servings",
         "prepTime": "PT15M",
         "parsedIngredients": [
-          {"quantity": 2, "quantityMax": null, "unit": "cup", "item": "flour",
-           "note": "sifted", "group": null},
+          {"raw": "For the cake:", "header": true, "group": "For the cake"},
+          {"raw": "2 cups flour, sifted", "quantity": 2, "quantityMax": null,
+           "unit": "cup", "item": "flour", "note": "sifted", "group": "For the cake"},
           ...
         ]
       }
@@ -42,11 +47,13 @@ match (90%).
 import json
 import math
 import os
+import random
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from app.services.ingredient_parser import is_header_entry
 from app.services.recipe_cleanup import TIME_FIELDS, clean_recipe_data
 
 
@@ -54,6 +61,8 @@ LINE_TARGET = 0.95
 RECIPE_TARGET = 0.90
 
 DEFAULT_EVAL_DIR = Path(__file__).resolve().parents[2] / "eval-data"
+DEFAULT_SAMPLE_SEED = 1
+IMAGE_DATA_LIMIT = 200  # `data` strings longer than this are treated as image data
 COMPARED_FIELDS = ("quantity", "quantityMax", "unit", "item", "note", "group")
 RECIPE_FIELDS = ("recipeYield", *TIME_FIELDS)
 
@@ -111,6 +120,8 @@ class InputScan:
     files: int = 0
     recipes: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    # source -> catalog recipe id, for exports that carry one (the complete backup)
+    ids: dict[str, Any] = field(default_factory=dict)
 
 
 def _recipe_from_item(item: Any) -> dict[str, Any] | None:
@@ -142,6 +153,15 @@ def _recipe_from_item(item: Any) -> dict[str, Any] | None:
     return recipe
 
 
+def _items_in_export(data: Any) -> list[Any]:
+    """The recipe items in an export: an array, a "recipes" wrapper, or a single recipe."""
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict) and isinstance(data.get("recipes"), list):
+        return list(data["recipes"])
+    return [data]
+
+
 def _load_inputs(eval_dir: Path) -> InputScan:
     scan = InputScan()
     inputs_dir = eval_dir / "inputs"
@@ -161,19 +181,14 @@ def _load_inputs(eval_dir: Path) -> InputScan:
             scan.warnings.append(f"Skipped {path.name}: not valid JSON ({e})")
             continue
 
-        # Array of recipes, a wrapper with a "recipes" array (complete backup), or one recipe
-        if isinstance(data, list):
-            items = data
-        elif isinstance(data, dict) and isinstance(data.get("recipes"), list):
-            items = data["recipes"]
-        else:
-            items = [data]
-
         found = 0
-        for index, item in enumerate(items):
+        for index, item in enumerate(_items_in_export(data)):
             recipe = _recipe_from_item(item)
             if recipe is not None:
-                scan.recipes.append((f"inputs/{path.name}#{index}", recipe))
+                source = f"inputs/{path.name}#{index}"
+                scan.recipes.append((source, recipe))
+                if isinstance(item, dict) and item.get("id") is not None:
+                    scan.ids[source] = item["id"]
                 found += 1
         if not found:
             scan.warnings.append(
@@ -188,7 +203,11 @@ def _load_inputs(eval_dir: Path) -> InputScan:
 def _expected_from_output(data: dict[str, Any]) -> dict[str, Any]:
     expected: dict[str, Any] = {f: data[f] for f in RECIPE_FIELDS if data.get(f) not in (None, "")}
     expected["parsedIngredients"] = [
-        {"raw": e["raw"], **{f: e.get(f) for f in COMPARED_FIELDS}}
+        (
+            {"raw": e["raw"], "header": True, "group": e.get("group")}
+            if is_header_entry(e)
+            else {"raw": e["raw"], **{f: e.get(f) for f in COMPARED_FIELDS}}
+        )
         for e in data.get("parsedIngredients", [])
     ]
     return expected
@@ -201,10 +220,31 @@ class DraftResult:
     recipes_found: int
     already_drafted: int
     warnings: list[str]
+    sampled: int | None = None
 
 
-def draft_cases(eval_dir: Path) -> DraftResult:
-    """Write a case for every input recipe that has none yet. Existing cases are kept."""
+def _sample(
+    recipes: list[tuple[str, dict[str, Any]]], size: int, seed: int
+) -> list[tuple[str, dict[str, Any]]]:
+    """
+    A repeatable random sample. The whole list is shuffled with `seed` and the first
+    `size` taken, so a larger size keeps every recipe a smaller one picked.
+    """
+    shuffled = sorted(recipes, key=lambda r: r[0])
+    random.Random(seed).shuffle(shuffled)
+    chosen = {source for source, _ in shuffled[:size]}
+    return [r for r in recipes if r[0] in chosen]
+
+
+def draft_cases(
+    eval_dir: Path, sample_size: int | None = None, seed: int = DEFAULT_SAMPLE_SEED
+) -> DraftResult:
+    """
+    Write a case for every input recipe that has none yet. Existing cases are kept.
+
+    With `sample_size`, only a repeatable random sample of the input recipes is drafted
+    (see `_sample`); the same size and seed always pick the same recipes.
+    """
     cases_dir = eval_dir / "cases"
     cases_dir.mkdir(parents=True, exist_ok=True)
     existing_sources = set()
@@ -215,9 +255,12 @@ def draft_cases(eval_dir: Path) -> DraftResult:
             continue
 
     scan = _load_inputs(eval_dir)
+    candidates = (
+        _sample(scan.recipes, sample_size, seed) if sample_size is not None else scan.recipes
+    )
     written: list[Path] = []
     already = 0
-    for source, recipe in scan.recipes:
+    for source, recipe in candidates:
         if source in existing_sources:
             already += 1
             continue
@@ -231,6 +274,7 @@ def draft_cases(eval_dir: Path) -> DraftResult:
         case = {
             "checked": False,
             "source": source,
+            "id": scan.ids.get(source),
             "input": recipe,
             "expected": _expected_from_output(result.data),
         }
@@ -242,7 +286,80 @@ def draft_cases(eval_dir: Path) -> DraftResult:
         recipes_found=len(scan.recipes),
         already_drafted=already,
         warnings=scan.warnings,
+        sampled=len(candidates) if sample_size is not None else None,
     )
+
+
+# ----------------------------------------------------------------------------
+# Originals: each case's source record, for side-by-side comparison
+# ----------------------------------------------------------------------------
+
+
+def _omit_image_data(value: Any) -> Any:
+    """Replace long base64 `data` strings (embedded images) with a short placeholder."""
+    if isinstance(value, dict):
+        return {
+            key: (
+                f"<{len(item)} characters of image data omitted>"
+                if key == "data" and isinstance(item, str) and len(item) > IMAGE_DATA_LIMIT
+                else _omit_image_data(item)
+            )
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_omit_image_data(item) for item in value]
+    return value
+
+
+@dataclass
+class OriginalsResult:
+    written: int
+    missing: list[str]
+
+
+def write_originals(eval_dir: Path) -> OriginalsResult:
+    """
+    Write `originals/<case name>.json` for every case: the record exactly as it is in the
+    input file (catalog fields included), with image data replaced by a placeholder.
+    Files are rewritten each time, so they always match the current inputs.
+    """
+    out_dir = eval_dir / "originals"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    exports: dict[str, list[Any]] = {}
+    written = 0
+    missing: list[str] = []
+
+    for case_path in sorted((eval_dir / "cases").glob("*.json")):
+        try:
+            source = str(json.loads(case_path.read_text(encoding="utf-8")).get("source") or "")
+        except json.JSONDecodeError:
+            missing.append(f"{case_path.name}: not valid JSON")
+            continue
+        file_name, _, index_text = source.partition("#")
+        if not file_name or not index_text.isdigit():
+            missing.append(f"{case_path.name}: no usable source")
+            continue
+
+        if file_name not in exports:
+            export_path = eval_dir / file_name
+            try:
+                exports[file_name] = _items_in_export(
+                    json.loads(export_path.read_text(encoding="utf-8"))
+                )
+            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+                exports[file_name] = []
+        items = exports[file_name]
+        index = int(index_text)
+        if index >= len(items):
+            missing.append(f"{case_path.name}: {source} not found")
+            continue
+
+        (out_dir / case_path.name).write_text(
+            json.dumps(_omit_image_data(items[index]), indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        written += 1
+    return OriginalsResult(written=written, missing=missing)
 
 
 # ----------------------------------------------------------------------------
@@ -267,10 +384,18 @@ def _line_matches(expected: dict[str, Any], actual: dict[str, Any] | None) -> li
     """Return the names of fields that differ (empty when the line is correct)."""
     if actual is None:
         return ["missing"]
-    is_header = expected.get("item") is None and expected.get("group") is not None
-    if not is_header and actual.get("parsedBy") is None:
+    if is_header_entry(expected) or is_header_entry(actual):
+        if is_header_entry(expected) != is_header_entry(actual):
+            return ["header"]
+        return [] if _values_match(expected.get("group"), actual.get("group")) else ["group"]
+    if actual.get("parsedBy") is None:
         return ["unparsed"]
     return [f for f in COMPARED_FIELDS if not _values_match(expected.get(f), actual.get(f))]
+
+
+def _shown(entry: dict[str, Any]) -> dict[str, Any]:
+    """An entry as printed in a mismatch: everything but `raw` and `ignore`."""
+    return {k: v for k, v in entry.items() if k not in ("raw", "ignore")}
 
 
 def _score_lines(
@@ -296,12 +421,8 @@ def _score_lines(
                     case=case_name,
                     field=",".join(differing),
                     raw=raw,
-                    expected={f: expected.get(f) for f in COMPARED_FIELDS},
-                    actual=(
-                        {f: actual.get(f) for f in (*COMPARED_FIELDS, "parsedBy")}
-                        if actual
-                        else None
-                    ),
+                    expected=_shown(expected),
+                    actual=_shown(actual) if actual else None,
                 )
             )
         else:
