@@ -123,21 +123,21 @@ def test_clean_recipe_data_writes_in_place_and_keeps_lines_verbatim():
         "recipeYield": "6 6 servings",
         "prepTime": "15 mins",
         "cookTime": "PT1H",
-        "recipeIngredient": ["2 cups stock", "Juice of 1 lemon"],
+        "recipeIngredient": ["2 cups stock", "Seeds scraped from 1 vanilla pod"],
     }
     result = clean_recipe_data(original)
 
     assert result.data["recipeYield"] == "6 servings"
     assert result.data["prepTime"] == "PT15M"
     assert result.data["cookTime"] == "PT1H"
-    assert result.data["recipeIngredient"] == ["2 cups stock", "Juice of 1 lemon"]
+    assert result.data["recipeIngredient"] == ["2 cups stock", "Seeds scraped from 1 vanilla pod"]
     assert [e["raw"] for e in result.data["parsedIngredients"]] == original["recipeIngredient"]
     assert result.changes == {
         "recipeYield": ("6 6 servings", "6 servings"),
         "prepTime": ("15 mins", "PT15M"),
     }
     assert (result.ingredient_lines, result.parsed_lines) == (2, 1)
-    assert result.unparsed == ["Juice of 1 lemon"]
+    assert result.unparsed == ["Seeds scraped from 1 vanilla pod"]
     # The input is not modified
     assert original["recipeYield"] == "6 6 servings"
     assert "parsedIngredients" not in original
@@ -244,7 +244,9 @@ async def test_update_recipe_is_cleaned_and_keeps_model_parses(
             "/api/v1/recipes/",
             json={
                 "name": "Lemonade",
-                "recipe_data": {"recipeIngredient": ["Juice of 1 lemon", "1 cup water"]},
+                "recipe_data": {
+                    "recipeIngredient": ["Seeds scraped from 1 vanilla pod", "1 cup water"]
+                },
             },
             headers=test_user_headers,
         )
@@ -265,7 +267,7 @@ async def test_update_recipe_is_cleaned_and_keeps_model_parses(
         json={
             "recipe_data": {
                 **MESSY,
-                "recipeIngredient": ["Juice of 1 lemon", "2 cups water"],
+                "recipeIngredient": ["Seeds scraped from 1 vanilla pod", "2 cups water"],
             }
         },
         headers=test_user_headers,
@@ -341,7 +343,11 @@ async def test_import_json_is_cleaned(client: AsyncClient, test_user_headers: di
 async def test_intake_is_cleaned_and_update_keeps_model_parses(
     client: AsyncClient, test_user_headers: dict, db: AsyncSession
 ):
-    payload = {"name": "Siphon Cake", **MESSY, "recipeIngredient": ["Juice of 1 lemon"]}
+    payload = {
+        "name": "Siphon Cake",
+        **MESSY,
+        "recipeIngredient": ["Seeds scraped from 1 vanilla pod"],
+    }
     created = (await client.post("/api/v1/intake", json=payload, headers=test_user_headers)).json()
 
     recipe = (await db.execute(select(Recipe).where(Recipe.id == created["id"]))).scalar_one()

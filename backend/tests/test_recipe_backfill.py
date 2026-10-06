@@ -47,7 +47,7 @@ async def recipes(db: AsyncSession, test_user):
             "recipeYield": "6 6 servings",
             "prepTime": "15 mins",
             "cookTime": "1 hr",
-            "recipeIngredient": ["2 cups flour", "Juice of 1 lemon"],
+            "recipeIngredient": ["2 cups flour", "Seeds scraped from 1 vanilla pod"],
         },
     )
     clean_data = clean_recipe_data(
@@ -74,7 +74,7 @@ async def test_plan_reports_changes_without_writing(db: AsyncSession, recipes):
     }
     assert first.parsed_changed
     assert (first.parsed_lines, first.ingredient_lines) == (1, 2)
-    assert first.unparsed == ["Juice of 1 lemon"]
+    assert first.unparsed == ["Seeds scraped from 1 vanilla pod"]
     assert not plan[1].changed
 
     await db.refresh(messy)
@@ -96,7 +96,7 @@ async def test_report_lists_changes_and_every_unparsed_line(db: AsyncSession, re
     assert "Ingredient lines parsed: 2/3 (66.7%)" in report
     assert f"### {messy.id}: Messy" in report
     assert "recipeYield: `6 6 servings` -> `6 servings`" in report
-    assert f"- {messy.id} (Messy): `Juice of 1 lemon`" in report
+    assert f"- {messy.id} (Messy): `Seeds scraped from 1 vanilla pod`" in report
 
     excluded = render_report(plan, excluded={messy.id})
     assert f"Excluded: 1 ({messy.id})" in excluded
@@ -113,7 +113,10 @@ async def test_apply_writes_changes_and_keeps_updated_at(db: AsyncSession, recip
     row = (await db.execute(select(Recipe).where(Recipe.id == messy.id))).scalar_one()
     await db.refresh(row)
     assert row.recipe_data["recipeYield"] == "6 servings"
-    assert row.recipe_data["recipeIngredient"] == ["2 cups flour", "Juice of 1 lemon"]
+    assert row.recipe_data["recipeIngredient"] == [
+        "2 cups flour",
+        "Seeds scraped from 1 vanilla pod",
+    ]
     assert row.recipe_data["parsedIngredients"][0]["item"] == "flour"
     assert row.total_time_minutes == 75
     assert row.updated_at == OLD
@@ -133,7 +136,7 @@ async def test_apply_respects_exclusions(db: AsyncSession, recipes):
 
 
 async def test_backfill_keeps_model_parses(db: AsyncSession, test_user):
-    data = clean_recipe_data({"recipeIngredient": ["Juice of 1 lemon"]}).data
+    data = clean_recipe_data({"recipeIngredient": ["Seeds scraped from 1 vanilla pod"]}).data
     data["parsedIngredients"][0].update(item="lemon", parsedBy=PARSED_BY_MODEL)
     recipe = await _recipe(db, test_user.id, "Lemonade", data)
 

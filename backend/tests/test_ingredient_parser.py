@@ -105,6 +105,21 @@ PARSED_LINES = [
     # Package sizes
     ("1 (14-ounce) can diced tomatoes", 1, None, "can", "diced tomatoes", "14-ounce"),
     ("1 15-ounce can black beans, rinsed", 1, None, "can", "black beans", "15-ounce; rinsed"),
+    (
+        "One 1½-lb. piece pork loin, trimmed",
+        1,
+        None,
+        "piece",
+        "pork loin",
+        "1 1/2-lb.; trimmed",
+    ),
+    ("1 3-pound whole chicken", 1, None, None, "whole chicken", "3-pound"),
+    ("2 8 oz steaks", 2, None, None, "steaks", "8 oz"),
+    # A part of an ingredient: the ingredient is the item, the part goes to the note
+    ("Juice of 1 lime (1–2 tbsp)", 1, None, None, "lime", "juice; 1-2 tbsp"),
+    ("Zest and juice of 2 oranges", 2, None, None, "oranges", "zest and juice"),
+    ("zest of a lemon", 1, None, None, "lemon", "zest"),
+    ("Leaves from 4 sprigs thyme", 4, None, "sprig", "thyme", "leaves"),
     # "of" after the unit
     ("2 cups of flour", 2, None, "cup", "flour", None),
     # Trailing notes without a comma
@@ -126,7 +141,8 @@ PARSED_LINES = [
 UNPARSED_LINES = [
     "",
     "   ",
-    "Juice of 1 lemon",
+    "Juice of half a lemon",
+    "Juice of 1 lemon plus 2 more for serving, sliced into wedges",
     "1 cup plus a little more sugar",
     "2 cups",
     "an 8 oz block feta",
@@ -242,11 +258,11 @@ def test_lines_get_groups_from_headers():
 
 
 def test_one_entry_per_line_in_order():
-    lines = ["2 cups flour", "Juice of 1 lemon", "", "1 tsp salt"]
+    lines = ["2 cups flour", "Seeds scraped from 1 vanilla pod", "", "1 tsp salt"]
     parsed = parse_ingredient_lines(lines)
 
     assert [e["raw"] for e in parsed] == lines
-    assert unparsed_lines(parsed) == ["Juice of 1 lemon"]
+    assert unparsed_lines(parsed) == ["Seeds scraped from 1 vanilla pod"]
 
 
 def test_non_string_lines_are_kept_unparsed():
@@ -272,37 +288,37 @@ def _model_entry(raw: str, **fields):
 
 def test_unchanged_lines_keep_model_parses():
     previous = [
-        _model_entry("Juice of 1 lemon", quantity=1, item="lemon", note="juiced"),
+        _model_entry(
+            "Seeds scraped from 1 vanilla pod", quantity=1, item="vanilla pod", note="seeds"
+        ),
         {"raw": "2 cups flour", "item": "WRONG", "parsedBy": PARSED_BY_REGEX},
     ]
     parsed = parse_ingredient_lines(
-        ["For the sauce:", "2 cups flour", "Juice of 1 lemon"], previous
+        ["For the sauce:", "2 cups flour", "Seeds scraped from 1 vanilla pod"], previous
     )
 
     # The model entry is kept and takes the current group
     assert parsed[2]["parsedBy"] == PARSED_BY_MODEL
-    assert parsed[2]["item"] == "lemon"
+    assert parsed[2]["item"] == "vanilla pod"
     assert parsed[2]["group"] == "For the sauce"
     # Regex entries are recomputed, never copied
     assert parsed[1]["item"] == "flour"
 
 
 def test_changed_lines_are_reparsed_by_regex():
-    previous = [_model_entry("Juice of 1 lemon", quantity=1, item="lemon")]
-    parsed = parse_ingredient_lines(["Juice of 2 lemons"], previous)
+    previous = [_model_entry("Seeds scraped from 1 vanilla pod", quantity=1, item="vanilla pod")]
+    parsed = parse_ingredient_lines(["Seeds scraped from 2 vanilla pods"], previous)
 
     assert parsed[0]["parsedBy"] is None
-    assert parsed[0]["raw"] == "Juice of 2 lemons"
+    assert parsed[0]["raw"] == "Seeds scraped from 2 vanilla pods"
 
 
 def test_duplicate_raw_lines_reuse_in_order():
     previous = [
-        _model_entry("Juice of 1 lemon", note="first"),
-        _model_entry("Juice of 1 lemon", note="second"),
+        _model_entry("Seeds scraped from 1 vanilla pod", note="first"),
+        _model_entry("Seeds scraped from 1 vanilla pod", note="second"),
     ]
-    parsed = parse_ingredient_lines(
-        ["Juice of 1 lemon", "Juice of 1 lemon", "Juice of 1 lemon"], previous
-    )
+    parsed = parse_ingredient_lines(["Seeds scraped from 1 vanilla pod"] * 3, previous)
 
     assert [e["note"] for e in parsed] == ["first", "second", None]
     assert [e["parsedBy"] for e in parsed] == [PARSED_BY_MODEL, PARSED_BY_MODEL, None]
