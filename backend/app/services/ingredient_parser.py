@@ -590,6 +590,41 @@ def _canonical_unit(spelling: str) -> str | None:
     return _EXTRA_UNIT_ALIASES.get(key) or normalize_unit(key)
 
 
+def _split_parenthesized(text: str) -> tuple[str, list[str]] | None:
+    """
+    Remove each outermost "(...)" group from `text`, returning the remaining text and
+    the groups' contents. Nested parentheses stay inside their group's content:
+    "celeriac (peeled (about 450g))" gives ("celeriac", ["peeled (about 450g)"]).
+    Returns None when the parentheses are unbalanced.
+    """
+    remaining: list[str] = []
+    groups: list[str] = []
+    current: list[str] = []
+    depth = 0
+    for char in text:
+        if char == "(":
+            if depth:
+                current.append(char)
+            else:
+                current = []
+            depth += 1
+        elif char == ")":
+            if depth == 0:
+                return None
+            depth -= 1
+            if depth:
+                current.append(char)
+            else:
+                groups.append("".join(current).strip())
+        elif depth:
+            current.append(char)
+        else:
+            remaining.append(char)
+    if depth:
+        return None
+    return re.sub(r"\s+", " ", "".join(remaining)).strip(), [g for g in groups if g]
+
+
 def _take_alternative_measures(text: str) -> tuple[str, list[str]]:
     """
     Strip alternative measures given after a slash, right after the unit:
@@ -741,11 +776,12 @@ def parse_ingredient_line(raw: str) -> dict[str, Any]:
         notes.extend(alternatives)
         text = re.sub(r"^of\s+", "", text, flags=re.IGNORECASE)
 
-    # Notes in parentheses, anywhere in the remainder
-    notes.extend(n.strip() for n in re.findall(r"\(([^()]*)\)", text))
-    text = re.sub(r"\s*\([^()]*\)", "", text).strip()
-    if "(" in text or ")" in text:
+    # Notes in parentheses, anywhere in the remainder (nested ones stay in their note)
+    split = _split_parenthesized(text)
+    if split is None:
         return unparsed
+    text, paren_notes = split
+    notes.extend(paren_notes)
 
     # Note after the first comma
     item, _, comma_note = text.partition(",")

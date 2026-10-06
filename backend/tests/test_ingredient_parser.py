@@ -59,6 +59,26 @@ PARSED_LINES = [
     ("1 cup (240 ml) milk", 1, None, "cup", "milk", "240 ml"),
     ("1 cup sugar (optional)", 1, None, "cup", "sugar", "optional"),
     ("2 onions (about 1 lb), sliced", 2, None, None, "onions", "about 1 lb; sliced"),
+    # Nested parentheses stay together in one note
+    (
+        "1 medium turnip (peeled and diced (about 300–350g))",
+        1,
+        None,
+        None,
+        "medium turnip",
+        "peeled and diced (about 300-350g)",
+    ),
+    ("1 cup stock (low sodium) (or water)", 1, None, "cup", "stock", "low sodium; or water"),
+    (
+        "1 large parsnip (grated (1 cup / 90 g))",
+        1,
+        None,
+        None,
+        "large parsnip",
+        "grated (1 cup / 90 g)",
+    ),
+    # Range with a space on one side of the dash, plus nested parentheses
+    ("1 –2 cups fresh dill (chopped (15–25g))", 1, 2, "cup", "fresh dill", "chopped (15-25g)"),
     # Alternative measures after a slash
     (
         "2 sticks/1 cup (226 grams) unsalted butter, cubed and kept cold",
@@ -100,6 +120,8 @@ UNPARSED_LINES = [
     "2 cups",
     "an 8 oz block feta",
     "1 cup (240 ml milk",
+    "1 cup milk) warm",
+    "1 turnip (peeled (about 300g)",
     "Mix the flour and the sugar together in a large bowl and set aside until needed later on",
     "2 eggs or 3 egg whites",
 ]
