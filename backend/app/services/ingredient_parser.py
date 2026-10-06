@@ -590,15 +590,60 @@ def _canonical_unit(spelling: str) -> str | None:
     return _EXTRA_UNIT_ALIASES.get(key) or normalize_unit(key)
 
 
+def _split_parenthesized(text: str) -> tuple[str, list[str]] | None:
+    """
+    Remove each outermost "(...)" group from `text`, returning the remaining text and
+    the groups' contents. Nested parentheses stay inside their group's content:
+    "celeriac (peeled (about 450g))" gives ("celeriac", ["peeled (about 450g)"]).
+    Returns None when the parentheses are unbalanced.
+    """
+    remaining: list[str] = []
+    groups: list[str] = []
+    current: list[str] = []
+    depth = 0
+    for char in text:
+        if char == "(":
+            if depth:
+                current.append(char)
+            else:
+                current = []
+            depth += 1
+        elif char == ")":
+            if depth == 0:
+                return None
+            depth -= 1
+            if depth:
+                current.append(char)
+            else:
+                groups.append("".join(current).strip())
+        elif depth:
+            current.append(char)
+        else:
+            remaining.append(char)
+    if depth:
+        return None
+    return re.sub(r"\s+", " ", "".join(remaining)).strip(), [g for g in groups if g]
+
+
+_MEASURE_CONNECTOR_RE = re.compile(r"^\s*(/|\+|plus)\s*", re.IGNORECASE)
+
+
 def _take_alternative_measures(text: str) -> tuple[str, list[str]]:
     """
-    Strip alternative measures given after a slash, right after the unit:
-    "2 sticks/1 cup butter" or "8 oz / 225 g cheese". Returns the remaining text and
-    the alternatives ("1 cup", "225 g"), which become notes like parenthesized ones.
+    Strip extra measures right after the unit, which become notes:
+
+    - alternatives after a slash: "2 sticks/1 cup butter", "8 oz / 225 g cheese"
+      give "1 cup", "225 g";
+    - additions after "plus" or "+": "1/4 cup plus 2 tablespoons oil" gives
+      "plus 2 tablespoons". The first measure stays the quantity; adding them up would
+      need unit conversion, which is out of scope (design doc §3).
     """
-    alternatives: list[str] = []
-    while text.startswith("/"):
-        rest = text[1:].lstrip()
+    extras: list[str] = []
+    while True:
+        connector = _MEASURE_CONNECTOR_RE.match(text)
+        if not connector:
+            break
+        rest = text[connector.end() :]
         quantity = _QUANTITY_RE.match(rest)
         if not quantity:
             break
@@ -606,9 +651,10 @@ def _take_alternative_measures(text: str) -> tuple[str, list[str]]:
         unit = _UNIT_RE.match(after)
         if not unit:
             break
-        alternatives.append(f"{quantity.group(0).strip()} {after[: unit.end()].strip()}")
+        measure = f"{quantity.group(0).strip()} {after[: unit.end()].strip()}"
+        extras.append(measure if connector.group(1) == "/" else f"plus {measure}")
         text = after[unit.end() :].strip()
-    return text, alternatives
+    return text, extras
 
 
 def _make_header_entry(raw: str, group: str) -> dict[str, Any]:
@@ -683,12 +729,13 @@ def parse_ingredient_line(raw: str) -> dict[str, Any]:
     Handles a leading quantity (integers, decimals, fractions, mixed numbers, unicode
     fractions, ranges such as "1-2", "2 to 3" and "1 or 2", number words), a package
     size ("1 (14-ounce) can", "1 15-ounce can"), a known unit, notes in parentheses,
-    after the first comma, or as a trailing "to taste"/"optional", and a quantity given
-    after a comma ("Butter, 2 tablespoons").
+    after the first comma, or as a trailing "to taste"/"optional", a quantity given
+    after a comma ("Butter, 2 tablespoons"), and extra measures after the unit
+    ("2 sticks/1 cup", "1/4 cup plus 2 tablespoons"), which go to the note.
 
     A line it cannot handle gets `parsedBy: None` and no parsed fields. That covers lines
-    with no item left, numbers left inside the item ("juice of 1 lemon", "1 cup plus 2
-    tablespoons flour"), unbalanced parentheses, and lines too long to be an ingredient.
+    with no item left, numbers left inside the item ("juice of 1 lemon"), unbalanced
+    parentheses, and lines too long to be an ingredient.
     """
     unparsed = _make_entry(raw, parsed_by=None)
     text = _normalize_line(raw)
@@ -741,11 +788,12 @@ def parse_ingredient_line(raw: str) -> dict[str, Any]:
         notes.extend(alternatives)
         text = re.sub(r"^of\s+", "", text, flags=re.IGNORECASE)
 
-    # Notes in parentheses, anywhere in the remainder
-    notes.extend(n.strip() for n in re.findall(r"\(([^()]*)\)", text))
-    text = re.sub(r"\s*\([^()]*\)", "", text).strip()
-    if "(" in text or ")" in text:
+    # Notes in parentheses, anywhere in the remainder (nested ones stay in their note)
+    split = _split_parenthesized(text)
+    if split is None:
         return unparsed
+    text, paren_notes = split
+    notes.extend(paren_notes)
 
     # Note after the first comma
     item, _, comma_note = text.partition(",")

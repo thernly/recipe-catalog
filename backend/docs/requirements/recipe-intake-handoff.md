@@ -62,8 +62,12 @@ checkbox switches to skip) and is not a review flag (§4.8, §12).
 
 - Units are canonical and singular whatever the quantity: `cup`, `tablespoon`,
   `teaspoon`, `gram`, `ounce`. Owner confirmed (2026-10-05); display pluralizes.
-- Alternative measures ("2 sticks/1 cup (226 grams) butter") keep the first measure as
-  quantity and unit; the others go to `note`.
+- Alternative measures ("2 sticks/1 cup (226 grams) butter") and additions
+  ("1/4 cup plus 2 tablespoons oil") keep the first measure as quantity and unit; the
+  others go to `note` ("plus 2 tablespoons"). No unit conversion, so additions are not
+  summed.
+- Nested parentheses stay together in one note: "carrot (julienned (1 cup / 100 g))"
+  gives note `julienned (1 cup / 100 g)`.
 - Size words stay in the item: "3 large eggs" gives `item: "large eggs"`.
 - Notes come from parentheses, the text after the first comma, and a trailing
   "to taste" / "optional" / "for garnish"; several are joined with `"; "`.
@@ -73,8 +77,8 @@ checkbox switches to skip) and is not a review flag (§4.8, §12).
   `group` on the lines after them. Owner confirmed this shape (2026-10-05).
 - Times stay ISO 8601 (`PT1H15M`) in the data; the app displays them readably. Owner
   confirmed (2026-10-05).
-- Doubtful lines get `parsedBy: null` (numbers left in the item, "plus", unbalanced
-  parentheses, sentence-length lines). These are the lines C6 will send to a model.
+- Doubtful lines get `parsedBy: null` (numbers left in the item, a "plus" that is not
+  followed by a measure, unbalanced parentheses, sentence-length lines). These are the lines C6 will send to a model.
 - On save, unchanged lines keep stored **model** parses; regex entries are recomputed.
 
 ## Practical notes
