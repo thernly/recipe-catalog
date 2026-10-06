@@ -102,6 +102,17 @@ PARSED_LINES = [
         "plus 1 tablespoon; preferably toasted",
     ),
     ("2 tbsp + 1 tsp honey", 2, None, "tablespoon", "honey", "plus 1 tsp"),
+    # A parenthesized measure before the "plus"
+    (
+        "½ cup (120 ml) plus 2 teaspoons cream, chilled",
+        0.5,
+        None,
+        "cup",
+        "cream",
+        "120 ml; plus 2 teaspoons; chilled",
+    ),
+    # A parenthesized measure with no "plus" after it is still an ordinary note
+    ("1 cup (240 ml) milk, warm", 1, None, "cup", "milk", "240 ml; warm"),
     # Package sizes
     ("1 (14-ounce) can diced tomatoes", 1, None, "can", "diced tomatoes", "14-ounce"),
     ("1 15-ounce can black beans, rinsed", 1, None, "can", "black beans", "15-ounce; rinsed"),

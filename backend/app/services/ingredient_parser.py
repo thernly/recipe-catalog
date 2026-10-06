@@ -632,6 +632,22 @@ _PART_OF_RE = re.compile(
     re.IGNORECASE,
 )
 
+
+def _leading_parenthesized(text: str) -> tuple[str, str] | None:
+    """If `text` starts with a balanced "(...)" group, return (its content, the rest)."""
+    if not text.startswith("("):
+        return None
+    depth = 0
+    for index, char in enumerate(text):
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return text[1:index].strip(), text[index + 1 :].strip()
+    return None
+
+
 _MEASURE_CONNECTOR_RE = re.compile(r"^\s*(/|\+|plus)\s*", re.IGNORECASE)
 
 
@@ -647,6 +663,13 @@ def _take_alternative_measures(text: str) -> tuple[str, list[str]]:
     """
     extras: list[str] = []
     while True:
+        # A parenthesized measure may sit before the connector:
+        # "3/4 cup (180 ml) plus 1 teaspoon milk"
+        leading = _leading_parenthesized(text)
+        if leading and _MEASURE_CONNECTOR_RE.match(leading[1]):
+            if leading[0]:
+                extras.append(leading[0])
+            text = leading[1]
         connector = _MEASURE_CONNECTOR_RE.match(text)
         if not connector:
             break
