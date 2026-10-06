@@ -21,7 +21,7 @@ RECIPES = [
         "name": "Pancakes",
         "recipeYield": "4 4 servings",
         "prepTime": "10 mins",
-        "recipeIngredient": ["1 cup flour", "1 egg", "Juice of 1 lemon"],
+        "recipeIngredient": ["1 cup flour", "1 egg", "Seeds scraped from 1 vanilla pod"],
     },
     {"name": "Toast", "recipeIngredient": ["2 slices bread"]},
 ]
@@ -317,13 +317,13 @@ def test_run_counts_lines_and_clean_recipes(eval_dir):
     assert (report.recipes_clean, report.recipes_total) == (1, 2)
     assert report.line_accuracy == 0.75
     assert not report.meets_targets()
-    assert [m.raw for m in report.mismatches] == ["Juice of 1 lemon"]
+    assert [m.raw for m in report.mismatches] == ["Seeds scraped from 1 vanilla pod"]
     assert report.mismatches[0].field == "unparsed"
 
     text = format_report(report)
     assert "3/4 = 75.0%" in text
     assert "1/2 = 50.0%" in text
-    assert "Juice of 1 lemon" in text
+    assert "Seeds scraped from 1 vanilla pod" in text
 
 
 def test_run_reports_yield_and_time_mismatches(eval_dir):

@@ -68,6 +68,12 @@ checkbox switches to skip) and is not a review flag (§4.8, §12).
   summed.
 - Nested parentheses stay together in one note: "carrot (julienned (1 cup / 100 g))"
   gives note `julienned (1 cup / 100 g)`.
+- Parts of an ingredient ("Juice of 1 lemon (2-3 tbsp)", "Zest and juice of 2 limes",
+  "Leaves from 4 sprigs thyme"): the ingredient after "of"/"from" is the item, with its
+  quantity and unit, and the part leads the note (`juice; 2-3 tbsp`). Recognized parts:
+  juice, zest, rind, peel, seeds, flesh, pulp, leaves, segments. A quantity is required
+  ("Juice of half a lemon" stays unparsed).
+- Package sizes may be fractions ("One 2 1/4-lb. piece beef" gives note `2 1/4-lb.`).
 - Size words stay in the item: "3 large eggs" gives `item: "large eggs"`.
 - Notes come from parentheses, the text after the first comma, and a trailing
   "to taste" / "optional" / "for garnish"; several are joined with `"; "`.

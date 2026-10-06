@@ -625,6 +625,13 @@ def _split_parenthesized(text: str) -> tuple[str, list[str]] | None:
     return re.sub(r"\s+", " ", "".join(remaining)).strip(), [g for g in groups if g]
 
 
+_INGREDIENT_PARTS = r"juice|zest|rind|peel|seeds|flesh|pulp|leaves|segments"
+_PART_OF_RE = re.compile(
+    rf"^(?P<part>(?:{_INGREDIENT_PARTS})(?:\s+(?:and|&)\s+(?:{_INGREDIENT_PARTS}))?)"
+    r"\s+(?:of|from)\s+(?P<rest>.+)$",
+    re.IGNORECASE,
+)
+
 _MEASURE_CONNECTOR_RE = re.compile(r"^\s*(/|\+|plus)\s*", re.IGNORECASE)
 
 
@@ -734,13 +741,26 @@ def parse_ingredient_line(raw: str) -> dict[str, Any]:
     ("2 sticks/1 cup", "1/4 cup plus 2 tablespoons"), which go to the note.
 
     A line it cannot handle gets `parsedBy: None` and no parsed fields. That covers lines
-    with no item left, numbers left inside the item ("juice of 1 lemon"), unbalanced
+    with no item left, numbers left inside the item ("seeds scraped from 1 vanilla pod"), unbalanced
     parentheses, and lines too long to be an ingredient.
     """
     unparsed = _make_entry(raw, parsed_by=None)
     text = _normalize_line(raw)
     if not text:
         return unparsed
+
+    # "Juice of 1 lemon", "Zest and juice of 2 limes": parse what follows "of" as the
+    # ingredient, and keep the part ("juice") as a note
+    part_of = _PART_OF_RE.match(text)
+    if part_of:
+        rest = re.sub(r"^an?\s+", "1 ", part_of.group("rest"), flags=re.IGNORECASE)
+        inner = parse_ingredient_line(rest)
+        if inner["parsedBy"] is None or inner["quantity"] is None:
+            return unparsed
+        part = re.sub(r"\s+", " ", part_of.group("part")).lower()
+        inner["raw"] = raw
+        inner["note"] = "; ".join(n for n in (part, inner["note"]) if n)
+        return inner
 
     quantity: float | None = None
     quantity_max: float | None = None
