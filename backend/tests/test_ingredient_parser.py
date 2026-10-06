@@ -91,6 +91,17 @@ PARSED_LINES = [
     ("8 oz / 225 g cheddar, grated", 8, None, "ounce", "cheddar", "225 g; grated"),
     ("1 cup/240ml milk", 1, None, "cup", "milk", "240 ml"),
     ("2/3 cup sugar", 0.667, None, "cup", "sugar", None),
+    # Additions after "plus" or "+": first measure kept, the rest goes to the note
+    ("1 cup plus 2 tablespoons sugar", 1, None, "cup", "sugar", "plus 2 tablespoons"),
+    (
+        "1/3 cup plus 1 tablespoon walnut oil (preferably toasted)",
+        0.333,
+        None,
+        "cup",
+        "walnut oil",
+        "plus 1 tablespoon; preferably toasted",
+    ),
+    ("2 tbsp + 1 tsp honey", 2, None, "tablespoon", "honey", "plus 1 tsp"),
     # Package sizes
     ("1 (14-ounce) can diced tomatoes", 1, None, "can", "diced tomatoes", "14-ounce"),
     ("1 15-ounce can black beans, rinsed", 1, None, "can", "black beans", "15-ounce; rinsed"),
@@ -116,7 +127,7 @@ UNPARSED_LINES = [
     "",
     "   ",
     "Juice of 1 lemon",
-    "1 cup plus 2 tablespoons sugar",
+    "1 cup plus a little more sugar",
     "2 cups",
     "an 8 oz block feta",
     "1 cup (240 ml milk",
