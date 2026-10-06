@@ -105,6 +105,16 @@ PARSED_LINES = [
     # Package sizes
     ("1 (14-ounce) can diced tomatoes", 1, None, "can", "diced tomatoes", "14-ounce"),
     ("1 15-ounce can black beans, rinsed", 1, None, "can", "black beans", "15-ounce; rinsed"),
+    (
+        "One 1½-lb. piece pork loin, trimmed",
+        1,
+        None,
+        "piece",
+        "pork loin",
+        "1 1/2-lb.; trimmed",
+    ),
+    ("1 3-pound whole chicken", 1, None, None, "whole chicken", "3-pound"),
+    ("2 8 oz steaks", 2, None, None, "steaks", "8 oz"),
     # "of" after the unit
     ("2 cups of flour", 2, None, "cup", "flour", None),
     # Trailing notes without a comma

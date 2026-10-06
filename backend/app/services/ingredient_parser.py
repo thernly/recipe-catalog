@@ -464,7 +464,7 @@ _ARTICLES = {"a", "an"}
 # Package size right after the quantity: "1 (14-ounce) can" is handled by the
 # parenthesis rule, "1 15-ounce can" by this one
 _SIZE_RE = re.compile(
-    r"^(?P<size>\d+(?:\.\d+)?\s*-?\s*(?:ounces?|oz|grams?|g|ml|pounds?|lbs?|inch(?:es)?|cm)\.?)\s+",
+    rf"^(?P<size>(?:{_NUMBER})\s*-?\s*(?:ounces?|oz|grams?|g|ml|pounds?|lbs?|inch(?:es)?|cm)\.?)\s+",
     re.IGNORECASE,
 )
 
@@ -773,8 +773,9 @@ def parse_ingredient_line(raw: str) -> dict[str, Any]:
             notes.append(paren.group(1).strip())
             text = text[paren.end() :]
         else:
+            # "1 15-ounce can beans", "One 2 1/4-lb. piece beef", "1 3-pound chicken"
             size = _SIZE_RE.match(text)
-            if size and _UNIT_RE.match(text[size.end() :]):
+            if size:
                 notes.append(size.group("size").strip())
                 text = text[size.end() :]
 
