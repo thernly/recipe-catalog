@@ -1,16 +1,18 @@
 <script lang="ts">
-	import { auth } from '$lib/stores/auth';
+	import { auth } from '#lib/stores/auth.js';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { getPreferences, updatePreferences } from '$lib/api/users';
-	import type { User, Theme } from '$lib/types';
+	import { getPreferences, updatePreferences } from '#lib/api/users.js';
+	import type { User, Theme } from '#lib/types/index.js';
 	import { UtensilsCrossed, Leaf, Wine, Sparkles } from '@lucide/svelte';
-	import { logger } from '$lib/utils/logger';
-	import { handleError } from '$lib/utils/errors';
+	import { logger } from '#lib/utils/logger.js';
+	import { handleError } from '#lib/utils/errors.js';
 
 	function isActive(path: string): boolean {
-		return $page.url.pathname === path || $page.url.pathname.startsWith(path + '/');
+		return (
+			page.url.pathname === path || page.url.pathname.startsWith(path + '/')
+		);
 	}
 
 	let user: User | null = null;
@@ -40,7 +42,8 @@
 	}
 
 	async function toggleTheme() {
-		const newTheme = currentTheme === 'garden-fresh' ? 'bistro' : 'garden-fresh';
+		const newTheme =
+			currentTheme === 'garden-fresh' ? 'bistro' : 'garden-fresh';
 		currentTheme = newTheme as Theme;
 		document.documentElement.setAttribute('data-theme', newTheme);
 
@@ -64,17 +67,32 @@
 		</a>
 
 		<div class="flex items-center gap-2 ml-4">
-			<a href="/dashboard" class="nav-link" class:active={isActive('/dashboard')}>
-				Dashboard
-			</a>
-			<a href="/recipes" class="nav-link" class:active={$page.url.pathname === '/recipes' || $page.url.pathname.startsWith('/recipes/')}>
-				Recipes
-			</a>
-			<a href="/ai-generate" class="nav-link" class:active={isActive('/ai-generate')}>
+			<a
+				href="/dashboard"
+				class="nav-link"
+				class:active={isActive('/dashboard')}>Dashboard</a
+			>
+
+			<a
+				href="/recipes"
+				class="nav-link"
+				class:active={page.url.pathname === '/recipes' ||
+					page.url.pathname.startsWith('/recipes/')}>Recipes</a
+			>
+
+			<a
+				href="/ai-generate"
+				class="nav-link"
+				class:active={isActive('/ai-generate')}
+			>
 				<Sparkles size={18} aria-hidden="true" />
 				<span>AI Generate</span>
 			</a>
-			<a href="/meal-plans" class="nav-link" class:active={isActive('/meal-plans')}>
+			<a
+				href="/meal-plans"
+				class="nav-link"
+				class:active={isActive('/meal-plans')}
+			>
 				Meal Plans
 			</a>
 			<a href="/export" class="nav-link" class:active={isActive('/export')}>
@@ -90,8 +108,12 @@
 		<button
 			on:click={toggleTheme}
 			class="theme-toggle"
-			aria-label={currentTheme === 'garden-fresh' ? 'Switch to Bistro theme' : 'Switch to Garden Fresh theme'}
-			title={currentTheme === 'garden-fresh' ? 'Garden Fresh theme' : 'Bistro theme'}
+			aria-label={currentTheme === 'garden-fresh'
+				? 'Switch to Bistro theme'
+				: 'Switch to Garden Fresh theme'}
+			title={currentTheme === 'garden-fresh'
+				? 'Garden Fresh theme'
+				: 'Bistro theme'}
 		>
 			{#if currentTheme === 'garden-fresh'}
 				<Leaf size={22} aria-hidden="true" />

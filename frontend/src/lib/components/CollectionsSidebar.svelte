@@ -1,20 +1,20 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { collections } from '$lib/stores/collections';
+	import { collections } from '#lib/stores/collections.js';
 	import {
 		createCollection,
 		updateCollection,
 		deleteCollection,
 		type CollectionCreate,
-		type CollectionUpdate
-	} from '$lib/api/collections';
-	import { getUserStats, type UserStats } from '$lib/api/users';
+		type CollectionUpdate,
+	} from '#lib/api/collections.js';
+	import { getUserStats, type UserStats } from '#lib/api/users.js';
 	import CollectionModal from './CollectionModal.svelte';
-	import type { Collection } from '$lib/api/collections';
-	import { dialog } from '$lib/stores/dialog';
-	import { toast } from '$lib/stores/toast';
+	import type { Collection } from '#lib/api/collections.js';
+	import { dialog } from '#lib/stores/dialog.js';
+	import { toast } from '#lib/stores/toast.js';
 
 	export let currentCollectionId: number | null = null;
 
@@ -70,7 +70,9 @@
 			showModal = false;
 			editingCollection = null;
 		} catch (err) {
-			toast.error(err instanceof Error ? err.message : 'Failed to save collection');
+			toast.error(
+				err instanceof Error ? err.message : 'Failed to save collection',
+			);
 			console.error('Failed to save collection:', err);
 		}
 	}
@@ -102,12 +104,14 @@
 						goto('/recipes');
 					}
 				} catch (err) {
-					toast.error(err instanceof Error ? err.message : 'Failed to delete collection');
+					toast.error(
+						err instanceof Error ? err.message : 'Failed to delete collection',
+					);
 					console.error('Failed to delete collection:', err);
 				} finally {
 					deleting = false;
 				}
-			}
+			},
 		});
 	}
 
@@ -136,7 +140,10 @@
 	{:else if $collections.error}
 		<div class="sidebar-error">
 			<p class="text-sm" style="color: #EF4444;">{$collections.error}</p>
-			<button on:click={() => collections.load()} class="btn-sm btn-secondary mt-2">
+			<button
+				on:click={() => collections.load()}
+				class="btn-sm btn-secondary mt-2"
+			>
 				Retry
 			</button>
 		</div>
@@ -150,7 +157,8 @@
 						<button
 							on:click={() => goto('/recipes')}
 							class="nav-item"
-							class:active={$page.url.pathname === '/recipes' && !currentCollectionId}
+							class:active={page.url.pathname === '/recipes' &&
+								!currentCollectionId}
 						>
 							<span class="nav-icon">📚</span>
 							<span class="nav-label">All Recipes</span>
@@ -222,7 +230,7 @@
 						<button
 							on:click={() => goto('/recipes/trash')}
 							class="nav-item"
-							class:active={$page.url.pathname === '/recipes/trash'}
+							class:active={page.url.pathname === '/recipes/trash'}
 						>
 							<span class="nav-icon">🗑️</span>
 							<span class="nav-label">Trash</span>

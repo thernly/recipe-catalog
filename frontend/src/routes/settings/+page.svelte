@@ -8,19 +8,28 @@
 		deleteAccount,
 		type User,
 		type UserPreferences,
-		type UserStats
-	} from '$lib/api/users';
-	import { auth } from '$lib/stores/auth';
-	import ProfileSection from '$lib/components/settings/ProfileSection.svelte';
-	import PreferencesSection from '$lib/components/settings/PreferencesSection.svelte';
-	import SecuritySection from '$lib/components/settings/SecuritySection.svelte';
-	import ApiTokensSection from '$lib/components/settings/ApiTokensSection.svelte';
-	import HouseholdSection from '$lib/components/settings/HouseholdSection.svelte';
-	import StatsSection from '$lib/components/settings/StatsSection.svelte';
-	import FiltersSection from '$lib/components/settings/FiltersSection.svelte';
-	import DangerZoneSection from '$lib/components/settings/DangerZoneSection.svelte';
-	import { toast } from '$lib/stores/toast';
-	import { User as UserIcon, Palette, Lock, KeyRound, Home, BarChart3, Search, AlertTriangle } from '@lucide/svelte';
+		type UserStats,
+	} from '#lib/api/users.js';
+	import { auth } from '#lib/stores/auth.js';
+	import ProfileSection from '#lib/components/settings/ProfileSection.svelte';
+	import PreferencesSection from '#lib/components/settings/PreferencesSection.svelte';
+	import SecuritySection from '#lib/components/settings/SecuritySection.svelte';
+	import ApiTokensSection from '#lib/components/settings/ApiTokensSection.svelte';
+	import HouseholdSection from '#lib/components/settings/HouseholdSection.svelte';
+	import StatsSection from '#lib/components/settings/StatsSection.svelte';
+	import FiltersSection from '#lib/components/settings/FiltersSection.svelte';
+	import DangerZoneSection from '#lib/components/settings/DangerZoneSection.svelte';
+	import { toast } from '#lib/stores/toast.js';
+	import {
+		User as UserIcon,
+		Palette,
+		Lock,
+		KeyRound,
+		Home,
+		BarChart3,
+		Search,
+		AlertTriangle,
+	} from '@lucide/svelte';
 
 	let user: User | null = null;
 	let preferences: UserPreferences | null = null;
@@ -29,7 +38,15 @@
 	let error: string | null = null;
 
 	// Active section
-	let activeSection: 'profile' | 'preferences' | 'security' | 'api-tokens' | 'household' | 'stats' | 'filters' | 'danger' = 'profile';
+	let activeSection:
+		| 'profile'
+		| 'preferences'
+		| 'security'
+		| 'api-tokens'
+		| 'household'
+		| 'stats'
+		| 'filters'
+		| 'danger' = 'profile';
 
 	// Helper function to apply theme
 	function applyTheme(themeId: string) {
@@ -37,7 +54,9 @@
 
 		// If system theme is selected, detect the actual theme
 		if (themeId === 'system') {
-			const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+			const prefersDark =
+				window.matchMedia &&
+				window.matchMedia('(prefers-color-scheme: dark)').matches;
 			actualTheme = prefersDark ? 'dark' : 'light';
 		}
 
@@ -54,7 +73,7 @@
 			const [userData, prefsData, statsData] = await Promise.all([
 				getCurrentUser(),
 				getPreferences(),
-				getUserStats()
+				getUserStats(),
 			]);
 
 			user = userData;
@@ -88,7 +107,10 @@
 			auth.logout();
 			goto('/auth/login');
 		} catch (err) {
-			toast.error('Failed to delete account: ' + (err instanceof Error ? err.message : 'Unknown error'));
+			toast.error(
+				'Failed to delete account: ' +
+					(err instanceof Error ? err.message : 'Unknown error'),
+			);
 			console.error('Failed to delete account:', err);
 		}
 	}
@@ -104,21 +126,29 @@
 
 <div class="min-h-screen bg-neutral-50">
 	<div class="container-custom py-8">
-		<h1 class="text-4xl font-bold mb-8" style="color: var(--text-900);">Settings</h1>
+		<h1 class="text-4xl font-bold mb-8" style="color: var(--text-900);">
+			Settings
+		</h1>
 
 		{#if loading}
 			<!-- Loading state -->
 			<div class="text-center py-16">
 				<div class="text-4xl mb-4">⏳</div>
-				<p class="text-lg" style="color: var(--text-600);">Loading settings...</p>
+				<p class="text-lg" style="color: var(--text-600);">
+					Loading settings...
+				</p>
 			</div>
 		{:else if error}
 			<!-- Error state -->
 			<div class="text-center py-16">
 				<div class="text-4xl mb-4">⚠️</div>
-				<p class="text-lg mb-2" style="color: var(--text-900);">Failed to load settings</p>
+				<p class="text-lg mb-2" style="color: var(--text-900);">
+					Failed to load settings
+				</p>
 				<p class="text-sm mb-4" style="color: var(--text-600);">{error}</p>
-				<button on:click={loadUserData} class="btn btn-primary">Try Again</button>
+				<button on:click={loadUserData} class="btn btn-primary"
+					>Try Again</button
+				>
 			</div>
 		{:else if user && preferences && stats}
 			<!-- Settings layout -->
@@ -196,7 +226,10 @@
 					{#if activeSection === 'profile'}
 						<ProfileSection {user} on:update={handleProfileUpdate} />
 					{:else if activeSection === 'preferences'}
-						<PreferencesSection {preferences} on:update={handlePreferencesUpdate} />
+						<PreferencesSection
+							{preferences}
+							on:update={handlePreferencesUpdate}
+						/>
 					{:else if activeSection === 'security'}
 						<SecuritySection />
 					{:else if activeSection === 'api-tokens'}

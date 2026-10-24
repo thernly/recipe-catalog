@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { UserPreferences } from '$lib/api/users';
-	import { updatePreferences } from '$lib/api/users';
+	import type { UserPreferences } from '#lib/api/users.js';
+	import { updatePreferences } from '#lib/api/users.js';
 	import { createEventDispatcher } from 'svelte';
-	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
-	import { toast } from '$lib/stores/toast';
+	import ThemeSwitcher from '#lib/components/ThemeSwitcher.svelte';
+	import { toast } from '#lib/stores/toast.js';
 
 	export let preferences: UserPreferences;
 
@@ -23,7 +23,7 @@
 		'Keto',
 		'Paleo',
 		'Halal',
-		'Kosher'
+		'Kosher',
 	];
 
 	function toggleDietary(option: string) {
@@ -31,7 +31,9 @@
 			form.dietary_preferences = [];
 		}
 		if (form.dietary_preferences.includes(option)) {
-			form.dietary_preferences = form.dietary_preferences.filter((p) => p !== option);
+			form.dietary_preferences = form.dietary_preferences.filter(
+				(p) => p !== option,
+			);
 		} else {
 			form.dietary_preferences = [...form.dietary_preferences, option];
 		}
@@ -52,7 +54,8 @@
 			setTimeout(() => (success = false), 3000);
 		} catch (err) {
 			toast.error(
-				'Failed to update preferences: ' + (err instanceof Error ? err.message : 'Unknown error')
+				'Failed to update preferences: ' +
+					(err instanceof Error ? err.message : 'Unknown error'),
 			);
 			console.error('Failed to update preferences:', err);
 		} finally {
@@ -79,7 +82,11 @@
 	<form on:submit|preventDefault={savePreferences} class="settings-form">
 		<div class="form-group">
 			<label for="default_view" class="form-label">Default View</label>
-			<select id="default_view" bind:value={form.default_view} class="form-input">
+			<select
+				id="default_view"
+				bind:value={form.default_view}
+				class="form-input"
+			>
 				<option value="grid">Grid</option>
 				<option value="list">List</option>
 			</select>
@@ -87,7 +94,11 @@
 
 		<div class="form-group">
 			<label for="default_sort" class="form-label">Default Sort</label>
-			<select id="default_sort" bind:value={form.default_sort} class="form-input">
+			<select
+				id="default_sort"
+				bind:value={form.default_sort}
+				class="form-input"
+			>
 				<option value="recently_added">Recently Added</option>
 				<option value="alphabetical">A-Z</option>
 				<option value="time_asc">Shortest Time</option>
@@ -130,23 +141,30 @@
 			</label>
 		</div>
 
-	<fieldset class="form-group" aria-describedby="dietary-preferences-help">
-		<legend class="form-label">Dietary Preferences</legend>
-		<p id="dietary-preferences-help" class="text-sm mb-2" style="color: var(--text-600);">
-			Select your dietary preferences to personalize AI-generated menu suggestions
-		</p>
-		<div class="dietary-options">
-			{#each dietaryOptions as option}
-				<button
-					type="button"
-					on:click={() => toggleDietary(option)}
-					class="dietary-option {form.dietary_preferences?.includes(option) ? 'active' : ''}"
-				>
-					{option}
-				</button>
-			{/each}
-		</div>
-	</fieldset>
+		<fieldset class="form-group" aria-describedby="dietary-preferences-help">
+			<legend class="form-label">Dietary Preferences</legend>
+			<p
+				id="dietary-preferences-help"
+				class="text-sm mb-2"
+				style="color: var(--text-600);"
+			>
+				Select your dietary preferences to personalize AI-generated menu
+				suggestions
+			</p>
+			<div class="dietary-options">
+				{#each dietaryOptions as option}
+					<button
+						type="button"
+						on:click={() => toggleDietary(option)}
+						class="dietary-option {form.dietary_preferences?.includes(option)
+							? 'active'
+							: ''}"
+					>
+						{option}
+					</button>
+				{/each}
+			</div>
+		</fieldset>
 
 		<div class="form-actions">
 			<button type="submit" class="btn btn-primary" disabled={saving}>

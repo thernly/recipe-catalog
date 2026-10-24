@@ -1,9 +1,13 @@
 <script lang="ts">
-	import { auth } from '$lib/stores/auth';
+	import { auth } from '#lib/stores/auth.js';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
-	import { getAvailableProviders, initiateOAuthFlow, type ProviderInfo } from '$lib/api/oauth';
+	import {
+		getAvailableProviders,
+		initiateOAuthFlow,
+		type ProviderInfo,
+	} from '#lib/api/oauth.js';
 
 	let email = '';
 	let password = '';
@@ -67,12 +71,18 @@
 	<title>Login - Recipe Catalog</title>
 </svelte:head>
 
-<div class="min-h-screen bg-neutral-50 flex items-center justify-center py-12 px-4">
+<div
+	class="min-h-screen bg-neutral-50 flex items-center justify-center py-12 px-4"
+>
 	<div class="max-w-md w-full">
 		<!-- Header -->
 		<div class="text-center mb-8">
-			<h1 class="text-4xl font-bold mb-2" style="color: var(--text-900);">Welcome Back</h1>
-			<p style="color: var(--text-600);">Sign in to your Recipe Catalog account</p>
+			<h1 class="text-4xl font-bold mb-2" style="color: var(--text-900);">
+				Welcome Back
+			</h1>
+			<p style="color: var(--text-600);">
+				Sign in to your Recipe Catalog account
+			</p>
 		</div>
 
 		<!-- Login Form -->
@@ -95,16 +105,26 @@
 
 				<!-- Divider -->
 				<div class="mb-6 flex items-center">
-					<div class="flex-1 border-t" style="border-color: var(--neutral-200);"></div>
+					<div
+						class="flex-1 border-t"
+						style="border-color: var(--neutral-200);"
+					></div>
 					<span class="px-4 text-sm" style="color: var(--text-500);">OR</span>
-					<div class="flex-1 border-t" style="border-color: var(--neutral-200);"></div>
+					<div
+						class="flex-1 border-t"
+						style="border-color: var(--neutral-200);"
+					></div>
 				</div>
 			{/if}
 
 			<form on:submit|preventDefault={handleLogin} class="space-y-6">
 				<!-- Email -->
 				<div>
-					<label for="email" class="block text-sm font-medium mb-2" style="color: var(--text-900);">
+					<label
+						for="email"
+						class="block text-sm font-medium mb-2"
+						style="color: var(--text-900);"
+					>
 						Email Address
 					</label>
 					<input
@@ -155,7 +175,9 @@
 					type="submit"
 					class="w-full btn btn-primary"
 					disabled={loading}
-					style="opacity: {loading ? 0.6 : 1}; cursor: {loading ? 'not-allowed' : 'pointer'};"
+					style="opacity: {loading ? 0.6 : 1}; cursor: {loading
+						? 'not-allowed'
+						: 'pointer'};"
 				>
 					{loading ? 'Signing in...' : 'Sign In'}
 				</button>
@@ -165,7 +187,11 @@
 			<div class="mt-6 text-center">
 				<p style="color: var(--text-600);">
 					Don't have an account?
-					<a href="/auth/register" class="font-medium" style="color: var(--color-link);">
+					<a
+						href="/auth/register"
+						class="font-medium"
+						style="color: var(--color-link);"
+					>
 						Sign up
 					</a>
 				</p>
@@ -174,7 +200,9 @@
 
 		<!-- Back to Home -->
 		<div class="mt-6 text-center">
-			<a href="/" class="text-sm" style="color: var(--text-500);">← Back to home</a>
+			<a href="/" class="text-sm" style="color: var(--text-500);"
+				>← Back to home</a
+			>
 		</div>
 	</div>
 </div>

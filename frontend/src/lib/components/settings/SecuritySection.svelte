@@ -1,19 +1,19 @@
 <script lang="ts">
-	import { changePassword } from '$lib/api/users';
+	import { changePassword } from '#lib/api/users.js';
 	import {
 		getLinkedProviders,
 		unlinkProvider,
 		initiateOAuthFlow,
-		type LinkedProvider
-	} from '$lib/api/oauth';
+		type LinkedProvider,
+	} from '#lib/api/oauth.js';
 	import { onMount } from 'svelte';
-	import { dialog } from '$lib/stores/dialog';
-	import { toast } from '$lib/stores/toast';
+	import { dialog } from '#lib/stores/dialog.js';
+	import { toast } from '#lib/stores/toast.js';
 
 	let passwordForm = {
 		current_password: '',
 		new_password: '',
-		confirm_password: ''
+		confirm_password: '',
 	};
 	let saving = false;
 	let success = false;
@@ -45,7 +45,7 @@
 		try {
 			await changePassword({
 				current_password: passwordForm.current_password,
-				new_password: passwordForm.new_password
+				new_password: passwordForm.new_password,
 			});
 
 			success = true;
@@ -53,7 +53,7 @@
 			passwordForm = {
 				current_password: '',
 				new_password: '',
-				confirm_password: ''
+				confirm_password: '',
 			};
 			setTimeout(() => (success = false), 3000);
 		} catch (err) {
@@ -77,9 +77,13 @@
 		}
 	}
 
-	async function handleUnlinkProvider(providerId: number, providerName: string) {
+	async function handleUnlinkProvider(
+		providerId: number,
+		providerName: string,
+	) {
 		if (!hasPassword && linkedProviders.length <= 1) {
-			providerError = 'Cannot remove last authentication method. Please set a password first.';
+			providerError =
+				'Cannot remove last authentication method. Please set a password first.';
 			return;
 		}
 
@@ -97,12 +101,14 @@
 				} catch (err) {
 					console.error('Failed to unlink provider:', err);
 					providerError =
-						err instanceof Error ? err.message : 'Failed to remove provider. Please try again.';
+						err instanceof Error
+							? err.message
+							: 'Failed to remove provider. Please try again.';
 					toast.error('Failed to remove provider');
 				} finally {
 					removingProvider = null;
 				}
-			}
+			},
 		});
 	}
 
@@ -167,7 +173,9 @@
 		</div>
 
 		<div class="form-group">
-			<label for="confirm_password" class="form-label">Confirm New Password</label>
+			<label for="confirm_password" class="form-label"
+				>Confirm New Password</label
+			>
 			<input
 				id="confirm_password"
 				type="password"
@@ -209,7 +217,9 @@
 			{#each linkedProviders as provider}
 				<div class="provider-item">
 					<div class="provider-info">
-						<h3 class="provider-name">{getProviderDisplayName(provider.provider_name)}</h3>
+						<h3 class="provider-name">
+							{getProviderDisplayName(provider.provider_name)}
+						</h3>
 						<p class="provider-email">{provider.email_at_provider}</p>
 						<p class="provider-meta">
 							Added {formatDate(provider.created_at)}
@@ -222,7 +232,10 @@
 						type="button"
 						class="btn btn-danger btn-sm"
 						on:click={() =>
-							handleUnlinkProvider(provider.id, getProviderDisplayName(provider.provider_name))}
+							handleUnlinkProvider(
+								provider.id,
+								getProviderDisplayName(provider.provider_name),
+							)}
 						disabled={removingProvider === provider.id}
 					>
 						{removingProvider === provider.id ? 'Removing...' : 'Remove'}
@@ -231,7 +244,9 @@
 			{/each}
 		</div>
 	{:else}
-		<p class="text-sm" style="color: var(--text-500);">No identity providers linked</p>
+		<p class="text-sm" style="color: var(--text-500);">
+			No identity providers linked
+		</p>
 	{/if}
 
 	{#if providerError}
@@ -269,8 +284,8 @@
 
 	{#if !hasPassword && linkedProviders.length > 0}
 		<div class="warning-box mt-4">
-			<strong>Note:</strong> You cannot remove your last authentication method. Please set a password
-			below before unlinking all providers.
+			<strong>Note:</strong> You cannot remove your last authentication method. Please
+			set a password below before unlinking all providers.
 		</div>
 	{/if}
 </div>

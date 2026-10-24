@@ -4,14 +4,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { get } from "svelte/store";
 import { collections } from "./collections";
-import type { CollectionWithCount } from "$lib/api/collections";
+import type { CollectionWithCount } from "#lib/api/collections.js";
 
 // Mock the API module
-vi.mock("$lib/api/collections", () => ({
+vi.mock("#lib/api/collections.js", () => ({
   getCollections: vi.fn(),
 }));
 
-import { getCollections } from "$lib/api/collections";
+import { getCollections } from "#lib/api/collections.js";
 
 describe("Collections Store", () => {
   beforeEach(() => {

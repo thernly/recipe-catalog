@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { apiRequest } from '$lib/api/client';
+	import { apiRequest } from '#lib/api/client.js';
 
 	let email = '';
 	let loading = false;
@@ -21,7 +21,7 @@
 			await apiRequest('/api/auth/forgot-password', {
 				method: 'POST',
 				body: JSON.stringify({ email }),
-				requireAuth: false
+				requireAuth: false,
 			});
 
 			success = true;
@@ -43,7 +43,9 @@
 		<div class="auth-card">
 			<div class="auth-header">
 				<h1 class="auth-title">Reset Password</h1>
-				<p class="auth-subtitle">Enter your email address and we'll send you a reset link</p>
+				<p class="auth-subtitle">
+					Enter your email address and we'll send you a reset link
+				</p>
 			</div>
 
 			{#if success}
@@ -52,11 +54,14 @@
 					<div class="success-icon">✓</div>
 					<h2 class="success-title">Check Your Email</h2>
 					<p class="success-text">
-						If an account exists with <strong>{email}</strong>, you will receive a password reset
-						link shortly.
+						If an account exists with <strong>{email}</strong>, you will receive
+						a password reset link shortly.
 					</p>
 					<p class="success-hint">The link will expire in 1 hour.</p>
-					<button on:click={() => goto('/auth/login')} class="btn btn-primary btn-block">
+					<button
+						on:click={() => goto('/auth/login')}
+						class="btn btn-primary btn-block"
+					>
 						Return to Login
 					</button>
 				</div>
@@ -80,7 +85,11 @@
 						<div class="error-box">{error}</div>
 					{/if}
 
-					<button type="submit" class="btn btn-primary btn-block" disabled={loading}>
+					<button
+						type="submit"
+						class="btn btn-primary btn-block"
+						disabled={loading}
+					>
 						{loading ? 'Sending...' : 'Send Reset Link'}
 					</button>
 
@@ -102,7 +111,11 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: linear-gradient(135deg, var(--primary-50) 0%, var(--accent-50) 100%);
+		background: linear-gradient(
+			135deg,
+			var(--primary-50) 0%,
+			var(--accent-50) 100%
+		);
 		padding: 2rem;
 	}
 

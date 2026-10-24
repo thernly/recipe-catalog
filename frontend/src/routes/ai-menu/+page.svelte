@@ -1,9 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { generateMenu, type MealSuggestion } from '$lib/api/ai';
-	import { getUserPreferences, type UserPreferences } from '$lib/api/users';
-	import { addPlannedMeal, getWeekStart, formatDateISO, getCurrentWeekMealPlan } from '$lib/api/meal-plans';
+	import { generateMenu, type MealSuggestion } from '#lib/api/ai.js';
+	import { getUserPreferences, type UserPreferences } from '#lib/api/users.js';
+	import {
+		addPlannedMeal,
+		getWeekStart,
+		formatDateISO,
+		getCurrentWeekMealPlan,
+	} from '#lib/api/meal-plans.js';
 
 	let step: 'config' | 'preview' = 'config';
 	let generating = false;
@@ -12,7 +17,11 @@
 
 	// Form inputs
 	let days = 7;
-	let selectedMealTypes: Set<string> = new Set(['breakfast', 'lunch', 'dinner']);
+	let selectedMealTypes: Set<string> = new Set([
+		'breakfast',
+		'lunch',
+		'dinner',
+	]);
 	let dietaryPreferences: string[] = [];
 	let cuisine = '';
 	let mode: 'catalog-first' | 'ai-only' = 'catalog-first';
@@ -36,14 +45,17 @@
 		'Keto',
 		'Paleo',
 		'Halal',
-		'Kosher'
+		'Kosher',
 	];
 
 	onMount(async () => {
 		// Load user preferences to pre-fill dietary preferences
 		try {
 			userPreferences = await getUserPreferences();
-			if (userPreferences.dietary_preferences && userPreferences.dietary_preferences.length > 0) {
+			if (
+				userPreferences.dietary_preferences &&
+				userPreferences.dietary_preferences.length > 0
+			) {
 				dietaryPreferences = [...userPreferences.dietary_preferences];
 			}
 		} catch (err) {
@@ -82,9 +94,10 @@
 			const response = await generateMenu({
 				days,
 				meals_per_day: Array.from(selectedMealTypes),
-				dietary_preferences: dietaryPreferences.length > 0 ? dietaryPreferences : undefined,
+				dietary_preferences:
+					dietaryPreferences.length > 0 ? dietaryPreferences : undefined,
 				cuisine: cuisine || undefined,
-				mode
+				mode,
 			});
 
 			suggestions = response.suggestions;
@@ -92,7 +105,10 @@
 			selectedSuggestions = new Set(suggestions.map((_, idx) => idx));
 			step = 'preview';
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to generate menu suggestions';
+			error =
+				err instanceof Error
+					? err.message
+					: 'Failed to generate menu suggestions';
 			console.error('Failed to generate menu:', err);
 		} finally {
 			generating = false;
@@ -126,9 +142,10 @@
 					await addPlannedMeal(mealPlan.id, {
 						recipe_id: suggestion.recipe_id,
 						day_of_week: suggestion.day - 1, // Convert 1-indexed to 0-indexed
-						meal_type: suggestion.meal_type as "breakfast" | "lunch" | "dinner" | "snack" | "other",
+						meal_type: suggestion.meal_type as
+							'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other',
 						servings: 4,
-						notes: suggestion.description || undefined
+						notes: suggestion.description || undefined,
 					});
 				}
 			}
@@ -136,7 +153,10 @@
 			// Navigate to meal plans page
 			goto('/meal-plans');
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to apply suggestions to meal plan';
+			error =
+				err instanceof Error
+					? err.message
+					: 'Failed to apply suggestions to meal plan';
 			console.error('Failed to apply suggestions:', err);
 		} finally {
 			applying = false;
@@ -158,7 +178,15 @@
 		return suggestions.filter((s) => s.day === day);
 	}
 
-	const dayNames = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'];
+	const dayNames = [
+		'Day 1',
+		'Day 2',
+		'Day 3',
+		'Day 4',
+		'Day 5',
+		'Day 6',
+		'Day 7',
+	];
 </script>
 
 <svelte:head>
@@ -167,14 +195,14 @@
 
 <div class="container mx-auto px-4 py-8 max-w-4xl">
 	<div class="mb-6">
-		<h1 class="text-3xl font-bold  mb-2">AI Menu Suggestions</h1>
-		<p class="">
-			Generate personalized menu plans for your week using AI
-		</p>
+		<h1 class="text-3xl font-bold mb-2">AI Menu Suggestions</h1>
+		<p class="">Generate personalized menu plans for your week using AI</p>
 	</div>
 
 	{#if error}
-		<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded mb-4">
+		<div
+			class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded mb-4"
+		>
 			{error}
 		</div>
 	{/if}
@@ -184,7 +212,10 @@
 		<div class="AI-MENU-BG-PRIMARY rounded-lg shadow-md p-6 space-y-6">
 			<!-- Time Range -->
 			<div>
-				<label for="days-input" class="block text-sm font-medium  mb-2">Number of Days</label><input id="days-input"
+				<label for="days-input" class="block text-sm font-medium mb-2"
+					>Number of Days</label
+				><input
+					id="days-input"
 					type="number"
 					min="1"
 					max="14"
@@ -195,14 +226,14 @@
 
 			<!-- Meal Types -->
 			<div>
-				<div class="block text-sm font-medium  mb-2">Meal Types to Include</div>
+				<div class="block text-sm font-medium mb-2">Meal Types to Include</div>
 				<div class="grid grid-cols-2 md:grid-cols-4 gap-2">
 					{#each mealTypeOptions as mealType}
 						<button
 							type="button"
 							on:click={() => toggleMealType(mealType)}
 							class="px-4 py-2 rounded-md border transition-colors capitalize {selectedMealTypes.has(
-								mealType
+								mealType,
 							)
 								? 'bg-blue-600 text-white border-blue-600'
 								: 'bg-white dark:bg-gray-700  border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'}"
@@ -215,14 +246,14 @@
 
 			<!-- Dietary Preferences -->
 			<div>
-				<div class="block text-sm font-medium  mb-2">Dietary Preferences</div>
+				<div class="block text-sm font-medium mb-2">Dietary Preferences</div>
 				<div class="grid grid-cols-2 md:grid-cols-3 gap-2">
 					{#each dietaryOptions as option}
 						<button
 							type="button"
 							on:click={() => toggleDietary(option)}
 							class="px-4 py-2 rounded-md border text-sm transition-colors {dietaryPreferences.includes(
-								option
+								option,
 							)
 								? 'bg-green-600 text-white border-green-600'
 								: 'bg-white dark:bg-gray-700  border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'}"
@@ -235,7 +266,7 @@
 
 			<!-- Cuisine Preference -->
 			<div>
-				<label for="cuisine" class="block text-sm font-medium  mb-2">
+				<label for="cuisine" class="block text-sm font-medium mb-2">
 					Cuisine Preference (Optional)
 				</label>
 				<input
@@ -249,7 +280,7 @@
 
 			<!-- Generation Mode -->
 			<div>
-				<div class="block text-sm font-medium  mb-2">Generation Mode</div>
+				<div class="block text-sm font-medium mb-2">Generation Mode</div>
 				<div class="space-y-2">
 					<label class="flex items-start cursor-pointer">
 						<input
@@ -259,8 +290,8 @@
 							class="mt-1 mr-3"
 						/>
 						<div>
-							<div class="font-medium ">Catalog First</div>
-							<div class="text-sm ">
+							<div class="font-medium">Catalog First</div>
+							<div class="text-sm">
 								Use recipes from your household catalog when possible
 							</div>
 						</div>
@@ -273,8 +304,8 @@
 							class="mt-1 mr-3"
 						/>
 						<div>
-							<div class="font-medium ">AI Only</div>
-							<div class="text-sm ">
+							<div class="font-medium">AI Only</div>
+							<div class="text-sm">
 								Generate completely new recipe suggestions
 							</div>
 						</div>
@@ -287,7 +318,7 @@
 				<button
 					type="button"
 					on:click={() => goto('/meal-plans')}
-					class="px-4 py-2  hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+					class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
 				>
 					Cancel
 				</button>
@@ -305,8 +336,8 @@
 		<!-- Preview Step -->
 		<div class="AI-MENU-BG-PRIMARY rounded-lg shadow-md p-6">
 			<div class="mb-4">
-				<h2 class="text-xl font-semibold  mb-2">Menu Suggestions</h2>
-				<p class="text-sm ">
+				<h2 class="text-xl font-semibold mb-2">Menu Suggestions</h2>
+				<p class="text-sm">
 					Select the meals you want to add to your meal plan
 				</p>
 			</div>
@@ -315,8 +346,10 @@
 				{#each Array.from({ length: days }, (_, i) => i + 1) as day}
 					{@const daySuggestions = getSuggestionsForDay(day)}
 					{#if daySuggestions.length > 0}
-						<div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-							<h3 class="font-medium  mb-3">
+						<div
+							class="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+						>
+							<h3 class="font-medium mb-3">
 								{day <= 7 ? dayNames[day - 1] : `Day ${day}`}
 							</h3>
 							<div class="space-y-2">
@@ -334,27 +367,34 @@
 										<div class="flex-1">
 											<div class="flex items-start justify-between">
 												<div>
-													<div class="font-medium  capitalize">
+													<div class="font-medium capitalize">
 														{suggestion.meal_type}: {suggestion.recipe_name}
 													</div>
 													{#if suggestion.description}
-														<div class="text-sm  mt-1">
+														<div class="text-sm mt-1">
 															{suggestion.description}
 														</div>
 													{/if}
-													<div class="text-xs text-gray-500 dark:text-gray-500 mt-1">
+													<div
+														class="text-xs text-gray-500 dark:text-gray-500 mt-1"
+													>
 														{#if suggestion.recipe_id}
-															<span class="inline-flex items-center px-2 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
+															<span
+																class="inline-flex items-center px-2 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
+															>
 																From Catalog
 															</span>
 														{:else}
-															<span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+															<span
+																class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
+															>
 																AI Suggestion
 															</span>
 														{/if}
 														{#if suggestion.prep_time || suggestion.cook_time}
 															<span class="ml-2">
-																{suggestion.prep_time || ''} {suggestion.cook_time || ''}
+																{suggestion.prep_time || ''}
+																{suggestion.cook_time || ''}
 															</span>
 														{/if}
 													</div>
@@ -370,20 +410,24 @@
 			</div>
 
 			{#if mode === 'ai-only'}
-				<div class="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+				<div
+					class="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md"
+				>
 					<p class="text-sm text-yellow-800 dark:text-yellow-200">
-						<strong>Note:</strong> These are AI-generated suggestions. To add them to your meal plan,
-						you'll need to first create these recipes in your catalog.
+						<strong>Note:</strong> These are AI-generated suggestions. To add them
+						to your meal plan, you'll need to first create these recipes in your catalog.
 					</p>
 				</div>
 			{/if}
 
 			<!-- Action Buttons -->
-			<div class="flex justify-between space-x-3 pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
+			<div
+				class="flex justify-between space-x-3 pt-6 mt-6 border-t border-gray-200 dark:border-gray-700"
+			>
 				<button
 					type="button"
 					on:click={regenerate}
-					class="px-4 py-2  hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+					class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
 				>
 					Regenerate
 				</button>
@@ -391,7 +435,7 @@
 					<button
 						type="button"
 						on:click={goBack}
-						class="px-4 py-2  hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+						class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
 					>
 						Back
 					</button>
@@ -402,7 +446,9 @@
 							disabled={applying || selectedSuggestions.size === 0}
 							class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
 						>
-							{applying ? 'Applying...' : `Apply ${selectedSuggestions.size} to Meal Plan`}
+							{applying
+								? 'Applying...'
+								: `Apply ${selectedSuggestions.size} to Meal Plan`}
 						</button>
 					{/if}
 				</div>
@@ -417,4 +463,3 @@
 		background: var(--neutral-white) !important;
 	}
 </style>
-

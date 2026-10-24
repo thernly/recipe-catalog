@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import type { Collection } from '$lib/api/collections';
+	import type { Collection } from '#lib/api/collections.js';
 
 	export let isOpen = false;
 	export let collection: Collection | null = null; // null for create, collection for edit
@@ -39,7 +39,7 @@
 		'🎉',
 		'🌟',
 		'💚',
-		'🧡'
+		'🧡',
 	];
 
 	function handleSubmit() {
@@ -58,7 +58,7 @@
 		dispatch('submit', {
 			name: name.trim(),
 			description: description.trim() || undefined,
-			icon: icon || undefined
+			icon: icon || undefined,
 		});
 
 		// Reset form if creating new
@@ -89,13 +89,20 @@
 </script>
 
 {#if isOpen}
-	<div class="modal-backdrop" role="presentation" on:click={handleBackdropClick} on:keydown={(e) => e.key === 'Escape' && handleCancel()}>
+	<div
+		class="modal-backdrop"
+		role="presentation"
+		on:click={handleBackdropClick}
+		on:keydown={(e) => e.key === 'Escape' && handleCancel()}
+	>
 		<div class="modal" role="dialog" aria-modal="true" tabindex="0">
 			<div class="modal-header">
 				<h2 class="modal-title">
 					{collection ? 'Edit Collection' : 'Create Collection'}
 				</h2>
-				<button on:click={handleCancel} class="btn-close" aria-label="Close">×</button>
+				<button on:click={handleCancel} class="btn-close" aria-label="Close"
+					>×</button
+				>
 			</div>
 
 			<form on:submit|preventDefault={handleSubmit}>
@@ -115,38 +122,44 @@
 							id="collection-name"
 							bind:value={name}
 							placeholder="e.g., Favorite Desserts, Quick Meals"
-						class="form-input"
-						maxlength="50"
-						required
-					/>
-					<p class="form-help">{name.length}/50 characters</p>
-				</div>				<div class="form-group">
-					<label for="collection-desc" class="form-label">Description (Optional)</label>
-					<textarea
-						id="collection-desc"
-						bind:value={description}
-						placeholder="Add a description for this collection..."
-						rows="3"
-						class="form-input"
-					></textarea>
-			</div>
+							class="form-input"
+							maxlength="50"
+							required
+						/>
+						<p class="form-help">{name.length}/50 characters</p>
+					</div>
+					<div class="form-group">
+						<label for="collection-desc" class="form-label"
+							>Description (Optional)</label
+						>
+						<textarea
+							id="collection-desc"
+							bind:value={description}
+							placeholder="Add a description for this collection..."
+							rows="3"
+							class="form-input"></textarea>
+					</div>
 
-			<div class="form-group">
-				<p id="icon-label" class="form-label">Icon (Optional)</p>
-					<div class="icon-grid" role="group" aria-labelledby="icon-label">
-						{#each iconOptions as iconOption}
-							<button
-								type="button"
-								class="icon-option"
-								class:selected={icon === iconOption}
-								on:click={() => (icon = iconOption)}
-							>
-								{iconOption}
-							</button>
+					<div class="form-group">
+						<p id="icon-label" class="form-label">Icon (Optional)</p>
+						<div class="icon-grid" role="group" aria-labelledby="icon-label">
+							{#each iconOptions as iconOption}
+								<button
+									type="button"
+									class="icon-option"
+									class:selected={icon === iconOption}
+									on:click={() => (icon = iconOption)}
+								>
+									{iconOption}
+								</button>
 							{/each}
 						</div>
 						{#if icon}
-							<button type="button" on:click={() => (icon = '')} class="btn-sm btn-secondary mt-2">
+							<button
+								type="button"
+								on:click={() => (icon = '')}
+								class="btn-sm btn-secondary mt-2"
+							>
 								Clear Icon
 							</button>
 						{/if}
@@ -154,7 +167,11 @@
 				</div>
 
 				<div class="modal-footer">
-					<button type="button" on:click={handleCancel} class="btn btn-secondary">
+					<button
+						type="button"
+						on:click={handleCancel}
+						class="btn btn-secondary"
+					>
 						Cancel
 					</button>
 					<button type="submit" class="btn btn-primary">
@@ -277,7 +294,7 @@
 	}
 
 	.required {
-		color: #EF4444;
+		color: #ef4444;
 	}
 
 	.form-input {
@@ -305,8 +322,8 @@
 
 	.error-banner {
 		padding: 0.75rem 1rem;
-		background: #FEE2E2;
-		color: #991B1B;
+		background: #fee2e2;
+		color: #991b1b;
 		border-radius: var(--radius-md);
 		font-size: 0.875rem;
 		margin-bottom: 1.5rem;

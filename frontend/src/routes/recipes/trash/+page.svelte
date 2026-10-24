@@ -1,9 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { getTrashedRecipes, restoreRecipe, deleteRecipe, type RecipeSummary } from '$lib/api/recipes';
-	import { dialog } from '$lib/stores/dialog';
-	import { toast } from '$lib/stores/toast';
+	import {
+		getTrashedRecipes,
+		restoreRecipe,
+		deleteRecipe,
+		type RecipeSummary,
+	} from '#lib/api/recipes.js';
+	import { dialog } from '#lib/stores/dialog.js';
+	import { toast } from '#lib/stores/toast.js';
 
 	let recipes: RecipeSummary[] = [];
 	let loading = true;
@@ -16,7 +21,8 @@
 		try {
 			recipes = await getTrashedRecipes();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load trashed recipes';
+			error =
+				err instanceof Error ? err.message : 'Failed to load trashed recipes';
 			console.error('Failed to load trashed recipes:', err);
 		} finally {
 			loading = false;
@@ -51,7 +57,7 @@
 					toast.error('Failed to delete recipe');
 					console.error('Delete failed:', err);
 				}
-			}
+			},
 		});
 	}
 
@@ -64,7 +70,9 @@
 			onConfirm: async () => {
 				try {
 					// Delete all recipes
-					await Promise.all(recipes.map((recipe) => deleteRecipe(recipe.id, true)));
+					await Promise.all(
+						recipes.map((recipe) => deleteRecipe(recipe.id, true)),
+					);
 					recipes = [];
 					toast.success('Trash emptied successfully');
 				} catch (err) {
@@ -73,7 +81,7 @@
 					// Reload to show what's left
 					loadTrashedRecipes();
 				}
-			}
+			},
 		});
 	}
 
@@ -135,15 +143,21 @@
 			<!-- Loading state -->
 			<div class="text-center py-16">
 				<div class="text-4xl mb-4">⏳</div>
-				<p class="text-lg" style="color: var(--text-600);">Loading trashed recipes...</p>
+				<p class="text-lg" style="color: var(--text-600);">
+					Loading trashed recipes...
+				</p>
 			</div>
 		{:else if error}
 			<!-- Error state -->
 			<div class="text-center py-16">
 				<div class="text-4xl mb-4">⚠️</div>
-				<p class="text-lg mb-2" style="color: var(--text-900);">Failed to load trash</p>
+				<p class="text-lg mb-2" style="color: var(--text-900);">
+					Failed to load trash
+				</p>
 				<p class="text-sm mb-4" style="color: var(--text-600);">{error}</p>
-				<button on:click={loadTrashedRecipes} class="btn btn-primary">Try Again</button>
+				<button on:click={loadTrashedRecipes} class="btn btn-primary"
+					>Try Again</button
+				>
 			</div>
 		{:else if recipes.length === 0}
 			<!-- Empty state -->
@@ -162,23 +176,28 @@
 		{:else}
 			<!-- Trash items -->
 			<div class="trash-list">
-{#each recipes as recipe (recipe.id)}
-				<article class="trash-item">
-					<!-- Recipe info -->
-					<div class="flex items-start gap-4 flex-1">
-						{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
-							<div class="trash-item-thumbnail">
-								<img
-									src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
-									alt={recipe.name}
-									class="w-full h-full object-cover"
-								/>
-							</div>
-						{:else if recipe.image_url}
-							<div class="trash-item-thumbnail">
-								<img src={recipe.image_url} alt={recipe.name} class="w-full h-full object-cover" />
-							</div>
-						{:else}
+				{#each recipes as recipe (recipe.id)}
+					<article class="trash-item">
+						<!-- Recipe info -->
+						<div class="flex items-start gap-4 flex-1">
+							{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
+								<div class="trash-item-thumbnail">
+									<img
+										src="data:{recipe.recipe_data.images[0]
+											.mimeType};base64,{recipe.recipe_data.images[0].data}"
+										alt={recipe.name}
+										class="w-full h-full object-cover"
+									/>
+								</div>
+							{:else if recipe.image_url}
+								<div class="trash-item-thumbnail">
+									<img
+										src={recipe.image_url}
+										alt={recipe.name}
+										class="w-full h-full object-cover"
+									/>
+								</div>
+							{:else}
 								<div class="trash-item-thumbnail">
 									<div
 										class="w-full h-full flex items-center justify-center text-3xl"
@@ -197,10 +216,13 @@
 
 								<div class="flex items-center gap-3 mt-2 text-sm">
 									{#if recipe.cuisine}
-										<span style="color: var(--text-600);">{recipe.cuisine}</span>
+										<span style="color: var(--text-600);">{recipe.cuisine}</span
+										>
 									{/if}
 									{#if recipe.category}
-										<span style="color: var(--text-500);">• {recipe.category}</span>
+										<span style="color: var(--text-500);"
+											>• {recipe.category}</span
+										>
 									{/if}
 								</div>
 
@@ -214,7 +236,8 @@
 											</span>
 										{:else if daysLeft > 0}
 											<span class="trash-warning trash-warning-soon">
-												⚠️ Deletes in {daysLeft} {daysLeft === 1 ? 'day' : 'days'}
+												⚠️ Deletes in {daysLeft}
+												{daysLeft === 1 ? 'day' : 'days'}
 											</span>
 										{:else}
 											<span class="trash-warning trash-warning-urgent">
@@ -228,10 +251,16 @@
 
 						<!-- Actions -->
 						<div class="flex gap-2">
-							<button on:click={() => handleRestore(recipe)} class="btn btn-primary btn-sm">
+							<button
+								on:click={() => handleRestore(recipe)}
+								class="btn btn-primary btn-sm"
+							>
 								↺ Restore
 							</button>
-							<button on:click={() => handlePermanentDelete(recipe)} class="btn btn-danger btn-sm">
+							<button
+								on:click={() => handlePermanentDelete(recipe)}
+								class="btn btn-danger btn-sm"
+							>
 								Delete Forever
 							</button>
 						</div>
@@ -240,10 +269,13 @@
 			</div>
 
 			<!-- Info box -->
-			<div class="mt-8 p-4 rounded-lg" style="background: var(--accent-50); color: var(--accent-800);">
+			<div
+				class="mt-8 p-4 rounded-lg"
+				style="background: var(--accent-50); color: var(--accent-800);"
+			>
 				<p class="text-sm">
-					<strong>ℹ️ Note:</strong> Recipes in trash will be automatically and permanently deleted after 30 days.
-					You can restore them before then.
+					<strong>ℹ️ Note:</strong> Recipes in trash will be automatically and permanently
+					deleted after 30 days. You can restore them before then.
 				</p>
 			</div>
 		{/if}
@@ -315,13 +347,13 @@
 	}
 
 	.trash-warning-soon {
-		background: #FEF3C7;
-		color: #92400E;
+		background: #fef3c7;
+		color: #92400e;
 	}
 
 	.trash-warning-urgent {
-		background: #FEE2E2;
-		color: #991B1B;
+		background: #fee2e2;
+		color: #991b1b;
 	}
 
 	.btn-sm {
@@ -330,7 +362,7 @@
 	}
 
 	.btn-danger {
-		background: #EF4444;
+		background: #ef4444;
 		color: white;
 		padding: 0.5rem 1rem;
 		border-radius: var(--radius-md);
@@ -341,7 +373,7 @@
 	}
 
 	.btn-danger:hover {
-		background: #DC2626;
+		background: #dc2626;
 	}
 
 	@media (max-width: 640px) {

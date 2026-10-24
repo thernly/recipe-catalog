@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { User } from '$lib/api/users';
-	import { updateProfile } from '$lib/api/users';
+	import type { User } from '#lib/api/users.js';
+	import { updateProfile } from '#lib/api/users.js';
 	import { createEventDispatcher } from 'svelte';
-	import { toast } from '$lib/stores/toast';
+	import { toast } from '#lib/stores/toast.js';
 
 	export let user: User;
 
@@ -10,7 +10,7 @@
 
 	let profileForm = {
 		email: user.email,
-		display_name: user.display_name
+		display_name: user.display_name,
 	};
 	let saving = false;
 	let success = false;
@@ -22,13 +22,16 @@
 		try {
 			const updated = await updateProfile({
 				email: profileForm.email,
-				display_name: profileForm.display_name
+				display_name: profileForm.display_name,
 			});
 			dispatch('update', updated);
 			success = true;
 			setTimeout(() => (success = false), 3000);
 		} catch (err) {
-			toast.error('Failed to update profile: ' + (err instanceof Error ? err.message : 'Unknown error'));
+			toast.error(
+				'Failed to update profile: ' +
+					(err instanceof Error ? err.message : 'Unknown error'),
+			);
 			console.error('Failed to update profile:', err);
 		} finally {
 			saving = false;

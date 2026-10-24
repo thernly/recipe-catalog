@@ -3,7 +3,7 @@
  */
 
 // Re-export User type from users API
-export type { User, UserPreferences, UserStats } from "$lib/api/users";
+export type { User, UserPreferences, UserStats } from "#lib/api/users.js";
 
 /**
  * Schema.org Recipe format
@@ -15,10 +15,13 @@ export interface RecipeData {
   name?: string;
   description?: string;
   recipeIngredient?: string[];
-  recipeInstructions?: string | string[] | Array<{
-    "@type": "HowToStep";
-    text: string;
-  }>;
+  recipeInstructions?:
+    | string
+    | string[]
+    | Array<{
+        "@type": "HowToStep";
+        text: string;
+      }>;
   prepTime?: string;
   cookTime?: string;
   totalTime?: string;
@@ -59,7 +62,8 @@ export interface RecipeData {
 /**
  * Sort options for recipe searches
  */
-export type RecipeSortBy = "recently_added" | "alphabetical" | "time_asc" | "time_desc";
+export type RecipeSortBy =
+  "recently_added" | "alphabetical" | "time_asc" | "time_desc";
 
 /**
  * Recipe source types
@@ -73,7 +77,14 @@ export type RecipeSourceType = "imported" | "manual" | "ai-generated";
  * - dark: Dark mode
  * - high-contrast: WCAG AAA compliant
  */
-export type Theme = "garden-fresh" | "bistro" | "dark" | "high-contrast" | "classic" | "professional" | "light";
+export type Theme =
+  | "garden-fresh"
+  | "bistro"
+  | "dark"
+  | "high-contrast"
+  | "classic"
+  | "professional"
+  | "light";
 
 /**
  * View mode options

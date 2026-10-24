@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { importRecipes } from '$lib/api/recipes';
-	import { getCollections } from '$lib/api/collections';
-	import type { Collection } from '$lib/api/collections';
+	import { importRecipes } from '#lib/api/recipes.js';
+	import { getCollections } from '#lib/api/collections.js';
+	import type { Collection } from '#lib/api/collections.js';
 
 	let loading = false;
 	let error: string | null = null;
@@ -80,7 +80,11 @@
 				importProgress.current = i + 1;
 
 				try {
-					const result = await importRecipes(file, duplicateHandling, selectedCollectionId);
+					const result = await importRecipes(
+						file,
+						duplicateHandling,
+						selectedCollectionId,
+					);
 					results.push({ file: file.name, result });
 
 					if (result.details?.errors && result.details.errors.length > 0) {
@@ -154,13 +158,20 @@
 			<!-- Import Form -->
 			<div class="card">
 				<div class="mb-6">
-					<h2 class="text-xl font-semibold mb-4" style="color: var(--text-900);">
+					<h2
+						class="text-xl font-semibold mb-4"
+						style="color: var(--text-900);"
+					>
 						Upload JSON File
 					</h2>
 
 					<!-- File input -->
 					<div class="mb-4">
-						<label for="recipe-import-files" class="block mb-2 font-medium" style="color: var(--text-700);">
+						<label
+							for="recipe-import-files"
+							class="block mb-2 font-medium"
+							style="color: var(--text-700);"
+						>
 							Select File(s)
 						</label>
 						<input
@@ -176,35 +187,48 @@
 						/>
 						{#if selectedFiles.length > 0}
 							<div class="mt-2">
-								<p class="text-sm font-medium mb-1" style="color: var(--text-600);">
-									Selected {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''}:
+								<p
+									class="text-sm font-medium mb-1"
+									style="color: var(--text-600);"
+								>
+									Selected {selectedFiles.length} file{selectedFiles.length > 1
+										? 's'
+										: ''}:
 								</p>
 								<ul class="text-sm space-y-1" style="color: var(--text-600);">
 									{#each selectedFiles.slice(0, 5) as file}
 										<li>• {file.name} ({Math.round(file.size / 1024)} KB)</li>
 									{/each}
 									{#if selectedFiles.length > 5}
-										<li class="italic">... and {selectedFiles.length - 5} more</li>
+										<li class="italic">
+											... and {selectedFiles.length - 5} more
+										</li>
 									{/if}
 								</ul>
 							</div>
 						{/if}
 					</div>
 
-				<!-- Duplicate handling -->
-				<div class="mb-4">
-					<label for="duplicate-handling" class="block mb-2 font-medium" style="color: var(--text-700);">
-						Duplicate Handling
-					</label>
-					<select
-						id="duplicate-handling"
-						bind:value={duplicateHandling}
+					<!-- Duplicate handling -->
+					<div class="mb-4">
+						<label
+							for="duplicate-handling"
+							class="block mb-2 font-medium"
+							style="color: var(--text-700);"
+						>
+							Duplicate Handling
+						</label>
+						<select
+							id="duplicate-handling"
+							bind:value={duplicateHandling}
 							class="w-full px-4 py-2 border rounded-md"
 							style="border-color: var(--neutral-300);"
 							disabled={loading}
 						>
 							<option value="skip">Skip duplicates (keep existing)</option>
-							<option value="update">Update duplicates (overwrite existing)</option>
+							<option value="update"
+								>Update duplicates (overwrite existing)</option
+							>
 							<option value="create">Create all (allow duplicates)</option>
 						</select>
 						<p class="mt-1 text-sm" style="color: var(--text-500);">
@@ -212,14 +236,18 @@
 						</p>
 					</div>
 
-				<!-- Collection selection (optional) -->
-				<div class="mb-6">
-					<label for="collection-select" class="block mb-2 font-medium" style="color: var(--text-700);">
-						Add to Collection (Optional)
-					</label>
-					<select
-						id="collection-select"
-						bind:value={selectedCollectionId}
+					<!-- Collection selection (optional) -->
+					<div class="mb-6">
+						<label
+							for="collection-select"
+							class="block mb-2 font-medium"
+							style="color: var(--text-700);"
+						>
+							Add to Collection (Optional)
+						</label>
+						<select
+							id="collection-select"
+							bind:value={selectedCollectionId}
 							class="w-full px-4 py-2 border rounded-md"
 							style="border-color: var(--neutral-300);"
 							disabled={loading}
@@ -239,9 +267,13 @@
 					{/if}
 
 					{#if success}
-						<div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+						<div
+							class="mb-4 p-4 bg-green-50 border border-green-200 rounded-md"
+						>
 							<p class="text-green-800">{success}</p>
-							<p class="text-sm text-green-600 mt-1">Redirecting to recipes page...</p>
+							<p class="text-sm text-green-600 mt-1">
+								Redirecting to recipes page...
+							</p>
 						</div>
 					{/if}
 
@@ -254,7 +286,9 @@
 							<div class="mt-2 w-full bg-blue-200 rounded-full h-2">
 								<div
 									class="bg-blue-600 h-2 rounded-full transition-all"
-									style="width: {(importProgress.current / importProgress.total) * 100}%"
+									style="width: {(importProgress.current /
+										importProgress.total) *
+										100}%"
 								></div>
 							</div>
 						</div>
@@ -266,7 +300,11 @@
 						disabled={selectedFiles.length === 0 || loading}
 						class="btn btn-primary w-full"
 					>
-						{loading ? 'Importing...' : selectedFiles.length > 1 ? `📥 Import ${selectedFiles.length} Files` : '📥 Import Recipes'}
+						{loading
+							? 'Importing...'
+							: selectedFiles.length > 1
+								? `📥 Import ${selectedFiles.length} Files`
+								: '📥 Import Recipes'}
 					</button>
 				</div>
 
@@ -278,14 +316,19 @@
 					<p class="text-sm mb-2" style="color: var(--text-600);">
 						Your JSON file should contain either:
 					</p>
-					<ul class="list-disc list-inside text-sm space-y-1" style="color: var(--text-600);">
+					<ul
+						class="list-disc list-inside text-sm space-y-1"
+						style="color: var(--text-600);"
+					>
 						<li>A single recipe object in Schema.org Recipe format</li>
 						<li>An array of recipe objects in Schema.org Recipe format</li>
 						<li>Exported data from this application</li>
 					</ul>
 					<p class="text-sm mt-3" style="color: var(--text-600);">
 						You can export your existing recipes from the
-						<a href="/export" class="text-primary-600 hover:underline">Export page</a>
+						<a href="/export" class="text-primary-600 hover:underline"
+							>Export page</a
+						>
 						to see the expected format.
 					</p>
 				</div>
@@ -300,7 +343,8 @@
 					Import recipes directly from websites using our browser extension.
 				</p>
 				<p class="text-sm" style="color: var(--text-500);">
-					The browser extension is currently under development and will be available soon.
+					The browser extension is currently under development and will be
+					available soon.
 				</p>
 			</div>
 		</div>

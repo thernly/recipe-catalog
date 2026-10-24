@@ -1,13 +1,23 @@
 <script lang="ts">
-	import type { RecipeSummary } from '$lib/api/recipes';
-	import { UtensilsCrossed, Clock, Star, Edit, Trash2, Download, PencilLine } from '@lucide/svelte';
+	import type { RecipeSummary } from '#lib/api/recipes.js';
+	import {
+		UtensilsCrossed,
+		Clock,
+		Star,
+		Edit,
+		Trash2,
+		Download,
+		PencilLine,
+	} from '@lucide/svelte';
 
 	export let recipe: RecipeSummary;
 	export let showActions: boolean = true;
 	export let onview: ((recipe: RecipeSummary) => void) | undefined = undefined;
 	export let onedit: ((recipe: RecipeSummary) => void) | undefined = undefined;
-	export let ondelete: ((recipe: RecipeSummary) => void) | undefined = undefined;
-	export let onfavorite: ((recipe: RecipeSummary) => void) | undefined = undefined;
+	export let ondelete: ((recipe: RecipeSummary) => void) | undefined =
+		undefined;
+	export let onfavorite: ((recipe: RecipeSummary) => void) | undefined =
+		undefined;
 
 	function formatTime(minutes: number | undefined): string {
 		if (!minutes) return '';
@@ -40,16 +50,27 @@
 		<div class="recipe-card-image">
 			{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
 				<img
-					src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
+					src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe
+						.recipe_data.images[0].data}"
 					alt={recipe.name}
 					class="w-full h-full object-cover"
 				/>
 			{:else if recipe.image_url}
-				<img src={recipe.image_url} alt={recipe.name} class="w-full h-full object-cover" />
+				<img
+					src={recipe.image_url}
+					alt={recipe.name}
+					class="w-full h-full object-cover"
+				/>
 			{:else}
 				<div class="empty-image-placeholder">
-					<span class="placeholder-initial">{recipe.name.charAt(0).toUpperCase()}</span>
-					<UtensilsCrossed size={28} aria-hidden="true" class="placeholder-icon" />
+					<span class="placeholder-initial"
+						>{recipe.name.charAt(0).toUpperCase()}</span
+					>
+					<UtensilsCrossed
+						size={28}
+						aria-hidden="true"
+						class="placeholder-icon"
+					/>
 				</div>
 			{/if}
 		</div>
@@ -74,7 +95,10 @@
 
 			<div class="flex items-center justify-between mt-3">
 				{#if recipe.total_time_minutes}
-					<span class="text-sm flex items-center gap-1" style="color: var(--text-600);">
+					<span
+						class="text-sm flex items-center gap-1"
+						style="color: var(--text-600);"
+					>
 						<Clock size={14} aria-hidden="true" />
 						<span>{formatTime(recipe.total_time_minutes)}</span>
 					</span>
@@ -108,10 +132,18 @@
 			>
 				<Star size={16} aria-hidden="true" />
 			</button>
-			<button on:click|stopPropagation={handleEdit} class="action-btn" aria-label="Edit recipe">
+			<button
+				on:click|stopPropagation={handleEdit}
+				class="action-btn"
+				aria-label="Edit recipe"
+			>
 				<Edit size={16} aria-hidden="true" />
 			</button>
-			<button on:click|stopPropagation={handleDelete} class="action-btn" aria-label="Delete recipe">
+			<button
+				on:click|stopPropagation={handleDelete}
+				class="action-btn"
+				aria-label="Delete recipe"
+			>
 				<Trash2 size={16} aria-hidden="true" />
 			</button>
 		</div>
@@ -228,7 +260,11 @@
 		align-items: center;
 		justify-content: center;
 		gap: var(--space-sm);
-		background: linear-gradient(135deg, var(--neutral-100) 0%, var(--neutral-200) 100%);
+		background: linear-gradient(
+			135deg,
+			var(--neutral-100) 0%,
+			var(--neutral-200) 100%
+		);
 		color: var(--text-400);
 		position: relative;
 	}

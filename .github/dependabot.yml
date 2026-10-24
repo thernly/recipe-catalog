@@ -30,10 +30,6 @@ updates:
   # Frontend npm dependencies
   - package-ecosystem: "npm"
     directory: "/frontend"
-    # Kit 3 requires migrating the config, legacy APIs, and deployment adapters together.
-    ignore:
-      - dependency-name: "@sveltejs/kit"
-        update-types: ["version-update:semver-major"]
     schedule:
       interval: "weekly"
       day: "monday"

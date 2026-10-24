@@ -1,21 +1,22 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth';
-	import { API_V1_URL } from '$lib/config';
+	import { auth } from '#lib/stores/auth.js';
+	import { API_V1_URL } from '#lib/config.js';
 
 	let loading = true;
 	let error = '';
 	let provider = '';
 
 	onMount(async () => {
-		provider = $page.params.provider!;
-		const code = $page.url.searchParams.get('code');
-		const state = $page.url.searchParams.get('state');
-		const errorParam = $page.url.searchParams.get('error');
-		const errorDescription = $page.url.searchParams.get('error_description');
+		provider = page.params.provider!;
+
+		const code = page.url.searchParams.get('code');
+		const state = page.url.searchParams.get('state');
+		const errorParam = page.url.searchParams.get('error');
+		const errorDescription = page.url.searchParams.get('error_description');
 
 		// Check for OAuth errors
 		if (errorParam) {
@@ -42,8 +43,8 @@
 			const response = await fetch(callbackUrl, {
 				method: 'GET',
 				headers: {
-					'Content-Type': 'application/json'
-				}
+					'Content-Type': 'application/json',
+				},
 			});
 
 			if (!response.ok) {
@@ -65,7 +66,10 @@
 			}
 		} catch (err) {
 			loading = false;
-			error = err instanceof Error ? err.message : 'Authentication failed. Please try again.';
+			error =
+				err instanceof Error
+					? err.message
+					: 'Authentication failed. Please try again.';
 			console.error('OAuth callback error:', err);
 		}
 	});
@@ -75,7 +79,9 @@
 	<title>Authenticating... - Recipe Catalog</title>
 </svelte:head>
 
-<div class="min-h-screen bg-neutral-50 flex items-center justify-center py-12 px-4">
+<div
+	class="min-h-screen bg-neutral-50 flex items-center justify-center py-12 px-4"
+>
 	<div class="max-w-md w-full text-center">
 		{#if loading}
 			<div class="card">

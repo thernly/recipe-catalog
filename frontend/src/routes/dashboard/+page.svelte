@@ -1,10 +1,24 @@
 <script lang="ts">
-	import { auth } from '$lib/stores/auth';
+	import { auth } from '#lib/stores/auth.js';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import type { User } from '$lib/types';
-	import { getUserStats, type UserStats } from '$lib/api/users';
-	import { BookOpen, Star, Folder, Plus, Search, Download, Upload, Rocket, Check, Hand, ChefHat, Sparkles, UtensilsCrossed } from '@lucide/svelte';
+	import type { User } from '#lib/types/index.js';
+	import { getUserStats, type UserStats } from '#lib/api/users.js';
+	import {
+		BookOpen,
+		Star,
+		Folder,
+		Plus,
+		Search,
+		Download,
+		Upload,
+		Rocket,
+		Check,
+		Hand,
+		ChefHat,
+		Sparkles,
+		UtensilsCrossed,
+	} from '@lucide/svelte';
 
 	let user: User | null = null;
 	let stats: UserStats | null = null;
@@ -22,7 +36,7 @@
 				total_collections: 0,
 				recipes_imported: 0,
 				recipes_manual: 0,
-				recipes_this_month: 0
+				recipes_this_month: 0,
 			};
 		} finally {
 			loadingStats = false;
@@ -64,8 +78,13 @@
 			<div class="max-w-4xl mx-auto">
 				<!-- Welcome Header -->
 				<div class="mb-12">
-					<h1 class="text-4xl font-bold mb-2 flex items-center gap-3" style="color: var(--text-900);">
-						<span>Welcome{user.display_name ? `, ${user.display_name}` : ''}!</span>
+					<h1
+						class="text-4xl font-bold mb-2 flex items-center gap-3"
+						style="color: var(--text-900);"
+					>
+						<span
+							>Welcome{user.display_name ? `, ${user.display_name}` : ''}!</span
+						>
 						<Hand size={36} class="inline-block" aria-hidden="true" />
 					</h1>
 					<p class="text-lg" style="color: var(--text-600);">
@@ -128,18 +147,29 @@
 						</div>
 						<h2 class="empty-state-title">Your recipe collection awaits!</h2>
 						<p class="empty-state-description">
-							Start building your personal cookbook by adding your favorite recipes, importing from the web, or letting AI create something new.
+							Start building your personal cookbook by adding your favorite
+							recipes, importing from the web, or letting AI create something
+							new.
 						</p>
 						<div class="empty-state-actions">
-							<button on:click={() => goto('/recipes/new')} class="btn btn-primary">
+							<button
+								on:click={() => goto('/recipes/new')}
+								class="btn btn-primary"
+							>
 								<Plus size={20} aria-hidden="true" />
 								<span>Add Your First Recipe</span>
 							</button>
-							<button on:click={() => goto('/import')} class="btn btn-secondary">
+							<button
+								on:click={() => goto('/import')}
+								class="btn btn-secondary"
+							>
 								<Download size={20} aria-hidden="true" />
 								<span>Import from Web</span>
 							</button>
-							<button on:click={() => goto('/ai-generate')} class="btn btn-secondary">
+							<button
+								on:click={() => goto('/ai-generate')}
+								class="btn btn-secondary"
+							>
 								<Sparkles size={20} aria-hidden="true" />
 								<span>AI Generate</span>
 							</button>
@@ -149,10 +179,18 @@
 
 				<!-- Quick Actions -->
 				<div class="card">
-					<h2 class="text-2xl font-semibold mb-6" style="color: var(--text-900);">Quick Actions</h2>
+					<h2
+						class="text-2xl font-semibold mb-6"
+						style="color: var(--text-900);"
+					>
+						Quick Actions
+					</h2>
 
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<button on:click={() => goto('/recipes/new')} class="quick-action-btn btn-primary">
+						<button
+							on:click={() => goto('/recipes/new')}
+							class="quick-action-btn btn-primary"
+						>
 							<div class="action-icon">
 								<Plus size={28} aria-hidden="true" />
 							</div>
@@ -160,7 +198,10 @@
 							<p class="action-description">Manually add a new recipe</p>
 						</button>
 
-						<button on:click={() => goto('/recipes')} class="quick-action-btn btn-secondary">
+						<button
+							on:click={() => goto('/recipes')}
+							class="quick-action-btn btn-secondary"
+						>
 							<div class="action-icon">
 								<Search size={28} aria-hidden="true" />
 							</div>
@@ -168,7 +209,10 @@
 							<p class="action-description">View all your recipes</p>
 						</button>
 
-						<button on:click={() => goto('/import')} class="quick-action-btn btn-secondary">
+						<button
+							on:click={() => goto('/import')}
+							class="quick-action-btn btn-secondary"
+						>
 							<div class="action-icon">
 								<Download size={28} aria-hidden="true" />
 							</div>
@@ -176,7 +220,10 @@
 							<p class="action-description">Import recipes from websites</p>
 						</button>
 
-						<button on:click={() => goto('/export')} class="quick-action-btn btn-secondary">
+						<button
+							on:click={() => goto('/export')}
+							class="quick-action-btn btn-secondary"
+						>
 							<div class="action-icon">
 								<Upload size={28} aria-hidden="true" />
 							</div>
@@ -188,7 +235,10 @@
 
 				<!-- Getting Started -->
 				<div class="mt-12 p-6 rounded-lg" style="background: var(--accent-50);">
-					<h3 class="text-lg font-semibold mb-3 flex items-center gap-2" style="color: var(--accent-800);">
+					<h3
+						class="text-lg font-semibold mb-3 flex items-center gap-2"
+						style="color: var(--accent-800);"
+					>
 						<Rocket size={20} aria-hidden="true" />
 						<span>Getting Started</span>
 					</h3>
@@ -200,24 +250,44 @@
 						{#if !loadingStats && stats}
 							{#if stats.total_recipes === 0}
 								<li class="flex items-center gap-2">
-									<span class="w-4 h-4 rounded-full border-2 border-current shrink-0" aria-hidden="true"></span>
-									<a href="/recipes/new" class="link font-medium">Add your first recipe</a>
+									<span
+										class="w-4 h-4 rounded-full border-2 border-current shrink-0"
+										aria-hidden="true"
+									></span>
+									<a href="/recipes/new" class="link font-medium"
+										>Add your first recipe</a
+									>
 									<span class="text-sm">to get started</span>
 								</li>
 							{:else}
 								<li class="flex items-center gap-2">
 									<Check size={16} aria-hidden="true" />
-									<span>Added {stats.total_recipes} recipe{stats.total_recipes !== 1 ? 's' : ''}</span>
+									<span
+										>Added {stats.total_recipes} recipe{stats.total_recipes !==
+										1
+											? 's'
+											: ''}</span
+									>
 								</li>
 							{/if}
 							<li class="flex items-center gap-2">
-								<span class="w-4 h-4 rounded-full border-2 border-current shrink-0" aria-hidden="true"></span>
-								<a href="/import" class="link font-medium">Install the browser extension</a>
+								<span
+									class="w-4 h-4 rounded-full border-2 border-current shrink-0"
+									aria-hidden="true"
+								></span>
+								<a href="/import" class="link font-medium"
+									>Install the browser extension</a
+								>
 								<span class="text-sm">to import recipes from websites</span>
 							</li>
 							<li class="flex items-center gap-2">
-								<span class="w-4 h-4 rounded-full border-2 border-current shrink-0" aria-hidden="true"></span>
-								<a href="/ai-generate" class="link font-medium">Try AI recipe generation</a>
+								<span
+									class="w-4 h-4 rounded-full border-2 border-current shrink-0"
+									aria-hidden="true"
+								></span>
+								<a href="/ai-generate" class="link font-medium"
+									>Try AI recipe generation</a
+								>
 								<span class="text-sm">to create custom recipes</span>
 							</li>
 						{/if}
@@ -334,7 +404,12 @@
 	.stat-number-skeleton {
 		width: 60px;
 		height: 2.5rem;
-		background: linear-gradient(90deg, var(--neutral-200) 25%, var(--neutral-100) 50%, var(--neutral-200) 75%);
+		background: linear-gradient(
+			90deg,
+			var(--neutral-200) 25%,
+			var(--neutral-100) 50%,
+			var(--neutral-200) 75%
+		);
 		background-size: 200% 100%;
 		animation: shimmer 1.5s infinite;
 		border-radius: var(--radius-md);
@@ -342,13 +417,21 @@
 	}
 
 	@keyframes shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
+		}
 	}
 
 	/* Empty State Hero */
 	.empty-state-hero {
-		background: linear-gradient(135deg, var(--accent-50) 0%, var(--neutral-50) 100%);
+		background: linear-gradient(
+			135deg,
+			var(--accent-50) 0%,
+			var(--neutral-50) 100%
+		);
 		border: 2px dashed var(--accent-200);
 		border-radius: var(--radius-xl);
 		padding: 3rem 2rem;
@@ -366,7 +449,11 @@
 	.empty-icon-bg {
 		width: 100%;
 		height: 100%;
-		background: linear-gradient(135deg, var(--accent-100) 0%, var(--accent-200) 100%);
+		background: linear-gradient(
+			135deg,
+			var(--accent-100) 0%,
+			var(--accent-200) 100%
+		);
 		border-radius: 50%;
 		display: flex;
 		align-items: center;
@@ -403,8 +490,13 @@
 	}
 
 	@keyframes float {
-		0%, 100% { transform: translateY(0); }
-		50% { transform: translateY(-6px); }
+		0%,
+		100% {
+			transform: translateY(0);
+		}
+		50% {
+			transform: translateY(-6px);
+		}
 	}
 
 	.empty-state-title {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
-	import type { Theme } from '$lib/types';
+	import { browser } from '$app/env';
+	import type { Theme } from '#lib/types/index.js';
 
 	let theme: Theme = 'classic';
 
@@ -67,8 +67,9 @@
 				Your Personal Recipe Collection
 			</h1>
 			<p class="text-xl mb-8" style="color: var(--text-600);">
-				A privacy-focused web application for organizing and managing your favorite recipes.
-				Import from websites, add family recipes, and keep everything in one place.
+				A privacy-focused web application for organizing and managing your
+				favorite recipes. Import from websites, add family recipes, and keep
+				everything in one place.
 			</p>
 
 			<div class="flex justify-center gap-4 mb-12">
@@ -82,7 +83,8 @@
 					<div class="text-4xl mb-4">🔐</div>
 					<h3 class="text-xl font-semibold mb-2">Privacy First</h3>
 					<p style="color: var(--text-600);">
-						No tracking, no analytics, no third-party data sharing. Your recipes are yours.
+						No tracking, no analytics, no third-party data sharing. Your recipes
+						are yours.
 					</p>
 				</div>
 
@@ -90,7 +92,8 @@
 					<div class="text-4xl mb-4">📚</div>
 					<h3 class="text-xl font-semibold mb-2">Organize Everything</h3>
 					<p style="color: var(--text-600);">
-						Import from websites or add manually. Organize into collections, search, and filter.
+						Import from websites or add manually. Organize into collections,
+						search, and filter.
 					</p>
 				</div>
 
@@ -102,12 +105,14 @@
 					</p>
 				</div>
 			</div>
-
 		</div>
 	</main>
 
 	<!-- Footer -->
-	<footer class="mt-24 py-8 text-center" style="background: var(--neutral-100);">
+	<footer
+		class="mt-24 py-8 text-center"
+		style="background: var(--neutral-100);"
+	>
 		<p style="color: var(--text-600);">
 			Recipe Catalog © 2025 | Privacy-Focused Recipe Management
 		</p>

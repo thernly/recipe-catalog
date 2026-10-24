@@ -2,11 +2,11 @@
  * Authentication store using Svelte stores.
  */
 import { writable, derived } from "svelte/store";
-import { browser } from "$app/environment";
-import { API_V1_URL } from "$lib/config";
-import type { User } from "$lib/types";
-import { logger } from "$lib/utils/logger";
-import { FETCH_CREDENTIALS } from "$lib/constants";
+import { browser } from "$app/env";
+import { API_V1_URL } from "#lib/config.js";
+import type { User } from "#lib/types/index.js";
+import { logger } from "#lib/utils/logger.js";
+import { FETCH_CREDENTIALS } from "#lib/constants.js";
 
 interface AuthState {
   user: User | null;

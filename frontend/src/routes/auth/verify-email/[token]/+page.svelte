@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { apiRequest } from '$lib/api/client';
+	import { page } from '$app/state';
+	import { apiRequest } from '#lib/api/client.js';
 
 	let token = '';
 	let loading = true;
@@ -10,7 +10,7 @@
 	let error = '';
 
 	onMount(async () => {
-		token = $page.params.token!;
+		token = page.params.token!;
 		await verifyEmail();
 	});
 
@@ -21,7 +21,7 @@
 		try {
 			await apiRequest(`/api/auth/verify-email/${token}`, {
 				method: 'POST',
-				requireAuth: false
+				requireAuth: false,
 			});
 
 			success = true;
@@ -51,7 +51,9 @@
 				<div class="status-box">
 					<div class="loading-spinner">⏳</div>
 					<h1 class="status-title">Verifying Your Email...</h1>
-					<p class="status-text">Please wait while we verify your email address.</p>
+					<p class="status-text">
+						Please wait while we verify your email address.
+					</p>
 				</div>
 			{:else if success}
 				<!-- Success state -->
@@ -59,11 +61,14 @@
 					<div class="success-icon">✓</div>
 					<h1 class="status-title">Email Verified!</h1>
 					<p class="status-text">
-						Your email has been successfully verified. You can now use all features of Recipe
-						Catalog.
+						Your email has been successfully verified. You can now use all
+						features of Recipe Catalog.
 					</p>
 					<p class="status-hint">Redirecting to login page...</p>
-					<button on:click={() => goto('/auth/login')} class="btn btn-primary btn-block">
+					<button
+						on:click={() => goto('/auth/login')}
+						class="btn btn-primary btn-block"
+					>
 						Go to Login
 					</button>
 				</div>
@@ -75,11 +80,19 @@
 					<p class="status-text error-text">{error}</p>
 
 					<div class="error-actions">
-						<p class="action-hint">This verification link may have expired or already been used.</p>
-						<button on:click={() => goto('/auth/resend-verification')} class="btn btn-secondary">
+						<p class="action-hint">
+							This verification link may have expired or already been used.
+						</p>
+						<button
+							on:click={() => goto('/auth/resend-verification')}
+							class="btn btn-secondary"
+						>
 							Request New Link
 						</button>
-						<button on:click={() => goto('/auth/login')} class="btn btn-primary">
+						<button
+							on:click={() => goto('/auth/login')}
+							class="btn btn-primary"
+						>
 							Go to Login
 						</button>
 					</div>
@@ -95,7 +108,11 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: linear-gradient(135deg, var(--primary-50) 0%, var(--accent-50) 100%);
+		background: linear-gradient(
+			135deg,
+			var(--primary-50) 0%,
+			var(--accent-50) 100%
+		);
 		padding: 2rem;
 	}
 

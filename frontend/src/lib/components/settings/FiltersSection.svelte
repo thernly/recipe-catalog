@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { getPreferences, updatePreferences } from '$lib/api/users';
-	import { dialog } from '$lib/stores/dialog';
-	import { toast } from '$lib/stores/toast';
+	import { getPreferences, updatePreferences } from '#lib/api/users.js';
+	import { dialog } from '#lib/stores/dialog.js';
+	import { toast } from '#lib/stores/toast.js';
 
 	// Custom filters
 	let customCuisines: string[] = [];
@@ -29,7 +29,7 @@
 		'Korean',
 		'Vietnamese',
 		'Middle Eastern',
-		'Other'
+		'Other',
 	];
 
 	const defaultCategories = [
@@ -47,7 +47,7 @@
 		'Pasta',
 		'Bread',
 		'Sauce',
-		'Other'
+		'Other',
 	];
 
 	onMount(async () => {
@@ -71,10 +71,13 @@
 		try {
 			await updatePreferences({
 				custom_cuisines: customCuisines,
-				custom_categories: customCategories
+				custom_categories: customCategories,
 			});
 		} catch (err) {
-			toast.error('Failed to save custom filters: ' + (err instanceof Error ? err.message : 'Unknown error'));
+			toast.error(
+				'Failed to save custom filters: ' +
+					(err instanceof Error ? err.message : 'Unknown error'),
+			);
 			console.error('Failed to save custom filters:', err);
 		} finally {
 			saving = false;
@@ -112,13 +115,14 @@
 	async function resetToDefaults() {
 		dialog.show({
 			title: 'Reset to Defaults',
-			message: 'Reset all custom cuisines and categories to defaults? This will remove any custom entries you\'ve added.',
+			message:
+				"Reset all custom cuisines and categories to defaults? This will remove any custom entries you've added.",
 			onConfirm: async () => {
 				customCuisines = [];
 				customCategories = [];
 				await saveToDatabase();
 				toast.success('Filters reset to defaults');
-			}
+			},
 		});
 	}
 
@@ -128,13 +132,16 @@
 
 <div class="settings-section">
 	<h2 class="section-title">Recipe Filters</h2>
-	<p class="section-description">Customize cuisine and category options for filtering recipes</p>
+	<p class="section-description">
+		Customize cuisine and category options for filtering recipes
+	</p>
 
 	<!-- Cuisines -->
 	<div class="filter-group">
 		<h3 class="filter-group-title">Cuisines</h3>
 		<p class="filter-group-description">
-			Default cuisines are provided, but you can add your own custom options below.
+			Default cuisines are provided, but you can add your own custom options
+			below.
 		</p>
 
 		<div class="tags-container">
@@ -163,7 +170,11 @@
 				class="add-input"
 				maxlength="30"
 			/>
-			<button type="submit" class="btn btn-secondary btn-sm" disabled={!newCuisine.trim()}>
+			<button
+				type="submit"
+				class="btn btn-secondary btn-sm"
+				disabled={!newCuisine.trim()}
+			>
 				Add
 			</button>
 		</form>
@@ -173,7 +184,8 @@
 	<div class="filter-group">
 		<h3 class="filter-group-title">Categories</h3>
 		<p class="filter-group-description">
-			Default categories are provided, but you can add your own custom options below.
+			Default categories are provided, but you can add your own custom options
+			below.
 		</p>
 
 		<div class="tags-container">
@@ -202,7 +214,11 @@
 				class="add-input"
 				maxlength="30"
 			/>
-			<button type="submit" class="btn btn-secondary btn-sm" disabled={!newCategory.trim()}>
+			<button
+				type="submit"
+				class="btn btn-secondary btn-sm"
+				disabled={!newCategory.trim()}
+			>
 				Add
 			</button>
 		</form>
@@ -219,9 +235,9 @@
 	<!-- Info note -->
 	<div class="info-note">
 		<p>
-			<strong>Note:</strong> Custom filters are stored in your account and synced across all your
-			devices. Default options cannot be removed, but you can add your own custom options to
-			better organize your recipes.
+			<strong>Note:</strong> Custom filters are stored in your account and synced
+			across all your devices. Default options cannot be removed, but you can add
+			your own custom options to better organize your recipes.
 		</p>
 	</div>
 </div>

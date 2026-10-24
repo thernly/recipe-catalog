@@ -7,12 +7,15 @@
 		formatDateISO,
 		getWeekDates,
 		type MealPlan,
-		type PlannedMeal
-	} from '$lib/api/meal-plans';
-	import { generateFromMealPlan, createShoppingList } from '$lib/api/shopping-lists';
+		type PlannedMeal,
+	} from '#lib/api/meal-plans.js';
+	import {
+		generateFromMealPlan,
+		createShoppingList,
+	} from '#lib/api/shopping-lists.js';
 	import AddMealDialog from './AddMealDialog.svelte';
 	import EditMealDialog from './EditMealDialog.svelte';
-	import { toast } from '$lib/stores/toast';
+	import { toast } from '#lib/stores/toast.js';
 
 	let mealPlan: MealPlan | null = null;
 	let loading = true;
@@ -31,7 +34,15 @@
 	let generatingShoppingList = false;
 	let creatingBlankList = false;
 
-	const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+	const dayNames = [
+		'Monday',
+		'Tuesday',
+		'Wednesday',
+		'Thursday',
+		'Friday',
+		'Saturday',
+		'Sunday',
+	];
 	const mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
 
 	$: weekDates = getWeekDates(currentWeekStart);
@@ -73,7 +84,7 @@
 	function getMealsForCell(day: number, mealType: string): PlannedMeal[] {
 		if (!mealPlan) return [];
 		return mealPlan.planned_meals.filter(
-			(meal) => meal.day_of_week === day && meal.meal_type === mealType
+			(meal) => meal.day_of_week === day && meal.meal_type === mealType,
 		);
 	}
 
@@ -120,7 +131,9 @@
 
 	async function handleGenerateShoppingList() {
 		if (!mealPlan || mealPlan.planned_meals.length === 0) {
-			toast.error('No meals in this meal plan to generate a shopping list from.');
+			toast.error(
+				'No meals in this meal plan to generate a shopping list from.',
+			);
 			return;
 		}
 
@@ -128,11 +141,12 @@
 		try {
 			const newList = await generateFromMealPlan({
 				meal_plan_id: mealPlan.id,
-				list_name: `Shopping list for week of ${formatDate(weekDates[0])}`
+				list_name: `Shopping list for week of ${formatDate(weekDates[0])}`,
 			});
 			goto(`/shopping-lists/${newList.id}`);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to generate shopping list';
+			error =
+				err instanceof Error ? err.message : 'Failed to generate shopping list';
 			console.error('Failed to generate shopping list:', err);
 		} finally {
 			generatingShoppingList = false;
@@ -144,11 +158,12 @@
 		try {
 			const newList = await createShoppingList({
 				name: `Shopping list for week of ${formatDate(weekDates[0])}`,
-				description: 'Blank shopping list'
+				description: 'Blank shopping list',
 			});
 			goto(`/shopping-lists/${newList.id}`);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to create shopping list';
+			error =
+				err instanceof Error ? err.message : 'Failed to create shopping list';
 			console.error('Failed to create shopping list:', err);
 		} finally {
 			creatingBlankList = false;
@@ -174,11 +189,11 @@
 		</div>
 	</div>
 
-	<div class="actions-bar" style="text-align: center; margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-		<button
-			on:click={() => goto('/ai-menu')}
-			class="btn-ai-menu"
-		>
+	<div
+		class="actions-bar"
+		style="text-align: center; margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;"
+	>
+		<button on:click={() => goto('/ai-menu')} class="btn-ai-menu">
 			✨ AI Menu Suggestions
 		</button>
 		{#if mealPlan && mealPlan.planned_meals.length > 0}
@@ -187,7 +202,9 @@
 				class="btn-primary"
 				disabled={generatingShoppingList}
 			>
-				{generatingShoppingList ? '⏳ Generating...' : '🛒 Generate Shopping List from Meal Plan'}
+				{generatingShoppingList
+					? '⏳ Generating...'
+					: '🛒 Generate Shopping List from Meal Plan'}
 			</button>
 		{/if}
 		<button
@@ -230,7 +247,8 @@
 					<div
 						class="meal-cell"
 						on:click={() => openAddDialog(dayIndex, mealType)}
-						on:keydown={(e) => e.key === 'Enter' && openAddDialog(dayIndex, mealType)}
+						on:keydown={(e) =>
+							e.key === 'Enter' && openAddDialog(dayIndex, mealType)}
 						role="button"
 						tabindex="0"
 					>
@@ -238,11 +256,14 @@
 							<div
 								class="meal-item"
 								on:click|stopPropagation={() => openEditDialog(meal)}
-								on:keydown|stopPropagation={(e) => e.key === 'Enter' && openEditDialog(meal)}
+								on:keydown|stopPropagation={(e) =>
+									e.key === 'Enter' && openEditDialog(meal)}
 								role="button"
 								tabindex="0"
 							>
-								<div class="meal-name">{meal.recipe_name || `Recipe #${meal.recipe_id}`}</div>
+								<div class="meal-name">
+									{meal.recipe_name || `Recipe #${meal.recipe_id}`}
+								</div>
 								{#if meal.servings}
 									<div class="meal-servings">{meal.servings} servings</div>
 								{/if}
@@ -348,7 +369,11 @@
 	}
 
 	.day-header.today {
-		background: linear-gradient(135deg, var(--accent-50) 0%, var(--accent-100) 100%);
+		background: linear-gradient(
+			135deg,
+			var(--accent-50) 0%,
+			var(--accent-100) 100%
+		);
 		border-left: 3px solid var(--accent-500);
 		font-weight: 600;
 	}
@@ -470,7 +495,11 @@
 	}
 
 	.btn-ai-menu {
-		background: linear-gradient(135deg, var(--accent-500) 0%, var(--accent-700) 100%);
+		background: linear-gradient(
+			135deg,
+			var(--accent-500) 0%,
+			var(--accent-700) 100%
+		);
 		color: var(--neutral-white);
 		border: none;
 		padding: var(--space-sm) var(--space-md);

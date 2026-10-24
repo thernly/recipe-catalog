@@ -4,11 +4,11 @@
 		updatePlannedMeal,
 		deletePlannedMeal,
 		type PlannedMeal,
-		type PlannedMealUpdate
-	} from '$lib/api/meal-plans';
-	import { searchRecipes, type RecipeSummary } from '$lib/api/recipes';
-	import { dialog } from '$lib/stores/dialog';
-	import { toast } from '$lib/stores/toast';
+		type PlannedMealUpdate,
+	} from '#lib/api/meal-plans.js';
+	import { searchRecipes, type RecipeSummary } from '#lib/api/recipes.js';
+	import { dialog } from '#lib/stores/dialog.js';
+	import { toast } from '#lib/stores/toast.js';
 
 	export let meal: PlannedMeal;
 
@@ -27,7 +27,15 @@
 	let notes: string = meal.notes || '';
 	let searchQuery: string = '';
 
-	const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+	const dayNames = [
+		'Monday',
+		'Tuesday',
+		'Wednesday',
+		'Thursday',
+		'Friday',
+		'Saturday',
+		'Sunday',
+	];
 	const mealTypes = ['breakfast', 'lunch', 'dinner', 'snack', 'other'];
 
 	async function loadRecipes() {
@@ -38,7 +46,7 @@
 			const result = await searchRecipes({
 				query: searchQuery,
 				per_page: 50,
-				sort_by: 'recently_added'
+				sort_by: 'recently_added',
 			});
 			recipes = result.recipes;
 		} catch (err) {
@@ -104,7 +112,7 @@
 				} finally {
 					deleting = false;
 				}
-			}
+			},
 		});
 	}
 
@@ -121,8 +129,20 @@
 	});
 </script>
 
-<div class="modal-overlay" on:click={handleClose} on:keydown={(e) => e.key === 'Escape' && handleClose()} role="presentation">
-	<div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation role="dialog" tabindex="0" aria-modal="true">
+<div
+	class="modal-overlay"
+	on:click={handleClose}
+	on:keydown={(e) => e.key === 'Escape' && handleClose()}
+	role="presentation"
+>
+	<div
+		class="modal-content"
+		on:click|stopPropagation
+		on:keydown|stopPropagation
+		role="dialog"
+		tabindex="0"
+		aria-modal="true"
+	>
 		<div class="modal-header">
 			<h2>Edit Meal</h2>
 			<button class="close-btn" on:click={handleClose}>&times;</button>
@@ -147,7 +167,9 @@
 					<label for="meal-type">Meal Type</label>
 					<select id="meal-type" bind:value={mealType} class="input">
 						{#each mealTypes as type}
-							<option value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
+							<option value={type}
+								>{type.charAt(0).toUpperCase() + type.slice(1)}</option
+							>
 						{/each}
 					</select>
 				</div>
@@ -178,7 +200,8 @@
 								class="recipe-item"
 								class:selected={selectedRecipeId === recipe.id}
 								on:click={() => (selectedRecipeId = recipe.id)}
-								on:keydown={(e) => e.key === 'Enter' && (selectedRecipeId = recipe.id)}
+								on:keydown={(e) =>
+									e.key === 'Enter' && (selectedRecipeId = recipe.id)}
 								role="button"
 								tabindex="0"
 							>
@@ -216,20 +239,31 @@
 					bind:value={notes}
 					placeholder="Add any notes..."
 					rows="3"
-					class="input"
-				></textarea>
+					class="input"></textarea>
 			</div>
 		</div>
 
 		<div class="modal-footer">
-			<button class="btn-danger" on:click={handleDelete} disabled={saving || deleting}>
+			<button
+				class="btn-danger"
+				on:click={handleDelete}
+				disabled={saving || deleting}
+			>
 				{deleting ? 'Deleting...' : 'Delete'}
 			</button>
 			<div class="spacer"></div>
-			<button class="btn-secondary" on:click={handleClose} disabled={saving || deleting}>
+			<button
+				class="btn-secondary"
+				on:click={handleClose}
+				disabled={saving || deleting}
+			>
 				Cancel
 			</button>
-			<button class="btn-primary" on:click={handleSave} disabled={saving || deleting}>
+			<button
+				class="btn-primary"
+				on:click={handleSave}
+				disabled={saving || deleting}
+			>
 				{saving ? 'Saving...' : 'Save Changes'}
 			</button>
 		</div>

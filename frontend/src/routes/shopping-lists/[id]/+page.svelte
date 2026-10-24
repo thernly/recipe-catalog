@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 	import {
 		getShoppingList,
 		updateShoppingList,
@@ -15,10 +14,10 @@
 		type ShoppingList,
 		type ShoppingListItem,
 		type ShoppingListItemCreate,
-		type ShoppingListUpdate
-	} from '$lib/api/shopping-lists';
-	import { dialog } from '$lib/stores/dialog';
-	import { toast } from '$lib/stores/toast';
+		type ShoppingListUpdate,
+	} from '#lib/api/shopping-lists.js';
+	import { dialog } from '#lib/stores/dialog.js';
+	import { toast } from '#lib/stores/toast.js';
 
 	let listId: number;
 	let shoppingList: ShoppingList | null = null;
@@ -42,7 +41,8 @@
 	let sortBy: 'order' | 'category' | 'checked' = 'order';
 	let hideChecked = false;
 
-	$: listId = parseInt($page.params.id!);
+	export let params: { id: string };
+	$: listId = parseInt(params.id);
 	$: sortedItems = sortItems(shoppingList?.items || []);
 	$: visibleItems = hideChecked
 		? sortedItems.filter((item) => !item.checked)
@@ -75,7 +75,8 @@
 			editedName = shoppingList.name;
 			editedDescription = shoppingList.description || '';
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load shopping list';
+			error =
+				err instanceof Error ? err.message : 'Failed to load shopping list';
 			console.error('Failed to load shopping list:', err);
 		} finally {
 			loading = false;
@@ -99,7 +100,7 @@
 				item_name: newItemName.trim(),
 				quantity: newItemQuantity.trim() || undefined,
 				unit: newItemUnit.trim() || undefined,
-				category: newItemCategory || undefined
+				category: newItemCategory || undefined,
 			};
 
 			await addShoppingListItem(listId, data);
@@ -144,7 +145,7 @@
 					toast.error('Failed to delete item');
 					console.error('Failed to delete item:', err);
 				}
-			}
+			},
 		});
 	}
 
@@ -154,7 +155,7 @@
 		try {
 			const data: ShoppingListUpdate = {
 				name: editedName.trim(),
-				description: editedDescription.trim() || undefined
+				description: editedDescription.trim() || undefined,
 			};
 
 			await updateShoppingList(listId, data);
@@ -180,7 +181,7 @@
 					toast.error('Failed to archive list');
 					console.error('Failed to archive list:', err);
 				}
-			}
+			},
 		});
 	}
 
@@ -197,7 +198,8 @@
 	async function handleDeleteList() {
 		dialog.show({
 			title: 'Delete List',
-			message: 'Are you sure you want to delete this list? This action cannot be undone.',
+			message:
+				'Are you sure you want to delete this list? This action cannot be undone.',
 			onConfirm: async () => {
 				try {
 					await deleteShoppingList(listId);
@@ -208,7 +210,7 @@
 					toast.error('Failed to delete list');
 					console.error('Failed to delete list:', err);
 				}
-			}
+			},
 		});
 	}
 
@@ -218,13 +220,16 @@
 	});
 </script>
 
-<svelte:head>
-	<title>{shoppingList?.name || 'Shopping List'} - Recipe Catalog</title>
-</svelte:head>
+<svelte:head
+	><title>{shoppingList?.name || 'Shopping List'} - Recipe Catalog</title
+	></svelte:head
+>
 
 <div class="container mx-auto px-4 py-8 max-w-4xl">
 	{#if error}
-		<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+		<div
+			class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4"
+		>
 			{error}
 		</div>
 	{/if}
@@ -236,7 +241,10 @@
 	{:else if shoppingList}
 		<!-- Header -->
 		<div class="mb-6">
-			<a href="/shopping-lists" class="text-blue-600 hover:underline mb-4 inline-block">
+			<a
+				href="/shopping-lists"
+				class="text-blue-600 hover:underline mb-4 inline-block"
+			>
 				← Back to Lists
 			</a>
 
@@ -250,10 +258,9 @@
 					<textarea
 						bind:value={editedDescription}
 						class="w-full rounded px-3 py-2 mt-2"
-					style="color: var(--text-600); border: 1px solid var(--neutral-300); background: var(--neutral-white);"
+						style="color: var(--text-600); border: 1px solid var(--neutral-300); background: var(--neutral-white);"
 						rows="2"
-						placeholder="Description (optional)"
-					></textarea>
+						placeholder="Description (optional)"></textarea>
 					<div class="flex gap-2 mt-2">
 						<button
 							on:click={handleUpdateList}
@@ -268,7 +275,7 @@
 								editedDescription = shoppingList?.description || '';
 							}}
 							class="px-3 py-1 rounded"
-						style="background: var(--neutral-200); color: var(--text-900);"
+							style="background: var(--neutral-200); color: var(--text-900);"
 						>
 							Cancel
 						</button>
@@ -319,7 +326,10 @@
 			<div class="flex gap-4 items-center text-sm">
 				<label class="flex items-center gap-2">
 					<span>Sort by:</span>
-					<select bind:value={sortBy} class="border border-gray-300 rounded px-2 py-1">
+					<select
+						bind:value={sortBy}
+						class="border border-gray-300 rounded px-2 py-1"
+					>
 						<option value="order">Order</option>
 						<option value="category">Category</option>
 						<option value="checked">Status</option>
@@ -335,7 +345,10 @@
 		<!-- Add item form -->
 		<div class="bg-gray-50 rounded-lg p-4 mb-6">
 			<h2 class="font-semibold mb-3">Add Item</h2>
-			<form on:submit|preventDefault={handleAddItem} class="grid gap-3 md:grid-cols-4">
+			<form
+				on:submit|preventDefault={handleAddItem}
+				class="grid gap-3 md:grid-cols-4"
+			>
 				<div class="md:col-span-2">
 					<input
 						type="text"
@@ -398,10 +411,10 @@
 
 						<!-- Item details -->
 						<div
-						class="flex-1"
-						class:line-through={item.checked}
-						style="{item.checked ? 'color: var(--text-500);' : ''}"
-					>
+							class="flex-1"
+							class:line-through={item.checked}
+							style={item.checked ? 'color: var(--text-500);' : ''}
+						>
 							<div class="font-medium">{item.item_name}</div>
 							<div class="text-sm text-gray-600">
 								{#if item.quantity}
@@ -421,13 +434,18 @@
 							class="text-red-600 hover:text-red-800 p-1"
 							aria-label="Delete item"
 						>
-							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg
+								class="w-5 h-5"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
 									stroke-width="2"
 									d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-								/>
+								></path>
 							</svg>
 						</button>
 					</div>
@@ -436,17 +454,19 @@
 
 			<!-- Summary -->
 			<div class="mt-6 text-sm text-gray-600">
-				{shoppingList.items.filter((i) => i.checked).length} of {shoppingList.items.length} items
-				checked
+				{shoppingList.items.filter((i) => i.checked).length} of {shoppingList
+					.items.length} items checked
 			</div>
 		{/if}
 	{:else}
 		<div class="text-center py-12">
 			<p style="color: var(--text-600);">Shopping list not found.</p>
-			<a href="/shopping-lists" class="text-blue-600 hover:underline mt-4 inline-block">
+			<a
+				href="/shopping-lists"
+				class="text-blue-600 hover:underline mt-4 inline-block"
+			>
 				← Back to Lists
 			</a>
 		</div>
 	{/if}
 </div>
-
