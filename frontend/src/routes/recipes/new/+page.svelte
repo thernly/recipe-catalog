@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
-	import { createRecipe, type RecipeCreate } from '$lib/api/recipes';
-	import RecipeForm from '$lib/components/RecipeForm.svelte';
-	import { dialog } from '$lib/stores/dialog';
-	import { toast } from '$lib/stores/toast';
+	import { browser } from '$app/env';
+	import { createRecipe, type RecipeCreate } from '#lib/api/recipes.js';
+	import RecipeForm from '#lib/components/RecipeForm.svelte';
+	import { dialog } from '#lib/stores/dialog.js';
+	import { toast } from '#lib/stores/toast.js';
 
 	let saving = false;
 	let error: string | null = null;
@@ -36,10 +36,11 @@
 	function handleCancel() {
 		dialog.show({
 			title: 'Cancel Recipe Creation',
-			message: 'Are you sure you want to cancel? Any unsaved changes will be lost (except auto-saved drafts).',
+			message:
+				'Are you sure you want to cancel? Any unsaved changes will be lost (except auto-saved drafts).',
 			onConfirm: () => {
 				goto('/recipes');
-			}
+			},
 		});
 	}
 </script>
@@ -60,13 +61,16 @@
 				← Back to Recipes
 			</button>
 
-			<h1 class="text-4xl font-bold" style="color: var(--text-900);">Add New Recipe</h1>
+			<h1 class="text-4xl font-bold" style="color: var(--text-900);">
+				Add New Recipe
+			</h1>
 			<p class="text-lg mt-2" style="color: var(--text-600);">
 				Manually add a recipe to your collection
 			</p>
 		</div>
 
 		<!-- Form -->
+
 		<RecipeForm on:submit={handleSubmit} on:cancel={handleCancel} {saving} />
 	</div>
 </div>

@@ -1,12 +1,22 @@
 <script lang="ts">
-	import type { RecipeSummary } from '$lib/api/recipes';
-	import { UtensilsCrossed, Clock, Star, Edit, Trash2, Download, PencilLine } from '@lucide/svelte';
+	import type { RecipeSummary } from '#lib/api/recipes.js';
+	import {
+		UtensilsCrossed,
+		Clock,
+		Star,
+		Edit,
+		Trash2,
+		Download,
+		PencilLine,
+	} from '@lucide/svelte';
 
 	export let recipe: RecipeSummary;
 	export let onview: ((recipe: RecipeSummary) => void) | undefined = undefined;
 	export let onedit: ((recipe: RecipeSummary) => void) | undefined = undefined;
-	export let ondelete: ((recipe: RecipeSummary) => void) | undefined = undefined;
-	export let onfavorite: ((recipe: RecipeSummary) => void) | undefined = undefined;
+	export let ondelete: ((recipe: RecipeSummary) => void) | undefined =
+		undefined;
+	export let onfavorite: ((recipe: RecipeSummary) => void) | undefined =
+		undefined;
 
 	function formatTime(minutes: number | undefined): string {
 		if (!minutes) return '';
@@ -39,12 +49,17 @@
 		<button on:click={handleView} class="recipe-list-thumbnail shrink-0">
 			{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
 				<img
-					src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
+					src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe
+						.recipe_data.images[0].data}"
 					alt={recipe.name}
 					class="w-full h-full object-cover"
 				/>
 			{:else if recipe.image_url}
-				<img src={recipe.image_url} alt={recipe.name} class="w-full h-full object-cover" />
+				<img
+					src={recipe.image_url}
+					alt={recipe.name}
+					class="w-full h-full object-cover"
+				/>
 			{:else}
 				<div
 					class="w-full h-full flex items-center justify-center"
@@ -68,16 +83,24 @@
 					</span>
 				{/if}
 				{#if recipe.category}
-					<span class="text-sm" style="color: var(--text-500);">• {recipe.category}</span>
+					<span class="text-sm" style="color: var(--text-500);"
+						>• {recipe.category}</span
+					>
 				{/if}
 				{#if recipe.total_time_minutes}
-					<span class="text-sm flex items-center gap-1" style="color: var(--text-500);">
+					<span
+						class="text-sm flex items-center gap-1"
+						style="color: var(--text-500);"
+					>
 						<span>•</span>
 						<Clock size={14} aria-hidden="true" />
 						<span>{formatTime(recipe.total_time_minutes)}</span>
 					</span>
 				{/if}
-				<span class="text-xs flex items-center gap-1" style="color: var(--text-500);">
+				<span
+					class="text-xs flex items-center gap-1"
+					style="color: var(--text-500);"
+				>
 					<span>•</span>
 					{#if recipe.source_type === 'imported'}
 						<Download size={12} aria-hidden="true" />
@@ -99,7 +122,11 @@
 			>
 				<Star size={16} aria-hidden="true" />
 			</button>
-			<button on:click={handleEdit} class="action-btn-small" aria-label="Edit recipe">
+			<button
+				on:click={handleEdit}
+				class="action-btn-small"
+				aria-label="Edit recipe"
+			>
 				<Edit size={16} aria-hidden="true" />
 			</button>
 			<button

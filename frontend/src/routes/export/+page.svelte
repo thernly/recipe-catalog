@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { getUserStats } from '$lib/api/users';
-	import type { UserStats } from '$lib/api/users';
-	import { API_V1_URL } from '$lib/config';
-	import ExportCard from '$lib/components/export/ExportCard.svelte';
+	import { getUserStats } from '#lib/api/users.js';
+	import type { UserStats } from '#lib/api/users.js';
+	import { API_V1_URL } from '#lib/config.js';
+	import ExportCard from '#lib/components/export/ExportCard.svelte';
 
 	let stats: UserStats | null = null;
 	let loading = true;
@@ -29,7 +29,11 @@
 	}
 
 	// Export function
-	async function exportData(endpoint: string, format: string, filename: string) {
+	async function exportData(
+		endpoint: string,
+		format: string,
+		filename: string,
+	) {
 		exporting = true;
 		exportStatus = '';
 
@@ -41,12 +45,14 @@
 
 			// Fetch the export using cookie-based authentication
 			const response = await fetch(url, {
-				credentials: 'include' // Send authentication cookies
+				credentials: 'include', // Send authentication cookies
 			});
 
 			if (!response.ok) {
 				const errorText = await response.text();
-				throw new Error(`Export failed: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`);
+				throw new Error(
+					`Export failed: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`,
+				);
 			}
 
 			// Get the blob
@@ -105,21 +111,29 @@
 <div class="min-h-screen bg-neutral-50">
 	<div class="container-custom py-8">
 		<div class="header-section">
-			<h1 class="text-4xl font-bold" style="color: var(--text-900);">Export Your Data</h1>
-			<p class="subtitle">Download your recipes and collections in various formats</p>
+			<h1 class="text-4xl font-bold" style="color: var(--text-900);">
+				Export Your Data
+			</h1>
+			<p class="subtitle">
+				Download your recipes and collections in various formats
+			</p>
 		</div>
 
 		{#if loading}
 			<!-- Loading state -->
 			<div class="text-center py-16">
 				<div class="text-4xl mb-4">⏳</div>
-				<p class="text-lg" style="color: var(--text-600);">Loading export options...</p>
+				<p class="text-lg" style="color: var(--text-600);">
+					Loading export options...
+				</p>
 			</div>
 		{:else if error}
 			<!-- Error state -->
 			<div class="text-center py-16">
 				<div class="text-4xl mb-4">⚠️</div>
-				<p class="text-lg mb-2" style="color: var(--text-900);">Failed to load export options</p>
+				<p class="text-lg mb-2" style="color: var(--text-900);">
+					Failed to load export options
+				</p>
 				<p class="text-sm mb-4" style="color: var(--text-600);">{error}</p>
 				<button on:click={loadStats} class="btn btn-primary">Try Again</button>
 			</div>
@@ -158,9 +172,24 @@
 					description="Download all your recipes in your preferred format"
 					{exporting}
 					formats={[
-						{ name: 'JSON', emoji: '📄', desc: 'Complete data, machine-readable', value: 'json' },
-						{ name: 'Markdown', emoji: '📝', desc: 'Human-readable, formatted text', value: 'markdown' },
-						{ name: 'Plain Text', emoji: '📃', desc: 'Simple, universal format', value: 'text' }
+						{
+							name: 'JSON',
+							emoji: '📄',
+							desc: 'Complete data, machine-readable',
+							value: 'json',
+						},
+						{
+							name: 'Markdown',
+							emoji: '📝',
+							desc: 'Human-readable, formatted text',
+							value: 'markdown',
+						},
+						{
+							name: 'Plain Text',
+							emoji: '📃',
+							desc: 'Simple, universal format',
+							value: 'text',
+						},
 					]}
 					on:export={(e) => exportRecipes(e.detail)}
 				/>
@@ -172,8 +201,18 @@
 					description="Download your collections and their recipes"
 					{exporting}
 					formats={[
-						{ name: 'JSON', emoji: '📄', desc: 'Complete collection data', value: 'json' },
-						{ name: 'Markdown', emoji: '📝', desc: 'Formatted collection lists', value: 'markdown' }
+						{
+							name: 'JSON',
+							emoji: '📄',
+							desc: 'Complete collection data',
+							value: 'json',
+						},
+						{
+							name: 'Markdown',
+							emoji: '📝',
+							desc: 'Formatted collection lists',
+							value: 'markdown',
+						},
 					]}
 					on:export={(e) => exportCollections(e.detail)}
 				/>
@@ -187,11 +226,15 @@
 					featured={true}
 				>
 					<p class="backup-info">
-						This export includes all your data in a single JSON file. Perfect for backups or
-						migrating to another instance.
+						This export includes all your data in a single JSON file. Perfect
+						for backups or migrating to another instance.
 					</p>
 
-					<button on:click={exportAllData} disabled={exporting} class="btn btn-primary btn-large">
+					<button
+						on:click={exportAllData}
+						disabled={exporting}
+						class="btn btn-primary btn-large"
+					>
 						{exporting ? 'Exporting...' : '⬇️ Download Complete Backup'}
 					</button>
 				</ExportCard>
@@ -201,10 +244,14 @@
 			<div class="info-box">
 				<h3 class="info-title">ℹ️ About Data Exports</h3>
 				<ul class="info-list">
-					<li>All exports are generated on-demand and include only your data</li>
+					<li>
+						All exports are generated on-demand and include only your data
+					</li>
 					<li>Exports do not include images - only image URLs are exported</li>
 					<li>JSON exports can be used for backups or data portability</li>
-					<li>Markdown and text exports are great for printing or offline reading</li>
+					<li>
+						Markdown and text exports are great for printing or offline reading
+					</li>
 					<li>Your data remains private and secure during export</li>
 				</ul>
 			</div>

@@ -3,7 +3,7 @@
  */
 
 import { apiRequest } from "./client";
-import type { Theme } from "$lib/types";
+import type { Theme } from "#lib/types/index.js";
 
 export interface User {
   id: number;

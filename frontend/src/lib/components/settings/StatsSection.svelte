@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { UserStats, User } from '$lib/api/users';
+	import type { UserStats, User } from '#lib/api/users.js';
 
 	export let stats: UserStats;
 	export let user: User;
@@ -43,7 +43,9 @@
 		<div class="stat-card">
 			<div class="stat-icon">👤</div>
 			<div class="stat-value">{user.display_name || ''}</div>
-			<div class="stat-label">Member Since {new Date(user.created_at).getFullYear()}</div>
+			<div class="stat-label">
+				Member Since {new Date(user.created_at).getFullYear()}
+			</div>
 		</div>
 	</div>
 </div>

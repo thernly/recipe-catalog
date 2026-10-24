@@ -1,12 +1,31 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { getRecipe, deleteRecipe, duplicateRecipe, exportRecipe, type Recipe } from '$lib/api/recipes';
-	import { generateFromRecipe, type ShoppingListSummary } from '$lib/api/shopping-lists';
-	import { dialog } from '$lib/stores/dialog';
-	import { toast } from '$lib/stores/toast';
-	import { ArrowLeft, Edit, Copy, ShoppingCart, Download, Printer, Trash2, Loader2, FileText } from '@lucide/svelte';
+	import {
+		getRecipe,
+		deleteRecipe,
+		duplicateRecipe,
+		exportRecipe,
+		type Recipe,
+	} from '#lib/api/recipes.js';
+	import {
+		generateFromRecipe,
+		type ShoppingListSummary,
+	} from '#lib/api/shopping-lists.js';
+	import { dialog } from '#lib/stores/dialog.js';
+	import { toast } from '#lib/stores/toast.js';
+	import {
+		ArrowLeft,
+		Edit,
+		Copy,
+		ShoppingCart,
+		Download,
+		Printer,
+		Trash2,
+		Loader2,
+		FileText,
+	} from '@lucide/svelte';
 
 	let recipe: Recipe | null = null;
 	let loading = true;
@@ -22,7 +41,8 @@
 	let addingToList = false;
 
 	// Get recipe ID from URL
-	$: recipeId = parseInt($page.params.id!);
+	export let params: { id: string };
+	$: recipeId = parseInt(params.id);
 
 	async function loadRecipe() {
 		loading = true;
@@ -57,7 +77,8 @@
 	}
 
 	$: instructionsCount = recipe ? getInstructions(recipe).length : 0;
-	$: stepsProgress = instructionsCount > 0 ? (completedSteps.size / instructionsCount) * 100 : 0;
+	$: stepsProgress =
+		instructionsCount > 0 ? (completedSteps.size / instructionsCount) * 100 : 0;
 
 	function getIngredients(recipe: Recipe): string[] {
 		if (recipe.recipe_data?.recipeIngredient) {
@@ -106,14 +127,18 @@
 
 	function handleBackToRecipes() {
 		// Check if we have a returnUrl query parameter first
-		const returnUrl = $page.url.searchParams.get('returnUrl');
+		const returnUrl = page.url.searchParams.get('returnUrl');
 		if (returnUrl) {
 			// Use the explicit return URL (preserves search filters)
-			goto(decodeURIComponent(returnUrl));
+			goto(decodeURIComponent(returnUrl)).catch(() => goto('/recipes'));
 		} else {
 			// Fallback: Check if we came from the recipes page by looking at the referrer
 			const referrer = document.referrer;
-			if (referrer && referrer.includes('/recipes') && !referrer.includes('/recipes/')) {
+			if (
+				referrer &&
+				referrer.includes('/recipes') &&
+				!referrer.includes('/recipes/')
+			) {
 				// Go back to preserve search state
 				window.history.back();
 			} else {
@@ -140,7 +165,7 @@
 					toast.error('Failed to delete recipe');
 					console.error('Delete failed:', err);
 				}
-			}
+			},
 		});
 	}
 
@@ -171,7 +196,12 @@
 			const blob = await exportRecipe(recipe.id, format);
 
 			// Generate filename
-			const extensions = { json: 'json', markdown: 'md', text: 'txt', pdf: 'pdf' };
+			const extensions = {
+				json: 'json',
+				markdown: 'md',
+				text: 'txt',
+				pdf: 'pdf',
+			};
 			const safeName = recipe.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
 			const filename = `${safeName}.${extensions[format]}`;
 
@@ -185,7 +215,9 @@
 			window.URL.revokeObjectURL(url);
 			document.body.removeChild(a);
 		} catch (err) {
-			toast.error(`Failed to export recipe: ${err instanceof Error ? err.message : 'Unknown error'}`);
+			toast.error(
+				`Failed to export recipe: ${err instanceof Error ? err.message : 'Unknown error'}`,
+			);
 			console.error('Export failed:', err);
 		} finally {
 			exporting = false;
@@ -206,13 +238,15 @@
 		try {
 			const newList = await generateFromRecipe({
 				recipe_id: recipe.id,
-				list_name: `Shopping list for ${recipe.name}`
+				list_name: `Shopping list for ${recipe.name}`,
 			});
 			showAddToShoppingListDialog = false;
 			toast.success('Shopping list created successfully');
 			goto(`/shopping-lists/${newList.id}`);
 		} catch (err) {
-			toast.error(`Failed to create shopping list: ${err instanceof Error ? err.message : 'Unknown error'}`);
+			toast.error(
+				`Failed to create shopping list: ${err instanceof Error ? err.message : 'Unknown error'}`,
+			);
 			console.error('Failed to create shopping list:', err);
 		} finally {
 			addingToList = false;
@@ -228,9 +262,9 @@
 	});
 </script>
 
-<svelte:head>
-	<title>{recipe?.name || 'Loading...'} - Recipe Catalog</title>
-</svelte:head>
+<svelte:head
+	><title>{recipe?.name || 'Loading...'} - Recipe Catalog</title></svelte:head
+>
 
 <div class="min-h-screen bg-neutral-50">
 	{#if loading}
@@ -245,9 +279,15 @@
 		<!-- Error state -->
 		<div class="container-custom py-16 text-center">
 			<div class="text-4xl mb-4">⚠️</div>
-			<p class="text-lg mb-2" style="color: var(--text-900);">Recipe not found</p>
-			<p class="text-sm mb-4" style="color: var(--text-600);">{error || 'This recipe may have been deleted.'}</p>
-			<button on:click={handleBackToRecipes} class="btn btn-primary">Back to Recipes</button>
+			<p class="text-lg mb-2" style="color: var(--text-900);">
+				Recipe not found
+			</p>
+			<p class="text-sm mb-4" style="color: var(--text-600);">
+				{error || 'This recipe may have been deleted.'}
+			</p>
+			<button on:click={handleBackToRecipes} class="btn btn-primary"
+				>Back to Recipes</button
+			>
 		</div>
 	{:else}
 		<!-- Recipe content -->
@@ -255,10 +295,7 @@
 			<!-- Back Button Bar -->
 			<div class="back-button-bar">
 				<div class="container-custom">
-					<button
-						on:click={handleBackToRecipes}
-						class="back-button"
-					>
+					<button on:click={handleBackToRecipes} class="back-button">
 						<ArrowLeft size={20} aria-hidden="true" />
 						<span>Back to Recipes</span>
 					</button>
@@ -275,15 +312,24 @@
 
 						{#if recipe.source_url}
 							<p class="text-base mb-2" style="color: var(--text-600);">
-								Source: <a href={recipe.source_url} target="_blank" class="link">
+								Source: <a
+									href={recipe.source_url}
+									target="_blank"
+									class="link"
+								>
 									{new URL(recipe.source_url).hostname}
 								</a>
 							</p>
 						{:else}
-							<p class="text-base mb-2" style="color: var(--text-600);">Personal Recipe</p>
+							<p class="text-base mb-2" style="color: var(--text-600);">
+								Personal Recipe
+							</p>
 						{/if}
 
-						<div class="flex items-center gap-3 text-sm" style="color: var(--text-500);">
+						<div
+							class="flex items-center gap-3 text-sm"
+							style="color: var(--text-500);"
+						>
 							<span class="flex items-center gap-1">
 								{#if recipe.source_type === 'imported'}
 									<Download size={14} aria-hidden="true" />
@@ -296,7 +342,11 @@
 							{#if recipe.is_modified && recipe.source_type === 'imported'}
 								<span>• Modified</span>
 							{/if}
-							<span>• Added {new Date(recipe.created_at).toLocaleDateString()}</span>
+							<span
+								>• Added {new Date(
+									recipe.created_at,
+								).toLocaleDateString()}</span
+							>
 							{#if recipe.creator_display_name}
 								<span>• Created by {recipe.creator_display_name}</span>
 							{/if}
@@ -305,23 +355,30 @@
 				</div>
 			</div>
 
-		<!-- Main content -->
-		<div class="container-custom py-8 recipe-content">
-			<!-- Hero Image -->
-			{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
-				<div class="recipe-hero-image mb-6">
-					<img
-						src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe.recipe_data.images[0].data}"
-						alt={recipe.name}
-					/>
-				</div>
-			{:else if recipe.image_url}
-				<div class="recipe-hero-image mb-6">
-					<img src={recipe.image_url} alt={recipe.name} />
-				</div>
-			{/if}				<!-- Description -->
+			<!-- Main content -->
+			<div class="container-custom py-8 recipe-content">
+				<!-- Hero Image -->
+				{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
+					<div class="recipe-hero-image mb-6">
+						<img
+							src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe
+								.recipe_data.images[0].data}"
+							alt={recipe.name}
+						/>
+					</div>
+				{:else if recipe.image_url}
+					<div class="recipe-hero-image mb-6">
+						<img src={recipe.image_url} alt={recipe.name} />
+					</div>
+				{/if}
+				<!-- Description -->
 				{#if recipe.description}
-					<p class="text-lg leading-relaxed mb-8" style="color: var(--text-700);">{recipe.description}</p>
+					<p
+						class="text-lg leading-relaxed mb-8"
+						style="color: var(--text-700);"
+					>
+						{recipe.description}
+					</p>
 				{/if}
 
 				<!-- Consolidated Metadata card -->
@@ -331,14 +388,18 @@
 							{#if recipe.recipe_data?.prepTime}
 								<div class="metadata-item">
 									<span class="metadata-label-inline">Prep:</span>
-									<span class="metadata-value-inline">{formatTime(recipe.recipe_data.prepTime)}</span>
+									<span class="metadata-value-inline"
+										>{formatTime(recipe.recipe_data.prepTime)}</span
+									>
 								</div>
 							{/if}
 
 							{#if recipe.recipe_data?.cookTime}
 								<div class="metadata-item">
 									<span class="metadata-label-inline">Cook:</span>
-									<span class="metadata-value-inline">{formatTime(recipe.recipe_data.cookTime)}</span>
+									<span class="metadata-value-inline"
+										>{formatTime(recipe.recipe_data.cookTime)}</span
+									>
 								</div>
 							{/if}
 
@@ -346,7 +407,9 @@
 								<div class="metadata-item">
 									<span class="metadata-label-inline">Total:</span>
 									<span class="metadata-value-inline">
-										{recipe.recipe_data?.totalTime ? formatTime(recipe.recipe_data.totalTime) : `${recipe.total_time_minutes}min`}
+										{recipe.recipe_data?.totalTime
+											? formatTime(recipe.recipe_data.totalTime)
+											: `${recipe.total_time_minutes}min`}
 									</span>
 								</div>
 							{/if}
@@ -354,7 +417,9 @@
 							{#if recipe.recipe_data?.recipeYield}
 								<div class="metadata-item">
 									<span class="metadata-label-inline">Yield:</span>
-									<span class="metadata-value-inline">{recipe.recipe_data.recipeYield}</span>
+									<span class="metadata-value-inline"
+										>{recipe.recipe_data.recipeYield}</span
+									>
 								</div>
 							{/if}
 						</div>
@@ -371,7 +436,9 @@
 							<span class="tag tag-secondary">{recipe.category}</span>
 						{/if}
 						{#if recipe.recipe_data?.keywords}
-							{#each recipe.recipe_data.keywords.split(',').slice(0, 5) as keyword}
+							{#each recipe.recipe_data.keywords
+								.split(',')
+								.slice(0, 5) as keyword}
 								<span class="tag tag-outline">{keyword.trim()}</span>
 							{/each}
 						{/if}
@@ -381,7 +448,12 @@
 				<!-- Equipment (if any) -->
 				{#if recipe.recipe_data?.equipment && recipe.recipe_data.equipment.length > 0}
 					<div class="card mb-8">
-						<h2 class="text-xl font-semibold mb-3" style="color: var(--text-900);">Equipment</h2>
+						<h2
+							class="text-xl font-semibold mb-3"
+							style="color: var(--text-900);"
+						>
+							Equipment
+						</h2>
 						<ul class="equipment-list">
 							{#each recipe.recipe_data.equipment as item}
 								<li style="color: var(--text-700);">{item}</li>
@@ -394,7 +466,10 @@
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 					<!-- Ingredients -->
 					<div class="card">
-						<h2 class="text-2xl font-semibold mb-4" style="color: var(--text-900);">
+						<h2
+							class="text-2xl font-semibold mb-4"
+							style="color: var(--text-900);"
+						>
 							Ingredients
 						</h2>
 
@@ -425,7 +500,10 @@
 					<!-- Instructions -->
 					<div class="card">
 						<div class="instructions-header">
-							<h2 class="text-2xl font-semibold" style="color: var(--text-900);">
+							<h2
+								class="text-2xl font-semibold"
+								style="color: var(--text-900);"
+							>
 								Instructions
 							</h2>
 							<span class="steps-counter">
@@ -435,7 +513,10 @@
 
 						<!-- Progress bar -->
 						<div class="steps-progress-container">
-							<div class="steps-progress-bar" style="width: {stepsProgress}%"></div>
+							<div
+								class="steps-progress-bar"
+								style="width: {stepsProgress}%"
+							></div>
 						</div>
 
 						<ol class="instructions-list">
@@ -448,7 +529,11 @@
 										class="step-number"
 										class:completed={completedSteps.has(index)}
 										on:click={() => toggleStep(index)}
-										aria-label="Mark step {index + 1} as {completedSteps.has(index) ? 'incomplete' : 'complete'}"
+										aria-label="Mark step {index + 1} as {completedSteps.has(
+											index,
+										)
+											? 'incomplete'
+											: 'complete'}"
 									>
 										{#if completedSteps.has(index)}
 											<span class="step-check">✓</span>
@@ -471,7 +556,12 @@
 				<!-- Notes (if any) -->
 				{#if recipe.recipe_data?.notes}
 					<div class="card mt-8">
-						<h2 class="text-xl font-semibold mb-3" style="color: var(--text-900);">Notes & Tips</h2>
+						<h2
+							class="text-xl font-semibold mb-3"
+							style="color: var(--text-900);"
+						>
+							Notes & Tips
+						</h2>
 						<p style="color: var(--text-700);">{recipe.recipe_data.notes}</p>
 					</div>
 				{/if}
@@ -479,14 +569,21 @@
 				<!-- Nutrition (if any) -->
 				{#if recipe.recipe_data?.nutrition}
 					<details class="card mt-8">
-						<summary class="text-xl font-semibold cursor-pointer" style="color: var(--text-900);">
+						<summary
+							class="text-xl font-semibold cursor-pointer"
+							style="color: var(--text-900);"
+						>
 							Nutrition Information
 						</summary>
 						<div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
 							{#each Object.entries(recipe.recipe_data.nutrition) as [key, value]}
 								<div>
-									<div class="text-sm" style="color: var(--text-600);">{formatNutritionLabel(key)}</div>
-									<div class="font-semibold" style="color: var(--text-900);">{value}</div>
+									<div class="text-sm" style="color: var(--text-600);">
+										{formatNutritionLabel(key)}
+									</div>
+									<div class="font-semibold" style="color: var(--text-900);">
+										{value}
+									</div>
 								</div>
 							{/each}
 						</div>
@@ -501,7 +598,10 @@
 				<div class="action-bar-content">
 					<!-- Primary Actions -->
 					<div class="action-group">
-						<button on:click={() => goto(`/recipes/${recipe?.id}/edit`)} class="btn btn-primary flex items-center gap-2">
+						<button
+							on:click={() => goto(`/recipes/${recipe?.id}/edit`)}
+							class="btn btn-primary flex items-center gap-2"
+						>
 							<Edit size={18} aria-hidden="true" />
 							<span>Edit Recipe</span>
 						</button>
@@ -521,19 +621,26 @@
 
 					<!-- Utility Actions -->
 					<div class="action-group">
-						<button on:click={handleDuplicate} class="btn btn-secondary flex items-center gap-2">
+						<button
+							on:click={handleDuplicate}
+							class="btn btn-secondary flex items-center gap-2"
+						>
 							<Copy size={16} aria-hidden="true" />
 							<span>Duplicate</span>
 						</button>
-					<button on:click={handlePrint} data-print-hide class="btn btn-secondary flex items-center gap-2">
-						<Printer size={16} aria-hidden="true" />
-						<span>Print</span>
-					</button>
+						<button
+							on:click={handlePrint}
+							data-print-hide
+							class="btn btn-secondary flex items-center gap-2"
+						>
+							<Printer size={16} aria-hidden="true" />
+							<span>Print</span>
+						</button>
 
 						<!-- Export dropdown -->
 						<div class="export-dropdown">
 							<button
-								on:click={() => showExportMenu = !showExportMenu}
+								on:click={() => (showExportMenu = !showExportMenu)}
 								class="btn btn-secondary flex items-center gap-2"
 								disabled={exporting}
 							>
@@ -546,19 +653,31 @@
 							</button>
 							{#if showExportMenu}
 								<div class="export-menu export-menu-up">
-									<button on:click={() => handleExport('pdf')} class="export-menu-item">
+									<button
+										on:click={() => handleExport('pdf')}
+										class="export-menu-item"
+									>
 										<FileText size={14} aria-hidden="true" />
 										<span>PDF</span>
 									</button>
-									<button on:click={() => handleExport('json')} class="export-menu-item">
+									<button
+										on:click={() => handleExport('json')}
+										class="export-menu-item"
+									>
 										<FileText size={14} aria-hidden="true" />
 										<span>JSON</span>
 									</button>
-									<button on:click={() => handleExport('markdown')} class="export-menu-item">
+									<button
+										on:click={() => handleExport('markdown')}
+										class="export-menu-item"
+									>
 										<FileText size={14} aria-hidden="true" />
 										<span>Markdown</span>
 									</button>
-									<button on:click={() => handleExport('text')} class="export-menu-item">
+									<button
+										on:click={() => handleExport('text')}
+										class="export-menu-item"
+									>
 										<FileText size={14} aria-hidden="true" />
 										<span>Plain Text</span>
 									</button>
@@ -569,7 +688,10 @@
 
 					<!-- Danger Actions -->
 					<div class="action-group">
-						<button on:click={handleDelete} class="btn btn-danger flex items-center gap-2">
+						<button
+							on:click={handleDelete}
+							class="btn btn-danger flex items-center gap-2"
+						>
 							<Trash2 size={16} aria-hidden="true" />
 							<span>Delete</span>
 						</button>
@@ -812,14 +934,26 @@
 	}
 
 	@keyframes checkPop {
-		0% { transform: scale(1); }
-		50% { transform: scale(1.2); }
-		100% { transform: scale(1); }
+		0% {
+			transform: scale(1);
+		}
+		50% {
+			transform: scale(1.2);
+		}
+		100% {
+			transform: scale(1);
+		}
 	}
 
 	@keyframes checkmarkDraw {
-		0% { opacity: 0; transform: translate(-50%, -60%) rotate(45deg) scale(0); }
-		100% { opacity: 1; transform: translate(-50%, -60%) rotate(45deg) scale(1); }
+		0% {
+			opacity: 0;
+			transform: translate(-50%, -60%) rotate(45deg) scale(0);
+		}
+		100% {
+			opacity: 1;
+			transform: translate(-50%, -60%) rotate(45deg) scale(1);
+		}
 	}
 
 	/* Instructions Styling */
@@ -893,7 +1027,11 @@
 		font-size: 1.125rem;
 		font-weight: 600;
 		color: var(--neutral-white);
-		background: linear-gradient(135deg, var(--accent-500) 0%, var(--accent-600) 100%);
+		background: linear-gradient(
+			135deg,
+			var(--accent-500) 0%,
+			var(--accent-600) 100%
+		);
 		box-shadow: var(--shadow-md);
 		border: none;
 		cursor: pointer;
@@ -915,9 +1053,15 @@
 	}
 
 	@keyframes stepComplete {
-		0% { transform: scale(1); }
-		50% { transform: scale(1.15); }
-		100% { transform: scale(1); }
+		0% {
+			transform: scale(1);
+		}
+		50% {
+			transform: scale(1.15);
+		}
+		100% {
+			transform: scale(1);
+		}
 	}
 
 	.step-text {
@@ -946,7 +1090,7 @@
 	}
 
 	.btn-danger {
-		background: #EF4444;
+		background: #ef4444;
 		color: white;
 		padding: 0.5rem 1rem;
 		border-radius: var(--radius-md);
@@ -957,7 +1101,7 @@
 	}
 
 	.btn-danger:hover {
-		background: #DC2626;
+		background: #dc2626;
 	}
 
 	.export-dropdown {

@@ -5,10 +5,10 @@
 		createApiToken,
 		revokeApiToken,
 		type ApiToken,
-		type CreatedApiToken
-	} from '$lib/api/api-tokens';
-	import { dialog } from '$lib/stores/dialog';
-	import { toast } from '$lib/stores/toast';
+		type CreatedApiToken,
+	} from '#lib/api/api-tokens.js';
+	import { dialog } from '#lib/stores/dialog.js';
+	import { toast } from '#lib/stores/toast.js';
 
 	let tokens: ApiToken[] = [];
 	let loading = true;
@@ -51,7 +51,8 @@
 			await loadTokens();
 		} catch (err) {
 			console.error('Failed to create API token:', err);
-			createError = err instanceof Error ? err.message : 'Failed to create API token';
+			createError =
+				err instanceof Error ? err.message : 'Failed to create API token';
 		} finally {
 			creating = false;
 		}
@@ -90,7 +91,7 @@
 				} finally {
 					revokingId = null;
 				}
-			}
+			},
 		});
 	}
 
@@ -104,16 +105,18 @@
 <div class="settings-section">
 	<h2 class="section-title">API Tokens</h2>
 	<p class="section-description">
-		Personal tokens let the Recipe Siphon browser extension send recipes straight to your
-		catalog. A token can only import recipes and check that it works; it cannot read or change
-		anything else. Create one per browser and revoke it when you stop using that browser.
+		Personal tokens let the Recipe Siphon browser extension send recipes
+		straight to your catalog. A token can only import recipes and check that it
+		works; it cannot read or change anything else. Create one per browser and
+		revoke it when you stop using that browser.
 	</p>
 
 	{#if created}
 		<div class="created-box" role="status">
 			<p class="created-title">Token "{created.name}" created</p>
 			<p class="created-hint">
-				Copy it now and paste it into the extension's options. It will not be shown again.
+				Copy it now and paste it into the extension's options. It will not be
+				shown again.
 			</p>
 			<div class="token-row">
 				<input
@@ -128,7 +131,11 @@
 					{copied ? 'Copied' : 'Copy'}
 				</button>
 			</div>
-			<button type="button" class="btn btn-outline btn-sm" on:click={dismissCreated}>
+			<button
+				type="button"
+				class="btn btn-outline btn-sm"
+				on:click={dismissCreated}
+			>
 				Done
 			</button>
 		</div>
@@ -172,7 +179,9 @@
 						<p class="token-meta">
 							<code>{token.token_prefix}…</code>
 							· Created {formatDate(token.created_at)}
-							· {token.last_used_at ? `Last used ${formatDate(token.last_used_at)}` : 'Never used'}
+							· {token.last_used_at
+								? `Last used ${formatDate(token.last_used_at)}`
+								: 'Never used'}
 						</p>
 					</div>
 					<button

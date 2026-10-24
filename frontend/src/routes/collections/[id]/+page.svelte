@@ -1,20 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
-	import { page } from '$app/stores';
+	import { browser } from '$app/env';
 	import { goto } from '$app/navigation';
 	import {
 		getCollection,
 		getCollectionRecipes,
 		exportCollectionPdf,
-		type CollectionWithCount
-	} from '$lib/api/collections';
-	import { deleteRecipe, type RecipeSummary } from '$lib/api/recipes';
-	import type { ViewMode } from '$lib/types';
-	import RecipeCard from '$lib/components/RecipeCard.svelte';
-	import RecipeListItem from '$lib/components/RecipeListItem.svelte';
-	import { dialog } from '$lib/stores/dialog';
-	import { toast } from '$lib/stores/toast';
+		type CollectionWithCount,
+	} from '#lib/api/collections.js';
+	import { deleteRecipe, type RecipeSummary } from '#lib/api/recipes.js';
+	import type { ViewMode } from '#lib/types/index.js';
+	import RecipeCard from '#lib/components/RecipeCard.svelte';
+	import RecipeListItem from '#lib/components/RecipeListItem.svelte';
+	import { dialog } from '#lib/stores/dialog.js';
+	import { toast } from '#lib/stores/toast.js';
 
 	let collection: CollectionWithCount | null = null;
 	let recipes: RecipeSummary[] = [];
@@ -23,7 +22,8 @@
 	let viewMode: ViewMode = 'grid';
 	let exportingPdf = false;
 
-	$: collectionId = parseInt($page.params.id!);
+	export let params: { id: string };
+	$: collectionId = parseInt(params.id);
 
 	async function loadData() {
 		loading = true;
@@ -32,7 +32,7 @@
 		try {
 			[collection, recipes] = await Promise.all([
 				getCollection(collectionId),
-				getCollectionRecipes(collectionId)
+				getCollectionRecipes(collectionId),
 			]);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load collection';
@@ -68,7 +68,7 @@
 					toast.error('Failed to delete recipe');
 					console.error('Delete failed:', err);
 				}
-			}
+			},
 		});
 	}
 
@@ -93,7 +93,9 @@
 			const blob = await exportCollectionPdf(collection.id);
 
 			// Generate filename
-			const safeName = collection.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+			const safeName = collection.name
+				.replace(/[^a-z0-9]/gi, '_')
+				.toLowerCase();
 			const filename = `${safeName}.pdf`;
 
 			// Create download
@@ -106,7 +108,9 @@
 			window.URL.revokeObjectURL(url);
 			document.body.removeChild(a);
 		} catch (err) {
-			toast.error(`Failed to export collection: ${err instanceof Error ? err.message : 'Unknown error'}`);
+			toast.error(
+				`Failed to export collection: ${err instanceof Error ? err.message : 'Unknown error'}`,
+			);
 			console.error('Export failed:', err);
 		} finally {
 			exportingPdf = false;
@@ -126,26 +130,33 @@
 	});
 </script>
 
-<svelte:head>
-	<title>{collection?.name || 'Collection'} - Recipe Catalog</title>
-</svelte:head>
+<svelte:head
+	><title>{collection?.name || 'Collection'} - Recipe Catalog</title
+	></svelte:head
+>
 
 <div class="min-h-screen bg-neutral-50">
 	{#if loading}
 		<!-- Loading state -->
 		<div class="container-custom py-16 text-center">
 			<div class="text-4xl mb-4">⏳</div>
-			<p class="text-lg" style="color: var(--text-600);">Loading collection...</p>
+			<p class="text-lg" style="color: var(--text-600);">
+				Loading collection...
+			</p>
 		</div>
 	{:else if error || !collection}
 		<!-- Error state -->
 		<div class="container-custom py-16 text-center">
 			<div class="text-4xl mb-4">⚠️</div>
-			<p class="text-lg mb-2" style="color: var(--text-900);">Collection not found</p>
+			<p class="text-lg mb-2" style="color: var(--text-900);">
+				Collection not found
+			</p>
 			<p class="text-sm mb-4" style="color: var(--text-600);">
 				{error || 'This collection may have been deleted.'}
 			</p>
-			<button on:click={() => goto('/recipes')} class="btn btn-primary">Back to Recipes</button>
+			<button on:click={() => goto('/recipes')} class="btn btn-primary"
+				>Back to Recipes</button
+			>
 		</div>
 	{:else}
 		<!-- Header -->
@@ -210,7 +221,8 @@
 				</div>
 
 				<p class="text-sm" style="color: var(--text-600);">
-					{collection.recipe_count} {collection.recipe_count === 1 ? 'recipe' : 'recipes'}
+					{collection.recipe_count}
+					{collection.recipe_count === 1 ? 'recipe' : 'recipes'}
 				</p>
 			</div>
 		</div>
@@ -221,7 +233,10 @@
 				<!-- Empty state -->
 				<div class="text-center py-16">
 					<div class="text-6xl mb-4">📭</div>
-					<h2 class="text-2xl font-semibold mb-2" style="color: var(--text-900);">
+					<h2
+						class="text-2xl font-semibold mb-2"
+						style="color: var(--text-900);"
+					>
 						No recipes in this collection
 					</h2>
 					<p class="text-lg mb-6" style="color: var(--text-600);">

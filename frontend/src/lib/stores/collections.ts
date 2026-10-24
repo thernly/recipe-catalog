@@ -3,8 +3,8 @@
  */
 
 import { writable } from "svelte/store";
-import type { CollectionWithCount } from "$lib/api/collections";
-import { getCollections } from "$lib/api/collections";
+import type { CollectionWithCount } from "#lib/api/collections.js";
+import { getCollections } from "#lib/api/collections.js";
 
 interface CollectionsState {
   collections: CollectionWithCount[];

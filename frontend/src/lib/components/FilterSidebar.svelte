@@ -25,7 +25,7 @@
 		'Korean',
 		'Vietnamese',
 		'Middle Eastern',
-		'Other'
+		'Other',
 	];
 
 	const defaultCategories = [
@@ -43,7 +43,7 @@
 		'Pasta',
 		'Bread',
 		'Sauce',
-		'Other'
+		'Other',
 	];
 
 	let cuisineOptions = [...defaultCuisines];
@@ -52,7 +52,7 @@
 	// Load custom options from user preferences
 	onMount(async () => {
 		try {
-			const { getPreferences } = await import('$lib/api/users');
+			const { getPreferences } = await import('#lib/api/users.js');
 			const prefs = await getPreferences();
 			const customCuisines = prefs.custom_cuisines || [];
 			const customCategories = prefs.custom_categories || [];
@@ -68,14 +68,14 @@
 
 	const sourceTypeOptions = [
 		{ value: 'imported', label: 'Imported' },
-		{ value: 'manual', label: 'Manual Entry' }
+		{ value: 'manual', label: 'Manual Entry' },
 	];
 
 	const timePresets = [
 		{ label: 'Under 15 min', max: 15 },
 		{ label: 'Under 30 min', max: 30 },
 		{ label: 'Under 1 hour', max: 60 },
-		{ label: 'Under 2 hours', max: 120 }
+		{ label: 'Under 2 hours', max: 120 },
 	];
 
 	// Toggle functions
@@ -133,7 +133,7 @@
 			selectedCategories,
 			selectedSourceTypes,
 			maxTime,
-			minTime
+			minTime,
 		});
 	}
 
@@ -149,8 +149,9 @@
 	<div class="filter-header">
 		<h2 class="filter-title">Filters</h2>
 		{#if activeFilterCount > 0}
-			<button on:click={clearAllFilters} class="clear-all-btn"> Clear All ({activeFilterCount}) </button
-			>
+			<button on:click={clearAllFilters} class="clear-all-btn">
+				Clear All ({activeFilterCount})
+			</button>
 		{/if}
 	</div>
 
@@ -225,7 +226,9 @@
 		<h3 class="filter-section-title">
 			Cooking Time
 			{#if maxTime !== undefined || minTime !== undefined}
-				<button on:click={clearTimeFilters} class="clear-section-btn">Clear</button>
+				<button on:click={clearTimeFilters} class="clear-section-btn"
+					>Clear</button
+				>
 			{/if}
 		</h3>
 

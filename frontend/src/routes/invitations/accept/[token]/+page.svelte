@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import {
 		getInvitationByToken,
 		acceptInvitation,
 		declineInvitation,
-		type HouseholdInvitation
-	} from '$lib/api/households';
-	import { auth } from '$lib/stores/auth';
+		type HouseholdInvitation,
+	} from '#lib/api/households.js';
+	import { auth } from '#lib/stores/auth.js';
 	import { get } from 'svelte/store';
 
 	let token = '';
@@ -60,7 +60,8 @@
 			goto('/settings?section=household&message=joined');
 		} catch (err) {
 			console.error('Failed to accept invitation:', err);
-			error = err instanceof Error ? err.message : 'Failed to accept invitation';
+			error =
+				err instanceof Error ? err.message : 'Failed to accept invitation';
 		} finally {
 			accepting = false;
 		}
@@ -75,14 +76,15 @@
 			goto('/?message=invitation-declined');
 		} catch (err) {
 			console.error('Failed to decline invitation:', err);
-			error = err instanceof Error ? err.message : 'Failed to decline invitation';
+			error =
+				err instanceof Error ? err.message : 'Failed to decline invitation';
 		} finally {
 			declining = false;
 		}
 	}
 
 	onMount(() => {
-		token = $page.params.token!;
+		token = page.params.token!;
 		loadInvitation();
 	});
 </script>
@@ -91,7 +93,9 @@
 	<title>Household Invitation - Recipe Catalog</title>
 </svelte:head>
 
-<div class="min-h-screen bg-neutral-50 flex items-center justify-center py-12 px-4">
+<div
+	class="min-h-screen bg-neutral-50 flex items-center justify-center py-12 px-4"
+>
 	<div class="max-w-md w-full">
 		<div class="card">
 			<div class="card-header">
@@ -101,13 +105,18 @@
 			{#if loading}
 				<div class="text-center py-8">
 					<div class="text-4xl mb-4">⏳</div>
-					<p class="text-lg" style="color: var(--text-600);">Loading invitation...</p>
+					<p class="text-lg" style="color: var(--text-600);">
+						Loading invitation...
+					</p>
 				</div>
 			{:else if error}
 				<div class="py-8">
 					<div class="text-center mb-6">
 						<div class="text-4xl mb-4">⚠️</div>
-						<p class="text-lg font-semibold mb-2" style="color: var(--text-900);">
+						<p
+							class="text-lg font-semibold mb-2"
+							style="color: var(--text-900);"
+						>
 							Invalid Invitation
 						</p>
 						<p class="text-sm" style="color: var(--text-600);">{error}</p>
@@ -119,8 +128,13 @@
 			{:else if invitation}
 				<div class="invitation-content">
 					<div class="text-center mb-6">
-						<p class="text-lg mb-2" style="color: var(--text-900);">You've been invited to join</p>
-						<h2 class="text-2xl font-bold mb-1" style="color: var(--accent-600);">
+						<p class="text-lg mb-2" style="color: var(--text-900);">
+							You've been invited to join
+						</p>
+						<h2
+							class="text-2xl font-bold mb-1"
+							style="color: var(--accent-600);"
+						>
 							{invitation.household_name || 'a household'}
 						</h2>
 						{#if invitation.inviter_display_name}
@@ -133,7 +147,8 @@
 					{#if !isLoggedIn}
 						<div class="info-box mb-6">
 							<p class="text-sm" style="color: var(--text-700);">
-								You need to sign in or create an account to accept this invitation.
+								You need to sign in or create an account to accept this
+								invitation.
 							</p>
 						</div>
 					{/if}
@@ -141,8 +156,8 @@
 					<div class="invitation-details mb-6">
 						<h3 class="details-title">What is a household?</h3>
 						<p class="details-text">
-							A household allows you to share recipes and collections with family members. You'll be
-							able to:
+							A household allows you to share recipes and collections with
+							family members. You'll be able to:
 						</p>
 						<ul class="details-list">
 							<li>View and edit shared recipes</li>
@@ -158,7 +173,11 @@
 							on:click={handleAccept}
 							disabled={accepting || declining}
 						>
-							{accepting ? 'Accepting...' : isLoggedIn ? 'Accept Invitation' : 'Sign In to Accept'}
+							{accepting
+								? 'Accepting...'
+								: isLoggedIn
+									? 'Accept Invitation'
+									: 'Sign In to Accept'}
 						</button>
 						<button
 							type="button"

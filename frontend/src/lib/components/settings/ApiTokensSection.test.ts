@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/svelte/svelte5";
 import { get } from "svelte/store";
 
-vi.mock("$lib/api/api-tokens", () => ({
+vi.mock("#lib/api/api-tokens.js", () => ({
   listApiTokens: vi.fn(),
   createApiToken: vi.fn(),
   revokeApiToken: vi.fn(),
@@ -16,8 +16,8 @@ import {
   listApiTokens,
   createApiToken,
   revokeApiToken,
-} from "$lib/api/api-tokens";
-import { dialog } from "$lib/stores/dialog";
+} from "#lib/api/api-tokens.js";
+import { dialog } from "#lib/stores/dialog.js";
 
 const existing = {
   id: 1,

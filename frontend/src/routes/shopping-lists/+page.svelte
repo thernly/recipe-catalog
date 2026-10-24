@@ -4,8 +4,8 @@
 		listShoppingLists,
 		createShoppingList,
 		type ShoppingListSummary,
-		type ShoppingListCreate
-	} from '$lib/api/shopping-lists';
+		type ShoppingListCreate,
+	} from '#lib/api/shopping-lists.js';
 
 	let shoppingLists: ShoppingListSummary[] = [];
 	let loading = true;
@@ -26,7 +26,8 @@
 			const filter = statusFilter === 'all' ? undefined : statusFilter;
 			shoppingLists = await listShoppingLists(filter);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load shopping lists';
+			error =
+				err instanceof Error ? err.message : 'Failed to load shopping lists';
 			console.error('Failed to load shopping lists:', err);
 		} finally {
 			loading = false;
@@ -40,7 +41,7 @@
 		try {
 			const data: ShoppingListCreate = {
 				name: newListName.trim(),
-				description: newListDescription.trim() || undefined
+				description: newListDescription.trim() || undefined,
 			};
 
 			const newList = await createShoppingList(data);
@@ -51,7 +52,8 @@
 			// Navigate to the new list
 			goto(`/shopping-lists/${newList.id}`);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to create shopping list';
+			error =
+				err instanceof Error ? err.message : 'Failed to create shopping list';
 			console.error('Failed to create shopping list:', err);
 		} finally {
 			creating = false;
@@ -71,7 +73,7 @@
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-expressions -- lists reactive dependencies
-	$: statusFilter, loadShoppingLists();
+	$: (statusFilter, loadShoppingLists());
 </script>
 
 <svelte:head>
@@ -91,31 +93,34 @@
 		</div>
 
 		<!-- Filter tabs -->
-		<div class="flex gap-2 mb-6 border-b" style="border-color: var(--neutral-200);">
+		<div
+			class="flex gap-2 mb-6 border-b"
+			style="border-color: var(--neutral-200);"
+		>
 			<button
 				on:click={() => (statusFilter = 'active')}
 				class="px-4 py-2 font-medium border-b-2 transition-colors"
-				style="{statusFilter === 'active'
+				style={statusFilter === 'active'
 					? 'border-color: var(--accent-500); color: var(--accent-500);'
-					: 'border-color: transparent; color: var(--text-600);'}"
+					: 'border-color: transparent; color: var(--text-600);'}
 			>
 				Active
 			</button>
 			<button
 				on:click={() => (statusFilter = 'archived')}
 				class="px-4 py-2 font-medium border-b-2 transition-colors"
-				style="{statusFilter === 'archived'
+				style={statusFilter === 'archived'
 					? 'border-color: var(--accent-500); color: var(--accent-500);'
-					: 'border-color: transparent; color: var(--text-600);'}"
+					: 'border-color: transparent; color: var(--text-600);'}
 			>
 				Archived
 			</button>
 			<button
 				on:click={() => (statusFilter = 'all')}
 				class="px-4 py-2 font-medium border-b-2 transition-colors"
-				style="{statusFilter === 'all'
+				style={statusFilter === 'all'
 					? 'border-color: var(--accent-500); color: var(--accent-500);'
-					: 'border-color: transparent; color: var(--text-600);'}"
+					: 'border-color: transparent; color: var(--text-600);'}
 			>
 				All
 			</button>
@@ -123,7 +128,9 @@
 	</div>
 
 	{#if error}
-		<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+		<div
+			class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4"
+		>
 			{error}
 		</div>
 	{/if}
@@ -134,7 +141,9 @@
 		</div>
 	{:else if shoppingLists.length === 0}
 		<div class="text-center py-12">
-			<p class="mb-4" style="color: var(--text-600);">No shopping lists found.</p>
+			<p class="mb-4" style="color: var(--text-600);">
+				No shopping lists found.
+			</p>
 			<button
 				on:click={openCreateDialog}
 				class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg"
@@ -150,15 +159,33 @@
 					class="block rounded-lg shadow-sm border hover:shadow-md transition-shadow p-6"
 					style="background: var(--neutral-white); border-color: var(--neutral-200);"
 				>
-					<h3 class="text-lg font-semibold mb-2" style="color: var(--text-900);">{list.name}</h3>
+					<h3
+						class="text-lg font-semibold mb-2"
+						style="color: var(--text-900);"
+					>
+						{list.name}
+					</h3>
 
 					{#if list.description}
-						<p class="text-sm mb-3 line-clamp-2" style="color: var(--text-600);">{list.description}</p>
+						<p
+							class="text-sm mb-3 line-clamp-2"
+							style="color: var(--text-600);"
+						>
+							{list.description}
+						</p>
 					{/if}
 
-					<div class="flex items-center gap-4 text-sm" style="color: var(--text-600);">
+					<div
+						class="flex items-center gap-4 text-sm"
+						style="color: var(--text-600);"
+					>
 						<div class="flex items-center gap-1">
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg
+								class="w-4 h-4"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
@@ -171,7 +198,12 @@
 
 						{#if list.item_count > 0}
 							<div class="flex items-center gap-1">
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<svg
+									class="w-4 h-4"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
 									<path
 										stroke-linecap="round"
 										stroke-linejoin="round"
@@ -184,7 +216,11 @@
 						{/if}
 
 						{#if list.status === 'archived'}
-							<span class="text-xs px-2 py-1 rounded" style="background: var(--neutral-100); color: var(--text-900);">Archived</span>
+							<span
+								class="text-xs px-2 py-1 rounded"
+								style="background: var(--neutral-100); color: var(--text-900);"
+								>Archived</span
+							>
 						{/if}
 					</div>
 
@@ -199,13 +235,24 @@
 
 <!-- Create List Dialog -->
 {#if showCreateDialog}
-	<div class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-		<div class="rounded-lg shadow-xl max-w-md w-full p-6" style="background: var(--neutral-white);">
-			<h2 class="text-2xl font-bold mb-4" style="color: var(--text-900);">Create Shopping List</h2>
+	<div
+		class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+	>
+		<div
+			class="rounded-lg shadow-xl max-w-md w-full p-6"
+			style="background: var(--neutral-white);"
+		>
+			<h2 class="text-2xl font-bold mb-4" style="color: var(--text-900);">
+				Create Shopping List
+			</h2>
 
 			<form on:submit|preventDefault={handleCreateList}>
 				<div class="mb-4">
-					<label for="name" class="block text-sm font-medium mb-1" style="color: var(--text-900);">
+					<label
+						for="name"
+						class="block text-sm font-medium mb-1"
+						style="color: var(--text-900);"
+					>
 						List Name <span class="text-red-500">*</span>
 					</label>
 					<input
@@ -220,18 +267,22 @@
 				</div>
 
 				<div class="mb-6">
-					<label for="description" class="block text-sm font-medium mb-1" style="color: var(--text-900);">
-					Description (optional)
-				</label>
-				<textarea
-					id="description"
-					bind:value={newListDescription}
-					rows="3"
-					class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
-					style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900); --tw-ring-color: var(--accent-500);"
-					placeholder="Add any notes about this list..."
-				></textarea>
-			</div>				<div class="flex justify-end gap-3">
+					<label
+						for="description"
+						class="block text-sm font-medium mb-1"
+						style="color: var(--text-900);"
+					>
+						Description (optional)
+					</label>
+					<textarea
+						id="description"
+						bind:value={newListDescription}
+						rows="3"
+						class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+						style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900); --tw-ring-color: var(--accent-500);"
+						placeholder="Add any notes about this list..."></textarea>
+				</div>
+				<div class="flex justify-end gap-3">
 					<button
 						type="button"
 						on:click={closeCreateDialog}

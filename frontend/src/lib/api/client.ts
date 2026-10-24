@@ -2,10 +2,10 @@
  * API client for communicating with the backend
  */
 
-import { auth } from "$lib/stores/auth";
-import { API_V1_URL } from "$lib/config";
-import { browser } from "$app/environment";
-import { FETCH_CREDENTIALS } from "$lib/constants";
+import { auth } from "#lib/stores/auth.js";
+import { API_V1_URL } from "#lib/config.js";
+import { browser } from "$app/env";
+import { FETCH_CREDENTIALS } from "#lib/constants.js";
 
 const API_URL = API_V1_URL;
 
@@ -165,7 +165,10 @@ export async function apiRequest<T>(
     }
 
     // Handle 403 Forbidden - likely CSRF token issue, try to refresh
-    if (response.status === 403 && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    if (
+      response.status === 403 &&
+      ["POST", "PUT", "PATCH", "DELETE"].includes(method)
+    ) {
       // Try to refresh to get new CSRF token
       const refreshed = await refreshAccessToken();
 

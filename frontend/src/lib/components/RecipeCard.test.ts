@@ -4,7 +4,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/svelte/svelte5";
 import RecipeCard from "./RecipeCard.svelte";
-import type { RecipeSummary } from "$lib/api/recipes";
+import type { RecipeSummary } from "#lib/api/recipes.js";
 
 describe("RecipeCard", () => {
   const mockRecipe: RecipeSummary = {

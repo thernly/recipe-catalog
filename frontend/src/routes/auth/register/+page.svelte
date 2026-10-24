@@ -1,9 +1,13 @@
 <script lang="ts">
-	import { auth } from '$lib/stores/auth';
+	import { auth } from '#lib/stores/auth.js';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
-	import { getAvailableProviders, initiateOAuthFlow, type ProviderInfo } from '$lib/api/oauth';
+	import {
+		getAvailableProviders,
+		initiateOAuthFlow,
+		type ProviderInfo,
+	} from '#lib/api/oauth.js';
 
 	let email = '';
 	let password = '';
@@ -100,12 +104,18 @@
 	<title>Sign Up - Recipe Catalog</title>
 </svelte:head>
 
-<div class="min-h-screen bg-neutral-50 flex items-center justify-center py-12 px-4">
+<div
+	class="min-h-screen bg-neutral-50 flex items-center justify-center py-12 px-4"
+>
 	<div class="max-w-md w-full">
 		<!-- Header -->
 		<div class="text-center mb-8">
-			<h1 class="text-4xl font-bold mb-2" style="color: var(--text-900);">Create Account</h1>
-			<p style="color: var(--text-600);">Join Recipe Catalog to start organizing your recipes</p>
+			<h1 class="text-4xl font-bold mb-2" style="color: var(--text-900);">
+				Create Account
+			</h1>
+			<p style="color: var(--text-600);">
+				Join Recipe Catalog to start organizing your recipes
+			</p>
 		</div>
 
 		<!-- Register Form -->
@@ -128,9 +138,15 @@
 
 				<!-- Divider -->
 				<div class="mb-6 flex items-center">
-					<div class="flex-1 border-t" style="border-color: var(--neutral-200);"></div>
+					<div
+						class="flex-1 border-t"
+						style="border-color: var(--neutral-200);"
+					></div>
 					<span class="px-4 text-sm" style="color: var(--text-500);">OR</span>
-					<div class="flex-1 border-t" style="border-color: var(--neutral-200);"></div>
+					<div
+						class="flex-1 border-t"
+						style="border-color: var(--neutral-200);"
+					></div>
 				</div>
 			{/if}
 
@@ -157,7 +173,11 @@
 
 				<!-- Email -->
 				<div>
-					<label for="email" class="block text-sm font-medium mb-2" style="color: var(--text-900);">
+					<label
+						for="email"
+						class="block text-sm font-medium mb-2"
+						style="color: var(--text-900);"
+					>
 						Email Address
 					</label>
 					<input
@@ -192,7 +212,8 @@
 						disabled={loading}
 					/>
 					<p class="mt-2 text-xs" style="color: var(--text-500);">
-						Must be at least 12 characters with uppercase, lowercase, and numbers
+						Must be at least 12 characters with uppercase, lowercase, and
+						numbers
 					</p>
 				</div>
 
@@ -232,7 +253,9 @@
 					type="submit"
 					class="w-full btn btn-primary"
 					disabled={loading}
-					style="opacity: {loading ? 0.6 : 1}; cursor: {loading ? 'not-allowed' : 'pointer'};"
+					style="opacity: {loading ? 0.6 : 1}; cursor: {loading
+						? 'not-allowed'
+						: 'pointer'};"
 				>
 					{loading ? 'Creating account...' : 'Create Account'}
 				</button>
@@ -242,14 +265,22 @@
 			<div class="mt-6 text-center">
 				<p style="color: var(--text-600);">
 					Already have an account?
-					<a href="/auth/login" class="font-medium" style="color: var(--color-link);"> Sign in </a>
+					<a
+						href="/auth/login"
+						class="font-medium"
+						style="color: var(--color-link);"
+					>
+						Sign in
+					</a>
 				</p>
 			</div>
 		</div>
 
 		<!-- Back to Home -->
 		<div class="mt-6 text-center">
-			<a href="/" class="text-sm" style="color: var(--text-500);">← Back to home</a>
+			<a href="/" class="text-sm" style="color: var(--text-500);"
+				>← Back to home</a
+			>
 		</div>
 	</div>
 </div>

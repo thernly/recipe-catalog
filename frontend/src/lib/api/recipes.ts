@@ -3,8 +3,12 @@
  */
 
 import { apiRequest, buildQueryString } from "./client";
-import type { RecipeData, RecipeSortBy, RecipeSourceType } from "$lib/types";
-import { FETCH_CREDENTIALS } from "$lib/constants";
+import type {
+  RecipeData,
+  RecipeSortBy,
+  RecipeSourceType,
+} from "#lib/types/index.js";
+import { FETCH_CREDENTIALS } from "#lib/constants.js";
 
 export interface Recipe {
   id: number;
@@ -198,7 +202,7 @@ export async function exportRecipe(
   id: number,
   format: "json" | "markdown" | "text" | "pdf",
 ): Promise<Blob> {
-  const { API_V1_URL } = await import("$lib/config");
+  const { API_V1_URL } = await import("#lib/config.js");
 
   const response = await fetch(
     `${API_V1_URL}/recipes/${id}/export?format=${format}`,

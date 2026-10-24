@@ -1,19 +1,36 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { browser } from '$app/environment';
-	import { searchRecipes, deleteRecipe, type RecipeSearchParams } from '$lib/api/recipes';
-	import type { RecipeSearchResult, RecipeSummary } from '$lib/api/recipes';
-	import type { RecipeSortBy, ViewMode } from '$lib/types';
-	import RecipeCard from '$lib/components/RecipeCard.svelte';
-	import RecipeListItem from '$lib/components/RecipeListItem.svelte';
-	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
-	import CollectionsSidebar from '$lib/components/CollectionsSidebar.svelte';
-	import { dialog } from '$lib/stores/dialog';
-	import { toast } from '$lib/stores/toast';
-	import { Download, Search, Folder, Grid, List, UtensilsCrossed, AlertCircle, Loader2 } from '@lucide/svelte';
-	import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEBOUNCE_DELAY } from '$lib/constants';
+	import { afterNavigate, goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { browser } from '$app/env';
+	import {
+		searchRecipes,
+		deleteRecipe,
+		type RecipeSearchParams,
+	} from '#lib/api/recipes.js';
+	import type { RecipeSearchResult, RecipeSummary } from '#lib/api/recipes.js';
+	import type { RecipeSortBy, ViewMode } from '#lib/types/index.js';
+	import RecipeCard from '#lib/components/RecipeCard.svelte';
+	import RecipeListItem from '#lib/components/RecipeListItem.svelte';
+	import FilterSidebar from '#lib/components/FilterSidebar.svelte';
+	import CollectionsSidebar from '#lib/components/CollectionsSidebar.svelte';
+	import { dialog } from '#lib/stores/dialog.js';
+	import { toast } from '#lib/stores/toast.js';
+	import {
+		Download,
+		Search,
+		Folder,
+		Grid,
+		List,
+		UtensilsCrossed,
+		AlertCircle,
+		Loader2,
+	} from '@lucide/svelte';
+	import {
+		DEFAULT_PAGE,
+		DEFAULT_PAGE_SIZE,
+		DEBOUNCE_DELAY,
+	} from '#lib/constants.js';
 
 	let searchResult: RecipeSearchResult | null = null;
 	let loading = true;
@@ -31,7 +48,7 @@
 		query: '',
 		sort_by: 'recently_added',
 		page: DEFAULT_PAGE,
-		per_page: DEFAULT_PAGE_SIZE
+		per_page: DEFAULT_PAGE_SIZE,
 	};
 
 	// Filter values
@@ -48,15 +65,22 @@
 		const params = new URLSearchParams();
 
 		if (searchParams.query) params.set('q', searchParams.query);
-		if (searchParams.sort_by && searchParams.sort_by !== 'recently_added') params.set('sort', searchParams.sort_by);
-		if (searchParams.page && searchParams.page > 1) params.set('page', searchParams.page.toString());
-		if (selectedCuisines.length > 0) params.set('cuisine', selectedCuisines.join(','));
-		if (selectedCategories.length > 0) params.set('category', selectedCategories.join(','));
-		if (selectedSourceTypes.length > 0) params.set('source', selectedSourceTypes.join(','));
+		if (searchParams.sort_by && searchParams.sort_by !== 'recently_added')
+			params.set('sort', searchParams.sort_by);
+		if (searchParams.page && searchParams.page > 1)
+			params.set('page', searchParams.page.toString());
+		if (selectedCuisines.length > 0)
+			params.set('cuisine', selectedCuisines.join(','));
+		if (selectedCategories.length > 0)
+			params.set('category', selectedCategories.join(','));
+		if (selectedSourceTypes.length > 0)
+			params.set('source', selectedSourceTypes.join(','));
 		if (maxTime) params.set('maxTime', maxTime.toString());
 		if (minTime) params.set('minTime', minTime.toString());
 
-		const newURL = params.toString() ? `/recipes?${params.toString()}` : '/recipes';
+		const newURL = params.toString()
+			? `/recipes?${params.toString()}`
+			: '/recipes';
 		window.history.replaceState({}, '', newURL);
 	}
 
@@ -64,10 +88,11 @@
 	function loadSearchParamsFromURL() {
 		if (!browser) return;
 
-		const urlParams = $page.url.searchParams;
+		const urlParams = page.url.searchParams;
 
 		searchParams.query = urlParams.get('q') || '';
-		searchParams.sort_by = (urlParams.get('sort') as RecipeSortBy) || 'recently_added';
+		searchParams.sort_by =
+			(urlParams.get('sort') as RecipeSortBy) || 'recently_added';
 		searchParams.page = parseInt(urlParams.get('page') || '1');
 
 		const cuisineParam = urlParams.get('cuisine');
@@ -95,10 +120,12 @@
 			const params: RecipeSearchParams = {
 				...searchParams,
 				cuisine: selectedCuisines.length > 0 ? selectedCuisines : undefined,
-				category: selectedCategories.length > 0 ? selectedCategories : undefined,
-				source_type: selectedSourceTypes.length > 0 ? selectedSourceTypes : undefined,
+				category:
+					selectedCategories.length > 0 ? selectedCategories : undefined,
+				source_type:
+					selectedSourceTypes.length > 0 ? selectedSourceTypes : undefined,
 				max_time_minutes: maxTime,
-				min_time_minutes: minTime
+				min_time_minutes: minTime,
 			};
 
 			searchResult = await searchRecipes(params);
@@ -145,11 +172,16 @@
 		// Preserve current search state by building URL from current filters
 		const params = new URLSearchParams();
 		if (searchParams.query) params.set('q', searchParams.query);
-		if (searchParams.sort_by && searchParams.sort_by !== 'recently_added') params.set('sort', searchParams.sort_by);
-		if (searchParams.page && searchParams.page > 1) params.set('page', searchParams.page.toString());
-		if (selectedCuisines.length > 0) params.set('cuisine', selectedCuisines.join(','));
-		if (selectedCategories.length > 0) params.set('category', selectedCategories.join(','));
-		if (selectedSourceTypes.length > 0) params.set('source', selectedSourceTypes.join(','));
+		if (searchParams.sort_by && searchParams.sort_by !== 'recently_added')
+			params.set('sort', searchParams.sort_by);
+		if (searchParams.page && searchParams.page > 1)
+			params.set('page', searchParams.page.toString());
+		if (selectedCuisines.length > 0)
+			params.set('cuisine', selectedCuisines.join(','));
+		if (selectedCategories.length > 0)
+			params.set('category', selectedCategories.join(','));
+		if (selectedSourceTypes.length > 0)
+			params.set('source', selectedSourceTypes.join(','));
 		if (maxTime) params.set('maxTime', maxTime.toString());
 		if (minTime) params.set('minTime', minTime.toString());
 
@@ -179,7 +211,7 @@
 					toast.error('Failed to delete recipe');
 					console.error('Delete failed:', err);
 				}
-			}
+			},
 		});
 	}
 
@@ -210,10 +242,10 @@
 	}
 
 	// Watch for URL changes (e.g., browser back/forward)
-	$: if (browser && $page.url) {
+	afterNavigate(() => {
 		loadSearchParamsFromURL();
 		loadRecipes();
-	}
+	});
 
 	// Initialize
 	onMount(() => {
@@ -227,9 +259,7 @@
 	});
 </script>
 
-<svelte:head>
-	<title>My Recipes - Recipe Catalog</title>
-</svelte:head>
+<svelte:head><title>My Recipes - Recipe Catalog</title></svelte:head>
 
 <div class="min-h-screen bg-neutral-50">
 	<!-- Header -->
@@ -237,7 +267,9 @@
 		<div class="container-custom py-4">
 			<!-- Top row: Title and View toggle -->
 			<div class="flex items-center justify-between mb-4">
-				<h1 class="text-3xl font-bold" style="color: var(--text-900);">My Recipes</h1>
+				<h1 class="text-3xl font-bold" style="color: var(--text-900);">
+					My Recipes
+				</h1>
 
 				<div class="flex items-center gap-2">
 					<button
@@ -251,7 +283,9 @@
 					<button
 						on:click={() => (showCollections = !showCollections)}
 						class="filter-toggle-btn flex items-center gap-2"
-						aria-label={showCollections ? 'Hide collections' : 'Show collections'}
+						aria-label={showCollections
+							? 'Hide collections'
+							: 'Show collections'}
 					>
 						<Folder size={16} aria-hidden="true" />
 						<span>{showCollections ? 'Hide' : 'Show'} Collections</span>
@@ -345,99 +379,127 @@
 
 			<!-- Recipes Column -->
 			<div class="recipes-column">
-		{#if loading}
-			<!-- Loading state -->
-			<div class="text-center py-16">
-				<div class="flex justify-center mb-4" style="color: var(--text-400);">
-					<Loader2 size={48} class="animate-spin" aria-hidden="true" />
-				</div>
-				<p class="text-lg" style="color: var(--text-600);">Loading recipes...</p>
-			</div>
-		{:else if error}
-			<!-- Error state -->
-			<div class="text-center py-16">
-				<div class="flex justify-center mb-4" style="color: var(--error-500);">
-					<AlertCircle size={48} aria-hidden="true" />
-				</div>
-				<p class="text-lg mb-2" style="color: var(--text-900);">Failed to load recipes</p>
-				<p class="text-sm mb-4" style="color: var(--text-600);">{error}</p>
-				<button on:click={loadRecipes} class="btn btn-primary">Try Again</button>
-			</div>
-		{:else if searchResult && searchResult.recipes.length === 0}
-			<!-- Empty state -->
-			<div class="text-center py-16">
-				<div class="flex justify-center mb-4" style="color: var(--text-400);">
-					<UtensilsCrossed size={64} aria-hidden="true" />
-				</div>
-				<h2 class="text-2xl font-semibold mb-2" style="color: var(--text-900);">
-					No recipes yet
-				</h2>
-				<p class="text-lg mb-6" style="color: var(--text-600);">
-					Start building your collection
-				</p>
-				<div class="flex flex-col sm:flex-row gap-4 justify-center">
-					<button on:click={() => goto('/recipes/new')} class="btn btn-primary">
-						+ Add Recipe
-					</button>
-					<button on:click={() => goto('/import')} class="btn btn-secondary flex items-center gap-2">
-						<Download size={16} aria-hidden="true" />
-						<span>Import Recipes</span>
-					</button>
-				</div>
-			</div>
-		{:else if searchResult}
-			<!-- Recipe grid/list -->
-			{#if viewMode === 'grid'}
-				<div class="recipe-grid">
-					{#each searchResult.recipes as recipe (recipe.id)}
-						<RecipeCard
-							{recipe}
-							onview={(r) => handleViewRecipe({ detail: r } as CustomEvent)}
-							onedit={(r) => handleEditRecipe({ detail: r } as CustomEvent)}
-							ondelete={(r) => handleDeleteRecipe({ detail: r } as CustomEvent)}
-							onfavorite={(r) => handleFavoriteRecipe({ detail: r } as CustomEvent)}
-						/>
-					{/each}
-				</div>
-			{:else}
-				<div class="recipe-list">
-					{#each searchResult.recipes as recipe (recipe.id)}
-						<RecipeListItem
-							{recipe}
-							onview={(r) => handleViewRecipe({ detail: r } as CustomEvent)}
-							onedit={(r) => handleEditRecipe({ detail: r } as CustomEvent)}
-							ondelete={(r) => handleDeleteRecipe({ detail: r } as CustomEvent)}
-							onfavorite={(r) => handleFavoriteRecipe({ detail: r } as CustomEvent)}
-						/>
-					{/each}
-				</div>
-			{/if}
+				{#if loading}
+					<!-- Loading state -->
+					<div class="text-center py-16">
+						<div
+							class="flex justify-center mb-4"
+							style="color: var(--text-400);"
+						>
+							<Loader2 size={48} class="animate-spin" aria-hidden="true" />
+						</div>
+						<p class="text-lg" style="color: var(--text-600);">
+							Loading recipes...
+						</p>
+					</div>
+				{:else if error}
+					<!-- Error state -->
+					<div class="text-center py-16">
+						<div
+							class="flex justify-center mb-4"
+							style="color: var(--error-500);"
+						>
+							<AlertCircle size={48} aria-hidden="true" />
+						</div>
+						<p class="text-lg mb-2" style="color: var(--text-900);">
+							Failed to load recipes
+						</p>
+						<p class="text-sm mb-4" style="color: var(--text-600);">{error}</p>
+						<button on:click={loadRecipes} class="btn btn-primary"
+							>Try Again</button
+						>
+					</div>
+				{:else if searchResult && searchResult.recipes.length === 0}
+					<!-- Empty state -->
+					<div class="text-center py-16">
+						<div
+							class="flex justify-center mb-4"
+							style="color: var(--text-400);"
+						>
+							<UtensilsCrossed size={64} aria-hidden="true" />
+						</div>
+						<h2
+							class="text-2xl font-semibold mb-2"
+							style="color: var(--text-900);"
+						>
+							No recipes yet
+						</h2>
+						<p class="text-lg mb-6" style="color: var(--text-600);">
+							Start building your collection
+						</p>
+						<div class="flex flex-col sm:flex-row gap-4 justify-center">
+							<button
+								on:click={() => goto('/recipes/new')}
+								class="btn btn-primary"
+							>
+								+ Add Recipe
+							</button>
+							<button
+								on:click={() => goto('/import')}
+								class="btn btn-secondary flex items-center gap-2"
+							>
+								<Download size={16} aria-hidden="true" />
+								<span>Import Recipes</span>
+							</button>
+						</div>
+					</div>
+				{:else if searchResult}
+					<!-- Recipe grid/list -->
+					{#if viewMode === 'grid'}
+						<div class="recipe-grid">
+							{#each searchResult.recipes as recipe (recipe.id)}
+								<RecipeCard
+									{recipe}
+									onview={(r) => handleViewRecipe({ detail: r } as CustomEvent)}
+									onedit={(r) => handleEditRecipe({ detail: r } as CustomEvent)}
+									ondelete={(r) =>
+										handleDeleteRecipe({ detail: r } as CustomEvent)}
+									onfavorite={(r) =>
+										handleFavoriteRecipe({ detail: r } as CustomEvent)}
+								/>
+							{/each}
+						</div>
+					{:else}
+						<div class="recipe-list">
+							{#each searchResult.recipes as recipe (recipe.id)}
+								<RecipeListItem
+									{recipe}
+									onview={(r) => handleViewRecipe({ detail: r } as CustomEvent)}
+									onedit={(r) => handleEditRecipe({ detail: r } as CustomEvent)}
+									ondelete={(r) =>
+										handleDeleteRecipe({ detail: r } as CustomEvent)}
+									onfavorite={(r) =>
+										handleFavoriteRecipe({ detail: r } as CustomEvent)}
+								/>
+							{/each}
+						</div>
+					{/if}
 
-			<!-- Pagination -->
-			{#if searchResult.total_pages > 1}
-				<div class="flex justify-center items-center gap-2 mt-8">
-				<button
-					on:click={() => goToPage(searchParams.page! - 1)}
-					disabled={!searchResult.has_prev}
-						class="pagination-btn"
-					>
-						← Previous
-					</button>
+					<!-- Pagination -->
+					{#if searchResult.total_pages > 1}
+						<div class="flex justify-center items-center gap-2 mt-8">
+							<button
+								on:click={() => goToPage(searchParams.page! - 1)}
+								disabled={!searchResult.has_prev}
+								class="pagination-btn"
+							>
+								← Previous
+							</button>
 
-					<span class="text-sm" style="color: var(--text-600);">
-						Page {searchParams.page} of {searchResult.total_pages}
-					</span>
+							<span class="text-sm" style="color: var(--text-600);">
+								Page {searchParams.page} of {searchResult.total_pages}
+							</span>
 
-				<button
-					on:click={() => goToPage(searchParams.page! + 1)}
-					disabled={!searchResult.has_next}
-						class="pagination-btn"
-					>
-						Next →
-					</button>
-				</div>
-			{/if}
-		{/if}
+							<button
+								on:click={() => goToPage(searchParams.page! + 1)}
+								disabled={!searchResult.has_next}
+								class="pagination-btn"
+							>
+								Next →
+							</button>
+						</div>
+					{/if}
+				{/if}
 			</div>
 		</div>
 	</div>

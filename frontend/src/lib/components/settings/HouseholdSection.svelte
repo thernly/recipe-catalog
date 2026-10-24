@@ -14,12 +14,12 @@
 		type Household,
 		type HouseholdMember,
 		type HouseholdInvitation,
-		type HouseholdInviteLink
-	} from '$lib/api/households';
-	import { auth } from '$lib/stores/auth';
+		type HouseholdInviteLink,
+	} from '#lib/api/households.js';
+	import { auth } from '#lib/stores/auth.js';
 	import { get } from 'svelte/store';
-	import { dialog } from '$lib/stores/dialog';
-	import { toast } from '$lib/stores/toast';
+	import { dialog } from '#lib/stores/dialog.js';
+	import { toast } from '#lib/stores/toast.js';
 
 	let household: Household | null = null;
 	let members: HouseholdMember[] = [];
@@ -48,13 +48,14 @@
 	let revokingInvitationId: number | null = null;
 
 	const currentUser = get(auth).user;
-	const isOwner = () => household && currentUser && household.owner_user_id === currentUser.id;
+	const isOwner = () =>
+		household && currentUser && household.owner_user_id === currentUser.id;
 
 	async function loadHouseholdData() {
 		loading = true;
 		error = '';
 		household = null;
-		
+
 		try {
 			household = await getCurrentHousehold();
 			newName = household.name;
@@ -62,13 +63,16 @@
 			// Load members and invitations in parallel
 			[members, invitations] = await Promise.all([
 				getHouseholdMembers(household.id),
-				getHouseholdInvitations(household.id)
+				getHouseholdInvitations(household.id),
 			]);
 		} catch (err) {
 			console.error('Failed to load household data:', err);
 			// Don't set error if user just isn't in a household yet
 			const errorMessage = err instanceof Error ? err.message : '';
-			if (!errorMessage.includes('not found') && !errorMessage.includes('No household')) {
+			if (
+				!errorMessage.includes('not found') &&
+				!errorMessage.includes('No household')
+			) {
 				error = errorMessage || 'Failed to load household data';
 			}
 			// household stays null, which will show the join form
@@ -91,7 +95,8 @@
 			setTimeout(() => (success = ''), 3000);
 		} catch (err) {
 			console.error('Failed to update household name:', err);
-			error = err instanceof Error ? err.message : 'Failed to update household name';
+			error =
+				err instanceof Error ? err.message : 'Failed to update household name';
 		} finally {
 			updatingName = false;
 		}
@@ -105,7 +110,9 @@
 		success = '';
 
 		try {
-			await createInvitation(household.id, { invitee_email: inviteeEmail.trim() });
+			await createInvitation(household.id, {
+				invitee_email: inviteeEmail.trim(),
+			});
 			inviteeEmail = '';
 			success = 'Invitation sent successfully';
 			setTimeout(() => (success = ''), 3000);
@@ -141,12 +148,13 @@
 					members = await getHouseholdMembers(householdId);
 				} catch (err) {
 					console.error('Failed to remove member:', err);
-					error = err instanceof Error ? err.message : 'Failed to remove member';
+					error =
+						err instanceof Error ? err.message : 'Failed to remove member';
 					toast.error('Failed to remove member');
 				} finally {
 					removingMemberId = null;
 				}
-			}
+			},
 		});
 	}
 
@@ -172,12 +180,13 @@
 					invitations = await getHouseholdInvitations(householdId);
 				} catch (err) {
 					console.error('Failed to revoke invitation:', err);
-					error = err instanceof Error ? err.message : 'Failed to revoke invitation';
+					error =
+						err instanceof Error ? err.message : 'Failed to revoke invitation';
 					toast.error('Failed to revoke invitation');
 				} finally {
 					revokingInvitationId = null;
 				}
-			}
+			},
 		});
 	}
 
@@ -207,13 +216,15 @@
 
 		try {
 			inviteLink = await createInviteLink(household.id, {
-				expires_in_days: inviteLinkExpiryDays
+				expires_in_days: inviteLinkExpiryDays,
 			});
-			success = 'Invite link created! Share the code or link with someone to join your household.';
+			success =
+				'Invite link created! Share the code or link with someone to join your household.';
 			setTimeout(() => (success = ''), 5000);
 		} catch (err) {
 			console.error('Failed to create invite link:', err);
-			error = err instanceof Error ? err.message : 'Failed to create invite link';
+			error =
+				err instanceof Error ? err.message : 'Failed to create invite link';
 		} finally {
 			creatingInviteLink = false;
 		}
@@ -265,7 +276,7 @@
 				message: confirmMsg,
 				onConfirm: async () => {
 					await joinViaCode();
-				}
+				},
 			});
 		} else {
 			await joinViaCode();
@@ -308,7 +319,9 @@
 
 <div class="settings-section">
 	<h2 class="section-title">Household</h2>
-	<p class="section-description">Manage your household members and share recipes with your family</p>
+	<p class="section-description">
+		Manage your household members and share recipes with your family
+	</p>
 
 	{#if loading}
 		<p class="text-sm" style="color: var(--text-500);">Loading...</p>
@@ -317,7 +330,10 @@
 		<div class="subsection">
 			<h3 class="subsection-title">Household Name</h3>
 			{#if editingName && isOwner()}
-				<form on:submit|preventDefault={handleUpdateName} class="edit-name-form">
+				<form
+					on:submit|preventDefault={handleUpdateName}
+					class="edit-name-form"
+				>
 					<input
 						type="text"
 						bind:value={newName}
@@ -326,7 +342,11 @@
 						required
 					/>
 					<div class="button-group">
-						<button type="submit" class="btn btn-primary btn-sm" disabled={updatingName}>
+						<button
+							type="submit"
+							class="btn btn-primary btn-sm"
+							disabled={updatingName}
+						>
 							{updatingName ? 'Saving...' : 'Save'}
 						</button>
 						<button
@@ -345,7 +365,10 @@
 				<div class="name-display">
 					<p class="household-name">{household.name}</p>
 					{#if isOwner()}
-						<button class="btn btn-outline btn-sm" on:click={() => (editingName = true)}>
+						<button
+							class="btn btn-outline btn-sm"
+							on:click={() => (editingName = true)}
+						>
 							Edit
 						</button>
 					{/if}
@@ -379,7 +402,10 @@
 								type="button"
 								class="btn btn-danger btn-sm"
 								on:click={() =>
-									handleRemoveMember(member.user_id, member.user_display_name || 'user')}
+									handleRemoveMember(
+										member.user_id,
+										member.user_display_name || 'user',
+									)}
 								disabled={removingMemberId === member.user_id}
 							>
 								{removingMemberId === member.user_id ? 'Removing...' : 'Remove'}
@@ -394,8 +420,13 @@
 		{#if isOwner() && members.length < household.max_members}
 			<div class="subsection">
 				<h3 class="subsection-title">Invite by Email</h3>
-				<p class="subsection-description">Send an invitation to a specific email address</p>
-				<form on:submit|preventDefault={handleSendInvitation} class="invite-form">
+				<p class="subsection-description">
+					Send an invitation to a specific email address
+				</p>
+				<form
+					on:submit|preventDefault={handleSendInvitation}
+					class="invite-form"
+				>
 					<input
 						type="email"
 						bind:value={inviteeEmail}
@@ -403,7 +434,11 @@
 						placeholder="Email address"
 						required
 					/>
-					<button type="submit" class="btn btn-primary" disabled={sendingInvitation}>
+					<button
+						type="submit"
+						class="btn btn-primary"
+						disabled={sendingInvitation}
+					>
 						{sendingInvitation ? 'Sending...' : 'Send Invitation'}
 					</button>
 				</form>
@@ -413,7 +448,8 @@
 			<div class="subsection">
 				<h3 class="subsection-title">Invite Link (One-Time Code)</h3>
 				<p class="subsection-description">
-					Generate a shareable code that anyone can use to join your household (one-time use)
+					Generate a shareable code that anyone can use to join your household
+					(one-time use)
 				</p>
 
 				{#if inviteLink && !isInviteLinkUsed() && !isInviteLinkExpired()}
@@ -436,8 +472,8 @@
 								Expires {formatDate(inviteLink.expires_at)}
 							</p>
 							<p class="invite-link-instructions">
-								Share this code with someone to join your household. They can enter it on the
-								join page.
+								Share this code with someone to join your household. They can
+								enter it on the join page.
 							</p>
 							<button
 								type="button"
@@ -516,10 +552,16 @@
 							<button
 								type="button"
 								class="btn btn-outline btn-sm"
-								on:click={() => handleRevokeInvitation(invitation.id, invitation.invitee_email)}
+								on:click={() =>
+									handleRevokeInvitation(
+										invitation.id,
+										invitation.invitee_email,
+									)}
 								disabled={revokingInvitationId === invitation.id}
 							>
-								{revokingInvitationId === invitation.id ? 'Revoking...' : 'Revoke'}
+								{revokingInvitationId === invitation.id
+									? 'Revoking...'
+									: 'Revoke'}
 							</button>
 						</div>
 					{/each}
@@ -532,7 +574,8 @@
 			<h3 class="subsection-title">Join a Different Household</h3>
 			<p class="subsection-description">
 				{#if household}
-					Enter an invite code to switch to a different household. You will automatically leave your current household.
+					Enter an invite code to switch to a different household. You will
+					automatically leave your current household.
 				{:else}
 					Enter an invite code to join an existing household.
 				{/if}
@@ -550,11 +593,20 @@
 						required
 					/>
 					<p class="form-help">
-						Enter the invite code shared with you (three words separated by hyphens)
+						Enter the invite code shared with you (three words separated by
+						hyphens)
 					</p>
 				</div>
-				<button type="submit" class="btn btn-primary" disabled={joiningHousehold}>
-					{joiningHousehold ? 'Joining...' : household ? 'Switch Household' : 'Join Household'}
+				<button
+					type="submit"
+					class="btn btn-primary"
+					disabled={joiningHousehold}
+				>
+					{joiningHousehold
+						? 'Joining...'
+						: household
+							? 'Switch Household'
+							: 'Join Household'}
 				</button>
 			</form>
 		</div>

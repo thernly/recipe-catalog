@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { toasts } from '$lib/stores/toast';
+	import { toasts } from '#lib/stores/toast.js';
 	import { fly } from 'svelte/transition';
 
 	function getIcon(type: string) {
@@ -35,7 +35,9 @@
 	{#each $toasts as toast (toast.id)}
 		<div
 			transition:fly={{ y: -20, duration: 300 }}
-			class="rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 {getColors(toast.type)}"
+			class="rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 {getColors(
+				toast.type,
+			)}"
 		>
 			<span class="text-xl font-bold" aria-hidden="true">
 				{getIcon(toast.type)}

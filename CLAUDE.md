@@ -120,6 +120,8 @@ A recipe's content lives in a single `recipe_data` JSON column in **schema.org/R
 
 **Routing**: SvelteKit file-based. `+page.svelte` = page, `+layout.svelte` = layout, `[id]/` = dynamic segment.
 
+**SvelteKit 3 conventions**: there is no `svelte.config.js`; Kit config lives in `sveltekit({...})` in `vite.config.ts`. Import from `src/lib` via the `#lib/...` subpath alias (declared in `frontend/package.json` `"imports"`) with explicit extensions: `#lib/api/client.js`, `#lib/components/Foo.svelte`. Read route state from `$app/state` (`$app/stores` is gone), but never inside a legacy `$:` statement, where it won't update; use the page's `params` prop (`export let params`) or `afterNavigate` instead.
+
 **Root layout** (`src/routes/+layout.svelte`): renders `<Navbar>` for authenticated users on non-auth pages; `/` and `/auth/*` get no navbar. Global `<ConfirmDialog>` and `<Toast>` mount here, driven by the `dialog` and `toast` stores — call those stores instead of adding per-page modals.
 
 **State**: `src/lib/stores/` — `auth.ts` (user session; login/logout work by cookie, the store holds the `User` object, not a token), `collections.ts` (collection list + CRUD), `dialog.ts`, `toast.ts`.

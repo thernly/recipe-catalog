@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
-	import { addPlannedMeal, type MealPlan, type PlannedMealCreate } from '$lib/api/meal-plans';
-	import { searchRecipes, type RecipeSummary } from '$lib/api/recipes';
+	import {
+		addPlannedMeal,
+		type MealPlan,
+		type PlannedMealCreate,
+	} from '#lib/api/meal-plans.js';
+	import { searchRecipes, type RecipeSummary } from '#lib/api/recipes.js';
 
 	export let mealPlan: MealPlan;
 	export let day: number;
@@ -19,7 +23,15 @@
 	let notes: string = '';
 	let searchQuery: string = '';
 
-	const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+	const dayNames = [
+		'Monday',
+		'Tuesday',
+		'Wednesday',
+		'Thursday',
+		'Friday',
+		'Saturday',
+		'Sunday',
+	];
 
 	async function loadRecipes() {
 		loading = true;
@@ -29,7 +41,7 @@
 			const result = await searchRecipes({
 				query: searchQuery,
 				per_page: 50,
-				sort_by: 'recently_added'
+				sort_by: 'recently_added',
 			});
 			recipes = result.recipes;
 		} catch (err) {
@@ -55,7 +67,7 @@
 				day_of_week: day,
 				meal_type: mealType as any,
 				servings: servings || undefined,
-				notes: notes || undefined
+				notes: notes || undefined,
 			};
 
 			await addPlannedMeal(mealPlan.id, mealData);
@@ -81,8 +93,20 @@
 	});
 </script>
 
-<div class="modal-overlay" on:click={handleClose} on:keydown={(e) => e.key === 'Escape' && handleClose()} role="presentation">
-	<div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation role="dialog" tabindex="0" aria-modal="true">
+<div
+	class="modal-overlay"
+	on:click={handleClose}
+	on:keydown={(e) => e.key === 'Escape' && handleClose()}
+	role="presentation"
+>
+	<div
+		class="modal-content"
+		on:click|stopPropagation
+		on:keydown|stopPropagation
+		role="dialog"
+		tabindex="0"
+		aria-modal="true"
+	>
 		<div class="modal-header">
 			<h2>Add Meal</h2>
 			<button class="close-btn" on:click={handleClose}>&times;</button>
@@ -91,7 +115,8 @@
 		<div class="modal-body">
 			<div class="meal-info">
 				<p>
-					<strong>{dayNames[day]}</strong> - {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
+					<strong>{dayNames[day]}</strong> - {mealType.charAt(0).toUpperCase() +
+						mealType.slice(1)}
 				</p>
 			</div>
 
@@ -124,7 +149,8 @@
 								class="recipe-item"
 								class:selected={selectedRecipeId === recipe.id}
 								on:click={() => (selectedRecipeId = recipe.id)}
-								on:keydown={(e) => e.key === 'Enter' && (selectedRecipeId = recipe.id)}
+								on:keydown={(e) =>
+									e.key === 'Enter' && (selectedRecipeId = recipe.id)}
 								role="button"
 								tabindex="0"
 							>
@@ -164,14 +190,19 @@
 					bind:value={notes}
 					placeholder="Add any notes..."
 					rows="3"
-					class="input"
-				></textarea>
+					class="input"></textarea>
 			</div>
 		</div>
 
 		<div class="modal-footer">
-			<button class="btn-secondary" on:click={handleClose} disabled={saving}>Cancel</button>
-			<button class="btn-primary" on:click={handleSave} disabled={saving || !selectedRecipeId}>
+			<button class="btn-secondary" on:click={handleClose} disabled={saving}
+				>Cancel</button
+			>
+			<button
+				class="btn-primary"
+				on:click={handleSave}
+				disabled={saving || !selectedRecipeId}
+			>
 				{saving ? 'Adding...' : 'Add Meal'}
 			</button>
 		</div>

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { generateRecipe } from '$lib/api/ai';
-	import { createRecipe, type RecipeCreate } from '$lib/api/recipes';
-	import RecipeForm from '$lib/components/RecipeForm.svelte';
-	import { toast } from '$lib/stores/toast';
+	import { generateRecipe } from '#lib/api/ai.js';
+	import { createRecipe, type RecipeCreate } from '#lib/api/recipes.js';
+	import RecipeForm from '#lib/components/RecipeForm.svelte';
+	import { toast } from '#lib/stores/toast.js';
 
 	let step: 'input' | 'preview' = 'input';
 	let generating = false;
@@ -27,7 +27,7 @@
 		'Dairy-Free',
 		'Nut-Free',
 		'Low-Carb',
-		'Keto'
+		'Keto',
 	];
 
 	const equipmentOptions = [
@@ -38,7 +38,7 @@
 		'Instant Pot',
 		'Air Fryer',
 		'Blender',
-		'Food Processor'
+		'Food Processor',
 	];
 
 	function toggleDietary(option: string) {
@@ -78,8 +78,9 @@
 				ingredients,
 				cuisine: cuisine || undefined,
 				time_limit: timeLimit || undefined,
-				dietary_preferences: dietaryPreferences.length > 0 ? dietaryPreferences : undefined,
-				equipment: equipment.length > 0 ? equipment : undefined
+				dietary_preferences:
+					dietaryPreferences.length > 0 ? dietaryPreferences : undefined,
+				equipment: equipment.length > 0 ? equipment : undefined,
 			});
 
 			generatedRecipe = response.recipe;
@@ -153,7 +154,7 @@
 			source_type: 'ai-generated',
 			cuisine: recipeCuisine,
 			category: category,
-			total_time_minutes: totalTimeMinutes
+			total_time_minutes: totalTimeMinutes,
 		};
 	}
 </script>
@@ -174,7 +175,9 @@
 				← Back to Recipes
 			</button>
 
-			<h1 class="text-4xl font-bold" style="color: var(--text-900);">AI Recipe Generator</h1>
+			<h1 class="text-4xl font-bold" style="color: var(--text-900);">
+				AI Recipe Generator
+			</h1>
 			<p class="text-lg mt-2" style="color: var(--text-600);">
 				Generate creative recipes from your available ingredients
 			</p>
@@ -186,9 +189,9 @@
 				<!-- Food Safety Disclaimer -->
 				<div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
 					<p class="text-sm" style="color: var(--text-700);">
-						<strong>Food Safety Notice:</strong> AI-generated recipes should be reviewed for safety,
-						proper cooking temperatures, and food handling. Always verify ingredient combinations and
-						cooking instructions.
+						<strong>Food Safety Notice:</strong> AI-generated recipes should be reviewed
+						for safety, proper cooking temperatures, and food handling. Always verify
+						ingredient combinations and cooking instructions.
 					</p>
 				</div>
 
@@ -210,13 +213,15 @@
 						rows="6"
 						class="input-field w-full"
 						placeholder="chicken breast&#10;bell peppers&#10;onion&#10;garlic&#10;rice"
-						required
-					></textarea>
+						required></textarea>
 				</div>
 
 				<!-- Optional Constraints -->
 				<div class="mb-6">
-					<h3 class="text-lg font-semibold mb-4" style="color: var(--text-900);">
+					<h3
+						class="text-lg font-semibold mb-4"
+						style="color: var(--text-900);"
+					>
 						Optional Constraints
 					</h3>
 
@@ -260,7 +265,10 @@
 
 					<!-- Dietary Preferences -->
 					<fieldset class="mb-4">
-						<legend class="block text-sm font-semibold mb-2" style="color: var(--text-900);">
+						<legend
+							class="block text-sm font-semibold mb-2"
+							style="color: var(--text-900);"
+						>
 							Dietary Preferences
 						</legend>
 						<div class="flex flex-wrap gap-2">
@@ -269,7 +277,7 @@
 									type="button"
 									on:click={() => toggleDietary(option)}
 									class="px-3 py-1.5 text-sm rounded-full border transition-colors {dietaryPreferences.includes(
-										option
+										option,
 									)
 										? 'bg-emerald-100 border-emerald-500 text-emerald-700'
 										: 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}"
@@ -282,7 +290,10 @@
 
 					<!-- Equipment -->
 					<fieldset class="mb-4">
-						<legend class="block text-sm font-semibold mb-2" style="color: var(--text-900);">
+						<legend
+							class="block text-sm font-semibold mb-2"
+							style="color: var(--text-900);"
+						>
 							Available Equipment
 						</legend>
 						<div class="flex flex-wrap gap-2">
@@ -291,7 +302,7 @@
 									type="button"
 									on:click={() => toggleEquipment(option)}
 									class="px-3 py-1.5 text-sm rounded-full border transition-colors {equipment.includes(
-										option
+										option,
 									)
 										? 'bg-blue-100 border-blue-500 text-blue-700'
 										: 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}"
@@ -312,7 +323,12 @@
 
 				<!-- Actions -->
 				<div class="flex gap-4">
-					<button type="button" on:click={handleGenerate} disabled={generating} class="btn-primary">
+					<button
+						type="button"
+						on:click={handleGenerate}
+						disabled={generating}
+						class="btn-primary"
+					>
 						{#if generating}
 							<svg
 								class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline-block"
@@ -339,15 +355,17 @@
 							Generate Recipe
 						{/if}
 					</button>
-					<button type="button" on:click={handleCancel} class="btn-secondary">Cancel</button>
+					<button type="button" on:click={handleCancel} class="btn-secondary"
+						>Cancel</button
+					>
 				</div>
 			</div>
 		{:else if step === 'preview' && generatedRecipe}
 			<!-- Preview & Edit -->
 			<div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
 				<p class="text-sm" style="color: var(--text-700);">
-					<strong>✨ AI-Generated Recipe</strong> - Review and edit the recipe below before saving.
-					This recipe will be marked as AI-generated in your catalog.
+					<strong>✨ AI-Generated Recipe</strong> - Review and edit the recipe below
+					before saving. This recipe will be marked as AI-generated in your catalog.
 				</p>
 			</div>
 
@@ -355,7 +373,7 @@
 				initialData={parseRecipeData(generatedRecipe)}
 				on:submit={handleSave}
 				on:cancel={handleCancel}
-				saving={saving}
+				{saving}
 			/>
 		{/if}
 	</div>

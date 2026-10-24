@@ -3,7 +3,7 @@
  */
 
 import { apiRequest } from "./client";
-import { FETCH_CREDENTIALS } from "$lib/constants";
+import { FETCH_CREDENTIALS } from "#lib/constants.js";
 
 export interface Collection {
   id: number;
@@ -120,7 +120,7 @@ export async function getCollectionRecipes(
  * Export a collection as PDF
  */
 export async function exportCollectionPdf(collectionId: number): Promise<Blob> {
-  const { API_V1_URL } = await import("$lib/config");
+  const { API_V1_URL } = await import("#lib/config.js");
 
   const response = await fetch(
     `${API_V1_URL}/collections/${collectionId}/export/pdf`,

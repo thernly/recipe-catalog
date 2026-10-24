@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { browser } from '$app/environment';
-	import type { Recipe, RecipeCreate, RecipeUpdate } from '$lib/api/recipes';
-	import IngredientsEditor from '$lib/components/recipe/IngredientsEditor.svelte';
-	import InstructionsEditor from '$lib/components/recipe/InstructionsEditor.svelte';
-	import Button from '$lib/components/Button.svelte';
+	import { browser } from '$app/env';
+	import type { Recipe, RecipeCreate, RecipeUpdate } from '#lib/api/recipes.js';
+	import IngredientsEditor from '#lib/components/recipe/IngredientsEditor.svelte';
+	import InstructionsEditor from '#lib/components/recipe/InstructionsEditor.svelte';
+	import Button from '#lib/components/Button.svelte';
 
 	export let recipe: Recipe | null = null; // null for create, recipe for edit
 	export let saving = false;
@@ -36,9 +36,9 @@
 		if (!instructions) return [''];
 		if (typeof instructions === 'string') return [instructions];
 		if (Array.isArray(instructions)) {
-			return instructions.map(item =>
-				typeof item === 'string' ? item : (item.text || '')
-			).filter(Boolean);
+			return instructions
+				.map((item) => (typeof item === 'string' ? item : item.text || ''))
+				.filter(Boolean);
 		}
 		return [''];
 	}
@@ -48,9 +48,14 @@
 	const initialInstructions = baseRecipeData?.recipeInstructions;
 	const initialEquipment = baseRecipeData?.equipment;
 
-	let ingredients: string[] = Array.isArray(initialIngredients) && initialIngredients.length > 0 ? [...initialIngredients] : [''];
+	let ingredients: string[] =
+		Array.isArray(initialIngredients) && initialIngredients.length > 0
+			? [...initialIngredients]
+			: [''];
 	let instructions: string[] = normalizeInstructions(initialInstructions);
-	let equipment: string[] = Array.isArray(initialEquipment) ? [...initialEquipment] : [];
+	let equipment: string[] = Array.isArray(initialEquipment)
+		? [...initialEquipment]
+		: [];
 	let notes = baseRecipeData?.notes || '';
 	let keywords = baseRecipeData?.keywords || '';
 
@@ -150,11 +155,20 @@
 			recipeInstructions: instructions.filter((i) => i.trim()),
 			prepTime: formatDuration(prepTimeHours, prepTimeMinutes),
 			cookTime: formatDuration(cookTimeHours, cookTimeMinutes),
-			totalTime: totalTimeMinutes > 0 ? formatDuration(Math.floor(totalTimeMinutes / 60), totalTimeMinutes % 60) : undefined,
+			totalTime:
+				totalTimeMinutes > 0
+					? formatDuration(
+							Math.floor(totalTimeMinutes / 60),
+							totalTimeMinutes % 60,
+						)
+					: undefined,
 			recipeYield: recipeYield || undefined,
-			equipment: equipment.filter((e) => e.trim()).length > 0 ? equipment.filter((e) => e.trim()) : undefined,
+			equipment:
+				equipment.filter((e) => e.trim()).length > 0
+					? equipment.filter((e) => e.trim())
+					: undefined,
 			notes: notes.trim() || undefined,
-			keywords: keywords.trim() || undefined
+			keywords: keywords.trim() || undefined,
 		};
 
 		const formData: RecipeCreate | RecipeUpdate = {
@@ -164,7 +178,7 @@
 			cuisine: cuisine.trim() || undefined,
 			category: category.trim() || undefined,
 			total_time_minutes: totalTimeMinutes > 0 ? totalTimeMinutes : undefined,
-			recipe_data: recipeData
+			recipe_data: recipeData,
 		};
 
 		// Add source URL only for new recipes
@@ -204,7 +218,7 @@
 					cookTimeMinutes,
 					recipeYield,
 					notes,
-					keywords
+					keywords,
 				};
 				localStorage.setItem('recipe-draft', JSON.stringify(draft));
 			}
@@ -213,7 +227,7 @@
 
 	// Watch for changes to trigger auto-save
 	// eslint-disable-next-line @typescript-eslint/no-unused-expressions -- lists reactive dependencies
-	$: name, description, scheduleAutoSave();
+	$: (name, description, scheduleAutoSave());
 </script>
 
 <form on:submit|preventDefault={handleSubmit} class="recipe-form">
@@ -237,16 +251,15 @@
 			{/if}
 		</div>
 
-	<div class="form-group">
-		<label for="description" class="form-label">Description</label>
-		<textarea
-			id="description"
-			bind:value={description}
-			placeholder="A brief description of your recipe..."
-			rows="3"
-			class="form-input"
-		></textarea>
-	</div>
+		<div class="form-group">
+			<label for="description" class="form-label">Description</label>
+			<textarea
+				id="description"
+				bind:value={description}
+				placeholder="A brief description of your recipe..."
+				rows="3"
+				class="form-input"></textarea>
+		</div>
 
 		<div class="form-group">
 			<label for="imageUrl" class="form-label">Image URL</label>
@@ -257,7 +270,9 @@
 				placeholder="https://example.com/image.jpg"
 				class="form-input"
 			/>
-			<p class="form-help">Paste a URL to an image, or leave blank to upload later</p>
+			<p class="form-help">
+				Paste a URL to an image, or leave blank to upload later
+			</p>
 		</div>
 
 		{#if !recipe}
@@ -270,7 +285,9 @@
 					placeholder="https://example.com/original-recipe"
 					class="form-input"
 				/>
-				<p class="form-help">Link to the original recipe if this is adapted from one</p>
+				<p class="form-help">
+					Link to the original recipe if this is adapted from one
+				</p>
 			</div>
 		{/if}
 	</section>
@@ -293,71 +310,77 @@
 	<section class="form-section">
 		<h2 class="section-title">Times & Yield</h2>
 
-	<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-		<fieldset class="form-group time-fieldset">
-			<legend class="form-label">Prep Time</legend>
-			<div class="flex gap-3">
-				<div class="flex-1">
-					<label for="prep-time-hours" class="sr-only">Prep time hours</label>
-					<input
-						id="prep-time-hours"
-						type="number"
-						bind:value={prepTimeHours}
-						min="0"
-						placeholder="Hours"
-						class="form-input"
-					/>
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+			<fieldset class="form-group time-fieldset">
+				<legend class="form-label">Prep Time</legend>
+				<div class="flex gap-3">
+					<div class="flex-1">
+						<label for="prep-time-hours" class="sr-only">Prep time hours</label>
+						<input
+							id="prep-time-hours"
+							type="number"
+							bind:value={prepTimeHours}
+							min="0"
+							placeholder="Hours"
+							class="form-input"
+						/>
+					</div>
+					<span class="py-2" aria-hidden="true">:</span>
+					<div class="flex-1">
+						<label for="prep-time-minutes" class="sr-only"
+							>Prep time minutes</label
+						>
+						<input
+							id="prep-time-minutes"
+							type="number"
+							bind:value={prepTimeMinutes}
+							min="0"
+							max="59"
+							placeholder="Minutes"
+							class="form-input"
+						/>
+					</div>
 				</div>
-				<span class="py-2" aria-hidden="true">:</span>
-				<div class="flex-1">
-					<label for="prep-time-minutes" class="sr-only">Prep time minutes</label>
-					<input
-						id="prep-time-minutes"
-						type="number"
-						bind:value={prepTimeMinutes}
-						min="0"
-						max="59"
-						placeholder="Minutes"
-						class="form-input"
-					/>
-				</div>
-			</div>
-		</fieldset>
+			</fieldset>
 
-		<fieldset class="form-group time-fieldset">
-			<legend class="form-label">Cook Time</legend>
-			<div class="flex gap-3">
-				<div class="flex-1">
-					<label for="cook-time-hours" class="sr-only">Cook time hours</label>
-					<input
-						id="cook-time-hours"
-						type="number"
-						bind:value={cookTimeHours}
-						min="0"
-						placeholder="Hours"
-						class="form-input"
-					/>
+			<fieldset class="form-group time-fieldset">
+				<legend class="form-label">Cook Time</legend>
+				<div class="flex gap-3">
+					<div class="flex-1">
+						<label for="cook-time-hours" class="sr-only">Cook time hours</label>
+						<input
+							id="cook-time-hours"
+							type="number"
+							bind:value={cookTimeHours}
+							min="0"
+							placeholder="Hours"
+							class="form-input"
+						/>
+					</div>
+					<span class="py-2" aria-hidden="true">:</span>
+					<div class="flex-1">
+						<label for="cook-time-minutes" class="sr-only"
+							>Cook time minutes</label
+						>
+						<input
+							id="cook-time-minutes"
+							type="number"
+							bind:value={cookTimeMinutes}
+							min="0"
+							max="59"
+							placeholder="Minutes"
+							class="form-input"
+						/>
+					</div>
 				</div>
-				<span class="py-2" aria-hidden="true">:</span>
-				<div class="flex-1">
-					<label for="cook-time-minutes" class="sr-only">Cook time minutes</label>
-					<input
-						id="cook-time-minutes"
-						type="number"
-						bind:value={cookTimeMinutes}
-						min="0"
-						max="59"
-						placeholder="Minutes"
-						class="form-input"
-					/>
-				</div>
-			</div>
-		</fieldset>
-	</div>
+			</fieldset>
+		</div>
 
 		{#if totalTimeMinutes > 0}
 			<p class="text-sm mt-2" style="color: var(--text-600);">
-				Total Time: {Math.floor(totalTimeMinutes / 60) > 0 ? `${Math.floor(totalTimeMinutes / 60)}h ` : ''}{totalTimeMinutes % 60}min
+				Total Time: {Math.floor(totalTimeMinutes / 60) > 0
+					? `${Math.floor(totalTimeMinutes / 60)}h `
+					: ''}{totalTimeMinutes % 60}min
 			</p>
 		{/if}
 
@@ -428,42 +451,59 @@
 							placeholder="e.g., Stand mixer, 9x13 baking pan"
 							class="form-input flex-1"
 						/>
-						<button type="button" on:click={() => removeEquipment(index)} class="btn-remove" title="Remove">
+						<button
+							type="button"
+							on:click={() => removeEquipment(index)}
+							class="btn-remove"
+							title="Remove"
+						>
 							×
 						</button>
 					</div>
 				{/each}
 			</div>
 
-			<button type="button" on:click={addEquipment} class="btn btn-secondary btn-sm mt-3">
+			<button
+				type="button"
+				on:click={addEquipment}
+				class="btn btn-secondary btn-sm mt-3"
+			>
 				+ Add Equipment
 			</button>
 		</section>
 	{:else}
-		<button type="button" on:click={addEquipment} class="btn btn-secondary btn-sm">
+		<button
+			type="button"
+			on:click={addEquipment}
+			class="btn btn-secondary btn-sm"
+		>
 			+ Add Equipment (Optional)
 		</button>
 	{/if}
 
 	<!-- Notes Section -->
 	<section class="form-section">
-	<h2 class="section-title">Notes & Tips</h2>
+		<h2 class="section-title">Notes & Tips</h2>
 
-	<div class="form-group">
-		<label for="recipe-notes" class="sr-only">Notes and Tips</label>
-		<textarea
-			id="recipe-notes"
-			bind:value={notes}
-			placeholder="Add any notes, tips, or variations..."
-			rows="4"
-			class="form-input"
-		></textarea>
-	</div>
+		<div class="form-group">
+			<label for="recipe-notes" class="sr-only">Notes and Tips</label>
+			<textarea
+				id="recipe-notes"
+				bind:value={notes}
+				placeholder="Add any notes, tips, or variations..."
+				rows="4"
+				class="form-input"></textarea>
+		</div>
 	</section>
 
 	<!-- Form Actions -->
 	<div class="form-actions">
-		<Button type="button" on:click={handleCancel} variant="secondary" disabled={saving}>
+		<Button
+			type="button"
+			on:click={handleCancel}
+			variant="secondary"
+			disabled={saving}
+		>
 			Cancel
 		</Button>
 		<Button type="submit" variant="primary" loading={saving}>
@@ -523,7 +563,7 @@
 
 	.form-label.required::after {
 		content: '*';
-		color: #EF4444;
+		color: #ef4444;
 		margin-left: 0.25rem;
 	}
 
@@ -545,11 +585,11 @@
 	}
 
 	.form-input.error {
-		border-color: #EF4444;
+		border-color: #ef4444;
 	}
 
 	.form-input.error:focus {
-		box-shadow: 0 0 0 3px #FEE2E2;
+		box-shadow: 0 0 0 3px #fee2e2;
 	}
 
 	.form-help {
@@ -560,7 +600,7 @@
 
 	.error-message {
 		font-size: 0.875rem;
-		color: #EF4444;
+		color: #ef4444;
 		margin-top: 0.5rem;
 	}
 

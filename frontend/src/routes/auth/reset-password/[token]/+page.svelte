@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { apiRequest } from '$lib/api/client';
+	import { page } from '$app/state';
+	import { apiRequest } from '#lib/api/client.js';
 
 	let token = '';
 	let password = '';
@@ -30,7 +30,7 @@
 	}
 
 	onMount(() => {
-		token = $page.params.token!;
+		token = page.params.token!;
 	});
 
 	async function handleSubmit() {
@@ -53,7 +53,7 @@
 			await apiRequest('/api/auth/reset-password', {
 				method: 'POST',
 				body: JSON.stringify({ token, new_password: password }),
-				requireAuth: false
+				requireAuth: false,
 			});
 
 			success = true;
@@ -71,9 +71,7 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Reset Password - Recipe Catalog</title>
-</svelte:head>
+<svelte:head><title>Reset Password - Recipe Catalog</title></svelte:head>
 
 <div class="auth-page">
 	<div class="auth-container">
@@ -89,10 +87,13 @@
 					<div class="success-icon">✓</div>
 					<h2 class="success-title">Password Reset Complete</h2>
 					<p class="success-text">
-						Your password has been successfully updated. You will be redirected to the login page
-						shortly.
+						Your password has been successfully updated. You will be redirected
+						to the login page shortly.
 					</p>
-					<button on:click={() => goto('/auth/login')} class="btn btn-primary btn-block">
+					<button
+						on:click={() => goto('/auth/login')}
+						class="btn btn-primary btn-block"
+					>
 						Go to Login
 					</button>
 				</div>
@@ -120,7 +121,9 @@
 					</div>
 
 					<div class="form-group">
-						<label for="confirmPassword" class="form-label">Confirm Password</label>
+						<label for="confirmPassword" class="form-label"
+							>Confirm Password</label
+						>
 						<input
 							id="confirmPassword"
 							type="password"
@@ -154,7 +157,9 @@
 					<button
 						type="submit"
 						class="btn btn-primary btn-block"
-						disabled={loading || passwordErrors.length > 0 || password !== confirmPassword}
+						disabled={loading ||
+							passwordErrors.length > 0 ||
+							password !== confirmPassword}
 					>
 						{loading ? 'Resetting...' : 'Reset Password'}
 					</button>
@@ -177,7 +182,11 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: linear-gradient(135deg, var(--primary-50) 0%, var(--accent-50) 100%);
+		background: linear-gradient(
+			135deg,
+			var(--primary-50) 0%,
+			var(--accent-50) 100%
+		);
 		padding: 2rem;
 	}
 
