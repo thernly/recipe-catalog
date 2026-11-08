@@ -3,6 +3,7 @@
  */
 
 import { apiRequest } from "./client";
+import type { RecipeSummary } from "./recipes";
 
 export interface Collection {
   id: number;
@@ -111,8 +112,8 @@ export async function removeRecipesFromCollection(
  */
 export async function getCollectionRecipes(
   collectionId: number,
-): Promise<any[]> {
-  return apiRequest<any[]>(`/collections/${collectionId}/recipes`);
+): Promise<RecipeSummary[]> {
+  return apiRequest<RecipeSummary[]>(`/collections/${collectionId}/recipes`);
 }
 
 /**

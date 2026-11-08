@@ -62,7 +62,7 @@
 	<p class="switcher-description">Select a color scheme for your recipe catalog</p>
 
 	<div class="theme-options">
-		{#each themes as theme}
+		{#each themes as theme (theme.id)}
 			<button
 				class="theme-card"
 				class:active={currentTheme === theme.id}

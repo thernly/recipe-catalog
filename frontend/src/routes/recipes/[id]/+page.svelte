@@ -102,7 +102,7 @@
 		if (recipe.recipe_data?.recipeInstructions) {
 			const instructions = recipe.recipe_data.recipeInstructions;
 			if (Array.isArray(instructions)) {
-				return instructions.map((item: any) => {
+				return instructions.map((item) => {
 					if (typeof item === 'string') return item;
 					if (item?.text) return item.text;
 					return JSON.stringify(item);
@@ -443,7 +443,7 @@
 						{#if recipe.recipe_data?.keywords}
 							{#each recipe.recipe_data.keywords
 								.split(',')
-								.slice(0, 5) as keyword}
+								.slice(0, 5) as keyword, i (i)}
 								<span class="tag tag-outline">{keyword.trim()}</span>
 							{/each}
 						{/if}
@@ -460,7 +460,7 @@
 							Equipment
 						</h2>
 						<ul class="equipment-list">
-							{#each recipe.recipe_data.equipment as item}
+							{#each recipe.recipe_data.equipment as item, i (i)}
 								<li style="color: var(--text-700);">{item}</li>
 							{/each}
 						</ul>
@@ -479,7 +479,7 @@
 						</h2>
 
 						<ul class="space-y-3">
-							{#each getIngredients(recipe) as ingredient, index}
+							{#each getIngredients(recipe) as ingredient, index (index)}
 								<li class="flex items-start gap-3">
 									<input
 										type="checkbox"
@@ -525,7 +525,7 @@
 						</div>
 
 						<ol class="instructions-list">
-							{#each getInstructions(recipe) as instruction, index}
+							{#each getInstructions(recipe) as instruction, index (index)}
 								<li
 									class="instruction-step"
 									class:completed={completedSteps.has(index)}
@@ -581,7 +581,7 @@
 							Nutrition Information
 						</summary>
 						<div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-							{#each Object.entries(recipe.recipe_data.nutrition) as [key, value]}
+							{#each Object.entries(recipe.recipe_data.nutrition) as [key, value] (key)}
 								<div>
 									<div class="text-sm" style="color: var(--text-600);">
 										{formatNutritionLabel(key)}

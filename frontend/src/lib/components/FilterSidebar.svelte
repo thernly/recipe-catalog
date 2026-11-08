@@ -134,7 +134,7 @@
 			{/if}
 		</h3>
 		<div class="filter-options">
-			{#each cuisineOptions as cuisine}
+			{#each cuisineOptions as cuisine, i (i)}
 				<label class="filter-checkbox">
 					<input
 						type="checkbox"
@@ -156,7 +156,7 @@
 			{/if}
 		</h3>
 		<div class="filter-options">
-			{#each categoryOptions as category}
+			{#each categoryOptions as category, i (i)}
 				<label class="filter-checkbox">
 					<input
 						type="checkbox"
@@ -178,7 +178,7 @@
 			{/if}
 		</h3>
 		<div class="filter-options">
-			{#each sourceTypeOptions as option}
+			{#each sourceTypeOptions as option (option.value)}
 				<label class="filter-checkbox">
 					<input
 						type="checkbox"
@@ -204,7 +204,7 @@
 
 		<!-- Time Presets -->
 		<div class="time-presets">
-			{#each timePresets as preset}
+			{#each timePresets as preset (preset.max)}
 				<button
 					on:click={() => setTimePreset(preset.max)}
 					class="time-preset-btn"

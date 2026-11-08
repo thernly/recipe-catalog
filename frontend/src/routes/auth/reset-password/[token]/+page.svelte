@@ -113,7 +113,7 @@
 						/>
 						{#if password.length > 0 && passwordErrors.length > 0}
 							<div class="validation-hints">
-								{#each passwordErrors as hint}
+								{#each passwordErrors as hint (hint)}
 									<div class="validation-hint error">✗ {hint}</div>
 								{/each}
 							</div>

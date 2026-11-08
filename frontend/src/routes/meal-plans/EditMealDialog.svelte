@@ -71,7 +71,7 @@
 				updates.day_of_week = dayOfWeek;
 			}
 			if (mealType !== meal.meal_type) {
-				updates.meal_type = mealType as any;
+				updates.meal_type = mealType as PlannedMealUpdate['meal_type'];
 			}
 			if (servings !== meal.servings) {
 				updates.servings = servings || undefined;
@@ -157,7 +157,7 @@
 				<div class="form-group">
 					<label for="day-of-week">Day</label>
 					<select id="day-of-week" bind:value={dayOfWeek} class="input">
-						{#each dayNames as dayName, index}
+						{#each dayNames as dayName, index (dayName)}
 							<option value={index}>{dayName}</option>
 						{/each}
 					</select>
@@ -166,7 +166,7 @@
 				<div class="form-group">
 					<label for="meal-type">Meal Type</label>
 					<select id="meal-type" bind:value={mealType} class="input">
-						{#each mealTypes as type}
+						{#each mealTypes as type (type)}
 							<option value={type}
 								>{type.charAt(0).toUpperCase() + type.slice(1)}</option
 							>
@@ -195,7 +195,7 @@
 					{:else if recipes.length === 0}
 						<div class="no-recipes">No recipes found</div>
 					{:else}
-						{#each recipes as recipe}
+						{#each recipes as recipe (recipe.id)}
 							<div
 								class="recipe-item"
 								class:selected={selectedRecipeId === recipe.id}

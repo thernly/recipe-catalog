@@ -153,7 +153,7 @@
 				suggestions
 			</p>
 			<div class="dietary-options">
-				{#each dietaryOptions as option}
+				{#each dietaryOptions as option (option)}
 					<button
 						type="button"
 						on:click={() => toggleDietary(option)}

@@ -3,6 +3,7 @@
  */
 
 import { apiRequest } from "./client";
+import type { RecipeData } from "#lib/types/index.js";
 
 export interface AIRecipeGenerateRequest {
   ingredients: string[];
@@ -13,7 +14,7 @@ export interface AIRecipeGenerateRequest {
 }
 
 export interface AIRecipeGenerateResponse {
-  recipe: any;
+  recipe: RecipeData;
   source_type: string;
 }
 

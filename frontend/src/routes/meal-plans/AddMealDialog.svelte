@@ -65,7 +65,7 @@
 			const mealData: PlannedMealCreate = {
 				recipe_id: selectedRecipeId,
 				day_of_week: day,
-				meal_type: mealType as any,
+				meal_type: mealType as PlannedMealCreate['meal_type'],
 				servings: servings || undefined,
 				notes: notes || undefined,
 			};
@@ -144,7 +144,7 @@
 					{:else if recipes.length === 0}
 						<div class="no-recipes">No recipes found</div>
 					{:else}
-						{#each recipes as recipe}
+						{#each recipes as recipe (recipe.id)}
 							<div
 								class="recipe-item"
 								class:selected={selectedRecipeId === recipe.id}
