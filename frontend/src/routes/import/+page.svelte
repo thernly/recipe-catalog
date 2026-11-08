@@ -196,7 +196,7 @@
 										: ''}:
 								</p>
 								<ul class="text-sm space-y-1" style="color: var(--text-600);">
-									{#each selectedFiles.slice(0, 5) as file}
+									{#each selectedFiles.slice(0, 5) as file (file)}
 										<li>• {file.name} ({Math.round(file.size / 1024)} KB)</li>
 									{/each}
 									{#if selectedFiles.length > 5}
@@ -253,7 +253,7 @@
 							disabled={loading}
 						>
 							<option value={undefined}>No collection</option>
-							{#each collections as collection}
+							{#each collections as collection (collection.id)}
 								<option value={collection.id}>{collection.name}</option>
 							{/each}
 						</select>

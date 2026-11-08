@@ -30,7 +30,7 @@
 				<div class="format-section">
 					<h3 class="format-title">Available Formats:</h3>
 
-					{#each formats as format}
+					{#each formats as format (format.value)}
 						<button
 							on:click={() => handleExport(format.value)}
 							disabled={exporting}

@@ -153,7 +153,7 @@
 		</div>
 	{:else}
 		<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-			{#each shoppingLists as list}
+			{#each shoppingLists as list (list.id)}
 				<a
 					href="/shopping-lists/{list.id}"
 					class="block rounded-lg shadow-sm border hover:shadow-md transition-shadow p-6"

@@ -115,10 +115,10 @@
 		</p>
 
 		<div class="tags-container">
-			{#each defaultCuisines as cuisine}
+			{#each defaultCuisines as cuisine, i (i)}
 				<span class="tag tag-default">{cuisine}</span>
 			{/each}
-			{#each customCuisines as cuisine}
+			{#each customCuisines as cuisine, i (i)}
 				<span class="tag tag-custom">
 					{cuisine}
 					<button
@@ -159,10 +159,10 @@
 		</p>
 
 		<div class="tags-container">
-			{#each defaultCategories as category}
+			{#each defaultCategories as category, i (i)}
 				<span class="tag tag-default">{category}</span>
 			{/each}
-			{#each customCategories as category}
+			{#each customCategories as category, i (i)}
 				<span class="tag tag-custom">
 					{category}
 					<button

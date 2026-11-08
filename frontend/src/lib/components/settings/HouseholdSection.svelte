@@ -382,7 +382,7 @@
 				Members ({members.length}/{household.max_members})
 			</h3>
 			<div class="member-list">
-				{#each members as member}
+				{#each members as member (member.id)}
 					<div class="member-item">
 						<div class="member-info">
 							<h4 class="member-name">
@@ -535,7 +535,7 @@
 			<div class="subsection">
 				<h3 class="subsection-title">Pending Invitations</h3>
 				<div class="invitation-list">
-					{#each invitations as invitation}
+					{#each invitations as invitation (invitation.id)}
 						{@const expired = isExpired(invitation.expires_at)}
 						<div class="invitation-item" class:expired>
 							<div class="invitation-info">

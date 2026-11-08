@@ -20,7 +20,7 @@ pnpm test:watch   # Vitest (watch mode)
 
 Run a single test file: `pnpm test src/lib/components/RecipeCard.test.ts`
 
-`pnpm lint` (flat config in `frontend/eslint.config.js`) exits 0 with warnings: `svelte/require-each-key`, `svelte/prefer-svelte-reactivity` and `no-explicit-any` are existing debt downgraded to `warn` — do not add new ones. `pnpm format` rewrites every file; much of `src/` has never been formatted, so format only the files you touch (`pnpm exec prettier --write <file>`) unless a repo-wide reformat is the point of the change.
+`pnpm lint` (flat config in `frontend/eslint.config.js`) runs with no warnings; `svelte/require-each-key`, `svelte/prefer-svelte-reactivity` and `no-explicit-any` are errors. Key `{#each}` blocks by a stable id, by the value only when values are guaranteed unique, and by index for lists bound to editable inputs. `pnpm format` rewrites every file; much of `src/` has never been formatted, so format only the files you touch (`pnpm exec prettier --write <file>`) unless a repo-wide reformat is the point of the change.
 
 `frontend/` is its own pnpm workspace root (`frontend/pnpm-workspace.yaml`, `frontend/pnpm-lock.yaml`) — there is no root-level `package.json`. Always install and run from inside `frontend/`.
 

@@ -56,8 +56,8 @@
 			// Login separately for clearer error handling
 			await auth.login(email, password);
 			goto('/dashboard');
-		} catch (err: any) {
-			error = err.message || 'Registration failed. Please try again.';
+		} catch (err) {
+			error = (err instanceof Error && err.message) ||'Registration failed. Please try again.';
 		} finally {
 			loading = false;
 		}
@@ -123,7 +123,7 @@
 			<!-- OAuth Providers -->
 			{#if !loadingProviders && providers.length > 0}
 				<div class="space-y-3 mb-6">
-					{#each providers.filter((p) => p.enabled) as provider}
+					{#each providers.filter((p) => p.enabled) as provider (provider.name)}
 						<button
 							type="button"
 							on:click={() => handleOAuthSignup(provider.name)}

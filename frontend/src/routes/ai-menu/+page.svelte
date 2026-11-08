@@ -228,7 +228,7 @@
 			<div>
 				<div class="block text-sm font-medium mb-2">Meal Types to Include</div>
 				<div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-					{#each mealTypeOptions as mealType}
+					{#each mealTypeOptions as mealType (mealType)}
 						<button
 							type="button"
 							on:click={() => toggleMealType(mealType)}
@@ -248,7 +248,7 @@
 			<div>
 				<div class="block text-sm font-medium mb-2">Dietary Preferences</div>
 				<div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-					{#each dietaryOptions as option}
+					{#each dietaryOptions as option (option)}
 						<button
 							type="button"
 							on:click={() => toggleDietary(option)}
@@ -343,7 +343,7 @@
 			</div>
 
 			<div class="space-y-6">
-				{#each Array.from({ length: days }, (_, i) => i + 1) as day}
+				{#each Array.from({ length: days }, (_, i) => i + 1) as day (day)}
 					{@const daySuggestions = getSuggestionsForDay(day)}
 					{#if daySuggestions.length > 0}
 						<div
@@ -353,7 +353,7 @@
 								{day <= 7 ? dayNames[day - 1] : `Day ${day}`}
 							</h3>
 							<div class="space-y-2">
-								{#each daySuggestions as suggestion}
+								{#each daySuggestions as suggestion (suggestion)}
 									{@const suggestionIndex = suggestions.indexOf(suggestion)}
 									<label
 										class="flex items-start p-3 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"

@@ -30,12 +30,6 @@ export default ts.config(
       ],
       // The app is always served from the origin root (no `paths.base`), so plain hrefs are correct.
       "svelte/no-navigation-without-resolve": "off",
-      // Existing debt, reported as warnings so `pnpm lint` passes while new cases stay visible.
-      // Fixing them changes runtime behaviour (keyed DOM reuse, reactive collections), so it
-      // needs its own change. Raise each to 'error' once its count reaches zero.
-      "svelte/require-each-key": "warn",
-      "svelte/prefer-svelte-reactivity": "warn",
-      "@typescript-eslint/no-explicit-any": "warn",
     },
   },
   {

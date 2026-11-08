@@ -230,20 +230,20 @@
 		<div class="meal-grid">
 			<!-- Header row with meal types -->
 			<div class="grid-header"></div>
-			{#each mealTypes as mealType}
+			{#each mealTypes as mealType (mealType)}
 				<div class="grid-header meal-type-header">
 					{mealType.charAt(0).toUpperCase() + mealType.slice(1)}
 				</div>
 			{/each}
 
 			<!-- Grid rows for each day -->
-			{#each weekDates as date, dayIndex}
+			{#each weekDates as date, dayIndex (date.toISOString())}
 				<div class="day-header" class:today={isToday(date)}>
 					<div class="day-name">{dayNames[dayIndex]}</div>
 					<div class="day-date">{formatDate(date)}</div>
 				</div>
 
-				{#each mealTypes as mealType}
+				{#each mealTypes as mealType (mealType)}
 					<div
 						class="meal-cell"
 						on:click={() => openAddDialog(dayIndex, mealType)}
@@ -252,7 +252,7 @@
 						role="button"
 						tabindex="0"
 					>
-						{#each getMealsForCell(dayIndex, mealType) as meal}
+						{#each getMealsForCell(dayIndex, mealType) as meal (meal.id)}
 							<div
 								class="meal-item"
 								on:click|stopPropagation={() => openEditDialog(meal)}

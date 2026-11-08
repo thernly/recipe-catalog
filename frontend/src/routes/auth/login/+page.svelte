@@ -25,8 +25,8 @@
 		try {
 			await auth.login(email, password);
 			goto(safeRedirect(page.url.searchParams.get('redirect')));
-		} catch (err: any) {
-			error = err.message || 'Login failed. Please check your credentials.';
+		} catch (err) {
+			error = (err instanceof Error && err.message) ||'Login failed. Please check your credentials.';
 		} finally {
 			loading = false;
 		}
@@ -92,7 +92,7 @@
 			<!-- OAuth Providers -->
 			{#if !loadingProviders && providers.length > 0}
 				<div class="space-y-3 mb-6">
-					{#each providers.filter((p) => p.enabled) as provider}
+					{#each providers.filter((p) => p.enabled) as provider (provider.name)}
 						<button
 							type="button"
 							on:click={() => handleOAuthLogin(provider.name)}

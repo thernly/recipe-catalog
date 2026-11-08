@@ -32,11 +32,11 @@
 	let recipeYield = baseRecipeData?.recipeYield || '';
 
 	// Helper to normalize instructions to string array
-	function normalizeInstructions(instructions: any): string[] {
+	function normalizeInstructions(instructions: unknown): string[] {
 		if (!instructions) return [''];
 		if (typeof instructions === 'string') return [instructions];
 		if (Array.isArray(instructions)) {
-			return instructions
+			return (instructions as Array<string | { text?: string }>)
 				.map((item) => (typeof item === 'string' ? item : item.text || ''))
 				.filter(Boolean);
 		}
@@ -443,7 +443,7 @@
 			<h2 class="section-title">Equipment</h2>
 
 			<div class="dynamic-list">
-				{#each equipment as _item, index}
+				{#each equipment as _item, index (index)}
 					<div class="dynamic-list-item">
 						<input
 							type="text"

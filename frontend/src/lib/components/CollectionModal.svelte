@@ -143,7 +143,7 @@
 					<div class="form-group">
 						<p id="icon-label" class="form-label">Icon (Optional)</p>
 						<div class="icon-grid" role="group" aria-labelledby="icon-label">
-							{#each iconOptions as iconOption}
+							{#each iconOptions as iconOption (iconOption)}
 								<button
 									type="button"
 									class="icon-option"

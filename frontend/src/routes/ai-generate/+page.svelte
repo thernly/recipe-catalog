@@ -4,6 +4,7 @@
 	import { createRecipe, type RecipeCreate } from '#lib/api/recipes.js';
 	import RecipeForm from '#lib/components/RecipeForm.svelte';
 	import { toast } from '#lib/stores/toast.js';
+	import type { RecipeData } from '#lib/types/index.js';
 
 	let step: 'input' | 'preview' = 'input';
 	let generating = false;
@@ -18,7 +19,7 @@
 	let equipment: string[] = [];
 
 	// Generated recipe
-	let generatedRecipe: any = null;
+	let generatedRecipe: RecipeData | null = null;
 
 	const dietaryOptions = [
 		'Vegetarian',
@@ -122,7 +123,7 @@
 		}
 	}
 
-	function parseRecipeData(recipe: any): RecipeCreate {
+	function parseRecipeData(recipe: RecipeData): RecipeCreate {
 		// Calculate total time in minutes
 		const totalTime = recipe.totalTime || '';
 		let totalTimeMinutes: number | undefined = undefined;
@@ -272,7 +273,7 @@
 							Dietary Preferences
 						</legend>
 						<div class="flex flex-wrap gap-2">
-							{#each dietaryOptions as option}
+							{#each dietaryOptions as option (option)}
 								<button
 									type="button"
 									on:click={() => toggleDietary(option)}
@@ -297,7 +298,7 @@
 							Available Equipment
 						</legend>
 						<div class="flex flex-wrap gap-2">
-							{#each equipmentOptions as option}
+							{#each equipmentOptions as option (option)}
 								<button
 									type="button"
 									on:click={() => toggleEquipment(option)}

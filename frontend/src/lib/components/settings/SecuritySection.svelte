@@ -214,7 +214,7 @@
 		<p class="text-sm" style="color: var(--text-500);">Loading...</p>
 	{:else if linkedProviders.length > 0}
 		<div class="provider-list">
-			{#each linkedProviders as provider}
+			{#each linkedProviders as provider (provider.id)}
 				<div class="provider-item">
 					<div class="provider-info">
 						<h3 class="provider-name">

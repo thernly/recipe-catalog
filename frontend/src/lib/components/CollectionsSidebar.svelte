@@ -167,7 +167,7 @@
 							</span>
 						</button>
 					</li>
-					{#each $collections.collections.filter((c) => c.is_default) as collection}
+					{#each $collections.collections.filter((c) => c.is_default) as collection (collection.id)}
 						<li>
 							<button
 								on:click={() => goto(`/collections/${collection.id}`)}
@@ -188,7 +188,7 @@
 				<div class="nav-section">
 					<h3 class="nav-section-title">My Collections</h3>
 					<ul class="nav-list">
-						{#each $collections.collections.filter((c) => !c.is_default) as collection}
+						{#each $collections.collections.filter((c) => !c.is_default) as collection (collection.id)}
 							<li>
 								<div class="nav-item-group">
 									<button
