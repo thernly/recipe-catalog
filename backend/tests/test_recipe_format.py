@@ -339,7 +339,7 @@ async def test_fetch_and_encode_image_empty_url():
 
 async def test_convert_from_schema_org_private_image_url_not_fetched():
     """An image URL pointing at a private address is kept but never fetched"""
-    with patch("app.utils.safe_fetch.httpx.AsyncClient") as client_class:
+    with patch("app.utils.safe_fetch.httpx2.AsyncClient") as client_class:
         result = await convert_from_schema_org(
             {"name": "Recipe", "image": "http://127.0.0.1:8000/admin.png"}
         )

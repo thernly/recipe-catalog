@@ -6,7 +6,7 @@ This addresses issue #44 from the codebase assessment.
 """
 
 import pytest
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 
 @pytest.mark.asyncio
@@ -84,7 +84,7 @@ async def test_complete_auth_flow_register_to_logout(client: AsyncClient):
     assert logout_response.status_code == 200
 
     # Verify tokens were cleared (max_age should be 0 or cookies deleted)
-    # Note: httpx may not reflect cookie deletion, so we test by trying to use the token
+    # Note: httpx2 may not reflect cookie deletion, so we test by trying to use the token
 
     # Step 6: Verify old refresh token no longer works after logout
     failed_refresh_response = await client.post(

@@ -5,7 +5,7 @@ it back on.
 """
 
 import pytest
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 from starlette.requests import Request
 
 from app.core.config import settings

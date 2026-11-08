@@ -8,7 +8,7 @@ from authlib.integrations.starlette_client import OAuth
 from app.core.config import settings
 
 
-# Initialize OAuth registry with httpx client
+# Initialize OAuth registry (authlib uses httpx2 when installed)
 oauth = OAuth()
 
 # Configure Google OIDC provider

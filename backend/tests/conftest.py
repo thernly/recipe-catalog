@@ -13,7 +13,7 @@ os.environ.setdefault("ALLOWED_IMAGE_TYPES", "image/jpeg,image/png,image/webp")
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
+from httpx2 import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
