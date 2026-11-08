@@ -4,7 +4,7 @@ AI service for recipe generation using OpenRouter API.
 
 from typing import Any
 
-import httpx
+import httpx2
 
 from app.core.config import settings
 from app.core.constants import (
@@ -61,7 +61,7 @@ class AIService:
         )
 
         # Call OpenRouter API
-        async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
+        async with httpx2.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
             try:
                 response = await client.post(
                     f"{self.base_url}/chat/completions",
@@ -100,7 +100,7 @@ class AIService:
 
                 return recipe_data
 
-            except httpx.HTTPStatusError as e:
+            except httpx2.HTTPStatusError as e:
                 logger.error(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
                 if e.response.status_code == 429:
                     raise Exception("Rate limit exceeded. Please try again later.")
@@ -214,7 +214,7 @@ Important:
         )
 
         # Call OpenRouter API
-        async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
+        async with httpx2.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
             try:
                 response = await client.post(
                     f"{self.base_url}/chat/completions",
@@ -254,7 +254,7 @@ Important:
                 suggestions: list[dict[str, Any]] = menu_data.get("suggestions", [])
                 return suggestions
 
-            except httpx.HTTPStatusError as e:
+            except httpx2.HTTPStatusError as e:
                 logger.error(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
                 if e.response.status_code == 429:
                     raise Exception("Rate limit exceeded. Please try again later.")

@@ -3,7 +3,7 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from app.core.security import hash_token
 from app.models.identity_provider import IdentityProvider

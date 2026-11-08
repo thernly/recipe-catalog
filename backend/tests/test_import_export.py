@@ -8,7 +8,7 @@ from io import BytesIO
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

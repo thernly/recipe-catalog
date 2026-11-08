@@ -5,7 +5,7 @@ Only /api/v1/* routes are now supported.
 """
 
 import pytest
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 
 @pytest.mark.asyncio

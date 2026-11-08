@@ -2,7 +2,7 @@
 
 import pytest
 from fastapi import status
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services import household as household_service

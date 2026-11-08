@@ -21,7 +21,7 @@ import socket
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-import httpx
+import httpx2
 
 from app.core.constants import SAFE_FETCH_MAX_REDIRECTS, SAFE_FETCH_TIMEOUT_SECONDS
 
@@ -104,7 +104,7 @@ async def safe_fetch(
     allowed_content_types: Iterable[str],
     timeout: float = SAFE_FETCH_TIMEOUT_SECONDS,
     max_redirects: int = SAFE_FETCH_MAX_REDIRECTS,
-    transport: httpx.AsyncBaseTransport | None = None,
+    transport: httpx2.AsyncBaseTransport | None = None,
 ) -> FetchResult:
     """
     Fetch `url` under the SSRF rules described in the module docstring.
@@ -115,7 +115,7 @@ async def safe_fetch(
         allowed_content_types: Accepted MIME types (parameters such as charset are ignored)
         timeout: Timeout in seconds for each request
         max_redirects: Maximum number of redirects to follow, each one re-validated
-        transport: Optional httpx transport (tests only)
+        transport: Optional httpx2 transport (tests only)
 
     Returns:
         FetchResult with the final URL, body and normalized content type
@@ -128,7 +128,7 @@ async def safe_fetch(
 
     # trust_env=False: an environment proxy would make the connection somewhere other
     # than the address checked here.
-    async with httpx.AsyncClient(
+    async with httpx2.AsyncClient(
         timeout=timeout,
         follow_redirects=False,
         trust_env=False,
@@ -136,8 +136,8 @@ async def safe_fetch(
     ) as client:
         for _ in range(max_redirects + 1):
             try:
-                parsed = httpx.URL(current_url)
-            except (httpx.InvalidURL, TypeError) as e:
+                parsed = httpx2.URL(current_url)
+            except (httpx2.InvalidURL, TypeError) as e:
                 raise SafeFetchError("Invalid URL") from e
 
             if parsed.scheme not in _ALLOWED_SCHEMES:
@@ -167,7 +167,7 @@ async def safe_fetch(
 
             try:
                 response = await client.send(request, stream=True)
-            except httpx.HTTPError as e:
+            except httpx2.HTTPError as e:
                 raise SafeFetchError(f"Request failed: {e.__class__.__name__}") from e
 
             try:
@@ -199,7 +199,7 @@ async def safe_fetch(
                         body.extend(chunk)
                         if len(body) > max_bytes:
                             raise SafeFetchError("Response exceeds the size limit")
-                except httpx.HTTPError as e:
+                except httpx2.HTTPError as e:
                     raise SafeFetchError(f"Request failed: {e.__class__.__name__}") from e
 
                 return FetchResult(url=str(parsed), content=bytes(body), content_type=content_type)
