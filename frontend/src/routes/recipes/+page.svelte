@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { afterNavigate, goto } from '$app/navigation';
-	import { page } from '$app/state';
+	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { browser } from '$app/env';
 	import {
 		searchRecipes,
@@ -58,37 +57,53 @@
 	let maxTime: number | undefined;
 	let minTime: number | undefined;
 
+	// Build the list URL from the current search state
+	function buildListUrl(
+		sp: RecipeSearchParams,
+		cuisines: string[],
+		categories: string[],
+		sources: string[],
+		max: number | undefined,
+		min: number | undefined,
+	): string {
+		const params = new URLSearchParams();
+
+		if (sp.query) params.set('q', sp.query);
+		if (sp.sort_by && sp.sort_by !== 'recently_added')
+			params.set('sort', sp.sort_by);
+		if (sp.page && sp.page > 1) params.set('page', sp.page.toString());
+		if (cuisines.length > 0) params.set('cuisine', cuisines.join(','));
+		if (categories.length > 0) params.set('category', categories.join(','));
+		if (sources.length > 0) params.set('source', sources.join(','));
+		if (max) params.set('maxTime', max.toString());
+		if (min) params.set('minTime', min.toString());
+
+		const search = params.toString();
+		return search ? `/recipes?${search}` : '/recipes';
+	}
+
+	// Recomputed whenever any search state changes; recipe links carry it
+	// as returnUrl so "Back to Recipes" restores the search.
+	$: listUrl = buildListUrl(
+		searchParams,
+		selectedCuisines,
+		selectedCategories,
+		selectedSourceTypes,
+		maxTime,
+		minTime,
+	);
+
 	// Update URL with current search params
 	function updateURL() {
 		if (!browser) return;
-
-		const params = new URLSearchParams();
-
-		if (searchParams.query) params.set('q', searchParams.query);
-		if (searchParams.sort_by && searchParams.sort_by !== 'recently_added')
-			params.set('sort', searchParams.sort_by);
-		if (searchParams.page && searchParams.page > 1)
-			params.set('page', searchParams.page.toString());
-		if (selectedCuisines.length > 0)
-			params.set('cuisine', selectedCuisines.join(','));
-		if (selectedCategories.length > 0)
-			params.set('category', selectedCategories.join(','));
-		if (selectedSourceTypes.length > 0)
-			params.set('source', selectedSourceTypes.join(','));
-		if (maxTime) params.set('maxTime', maxTime.toString());
-		if (minTime) params.set('minTime', minTime.toString());
-
-		const newURL = params.toString()
-			? `/recipes?${params.toString()}`
-			: '/recipes';
-		window.history.replaceState({}, '', newURL);
+		replaceState(listUrl, {});
 	}
 
 	// Load search params from URL
-	function loadSearchParamsFromURL() {
+	function loadSearchParamsFromURL(url: URL) {
 		if (!browser) return;
 
-		const urlParams = page.url.searchParams;
+		const urlParams = url.searchParams;
 
 		searchParams.query = urlParams.get('q') || '';
 		searchParams.sort_by =
@@ -167,28 +182,9 @@
 	}
 
 	// Handle recipe actions
-	function handleViewRecipe(e: CustomEvent) {
-		const recipe = e.detail as RecipeSummary;
-		// Preserve current search state by building URL from current filters
-		const params = new URLSearchParams();
-		if (searchParams.query) params.set('q', searchParams.query);
-		if (searchParams.sort_by && searchParams.sort_by !== 'recently_added')
-			params.set('sort', searchParams.sort_by);
-		if (searchParams.page && searchParams.page > 1)
-			params.set('page', searchParams.page.toString());
-		if (selectedCuisines.length > 0)
-			params.set('cuisine', selectedCuisines.join(','));
-		if (selectedCategories.length > 0)
-			params.set('category', selectedCategories.join(','));
-		if (selectedSourceTypes.length > 0)
-			params.set('source', selectedSourceTypes.join(','));
-		if (maxTime) params.set('maxTime', maxTime.toString());
-		if (minTime) params.set('minTime', minTime.toString());
-
-		const searchString = params.toString();
-		const currentUrl = searchString ? `/recipes?${searchString}` : '/recipes';
-		const returnUrl = encodeURIComponent(currentUrl);
-		goto(`/recipes/${recipe.id}?returnUrl=${returnUrl}`);
+	// Real links, so cmd-click opens a new tab
+	function recipeHref(id: number | string, returnUrl: string) {
+		return `/recipes/${id}?returnUrl=${encodeURIComponent(returnUrl)}`;
 	}
 
 	function handleEditRecipe(e: CustomEvent) {
@@ -242,8 +238,8 @@
 	}
 
 	// Watch for URL changes (e.g., browser back/forward)
-	afterNavigate(() => {
-		loadSearchParamsFromURL();
+	afterNavigate(({ to }) => {
+		loadSearchParamsFromURL(to?.url ?? new URL(location.href));
 		loadRecipes();
 	});
 
@@ -450,7 +446,7 @@
 							{#each searchResult.recipes as recipe (recipe.id)}
 								<RecipeCard
 									{recipe}
-									onview={(r) => handleViewRecipe({ detail: r } as CustomEvent)}
+									href={recipeHref(recipe.id, listUrl)}
 									onedit={(r) => handleEditRecipe({ detail: r } as CustomEvent)}
 									ondelete={(r) =>
 										handleDeleteRecipe({ detail: r } as CustomEvent)}
@@ -464,7 +460,7 @@
 							{#each searchResult.recipes as recipe (recipe.id)}
 								<RecipeListItem
 									{recipe}
-									onview={(r) => handleViewRecipe({ detail: r } as CustomEvent)}
+									href={recipeHref(recipe.id, listUrl)}
 									onedit={(r) => handleEditRecipe({ detail: r } as CustomEvent)}
 									ondelete={(r) =>
 										handleDeleteRecipe({ detail: r } as CustomEvent)}

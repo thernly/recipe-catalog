@@ -13,6 +13,7 @@
 	export let recipe: RecipeSummary;
 	export let showActions: boolean = true;
 	export let onview: ((recipe: RecipeSummary) => void) | undefined = undefined;
+	export let href: string | undefined = undefined;
 	export let onedit: ((recipe: RecipeSummary) => void) | undefined = undefined;
 	export let ondelete: ((recipe: RecipeSummary) => void) | undefined =
 		undefined;
@@ -45,7 +46,13 @@
 </script>
 
 <article class="recipe-card group">
-	<button on:click={handleView} class="w-full text-left">
+	<svelte:element
+		this={href ? 'a' : 'button'}
+		{href}
+		role={href ? 'link' : 'button'}
+		on:click={href ? undefined : handleView}
+		class="block w-full text-left"
+	>
 		<!-- Image -->
 		<div class="recipe-card-image">
 			{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
@@ -120,7 +127,7 @@
 				</span>
 			</div>
 		</div>
-	</button>
+	</svelte:element>
 
 	<!-- Quick Actions (shown on hover) -->
 	{#if showActions}
