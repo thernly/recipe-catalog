@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
+from app.core.exceptions import AppException, ErrorCode, InvalidInputError
 from app.core.logging import get_logger
 from app.models.collection import Collection, RecipeCollection
 from app.models.household import Household
@@ -22,7 +23,7 @@ from app.models.recipe import Recipe
 from app.models.user import User
 from app.services.recipe_cleanup import clean_recipe_data, derive_total_time_minutes
 from app.utils.file_validation import validate_file_size
-from app.utils.recipe_format import convert_from_schema_org
+from app.utils.recipe_format import convert_from_schema_org, plain_text
 
 
 router = APIRouter()
@@ -78,7 +79,8 @@ async def _commit_import_results(db: AsyncSession) -> None:
         await db.commit()
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to save recipes: {str(e)}")
+        logger.exception("import_commit_failed")
+        raise AppException("Failed to save recipes", ErrorCode.INTERNAL_ERROR) from e
 
 
 async def _import_recipes_internal(
@@ -105,6 +107,8 @@ async def _import_recipes_internal(
         recipe that did not fail: its index, status (created, updated or skipped) and
         recipe id (the existing recipe's id when skipped).
     """
+    if len(recipes_data) > 500:
+        raise InvalidInputError("At most 500 recipes may be imported at once")
     # Track import results
     results: dict[str, Any] = {
         "total": len(recipes_data),
@@ -116,31 +120,51 @@ async def _import_recipes_internal(
         "items": [],
     }
 
+    names = {
+        plain_text(entry["name"])[:500]
+        for entry in recipes_data
+        if isinstance(entry, dict) and isinstance(entry.get("name"), str)
+    }
+    existing_by_name: dict[Any, Recipe] = {}
+    if duplicate_handling in ("skip", "update"):
+        rows = await db.execute(
+            select(Recipe)
+            .where(Recipe.user_id == user_id, Recipe.name.in_(names), Recipe.deleted_at.is_(None))
+            .order_by(Recipe.id)
+        )
+        for recipe in rows.scalars():
+            existing_by_name.setdefault(recipe.name, recipe)
+    linked_ids: set[Any] = set()
+    if collection:
+        linked_ids = set(
+            (
+                await db.execute(
+                    select(RecipeCollection.recipe_id).where(
+                        RecipeCollection.collection_id == collection.id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
     # Process each recipe
     for idx, recipe_data in enumerate(recipes_data):
         try:
             # Convert from Schema.org format to internal format
             recipe_dict = await convert_from_schema_org(recipe_data)
 
-            # Check for duplicate by name
-            existing_recipe = None
-            if duplicate_handling in ["skip", "update"]:
-                result = await db.execute(
-                    select(Recipe)
-                    .where(Recipe.user_id == user_id)
-                    .where(Recipe.name == recipe_dict["name"])
-                    .where(Recipe.deleted_at.is_(None))
-                )
-                existing_recipe = result.scalar_one_or_none()
+            existing_recipe = existing_by_name.get(recipe_dict["name"])
 
             if not (existing_recipe and duplicate_handling == "skip"):
                 # Shared cleanup: yield, times, parsedIngredients. On update, keep the
                 # existing recipe's model-parsed lines for unchanged ingredient text.
-                previous_parsed = (
-                    (existing_recipe.recipe_data or {}).get("parsedIngredients")
-                    if existing_recipe
-                    else None
+                stored: dict[str, Any] = (
+                    existing_recipe.recipe_data
+                    if existing_recipe and isinstance(existing_recipe.recipe_data, dict)
+                    else {}
                 )
+                previous_parsed = stored.get("parsedIngredients")
                 cleaned = clean_recipe_data(recipe_dict["recipe_data"], previous_parsed)
                 recipe_dict["recipe_data"] = cleaned.data
                 recipe_dict["total_time_minutes"] = derive_total_time_minutes(cleaned.data)
@@ -188,6 +212,8 @@ async def _import_recipes_internal(
                 db.add(new_recipe)
                 # Flush to assign the id reported in items
                 await db.flush()
+                if duplicate_handling in ("skip", "update"):
+                    existing_by_name[new_recipe.name] = new_recipe
                 results["created"] += 1
                 recipe_to_add = new_recipe
                 results["items"].append(
@@ -199,16 +225,11 @@ async def _import_recipes_internal(
                 # Flush to get the recipe ID if it's new
                 await db.flush()
 
-                # Check if recipe is already in collection
-                existing_link = await db.execute(
-                    select(RecipeCollection)
-                    .where(RecipeCollection.recipe_id == recipe_to_add.id)
-                    .where(RecipeCollection.collection_id == collection.id)
-                )
-                if not existing_link.scalar_one_or_none():
+                if recipe_to_add.id not in linked_ids:
                     db.add(
                         RecipeCollection(recipe_id=recipe_to_add.id, collection_id=collection.id)
                     )
+                    linked_ids.add(recipe_to_add.id)
 
         except (ValueError, KeyError, TypeError) as e:
             # Handle expected validation and format errors
@@ -216,13 +237,15 @@ async def _import_recipes_internal(
             results["errors"].append(
                 {
                     "index": idx,
-                    "name": recipe_data.get("name", "Unknown"),
+                    "name": recipe_data.get("name", "Unknown")
+                    if isinstance(recipe_data, dict)
+                    else "Unknown",
                     "error": str(e),
                 }
             )
         except Exception:
             # Log unexpected errors and re-raise
-            logger.exception(f"Unexpected error during import at index {idx}")
+            logger.exception("recipe_import_failed", index=idx)
             raise
 
     return results
@@ -259,7 +282,7 @@ async def import_recipes(
     await validate_file_size(file)
 
     # Validate file type
-    if not file.filename.endswith(".json"):  # type: ignore[union-attr]  # latent: upload without a filename raises
+    if not file.filename or not file.filename.lower().endswith(".json"):
         raise HTTPException(status_code=400, detail="File must be a JSON file")
 
     # Read and parse JSON

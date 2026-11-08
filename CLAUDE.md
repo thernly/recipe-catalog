@@ -45,7 +45,7 @@ mypy runs without the SQLAlchemy plugin (removed in SQLAlchemy 2.1). Models stil
 
 The app **will not start** against an out-of-date database: `init_db()` reads `alembic_version` and raises unless it matches the Alembic head. It deliberately does not create tables from model metadata (that would leave the DB unstamped and break later upgrades). After pulling migrations, run `uv run alembic upgrade head`.
 
-There is no CI workflow in `.github/` (only Dependabot) — run lint, type check, and tests locally before committing.
+`.github/workflows/ci.yml` runs backend lint, types and tests plus frontend lint, types, tests, build and audit. Run relevant checks locally before committing.
 
 ## Architecture
 
@@ -112,7 +112,7 @@ A recipe's content lives in a single `recipe_data` JSON column in **schema.org/R
 
 **Database**: SQLite locally (`backend/recipes.db`), Cloudflare D1 in production. Async via `aiosqlite` + SQLAlchemy async; Alembic owns the schema. Use `app/models/_utils.py` (`utc_now`, `ensure_utc`, `is_expired`) for datetimes — SQLite returns naive values.
 
-**Soft delete**: recipes and collections have `deleted_at`. Most queries must filter `WHERE deleted_at IS NULL`. Purging is a **manual operator step** (see `docs/operations/runbook.md`) — the startup `cleanup_expired_data()` only removes expired OAuth states, so nothing auto-deletes trashed records.
+**Soft delete**: recipes have `deleted_at`; collections are hard-deleted. Most queries must filter `WHERE deleted_at IS NULL`. Purging is a **manual operator step** (see `docs/operations/runbook.md`) — the startup `cleanup_expired_data()` only removes expired OAuth states, so nothing auto-deletes trashed records.
 
 **Backend tests**: `tests/conftest.py` sets required env vars before importing app modules, forces `ENVIRONMENT = "testing"` (disabling rate limits and CSRF), and runs against in-memory SQLite with `Base.metadata.create_all` and a `get_db` override. Authenticate via the `test_user_headers` fixture (bearer token). `asyncio_mode = "auto"`, so `async def test_*` needs no marker.
 

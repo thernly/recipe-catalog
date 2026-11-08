@@ -3,6 +3,7 @@ Application configuration settings.
 """
 
 import os
+from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,7 +19,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "Recipe Catalog API"
     APP_VERSION: str = Field(default_factory=get_app_version)  # env var overrides
     DEBUG: bool = False
-    ENVIRONMENT: str = "production"
+    ENVIRONMENT: Literal["production", "development", "testing"] = "production"
     _TESTING: bool = False  # Internal flag - only enabled in non-production environments
 
     # Server
@@ -33,6 +34,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # Short-lived for security with refresh tokens
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # Long-lived for better UX
+    # Secure flag on auth cookies; unset = ENVIRONMENT == "production".
+    # Set false only when production is served over plain HTTP (e.g. local Docker).
+    COOKIE_SECURE: bool | None = None
 
     # CORS
     ALLOWED_ORIGINS: str | list[str] = ["http://localhost:5173"]
@@ -208,6 +212,13 @@ class Settings(BaseSettings):
                 "ALLOWED_ORIGINS cannot contain '*' in production. Specify explicit origins for security."
             )
         return v
+
+    @property
+    def cookie_secure(self) -> bool:
+        """Whether auth cookies carry the Secure flag."""
+        if self.COOKIE_SECURE is not None:
+            return self.COOKIE_SECURE
+        return self.ENVIRONMENT == "production"
 
     @property
     def TESTING(self) -> bool:  # noqa: N802

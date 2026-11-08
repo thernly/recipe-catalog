@@ -20,6 +20,12 @@ CSRF_EXEMPT_PATHS = [
     "/api/v1/auth/register",
     "/api/v1/auth/login",
     "/api/v1/auth/logout",
+    # Public recovery flows do not rely on an authenticated browser session.
+    # Reset and verification authorize changes through their one-time secret tokens.
+    "/api/v1/auth/forgot-password",
+    "/api/v1/auth/reset-password",
+    "/api/v1/auth/resend-verification",
+    "/api/v1/auth/verify-email/",
     "/api/v1/oauth/",  # Prefix match for OAuth endpoints
     "/api/auth/register",  # Legacy path (for tests)
     "/api/auth/login",  # Legacy path (for tests)

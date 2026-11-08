@@ -14,6 +14,8 @@
 #   --non-interactive    Run without prompts (uses defaults)
 #   --repo-url <url>     Git repository URL
 #   --server-ip <ip>     Server IP address or domain
+#   --domain <hostname>  Configure HTTPS for production (required unless --development)
+#   --development        Local plain-HTTP development mode
 #   --skip-python        Skip Python 3.13 installation (if already installed)
 #   --help               Show this help message
 #
@@ -25,6 +27,9 @@
 
 set -e  # Exit on error
 set -u  # Exit on undefined variable
+umask 077
+DEPLOY_ENVIRONMENT="${DEPLOY_ENVIRONMENT:-production}"
+case "$DEPLOY_ENVIRONMENT" in production|development) ;; *) echo "Invalid DEPLOY_ENVIRONMENT"; exit 1 ;; esac
 
 #==============================================================================
 # Configuration Variables
@@ -126,12 +131,12 @@ prompt_user() {
     local var_name="$3"
 
     if [[ "$NON_INTERACTIVE" == true ]]; then
-        eval "$var_name='$default'"
+        printf -v "$var_name" '%s' "$default"
         return
     fi
 
     read -p "$prompt [$default]: " input
-    eval "$var_name=\${input:-$default}"
+    printf -v "$var_name" '%s' "${input:-$default}"
 }
 
 validate_repo_url() {
@@ -180,17 +185,28 @@ Options:
     --non-interactive       Run without prompts (uses defaults)
     --repo-url <url>        Git repository URL
     --server-ip <ip>        Server IP address or domain
+    --domain <hostname>     Configure HTTPS (Let's Encrypt) for production
+    --development           Local HTTP-only development mode (no HTTPS;
+                            trusted networks only)
     --skip-python           Skip Python 3.13 installation
     --help                  Show this help message
+
+Production (the default) requires HTTPS: pass --domain, or pass
+--development to run over plain HTTP.
 
 Examples:
     # Interactive mode (recommended)
     sudo bash $(basename "$0")
 
-    # Non-interactive with custom settings
+    # Non-interactive production with HTTPS
     sudo bash $(basename "$0") --non-interactive \\
         --repo-url https://github.com/user/repo.git \\
-        --server-ip 192.168.1.100
+        --server-ip 192.168.1.100 --domain recipes.example.com
+
+    # Non-interactive local HTTP (development mode)
+    sudo bash $(basename "$0") --non-interactive \\
+        --repo-url https://github.com/user/repo.git \\
+        --server-ip 192.168.1.100 --development
 
 EOF
     exit 0
@@ -214,6 +230,15 @@ parse_args() {
             --server-ip)
                 SERVER_IP="$2"
                 shift 2
+                ;;
+            --domain)
+                DOMAIN_NAME="$2"
+                USE_SSL=true
+                shift 2
+                ;;
+            --development)
+                DEPLOY_ENVIRONMENT=development
+                shift
                 ;;
             --skip-python)
                 SKIP_PYTHON=true
@@ -261,9 +286,20 @@ gather_configuration() {
         if [[ "$ssl_choice" =~ ^[Yy]$ ]]; then
             USE_SSL=true
             prompt_user "Enter your domain name" "example.com" DOMAIN_NAME
+        elif [[ "$DEPLOY_ENVIRONMENT" == production ]]; then
+            log_warn "Without SSL the app runs in DEVELOPMENT mode over plain HTTP."
+            log_warn "Use this only on a trusted local network; cookies are not marked Secure."
+            read -p "Continue in development mode? (y/N): " dev_choice
+            if [[ "$dev_choice" =~ ^[Yy]$ ]]; then
+                DEPLOY_ENVIRONMENT=development
+            fi
         fi
     fi
 
+    if [[ "$DEPLOY_ENVIRONMENT" == production && "$USE_SSL" != true ]]; then
+        log_error "Production requires HTTPS. Use --domain <hostname> or --development for local HTTP."
+        exit 1
+    fi
     # Email configuration
     echo ""
     log_info "Email/SMTP Configuration"
@@ -281,7 +317,7 @@ gather_configuration() {
         read -s -p "Enter SMTP password (or Gmail App Password): " SMTP_PASSWORD
         echo ""
     else
-        SMTP_PASSWORD="change-this-password"
+        SMTP_PASSWORD=""
     fi
 
     echo ""
@@ -310,6 +346,7 @@ install_system_dependencies() {
 
     log "Installing essential utilities..."
     apt install -y \
+        gnupg \
         curl \
         wget \
         git \
@@ -329,8 +366,13 @@ install_nodejs() {
         local node_version=$(node --version)
         log_info "Node.js already installed: $node_version"
     else
-        log "Installing Node.js 20.x..."
-        curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >> "$LOG_FILE" 2>&1
+        log "Installing Node.js 24.x..."
+        install -d -m 755 /etc/apt/keyrings
+        curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key -o /tmp/nodesource.key
+        gpg --dearmor --yes -o /etc/apt/keyrings/nodesource.gpg /tmp/nodesource.key
+        chmod 644 /etc/apt/keyrings/nodesource.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main" > /etc/apt/sources.list.d/nodesource.list
+        apt update >> "$LOG_FILE" 2>&1
         apt install -y nodejs >> "$LOG_FILE" 2>&1
         log "Node.js installed: $(node --version)"
     fi
@@ -339,7 +381,7 @@ install_nodejs() {
         log_info "pnpm already installed: $(pnpm --version)"
     else
         log "Installing pnpm..."
-        npm install -g pnpm >> "$LOG_FILE" 2>&1
+        npm install -g pnpm@10.17.1 >> "$LOG_FILE" 2>&1
         log "pnpm installed: $(pnpm --version)"
     fi
 }
@@ -418,7 +460,7 @@ setup_application_code() {
             fi
         else
             rm -rf "$INSTALL_DIR"
-            mkdir -p "$INSTALL_DIR"
+            install -d -m 755 -o "$APP_USER" -g "$APP_USER" "$INSTALL_DIR"
             if ! sudo -u "$APP_USER" git clone "$REPO_URL" "$INSTALL_DIR" >> "$LOG_FILE" 2>&1; then
                 log_error "Failed to clone repository from $REPO_URL"
                 log_error "Check that the URL is correct and accessible"
@@ -428,6 +470,7 @@ setup_application_code() {
     fi
 
     chown -R "$APP_USER:$APP_USER" "$INSTALL_DIR"
+    chmod 755 "$INSTALL_DIR" "$INSTALL_DIR/frontend"
     log "Application code ready"
 }
 
@@ -438,27 +481,43 @@ install_uv() {
         log_info "UV already installed for $APP_USER"
     else
         log "Installing UV as $APP_USER..."
-        sudo -u "$APP_USER" bash -c "curl -LsSf https://astral.sh/uv/install.sh | sh" >> "$LOG_FILE" 2>&1
+        local uv_arch uv_sha uv_archive uv_tmp
+        case "$(uname -m)" in
+            x86_64) uv_arch=x86_64; uv_sha=c5221ff41b7892bfc223543883600125f6a47fe845093e0f5bdff4f359196d83 ;;
+            aarch64|arm64) uv_arch=aarch64; uv_sha=71279f8d3c67241e807b9d8db872d1bf541579fb9f08b7d1eb1682196d1e57dc ;;
+            *) log_error "Unsupported architecture"; exit 1 ;;
+        esac
+        uv_tmp=$(mktemp -d)
+        uv_archive="uv-${uv_arch}-unknown-linux-gnu.tar.gz"
+        curl -fsSL "https://github.com/astral-sh/uv/releases/download/0.13.7/$uv_archive" -o "$uv_tmp/$uv_archive"
+        echo "$uv_sha  $uv_tmp/$uv_archive" | sha256sum --check --status
+        tar -xzf "$uv_tmp/$uv_archive" -C "$uv_tmp"
+        install -d -o "$APP_USER" -g "$APP_USER" "/home/$APP_USER/.local/bin"
+        install -m 755 -o "$APP_USER" -g "$APP_USER" "$uv_tmp/uv-${uv_arch}-unknown-linux-gnu/uv" "/home/$APP_USER/.local/bin/uv"
+        rm -r -- "$uv_tmp"
         log "UV installed: $(sudo -u "$APP_USER" /home/$APP_USER/.local/bin/uv --version)"
     fi
 }
 
 setup_backend() {
     print_header "Step 9: Setting Up Backend"
+    install -d -m 700 -o "$APP_USER" -g "$APP_USER" "$INSTALL_DIR/backend/data" "$INSTALL_DIR/backend/logs"
 
     cd "$INSTALL_DIR/backend"
+    local public_origin="http://${SERVER_IP}"
+    if [[ "$USE_SSL" == true ]]; then public_origin="https://${DOMAIN_NAME}"; fi
 
     log "Pinning Python 3.13 for the project..."
     sudo -u "$APP_USER" bash -c "cd $INSTALL_DIR/backend && /home/$APP_USER/.local/bin/uv python pin 3.13" >> "$LOG_FILE" 2>&1
 
     log "Installing backend dependencies..."
-    sudo -u "$APP_USER" bash -c "cd $INSTALL_DIR/backend && /home/$APP_USER/.local/bin/uv sync" >> "$LOG_FILE" 2>&1
+    sudo -u "$APP_USER" bash -c "cd $INSTALL_DIR/backend && /home/$APP_USER/.local/bin/uv sync --frozen" >> "$LOG_FILE" 2>&1
 
     log "Generating environment configuration..."
     local secret_key=$(openssl rand -hex 32)
     local environment="development"  # Use development for HTTP, production for HTTPS
     
-    # Note: ENVIRONMENT=development allows cookies over HTTP
+    # Production requires HTTPS; DEPLOY_ENVIRONMENT=development is an explicit local-only opt-in.
     # Change to 'production' after setting up SSL/TLS
 
     cat > "$INSTALL_DIR/backend/.env" << EOF
@@ -472,7 +531,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
 
 # CORS (comma-separated list)
-ALLOWED_ORIGINS=http://localhost,http://${SERVER_IP}
+ALLOWED_ORIGINS=${public_origin}
 ALLOWED_METHODS=GET,POST,PUT,DELETE,PATCH
 ALLOWED_HEADERS=Authorization,Content-Type,Accept,X-CSRF-Token
 
@@ -486,8 +545,9 @@ FROM_NAME=Recipe Catalog
 
 # Application Settings
 APP_NAME=Recipe Catalog
-FRONTEND_URL=http://${SERVER_IP}
-ENVIRONMENT=development
+FRONTEND_URL=${public_origin}
+OAUTH_REDIRECT_BASE_URL=${public_origin}/api/v1/auth
+ENVIRONMENT=${DEPLOY_ENVIRONMENT}
 DEBUG=False
 
 # Rate Limiting
@@ -526,17 +586,16 @@ setup_frontend() {
     cd "$INSTALL_DIR/frontend"
 
     log "Installing frontend dependencies..."
-    sudo -u "$APP_USER" bash -c "cd $INSTALL_DIR/frontend && pnpm install" >> "$LOG_FILE" 2>&1
+    sudo -u "$APP_USER" bash -c "cd $INSTALL_DIR/frontend && pnpm install --frozen-lockfile" >> "$LOG_FILE" 2>&1
 
     log "Generating frontend environment configuration..."
-    local api_url="http://${SERVER_IP}/api"
+    local api_url="http://${SERVER_IP}"
     if [[ "$USE_SSL" == true ]]; then
-        api_url="https://${DOMAIN_NAME}/api"
+        api_url="https://${DOMAIN_NAME}"
     fi
 
     cat > "$INSTALL_DIR/frontend/.env" << EOF
 VITE_API_URL=${api_url}
-VITE_APP_NAME=Recipe Catalog
 EOF
 
     chown "$APP_USER:$APP_USER" "$INSTALL_DIR/frontend/.env"
@@ -549,6 +608,8 @@ EOF
 
 configure_nginx() {
     print_header "Step 11: Configuring Nginx"
+    chmod 755 "$INSTALL_DIR" "$INSTALL_DIR/frontend"
+    chmod -R a+rX "$INSTALL_DIR/frontend/build"
 
     log "Creating Nginx configuration..."
 
@@ -560,6 +621,7 @@ configure_nginx() {
     cat > /etc/nginx/sites-available/recipe-catalog << EOF
 server {
     listen 80;
+    client_max_body_size 10m;
     server_name $server_name;
 
     # Frontend static files
@@ -570,7 +632,7 @@ server {
         # Cache static assets
         location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
             expires 1y;
-            add_header Cache-Control "public, immutable";
+            # expires sets Cache-Control without overriding inherited security headers.
         }
     }
 
@@ -593,9 +655,12 @@ server {
     }
 
     # Security headers
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
+
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
     # Logging
@@ -634,7 +699,7 @@ create_systemd_service() {
 
     # Calculate optimal worker count based on CPU cores
     local cpu_cores=$(nproc)
-    local workers=$(( cpu_cores * 2 + 1 ))
+    local workers=1
     log_info "Detected $cpu_cores CPU cores, configuring $workers workers"
 
     cat > /etc/systemd/system/recipe-catalog-backend.service << EOF
@@ -651,7 +716,7 @@ Environment="PATH=/home/$APP_USER/.local/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="PYTHONUNBUFFERED=1"
 
 # Start command using UV
-ExecStart=/home/$APP_USER/.local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers $workers
+ExecStart=/home/$APP_USER/.local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers $workers --proxy-headers --forwarded-allow-ips=127.0.0.1
 
 # Restart policy
 Restart=always
@@ -707,7 +772,7 @@ start_services() {
         local backend_healthy=false
 
         while [[ $attempt -le $max_attempts ]]; do
-            if curl -sf http://127.0.0.1:8000/api/docs > /dev/null 2>&1; then
+            if curl -sf http://127.0.0.1:8000/health > /dev/null 2>&1; then
                 backend_healthy=true
                 break
             fi
@@ -771,11 +836,10 @@ print_summary() {
     log_info "Access your application:"
     if [[ "$USE_SSL" == true ]]; then
         log_info "  • Frontend: https://${DOMAIN_NAME}"
-        log_info "  • API Docs: https://${DOMAIN_NAME}/api/docs"
     else
         log_info "  • Frontend: http://${SERVER_IP}"
-        log_info "  • API Docs: http://${SERVER_IP}/api/docs"
     fi
+    log_info "  • Backend health (from this host): curl http://127.0.0.1:8000/health"
     echo ""
     log_info "Service Management:"
     log_info "  • Backend status:  systemctl status recipe-catalog-backend"
@@ -802,7 +866,7 @@ print_summary() {
 main() {
     # Initialize log file
     touch "$LOG_FILE"
-    chmod 644 "$LOG_FILE"
+    chmod 600 "$LOG_FILE"
 
     # Set up error trap
     trap cleanup_on_error ERR

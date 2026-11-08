@@ -93,11 +93,11 @@ class EmailService:
 
                 await server.send_message(msg)
 
-            logger.info(f"Email sent successfully to {to_email}")
+            logger.info("email_sent", to_email=to_email)
             return True
 
         except Exception as e:
-            logger.error(f"Failed to send email to {to_email}: {str(e)}")
+            logger.error("email_send_failed", to_email=to_email, error=str(e))
             return False
 
     async def send_verification_email(

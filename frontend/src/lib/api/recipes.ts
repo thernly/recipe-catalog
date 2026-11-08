@@ -8,7 +8,6 @@ import type {
   RecipeSortBy,
   RecipeSourceType,
 } from "#lib/types/index.js";
-import { FETCH_CREDENTIALS } from "#lib/constants.js";
 
 export interface Recipe {
   id: number;
@@ -202,20 +201,5 @@ export async function exportRecipe(
   id: number,
   format: "json" | "markdown" | "text" | "pdf",
 ): Promise<Blob> {
-  const { API_V1_URL } = await import("#lib/config.js");
-
-  const response = await fetch(
-    `${API_V1_URL}/recipes/${id}/export?format=${format}`,
-    {
-      credentials: FETCH_CREDENTIALS, // Send cookies for authentication
-    },
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    const detailedMessage = errorText ? ` - ${errorText}` : "";
-    throw new Error(`Export failed: ${response.statusText}${detailedMessage}`);
-  }
-
-  return response.blob();
+  return apiRequest<Blob>(`/recipes/${id}/export?format=${format}`, { responseType: "blob" });
 }

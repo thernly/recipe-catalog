@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { auth } from '#lib/stores/auth.js';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { safeRedirect } from '#lib/utils/urls.js';
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import {
@@ -22,7 +24,7 @@
 
 		try {
 			await auth.login(email, password);
-			goto('/dashboard');
+			goto(safeRedirect(page.url.searchParams.get('redirect')));
 		} catch (err: any) {
 			error = err.message || 'Login failed. Please check your credentials.';
 		} finally {
@@ -52,7 +54,7 @@
 		// If already logged in, redirect to dashboard
 		const currentAuth = get(auth);
 		if (currentAuth.user) {
-			goto('/dashboard');
+			goto(safeRedirect(page.url.searchParams.get('redirect')));
 			return;
 		}
 

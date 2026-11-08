@@ -114,7 +114,7 @@
 
 	function handleLinkProvider(provider: string) {
 		providerError = '';
-		initiateOAuthFlow(provider);
+		initiateOAuthFlow(provider, true);
 	}
 
 	function getProviderDisplayName(provider: string): string {

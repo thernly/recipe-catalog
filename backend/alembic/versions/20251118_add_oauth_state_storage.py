@@ -28,7 +28,7 @@ def upgrade() -> None:
         sa.Column("token", sa.String(64), nullable=False),
         sa.Column("data", sa.JSON(), nullable=False),
         sa.Column("expires_at", sa.DateTime(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("created_at", sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
 

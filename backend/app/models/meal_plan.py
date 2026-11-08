@@ -23,9 +23,11 @@ class MealPlan(Base):
     __tablename__ = "meal_plans"
 
     id = Column(Integer, primary_key=True, index=True)
-    household_id = Column(Integer, ForeignKey("households.id"), nullable=False, index=True)
+    household_id = Column(
+        Integer, ForeignKey("households.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     week_start_date = Column(Date, nullable=False, index=True)
-    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
@@ -48,8 +50,11 @@ class PlannedMeal(Base):
     __tablename__ = "planned_meals"
 
     id = Column(Integer, primary_key=True, index=True)
-    meal_plan_id = Column(Integer, ForeignKey("meal_plans.id"), nullable=False, index=True)
-    recipe_id = Column(Integer, ForeignKey("recipes.id"), nullable=False)
+    meal_plan_id = Column(
+        Integer, ForeignKey("meal_plans.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    recipe_id = Column(Integer, ForeignKey("recipes.id", ondelete="CASCADE"), nullable=False)
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     day_of_week = Column(Integer, nullable=False)  # 0-6 (Monday-Sunday)
     meal_type = Column(String(20), nullable=False)  # breakfast, lunch, dinner, snack, other
     servings = Column(Integer, nullable=True)

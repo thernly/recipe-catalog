@@ -2,6 +2,9 @@
 AI service for recipe generation using OpenRouter API.
 """
 
+import json
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 import httpx2
@@ -12,6 +15,7 @@ from app.core.constants import (
     AI_TEMPERATURE,
     MAX_RECIPES_IN_PROMPT,
 )
+from app.core.exceptions import AIServiceError
 from app.core.logging import get_logger
 
 
@@ -25,6 +29,78 @@ class AIService:
         self.api_key = settings.OPENROUTER_API_KEY
         self.base_url = "https://openrouter.ai/api/v1"
         self.model = settings.OPENROUTER_MODEL or "anthropic/claude-3.5-sonnet"
+
+    @contextmanager
+    def _generation_errors(self, operation: str) -> Iterator[dict[str, Any]]:
+        """Keep actionable provider diagnostics in logs and safe errors in responses.
+
+        Correlation IDs are supplied by structlog context. Response bodies and
+        prompts are intentionally excluded because providers may echo private input.
+        """
+        context: dict[str, Any] = {"operation": operation, "model": self.model}
+        try:
+            yield context
+        except httpx2.HTTPStatusError as exc:
+            status_code = exc.response.status_code
+            context.update(
+                status_code=status_code,
+                upstream_request_id=exc.response.headers.get("x-request-id")
+                or exc.response.headers.get("request-id"),
+            )
+            logger.error(
+                "ai_upstream_http_error", **context, error_type=type(exc).__name__, exc_info=True
+            )
+            if status_code == 429:
+                message = "AI service is busy. Please try again later."
+            elif status_code in (401, 403):
+                message = "AI service authentication failed. Please contact the administrator."
+            else:
+                message = "AI provider request failed. Please try again."
+            raise AIServiceError(message) from exc
+        except httpx2.TimeoutException as exc:
+            logger.warning(
+                "ai_upstream_timeout",
+                **context,
+                error_type=type(exc).__name__,
+                timeout_seconds=AI_REQUEST_TIMEOUT_SECONDS,
+                exc_info=True,
+            )
+            raise AIServiceError("AI service timed out. Please try again.") from exc
+        except httpx2.RequestError as exc:
+            logger.error(
+                "ai_upstream_connection_error",
+                **context,
+                error_type=type(exc).__name__,
+                exc_info=True,
+            )
+            raise AIServiceError("Could not connect to the AI service. Please try again.") from exc
+        except json.JSONDecodeError as exc:
+            logger.error(
+                "ai_response_invalid_json",
+                **context,
+                error_type=type(exc).__name__,
+                line=exc.lineno,
+                column=exc.colno,
+                position=exc.pos,
+                exc_info=True,
+            )
+            raise AIServiceError("AI returned invalid JSON. Please try again.") from exc
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            logger.error(
+                "ai_response_invalid_shape",
+                **context,
+                error_type=type(exc).__name__,
+                exc_info=True,
+            )
+            raise AIServiceError("AI returned an invalid response. Please try again.") from exc
+        except Exception as exc:
+            logger.exception(
+                "ai_generation_unexpected_error",
+                **context,
+                error_type=type(exc).__name__,
+                exc_info=True,
+            )
+            raise AIServiceError("AI generation failed. Please try again.") from exc
 
     async def generate_recipe(
         self,
@@ -48,12 +124,11 @@ class AIService:
             Dict containing generated recipe data
 
         Raises:
-            Exception: If AI generation fails
+            AIServiceError: If the provider fails or returns an invalid response
         """
         if not self.api_key:
-            raise ValueError(
-                "OPENROUTER_API_KEY not configured. Please set it in environment variables."
-            )
+            logger.error("ai_service_not_configured", operation="recipe", model=self.model)
+            raise AIServiceError("AI service is not configured.")
 
         # Build the prompt
         prompt = self._build_prompt(
@@ -61,8 +136,8 @@ class AIService:
         )
 
         # Call OpenRouter API
-        async with httpx2.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
-            try:
+        with self._generation_errors("recipe") as diagnostics:
+            async with httpx2.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
                 response = await client.post(
                     f"{self.base_url}/chat/completions",
                     headers={
@@ -82,6 +157,11 @@ class AIService:
                         "temperature": AI_TEMPERATURE,
                     },
                 )
+                diagnostics.update(
+                    status_code=response.status_code,
+                    upstream_request_id=response.headers.get("x-request-id")
+                    or response.headers.get("request-id"),
+                )
                 response.raise_for_status()
                 result = response.json()
 
@@ -89,31 +169,18 @@ class AIService:
                 content = result["choices"][0]["message"]["content"]
 
                 # Parse the JSON response
-                import json
-
                 recipe_data: dict[str, Any] = json.loads(content)
+                if not isinstance(recipe_data, dict) or not isinstance(
+                    recipe_data.get("name"), str
+                ):
+                    raise ValueError("Invalid recipe response")
 
                 # Log usage for monitoring (without sensitive data)
                 logger.info(
-                    f"AI recipe generated successfully. Tokens used: {result.get('usage', {}).get('total_tokens', 'unknown')}"
+                    "ai_recipe_generated", tokens=result.get("usage", {}).get("total_tokens")
                 )
 
                 return recipe_data
-
-            except httpx2.HTTPStatusError as e:
-                logger.error(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
-                if e.response.status_code == 429:
-                    raise Exception("Rate limit exceeded. Please try again later.")
-                elif e.response.status_code == 401:
-                    raise Exception("Invalid API key. Please check configuration.")
-                else:
-                    raise Exception(f"AI service error: {e.response.text}")
-            except json.JSONDecodeError:
-                logger.error(f"Failed to parse AI response: {content}")
-                raise Exception("Failed to parse AI response. Please try again.")
-            except Exception as e:
-                logger.exception(f"Unexpected error during AI generation: {str(e)}")
-                raise Exception(f"AI generation failed: {str(e)}")
 
     def _build_prompt(
         self,
@@ -201,12 +268,11 @@ Important:
             List of meal suggestions
 
         Raises:
-            Exception: If AI generation fails
+            AIServiceError: If the provider fails or returns an invalid response
         """
         if not self.api_key:
-            raise ValueError(
-                "OPENROUTER_API_KEY not configured. Please set it in environment variables."
-            )
+            logger.error("ai_service_not_configured", operation="menu", model=self.model)
+            raise AIServiceError("AI service is not configured.")
 
         # Build the prompt
         prompt = self._build_menu_prompt(
@@ -214,8 +280,8 @@ Important:
         )
 
         # Call OpenRouter API
-        async with httpx2.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
-            try:
+        with self._generation_errors("menu") as diagnostics:
+            async with httpx2.AsyncClient(timeout=AI_REQUEST_TIMEOUT_SECONDS) as client:
                 response = await client.post(
                     f"{self.base_url}/chat/completions",
                     headers={
@@ -235,6 +301,11 @@ Important:
                         "temperature": AI_TEMPERATURE,
                     },
                 )
+                diagnostics.update(
+                    status_code=response.status_code,
+                    upstream_request_id=response.headers.get("x-request-id")
+                    or response.headers.get("request-id"),
+                )
                 response.raise_for_status()
                 result = response.json()
 
@@ -242,32 +313,17 @@ Important:
                 content = result["choices"][0]["message"]["content"]
 
                 # Parse the JSON response
-                import json
-
                 menu_data = json.loads(content)
 
                 # Log usage for monitoring (without sensitive data)
-                logger.info(
-                    f"AI menu generated successfully. Tokens used: {result.get('usage', {}).get('total_tokens', 'unknown')}"
-                )
+                logger.info("ai_menu_generated", tokens=result.get("usage", {}).get("total_tokens"))
 
-                suggestions: list[dict[str, Any]] = menu_data.get("suggestions", [])
+                if not isinstance(menu_data, dict) or not isinstance(
+                    menu_data.get("suggestions"), list
+                ):
+                    raise ValueError("Invalid menu response")
+                suggestions: list[dict[str, Any]] = menu_data["suggestions"]
                 return suggestions
-
-            except httpx2.HTTPStatusError as e:
-                logger.error(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
-                if e.response.status_code == 429:
-                    raise Exception("Rate limit exceeded. Please try again later.")
-                elif e.response.status_code == 401:
-                    raise Exception("Invalid API key. Please check configuration.")
-                else:
-                    raise Exception(f"AI service error: {e.response.text}")
-            except json.JSONDecodeError:
-                logger.error(f"Failed to parse AI response: {content}")
-                raise Exception("Failed to parse AI response. Please try again.")
-            except Exception as e:
-                logger.exception(f"Unexpected error during AI menu generation: {str(e)}")
-                raise Exception(f"AI menu generation failed: {str(e)}")
 
     def _build_menu_prompt(
         self,

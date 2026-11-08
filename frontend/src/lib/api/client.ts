@@ -11,6 +11,9 @@ const API_URL = API_V1_URL;
 
 interface RequestOptions extends RequestInit {
   requireAuth?: boolean;
+  responseType?: "json" | "blob";
+  /** If false, a failed refresh clears auth state without redirecting to login. */
+  redirectOnAuthFailure?: boolean;
 }
 
 /**
@@ -44,7 +47,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public errorCode?: string,
-    public details?: Record<string, any>,
+    public details?: Record<string, unknown>,
     public status?: number,
   ) {
     super(message);
@@ -54,11 +57,12 @@ export class ApiError extends Error {
 
 // Promise cache for refresh token to prevent concurrent refreshes
 let refreshPromise: Promise<boolean> | null = null;
+let refreshGeneration = 0;
 
 /**
  * Refresh the access token using the refresh token cookie
  */
-async function refreshAccessToken(): Promise<boolean> {
+async function refreshAccessToken(redirect = true): Promise<boolean> {
   // Return existing promise if refresh is already in progress
   if (refreshPromise) {
     return refreshPromise;
@@ -66,22 +70,25 @@ async function refreshAccessToken(): Promise<boolean> {
 
   refreshPromise = (async () => {
     try {
+      const csrfToken = getCsrfToken();
       const response = await fetch(`${API_URL}/auth/refresh`, {
         method: "POST",
+        headers: csrfToken ? { "X-CSRF-Token": csrfToken } : {},
         credentials: FETCH_CREDENTIALS, // Send cookies
       });
 
       if (!response.ok) {
         // Refresh failed - logout user and redirect to login
-        auth.logout(true);
+        await auth.logout(redirect);
         return false;
       }
 
+      refreshGeneration += 1;
       // Refresh successful - cookies are automatically updated
       return true;
     } catch (error) {
       console.error("Token refresh failed:", error);
-      auth.logout(true);
+      await auth.logout(redirect);
       return false;
     } finally {
       // Clear the promise cache
@@ -99,167 +106,61 @@ export async function apiRequest<T>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { requireAuth = true, ...fetchOptions } = options;
-
-  // Don't set Content-Type for FormData - let the browser set it with boundary
-  const headers: HeadersInit =
-    fetchOptions.body instanceof FormData
-      ? { ...fetchOptions.headers }
-      : {
-          "Content-Type": "application/json",
-          ...fetchOptions.headers,
-        };
-
-  // Add CSRF token for state-changing requests
+  const {
+    requireAuth = true,
+    responseType = "json",
+    redirectOnAuthFailure = true,
+    ...fetchOptions
+  } = options;
+  const generation = refreshGeneration;
   const method = (fetchOptions.method || "GET").toUpperCase();
-  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
-    const csrfToken = getCsrfToken();
-    if (csrfToken) {
-      (headers as Record<string, string>)["X-CSRF-Token"] = csrfToken;
+  const mutation = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+  const send = () => {
+    const headers = new Headers(fetchOptions.headers);
+    if (
+      !(fetchOptions.body instanceof FormData) &&
+      !headers.has("Content-Type")
+    ) {
+      headers.set("Content-Type", "application/json");
     }
-  }
-
-  const url = `${API_URL}${endpoint}`;
-
-  try {
-    const response = await fetch(url, {
+    const csrfToken = getCsrfToken();
+    if (mutation && csrfToken) headers.set("X-CSRF-Token", csrfToken);
+    return fetch(`${API_URL}${endpoint}`, {
       ...fetchOptions,
       headers,
-      credentials: FETCH_CREDENTIALS, // Always send cookies
+      credentials: FETCH_CREDENTIALS,
     });
-
-    // Handle 401 Unauthorized - try to refresh token
-    if (response.status === 401 && requireAuth) {
-      // Try to refresh the access token
-      const refreshed = await refreshAccessToken();
-
-      if (refreshed) {
-        // Retry the original request with refreshed token
-        const retryResponse = await fetch(url, {
-          ...fetchOptions,
-          headers,
-          credentials: FETCH_CREDENTIALS,
-        });
-
-        if (!retryResponse.ok) {
-          const errorData = await retryResponse.json().catch(() => ({}));
-          throw new ApiError(
-            errorData.message ||
-              errorData.detail ||
-              `HTTP error! status: ${retryResponse.status}`,
-            errorData.error_code,
-            errorData.details,
-            retryResponse.status,
-          );
-        }
-
-        if (retryResponse.status === 204) {
-          return {} as T;
-        }
-
-        return await retryResponse.json();
-      }
-
-      // Refresh failed, throw unauthorized error
-      throw new ApiError("Authentication required", "unauthorized", {}, 401);
-    }
-
-    // Handle 403 Forbidden - likely CSRF token issue, try to refresh
+  };
+  let response = await send();
+  if (
+    requireAuth &&
+    (response.status === 401 || (response.status === 403 && mutation))
+  ) {
     if (
-      response.status === 403 &&
-      ["POST", "PUT", "PATCH", "DELETE"].includes(method)
+      generation !== refreshGeneration ||
+      (await refreshAccessToken(redirectOnAuthFailure))
     ) {
-      // Try to refresh to get new CSRF token
-      const refreshed = await refreshAccessToken();
-
-      if (refreshed) {
-        // Get the new CSRF token
-        const newCsrfToken = getCsrfToken();
-        if (newCsrfToken) {
-          (headers as Record<string, string>)["X-CSRF-Token"] = newCsrfToken;
-        }
-
-        // Retry the original request with new CSRF token
-        const retryResponse = await fetch(url, {
-          ...fetchOptions,
-          headers,
-          credentials: FETCH_CREDENTIALS,
-        });
-
-        if (!retryResponse.ok) {
-          const errorData = await retryResponse.json().catch(() => ({}));
-          throw new ApiError(
-            errorData.message ||
-              errorData.detail ||
-              `HTTP error! status: ${retryResponse.status}`,
-            errorData.error_code,
-            errorData.details,
-            retryResponse.status,
-          );
-        }
-
-        if (retryResponse.status === 204) {
-          return {} as T;
-        }
-
-        return await retryResponse.json();
-      }
-
-      // Refresh failed, throw the original 403 error
-      const errorData = await response.json().catch(() => ({}));
-      throw new ApiError(
-        errorData.message || errorData.detail || "Request forbidden",
-        errorData.error_code,
-        errorData.details,
-        403,
-      );
+      response = await send();
     }
-
-    // Handle non-2xx responses
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new ApiError(
-        errorData.message ||
-          errorData.detail ||
-          `HTTP error! status: ${response.status}`,
-        errorData.error_code,
-        errorData.details,
-        response.status,
-      );
-    }
-
-    // Handle 204 No Content
-    if (response.status === 204) {
-      return {} as T;
-    }
-
-    return await response.json();
-  } catch (error) {
-    // Re-throw ApiError as-is
-    if (error instanceof ApiError) {
-      console.error("API request failed:", {
-        message: error.message,
-        errorCode: error.errorCode,
-        status: error.status,
-        details: error.details,
-      });
-      throw error;
-    }
-
-    // Wrap unexpected errors in ApiError
-    console.error("API request failed:", error);
+  }
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
     throw new ApiError(
-      error instanceof Error ? error.message : "An unexpected error occurred",
-      "network_error",
-      { originalError: error },
+      data.message || data.detail || `HTTP error! status: ${response.status}`,
+      data.error_code,
+      data.details,
+      response.status,
     );
   }
+  if (responseType === "blob") return (await response.blob()) as T;
+  if (response.status === 204) return {} as T;
+  return (await response.json()) as T;
 }
 
 /**
  * Build query string from params object
  */
-export function buildQueryString(params: Record<string, any>): string {
+export function buildQueryString(params: object): string {
   const searchParams = new URLSearchParams();
 
   Object.entries(params).forEach(([key, value]) => {

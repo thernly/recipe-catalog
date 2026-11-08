@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { downloadBlob } from "#lib/utils/download.js";
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
+	import { goto, afterNavigate } from '$app/navigation';
+	import { safeHttpUrl } from '#lib/utils/urls.js';
 	import {
 		getRecipe,
 		deleteRecipe,
@@ -42,19 +44,28 @@
 
 	// Get recipe ID from URL
 	export let params: { id: string };
-	$: recipeId = parseInt(params.id);
+	let recipeId = Number(params.id);
 
+	let loadVersion = 0;
 	async function loadRecipe() {
+		const version = ++loadVersion;
+		recipe = null;
+		checkedIngredients = new Set();
+		completedSteps = new Set();
+		showExportMenu = false;
 		loading = true;
 		error = null;
 
 		try {
-			recipe = await getRecipe(recipeId);
+			const loaded = await getRecipe(recipeId);
+			if (version !== loadVersion) return;
+			recipe = loaded;
 		} catch (err) {
+			if (version !== loadVersion) return;
 			error = err instanceof Error ? err.message : 'Failed to load recipe';
 			console.error('Failed to load recipe:', err);
 		} finally {
-			loading = false;
+			if (version === loadVersion) loading = false;
 		}
 	}
 
@@ -206,14 +217,7 @@
 			const filename = `${safeName}.${extensions[format]}`;
 
 			// Create download
-			const url = window.URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = filename;
-			document.body.appendChild(a);
-			a.click();
-			window.URL.revokeObjectURL(url);
-			document.body.removeChild(a);
+			downloadBlob(blob, filename);
 		} catch (err) {
 			toast.error(
 				`Failed to export recipe: ${err instanceof Error ? err.message : 'Unknown error'}`,
@@ -253,8 +257,9 @@
 		}
 	}
 
+	afterNavigate(() => { recipeId = Number(page.params.id); void loadRecipe(); });
+
 	onMount(() => {
-		loadRecipe();
 		document.addEventListener('click', handleClickOutside);
 		return () => {
 			document.removeEventListener('click', handleClickOutside);
@@ -310,14 +315,14 @@
 							{recipe.name}
 						</h1>
 
-						{#if recipe.source_url}
+						{#if safeHttpUrl(recipe.source_url)}
 							<p class="text-base mb-2" style="color: var(--text-600);">
 								Source: <a
 									href={recipe.source_url}
-									target="_blank"
+									target="_blank" rel="noopener noreferrer"
 									class="link"
 								>
-									{new URL(recipe.source_url).hostname}
+									{safeHttpUrl(recipe.source_url)?.hostname}
 								</a>
 							</p>
 						{:else}

@@ -1,6 +1,7 @@
 /**
  * Authentication store using Svelte stores.
  */
+import { apiRequest } from "#lib/api/client.js";
 import { writable, derived } from "svelte/store";
 import { browser } from "$app/env";
 import { API_V1_URL } from "#lib/config.js";
@@ -51,21 +52,13 @@ function createAuthStore() {
         });
 
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.detail || "Login failed");
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.message || error.detail || "Login failed");
         }
 
         // Login successful - cookies are set automatically
         // Fetch user profile
-        const userResponse = await fetch(`${API_V1_URL}/users/me`, {
-          credentials: FETCH_CREDENTIALS, // Send cookies
-        });
-
-        if (!userResponse.ok) {
-          throw new Error("Failed to fetch user profile");
-        }
-
-        const user = await userResponse.json();
+        const user = await apiRequest<User>("/users/me");
 
         update((state) => ({
           ...state,
@@ -102,8 +95,10 @@ function createAuthStore() {
         });
 
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.detail || "Registration failed");
+          const error = await response.json().catch(() => ({}));
+          throw new Error(
+            error.message || error.detail || "Registration failed",
+          );
         }
 
         update((state) => ({ ...state, isLoading: false }));
@@ -163,23 +158,11 @@ function createAuthStore() {
       update((state) => ({ ...state, isLoading: true }));
 
       try {
-        const response = await fetch(`${API_V1_URL}/users/me`, {
-          credentials: FETCH_CREDENTIALS, // Send cookies
+        // A stale csrf cookie with a dead session must not bounce public
+        // pages (/, /auth/*, invitations) to login: clear state silently.
+        const user = await apiRequest<User>("/users/me", {
+          redirectOnAuthFailure: false,
         });
-
-        if (!response.ok) {
-          // API call failed - only clear user if this is an initial load,
-          // not if user was just set by login
-          update((state) => ({
-            ...state,
-            // Preserve user if already set (e.g., just logged in)
-            user: state.user || null,
-            isLoading: false,
-          }));
-          return;
-        }
-
-        const user = await response.json();
 
         update((state) => ({
           ...state,

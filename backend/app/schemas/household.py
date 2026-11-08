@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field
 
 
 # ============================================
@@ -83,7 +83,7 @@ class HouseholdInvitation(BaseModel):
     household_id: int
     inviter_user_id: int
     invitee_email: str
-    token: str
+    token: str = Field(..., max_length=255, validation_alias=AliasChoices("raw_token", "token"))
     expires_at: datetime
     accepted_at: datetime | None = None
     created_at: datetime
@@ -97,13 +97,13 @@ class HouseholdInvitation(BaseModel):
 class InvitationAcceptRequest(BaseModel):
     """Schema for accepting an invitation."""
 
-    token: str
+    token: str = Field(..., max_length=255)
 
 
 class InvitationDeclineRequest(BaseModel):
     """Schema for declining an invitation."""
 
-    token: str
+    token: str = Field(..., max_length=255)
 
 
 # ============================================
@@ -122,7 +122,7 @@ class HouseholdInviteLink(BaseModel):
 
     id: int
     household_id: int
-    code: str
+    code: str = Field(..., max_length=128)
     created_by_user_id: int
     expires_at: datetime
     used_at: datetime | None = None
@@ -139,7 +139,7 @@ class HouseholdInviteLink(BaseModel):
 class JoinViaInviteLinkRequest(BaseModel):
     """Schema for joining a household via invite link."""
 
-    code: str
+    code: str = Field(..., max_length=128)
 
 
 class LeaveHouseholdResponse(BaseModel):

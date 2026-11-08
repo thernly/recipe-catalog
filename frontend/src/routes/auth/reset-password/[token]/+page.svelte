@@ -50,7 +50,7 @@
 		loading = true;
 
 		try {
-			await apiRequest('/api/auth/reset-password', {
+			await apiRequest('/auth/reset-password', {
 				method: 'POST',
 				body: JSON.stringify({ token, new_password: password }),
 				requireAuth: false,

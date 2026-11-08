@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 from app.models.recipe import Recipe
+from app.utils.recipe_display import display_ingredients, display_steps
 from app.utils.recipe_format import convert_to_schema_org
 
 
@@ -50,7 +51,7 @@ class RecipeExporter:
         # Ingredients
         if schema_recipe.get("recipeIngredient"):
             lines.append("\n## Ingredients")
-            for ingredient in schema_recipe["recipeIngredient"]:
+            for ingredient in display_ingredients(schema_recipe["recipeIngredient"]):
                 lines.append(f"- {ingredient}")
 
         # Equipment
@@ -118,7 +119,7 @@ class RecipeExporter:
         # Ingredients
         if schema_recipe.get("recipeIngredient"):
             lines.append("\nINGREDIENTS:")
-            for ingredient in schema_recipe["recipeIngredient"]:
+            for ingredient in display_ingredients(schema_recipe["recipeIngredient"]):
                 lines.append(f"  - {ingredient}")
 
         # Equipment
@@ -199,7 +200,7 @@ class RecipeExporter:
         if schema_recipe.get("recipeCategory"):
             categories = schema_recipe["recipeCategory"]
             category_str = (
-                ", ".join(categories) if isinstance(categories, list) else str(categories)
+                ", ".join(map(str, categories)) if isinstance(categories, list) else str(categories)
             )
             if markdown:
                 metadata_items.append(f"**Category:** {category_str}")
@@ -209,7 +210,9 @@ class RecipeExporter:
         # Cuisine
         if schema_recipe.get("recipeCuisine"):
             cuisines = schema_recipe["recipeCuisine"]
-            cuisine_str = ", ".join(cuisines) if isinstance(cuisines, list) else str(cuisines)
+            cuisine_str = (
+                ", ".join(map(str, cuisines)) if isinstance(cuisines, list) else str(cuisines)
+            )
             if markdown:
                 metadata_items.append(f"**Cuisine:** {cuisine_str}")
             else:
@@ -243,8 +246,8 @@ class RecipeExporter:
             markdown: Whether to use markdown formatting
         """
         if isinstance(instructions, list):
-            for i, step in enumerate(instructions, 1):
-                step_text = step.get("text", str(step)) if isinstance(step, dict) else str(step)
+            for i, step in enumerate(display_steps(instructions), 1):
+                step_text = str(step)
                 if markdown:
                     lines.append(f"{i}. {step_text}")
                 else:

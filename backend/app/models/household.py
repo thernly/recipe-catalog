@@ -1,6 +1,9 @@
 """Household models."""
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -21,10 +24,13 @@ class Household(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    owner_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    owner_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     # Default max of 10 members balances household size with data privacy and performance.
     # Most households have 2-4 members; 10 allows for extended family without becoming a public group.
     max_members = Column(Integer, default=10, nullable=False)
+    is_personal = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
@@ -47,8 +53,12 @@ class HouseholdMember(Base):
     __tablename__ = "household_members"
 
     id = Column(Integer, primary_key=True, index=True)
-    household_id = Column(Integer, ForeignKey("households.id"), nullable=False, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    household_id = Column(
+        Integer, ForeignKey("households.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     role = Column(String(20), default="member", nullable=False)  # 'owner' or 'member'
     joined_at = Column(DateTime, default=utc_now, nullable=False)
 
@@ -65,9 +75,14 @@ class HouseholdInvitation(Base):
 
     __tablename__ = "household_invitations"
 
+    if TYPE_CHECKING:
+        raw_token: str
+
     id = Column(Integer, primary_key=True, index=True)
-    household_id = Column(Integer, ForeignKey("households.id"), nullable=False, index=True)
-    inviter_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    household_id = Column(
+        Integer, ForeignKey("households.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    inviter_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     invitee_email = Column(String(255), nullable=False, index=True)
     token = Column(String(255), unique=True, nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False)
@@ -85,12 +100,14 @@ class HouseholdInviteLink(Base):
     __tablename__ = "household_invite_links"
 
     id = Column(Integer, primary_key=True, index=True)
-    household_id = Column(Integer, ForeignKey("households.id"), nullable=False, index=True)
-    code = Column(String(32), unique=True, nullable=False, index=True)
-    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    household_id = Column(
+        Integer, ForeignKey("households.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    code = Column(String(128), unique=True, nullable=False, index=True)
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     expires_at = Column(DateTime, nullable=False)
     used_at = Column(DateTime, nullable=True)  # NULL = not used yet
-    used_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    used_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=utc_now, nullable=False)
 
     # Relationships

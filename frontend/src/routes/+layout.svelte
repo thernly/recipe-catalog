@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import { watchTheme } from '#lib/stores/theme.js';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { auth } from '#lib/stores/auth.js';
@@ -13,6 +14,7 @@
 
 	// Subscribe to auth state
 	onMount(() => {
+		const stopTheme = watchTheme();
 		const unsubscribe = auth.subscribe((state) => {
 			user = state.user;
 		});
@@ -20,7 +22,7 @@
 		// Initialize auth
 		auth.init();
 
-		return unsubscribe;
+		return () => { unsubscribe(); stopTheme(); };
 	});
 </script>
 

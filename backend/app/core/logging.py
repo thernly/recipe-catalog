@@ -55,7 +55,9 @@ def configure_logging() -> None:
         processors.append(structlog.processors.JSONRenderer())
     else:
         # Pretty console output for development (human-readable)
-        processors.append(structlog.dev.ConsoleRenderer())
+        processors.append(
+            structlog.dev.ConsoleRenderer(exception_formatter=structlog.dev.plain_traceback)
+        )
 
     # Configure structlog
     structlog.configure(

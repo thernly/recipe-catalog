@@ -29,6 +29,7 @@ dependencies = [
     "uvicorn[standard]==0.54.0",
     "wonderwords==3.0.1",
     "httpx2>=2.16.0",
+    "itsdangerous>=2.2.0",
 ]
 
 [dependency-groups]
@@ -118,6 +119,7 @@ disable_error_code = ["arg-type", "assignment", "return-value"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
@@ -131,6 +133,7 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
+concurrency = ["greenlet", "thread"]
 source = ["app"]
 omit = [
     "*/tests/*",

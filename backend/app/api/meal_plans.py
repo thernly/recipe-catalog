@@ -2,20 +2,21 @@
 Meal Planning API endpoints.
 """
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import Select, and_, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, with_loader_criteria
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
 from app.models.household import Household
 from app.models.meal_plan import MealPlan, PlannedMeal
 from app.models.recipe import Recipe
-from app.models.user import User
+from app.models.user import User, UserPreferences
 from app.schemas.meal_plan import (
     MealPlan as MealPlanSchema,
 )
@@ -27,6 +28,7 @@ from app.schemas.meal_plan import (
 from app.schemas.meal_plan import (
     PlannedMeal as PlannedMealSchema,
 )
+from app.schemas.user import safe_zone
 
 
 router = APIRouter()
@@ -77,9 +79,11 @@ async def list_meal_plans(
             MealPlan.household_id,
             MealPlan.week_start_date,
             MealPlan.created_at,
-            func.count(PlannedMeal.id).label("meal_count"),
+            func.count(Recipe.id).label("meal_count"),
         )
         .outerjoin(PlannedMeal, MealPlan.id == PlannedMeal.meal_plan_id)
+        # Count only meals whose recipe is not trashed (matches what the plan view shows).
+        .outerjoin(Recipe, and_(Recipe.id == PlannedMeal.recipe_id, Recipe.deleted_at.is_(None)))
         .where(MealPlan.household_id == household.id)
         .group_by(
             MealPlan.id,
@@ -131,37 +135,45 @@ async def get_current_week_meal_plan(
     """
     # If no week_start provided, use current week
     if week_start is None:
-        week_start = get_week_start(date.today())
+        preferences = (
+            await db.execute(
+                select(UserPreferences).where(UserPreferences.user_id == current_user.id)
+            )
+        ).scalar_one_or_none()
+        timezone = safe_zone(preferences.timezone if preferences else None)
+        week_start = get_week_start(datetime.now(UTC).astimezone(timezone).date())
     else:
         # Ensure the provided date is a Monday
         week_start = get_week_start(week_start)
 
-    # Try to find existing meal plan with eager loading of planned meals and recipes
-    result = await db.execute(
+    # Capture scalar scope before a possible rollback expires ORM instances.
+    household_id = household.id
+    user_id = current_user.id
+    plan_query = (
         select(MealPlan)
-        .options(selectinload(MealPlan.planned_meals).joinedload(PlannedMeal.recipe))
-        .where(
-            and_(
-                MealPlan.household_id == household.id,
-                MealPlan.week_start_date == week_start,
+        .options(
+            selectinload(MealPlan.planned_meals).joinedload(PlannedMeal.recipe),
+            with_loader_criteria(
+                Recipe, and_(Recipe.deleted_at.is_(None), Recipe.household_id == household_id)
+            ),
+        )
+        .where(MealPlan.household_id == household_id, MealPlan.week_start_date == week_start)
+    )
+    result = await db.execute(plan_query)
+    meal_plan = result.scalar_one_or_none()
+    if not meal_plan:
+        db.add(
+            MealPlan(
+                household_id=household_id, week_start_date=week_start, created_by_user_id=user_id
             )
         )
-    )
-    meal_plan = result.scalar_one_or_none()
-
-    # Create if doesn't exist
-    if not meal_plan:
-        meal_plan = MealPlan(
-            household_id=household.id,
-            week_start_date=week_start,
-            created_by_user_id=current_user.id,
-        )
-        db.add(meal_plan)
-        await db.commit()
-        await db.refresh(meal_plan)
-
-        # Explicitly load planned_meals for new meal plan (will be empty)
-        await db.refresh(meal_plan, ["planned_meals"])
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+        # Both the newly created plan and a concurrent winner need eager loading.
+        result = await db.execute(plan_query.execution_options(populate_existing=True))
+        meal_plan = result.scalar_one()
 
     # Convert to schema with recipe names
     return MealPlanSchema(
@@ -171,7 +183,9 @@ async def get_current_week_meal_plan(
         created_by_user_id=meal_plan.created_by_user_id,
         created_at=meal_plan.created_at,
         updated_at=meal_plan.updated_at,
-        planned_meals=[planned_meal_to_schema(pm) for pm in meal_plan.planned_meals],
+        planned_meals=[
+            planned_meal_to_schema(pm) for pm in meal_plan.planned_meals if pm.recipe is not None
+        ],
     )
 
 
@@ -196,7 +210,12 @@ async def get_meal_plan(
     """
     result = await db.execute(
         select(MealPlan)
-        .options(selectinload(MealPlan.planned_meals).joinedload(PlannedMeal.recipe))
+        .options(
+            selectinload(MealPlan.planned_meals).joinedload(PlannedMeal.recipe),
+            with_loader_criteria(
+                Recipe, and_(Recipe.deleted_at.is_(None), Recipe.household_id == household.id)
+            ),
+        )
         .where(
             and_(
                 MealPlan.id == meal_plan_id,
@@ -220,7 +239,9 @@ async def get_meal_plan(
         created_by_user_id=meal_plan.created_by_user_id,
         created_at=meal_plan.created_at,
         updated_at=meal_plan.updated_at,
-        planned_meals=[planned_meal_to_schema(pm) for pm in meal_plan.planned_meals],
+        planned_meals=[
+            planned_meal_to_schema(pm) for pm in meal_plan.planned_meals if pm.recipe is not None
+        ],
     )
 
 
@@ -322,6 +343,7 @@ async def add_planned_meal(
 
     # Create planned meal
     planned_meal = PlannedMeal(
+        created_by_user_id=current_user.id,
         meal_plan_id=meal_plan_id,
         recipe_id=meal_data.recipe_id,
         day_of_week=meal_data.day_of_week,

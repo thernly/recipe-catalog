@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.v1 import api_v1_router
 from app.core.config import settings
@@ -66,6 +67,14 @@ app = FastAPI(
 # Add rate limiter to app state
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]  # slowapi types the handler for its own exception
+
+# Authlib binds authorization state to this signed browser session.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SECRET_KEY,
+    same_site="lax",
+    https_only=settings.cookie_secure,
+)
 
 # Configure CORS
 app.add_middleware(
@@ -131,23 +140,43 @@ async def add_security_headers(request: Request, call_next):
 @app.middleware("http")
 async def limit_request_size(request: Request, call_next):
     """Limit request body size to prevent memory exhaustion attacks."""
-    # Get Content-Length header
+    max_size = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+
+    def too_large():
+        return JSONResponse(
+            status_code=413,
+            content={
+                "error_code": "request_too_large",
+                "message": "Request body too large",
+                "details": {},
+                "correlation_id": request.headers.get("X-Correlation-ID"),
+            },
+        )
+
     content_length = request.headers.get("content-length")
-
-    if content_length:
-        content_length_bytes = int(content_length)
-        max_size = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024  # Convert MB to bytes
-
-        if content_length_bytes > max_size:
+    if content_length is not None:
+        try:
+            length = int(content_length)
+            if length < 0:
+                raise ValueError
+        except ValueError:
             return JSONResponse(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=400,
                 content={
-                    "error_code": "request_too_large",
-                    "message": f"Request body too large. Maximum size is {settings.MAX_UPLOAD_SIZE_MB}MB",
+                    "error_code": "INVALID_INPUT",
+                    "message": "Invalid Content-Length",
                     "details": {},
+                    "correlation_id": request.headers.get("X-Correlation-ID"),
                 },
             )
-
+        if length > max_size:
+            return too_large()
+    body = bytearray()
+    async for chunk in request.stream():
+        if len(body) + len(chunk) > max_size:
+            return too_large()
+        body.extend(chunk)
+    request._body = bytes(body)
     return await call_next(request)
 
 

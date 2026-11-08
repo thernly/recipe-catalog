@@ -3,19 +3,32 @@ Utilities for converting between internal recipe format and Schema.org Recipe JS
 """
 
 import base64
+import html
 from typing import Any
 
 from app.core.config import settings
 from app.core.constants import MAX_FETCHED_IMAGE_BYTES
 from app.core.logging import get_logger
+from app.core.security import sanitize_html
 from app.services.recipe_cleanup import parse_duration_minutes
 from app.utils.safe_fetch import SafeFetchError, safe_fetch
+from app.utils.urls import safe_http_url
 
 
 logger = get_logger(__name__)
 
+MAX_IMAGES = 5
 
-async def convert_to_schema_org(recipe_db: Any) -> dict[str, Any]:
+
+def plain_text(text: str) -> str:
+    """Strip tags without entity-escaping, so "Mac & Cheese" stays as typed.
+
+    The result is plain text (the frontend escapes on render), not HTML.
+    """
+    return html.unescape(sanitize_html(text)).strip()
+
+
+async def convert_to_schema_org(recipe_db: Any, *, fetch_images: bool = True) -> dict[str, Any]:
     """
     Convert internal recipe format to Schema.org Recipe JSON-LD format.
 
@@ -31,7 +44,7 @@ async def convert_to_schema_org(recipe_db: Any) -> dict[str, Any]:
     stored_images = recipe_data.get("images", [])
     if stored_images:
         images = stored_images
-    elif recipe_db.image_url:
+    elif recipe_db.image_url and fetch_images:
         # Legacy support: fetch and encode if no stored images
         images = await _convert_images_to_schema(recipe_db.image_url)
     else:
@@ -74,9 +87,14 @@ async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, An
     Returns:
         Dict with fields ready for RecipeCreate schema
     """
+    if not isinstance(schema_recipe, dict) or not isinstance(schema_recipe.get("name"), str):
+        raise ValueError("Recipe name is required and must be text")
+    # Bad optional fields are dropped, never fatal: one odd link or image must not
+    # reject the whole recipe. Only http(s) links are kept (no javascript:/data:).
+    source_url = safe_http_url(schema_recipe.get("url"))
     # Process images - extract and fetch base64 data if needed
     image_url = None
-    images_data = []
+    images_data: list[dict[str, Any]] = []
     images = schema_recipe.get("image", [])
 
     # Normalize images to list format
@@ -85,13 +103,24 @@ async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, An
     elif not isinstance(images, list):
         images = []
 
-    # Process each image
     for img in images:
+        if len(images_data) >= MAX_IMAGES:
+            break
         if isinstance(img, dict):
             # Image object with potential base64 data
-            url = img.get("url", "")
-            data = img.get("data", "")
+            url = safe_http_url(img.get("url")) or ""
+            data = img.get("data") or ""
             mime_type = img.get("mimeType", "image/jpeg")
+            if data and (
+                not isinstance(data, str)
+                or len(data) > (MAX_FETCHED_IMAGE_BYTES + 2) // 3 * 4
+                or mime_type not in settings.ALLOWED_IMAGE_TYPES
+            ):
+                data = ""  # drop bad inline data; fall back to the URL, if any
+            if not url and not data:
+                continue
+            if mime_type not in settings.ALLOWED_IMAGE_TYPES:
+                mime_type = "image/jpeg"  # the fetch reports the real type
 
             # If no base64 data but URL exists, fetch it
             if url and not data:
@@ -109,6 +138,8 @@ async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, An
             if not image_url and url:
                 image_url = url
         elif isinstance(img, str):
+            if not safe_http_url(img):
+                continue
             # Just a URL string - fetch and encode it
             fetched_image = await _fetch_and_encode_image(img)
             if fetched_image:
@@ -134,6 +165,9 @@ async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, An
     elif not cuisine:
         cuisine = None
 
+    category = category[:100] if isinstance(category, str) else None
+    cuisine = cuisine[:100] if isinstance(cuisine, str) else None
+
     # Calculate total time in minutes
     total_time_minutes = None
     total_time = schema_recipe.get("totalTime")
@@ -145,7 +179,7 @@ async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, An
         total_time_minutes = (prep_min or 0) + (cook_min or 0) or None
 
     # Validate required fields
-    recipe_name = schema_recipe.get("name", "").strip()
+    recipe_name = plain_text(schema_recipe["name"])[:500]
     if not recipe_name:
         raise ValueError("Recipe name is required")
 
@@ -172,10 +206,10 @@ async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, An
 
     return {
         "name": recipe_name,
-        "description": schema_recipe.get("description", ""),
+        "description": plain_text(str(schema_recipe.get("description") or ""))[:10000],
         "image_url": image_url,
         "recipe_data": recipe_data,
-        "source_url": schema_recipe.get("url", ""),
+        "source_url": source_url,
         "cuisine": cuisine,
         "category": category,
         "total_time_minutes": total_time_minutes,

@@ -90,8 +90,8 @@ def extract_user_info(provider_name: str, userinfo: dict[str, Any]) -> dict[str,
     elif provider_name == "microsoft":
         return {
             "subject": userinfo.get("sub") or userinfo.get("oid"),
-            "email": userinfo.get("email") or userinfo.get("preferred_username"),
-            "email_verified": True,  # Microsoft emails are always verified
+            "email": userinfo.get("email"),
+            "email_verified": False,  # Entra claims do not establish ownership of an email address
             "display_name": userinfo.get("name"),
         }
 

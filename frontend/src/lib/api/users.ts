@@ -38,6 +38,7 @@ export interface UserStats {
 }
 
 export interface UserUpdate {
+  current_password?: string;
   email?: string;
   display_name?: string;
 }

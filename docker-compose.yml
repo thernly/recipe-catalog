@@ -1,17 +1,35 @@
-version: "3.9"
 services:
+  data-permissions:
+    image: python:3.13-slim
+    user: "0:0"
+    command: ["chown", "-R", "10001:10001", "/data"]
+    volumes:
+      - sqlite_data:/data
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]
+    security_opt: ["no-new-privileges:true"]
   backend:
+    depends_on:
+      data-permissions:
+        condition: service_completed_successfully
     build: ./backend
     container_name: recipe-backend
     env_file: ./backend/.env
     environment:
       # Override DB path to volume-mounted directory
       - DATABASE_URL=sqlite+aiosqlite:///./data/recipes.db
+      # The stack is served over plain http://…:8080, so Secure cookies would be
+      # dropped and login would silently fail. Remove this once served over HTTPS.
+      - COOKIE_SECURE=false
       # Build contexts have no git history; pass the version in:
       #   APP_VERSION=$(scripts/app-version.sh) docker compose up --build
       - APP_VERSION
     volumes:
       - sqlite_data:/app/data
+    networks:
+      app:
+        ipv4_address: 172.30.0.2
     expose:
       - "8000"
     healthcheck:
@@ -20,21 +38,52 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/logs:uid=10001,gid=10001,mode=700
     restart: unless-stopped
 
   frontend:
     build:
-      context: ./frontend
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         - APP_VERSION
     container_name: recipe-frontend
-    environment:
-      - PUBLIC_API_URL=/api
     ports:
-      - "8080:80"   # Public entry point
+      - "8080:8080"   # Public entry point
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      app:
+        ipv4_address: 172.30.0.3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx:uid=101,gid=101
+      - /var/run:uid=101,gid=101
     restart: unless-stopped
 
 volumes:
   sqlite_data:
+
+networks:
+  app:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

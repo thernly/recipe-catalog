@@ -19,9 +19,9 @@ class ShoppingListItemBase(BaseModel):
     quantity: str | None = Field(None, max_length=100)
     unit: str | None = Field(None, max_length=50)
     category: str | None = Field(None, max_length=100)
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=10000)
     checked: bool = False
-    display_order: int = 0
+    display_order: int = Field(0, ge=0, le=2**31 - 1)
 
 
 class ShoppingListItemCreate(BaseModel):
@@ -31,7 +31,7 @@ class ShoppingListItemCreate(BaseModel):
     quantity: str | None = Field(None, max_length=100)
     unit: str | None = Field(None, max_length=50)
     category: str | None = Field(None, max_length=100)
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=10000)
 
     @field_validator("item_name", "notes")
     @classmethod
@@ -49,9 +49,9 @@ class ShoppingListItemUpdate(BaseModel):
     quantity: str | None = Field(None, max_length=100)
     unit: str | None = Field(None, max_length=50)
     category: str | None = Field(None, max_length=100)
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=10000)
     checked: bool | None = None
-    display_order: int | None = None
+    display_order: int | None = Field(None, ge=0, le=2**31 - 1)
 
     @field_validator("item_name", "notes")
     @classmethod
@@ -82,7 +82,7 @@ class ShoppingListBase(BaseModel):
     """Base shopping list schema."""
 
     name: str = Field(..., min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(None, max_length=10000)
 
 
 class ShoppingListCreate(ShoppingListBase):
@@ -101,7 +101,7 @@ class ShoppingListUpdate(BaseModel):
     """Schema for updating a shopping list."""
 
     name: str | None = Field(None, min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(None, max_length=10000)
     status: str | None = Field(None, pattern="^(active|archived)$")
 
     @field_validator("name", "description")
@@ -149,7 +149,7 @@ class GenerateFromRecipeRequest(BaseModel):
     """Request schema for generating shopping list from recipe."""
 
     recipe_id: int
-    list_name: str | None = None
+    list_name: str | None = Field(None, max_length=255)
     servings: int | None = Field(None, ge=1)
 
 
@@ -157,8 +157,8 @@ class GenerateFromMealPlanRequest(BaseModel):
     """Request schema for generating shopping list from meal plan."""
 
     meal_plan_id: int
-    list_name: str | None = None
-    selected_meal_ids: list[int] | None = None  # If None, use all meals
+    list_name: str | None = Field(None, max_length=255)
+    selected_meal_ids: list[int] | None = Field(None, max_length=500)  # If None, use all meals
 
 
 class CategoryList(BaseModel):

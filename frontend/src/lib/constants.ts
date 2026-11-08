@@ -44,6 +44,8 @@ export const FETCH_CREDENTIALS = 'include' as const;
  */
 export const TOAST_DURATION = 5000;
 
+export const DOWNLOAD_REVOKE_DELAY = 1000;
+
 /**
  * Debounce delay for search inputs in milliseconds
  * 300ms provides responsive feel while reducing unnecessary API calls

@@ -18,7 +18,7 @@
 		success = false;
 
 		try {
-			await apiRequest('/api/auth/forgot-password', {
+			await apiRequest('/auth/forgot-password', {
 				method: 'POST',
 				body: JSON.stringify({ email }),
 				requireAuth: false,

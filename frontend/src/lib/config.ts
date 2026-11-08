@@ -10,7 +10,7 @@
 export const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
   import.meta.env.PUBLIC_API_URL ||
-  (import.meta.env.DEV ? "" : location.origin);
+  (import.meta.env.DEV || typeof location === "undefined" ? "" : location.origin);
 
 /**
  * Versioned API base URL

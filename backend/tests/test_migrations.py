@@ -183,3 +183,117 @@ def test_env_py_metadata_is_populated():
         f"models define {expected}. --autogenerate would drop the missing ones. "
         "Ensure alembic/env.py imports app.models."
     )
+
+
+def test_fresh_database_upgrade_downgrade_and_schema_parity(tmp_path):
+    """A new volume must boot and round-trip every revision without drift."""
+    backend_dir = Path(__file__).resolve().parents[1]
+    env = {
+        **os.environ,
+        "DATABASE_URL": f"sqlite+aiosqlite:///{tmp_path / 'fresh.db'}",
+        "DEBUG": "false",
+    }
+    for arguments in [
+        ("upgrade", "head"),
+        ("check",),
+        ("downgrade", "base"),
+        ("upgrade", "head"),
+        ("check",),
+    ]:
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", *arguments],
+            cwd=backend_dir,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_upgrade_repairs_existing_household_scope_and_preserves_meals(tmp_path):
+    """Repair historical departures and invisible duplicates, including colliding weeks."""
+    import hashlib
+    import sqlite3
+
+    backend_dir = Path(__file__).resolve().parents[1]
+    database = tmp_path / "legacy.db"
+    env = {**os.environ, "DATABASE_URL": f"sqlite+aiosqlite:///{database}", "DEBUG": "false"}
+
+    def migrate(*arguments):
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", *arguments],
+            cwd=backend_dir,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+
+    migrate("upgrade", "20261004_api_tokens")
+    with sqlite3.connect(database) as connection:
+        for user_id in range(1, 5):
+            connection.execute(
+                """INSERT INTO users
+                (id,email,is_active,is_verified,created_at,updated_at,failed_login_attempts)
+                VALUES (?,?,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,0)""",
+                (user_id, f"u{user_id}@example.com"),
+            )
+        for household_id in range(1, 4):
+            connection.execute(
+                """INSERT INTO households
+                (id,name,owner_user_id,max_members,created_at,updated_at)
+                VALUES (?,?,?,10,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)""",
+                (household_id, f"House {household_id}", household_id),
+            )
+        for user_id, household_id in [(1, 2), (2, 3), (3, 3)]:
+            connection.execute(
+                """INSERT INTO household_members (user_id,household_id,role,joined_at)
+                VALUES (?,?,'member',CURRENT_TIMESTAMP)""",
+                (user_id, household_id),
+            )
+        for recipe_id, owner, household_id in [(1, 1, 1), (2, 2, 2), (3, 4, None)]:
+            connection.execute(
+                """INSERT INTO recipes
+                (id,user_id,household_id,name,recipe_data,source_type,is_modified,created_at,updated_at)
+                VALUES (?,?,?,'Soup','{}','manual',0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)""",
+                (recipe_id, owner, household_id),
+            )
+        for plan_id in (1, 2):
+            connection.execute(
+                """INSERT INTO meal_plans
+                (id,household_id,created_by_user_id,week_start_date,created_at,updated_at)
+                VALUES (?,?,?,'2026-11-02',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)""",
+                (plan_id, plan_id, plan_id),
+            )
+            connection.execute(
+                """INSERT INTO planned_meals
+                (id,meal_plan_id,recipe_id,day_of_week,meal_type,created_at,updated_at)
+                VALUES (?,?,?,0,'dinner',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)""",
+                (plan_id, plan_id, plan_id),
+            )
+            connection.execute(
+                """INSERT INTO household_invitations
+                (household_id,inviter_user_id,invitee_email,token,expires_at,created_at)
+                VALUES (?,?,'invite@example.com',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)""",
+                (plan_id, plan_id, f"original-secret-{plan_id}"),
+            )
+    migrate("upgrade", "head")
+    migrate("check")
+    with sqlite3.connect(database) as connection:
+        scopes = dict(connection.execute("SELECT user_id,household_id FROM household_members"))
+        assert dict(connection.execute("SELECT id,household_id FROM recipes")) == {
+            1: 2,
+            2: 3,
+            3: scopes[4],
+        }
+        assert list(
+            connection.execute("""SELECT pm.id,mp.household_id,pm.created_by_user_id
+            FROM planned_meals pm JOIN meal_plans mp ON mp.id=pm.meal_plan_id ORDER BY pm.id""")
+        ) == [(1, 2, None), (2, 2, None)]
+        assert [
+            row[0]
+            for row in connection.execute("SELECT token FROM household_invitations ORDER BY id")
+        ] == [hashlib.sha256(f"original-secret-{i}".encode()).hexdigest() for i in (1, 2)]
+        assert list(connection.execute("PRAGMA foreign_key_check")) == []

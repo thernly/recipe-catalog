@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { theme } from "#lib/stores/theme.js";
+	import { createEventDispatcher } from 'svelte';
 
 	export let currentTheme: string = 'light';
 
@@ -48,49 +49,12 @@
 		}
 	];
 
-	function getSystemTheme(): 'garden-fresh' | 'dark' {
-		if (typeof window !== 'undefined' && window.matchMedia) {
-			return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'garden-fresh';
-		}
-		return 'garden-fresh';
-	}
-
-	function applyTheme(themeId: string) {
-		let actualTheme = themeId;
-
-		// If system theme is selected, detect the actual theme
-		if (themeId === 'system') {
-			actualTheme = getSystemTheme();
-		}
-
-		// Apply theme to document
-		document.documentElement.setAttribute('data-theme', actualTheme);
-	}
-
 	function selectTheme(themeId: string) {
 		currentTheme = themeId;
-		applyTheme(themeId);
+		theme.set(themeId);
 		dispatch('change', themeId);
 	}
 
-	// Listen for system theme changes when 'system' is selected
-	onMount(() => {
-		if (typeof window !== 'undefined' && window.matchMedia) {
-			const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-			const handleThemeChange = () => {
-				if (currentTheme === 'system') {
-					applyTheme('system');
-				}
-			};
-
-			// Modern browsers
-			if (mediaQuery.addEventListener) {
-				mediaQuery.addEventListener('change', handleThemeChange);
-				return () => mediaQuery.removeEventListener('change', handleThemeChange);
-			}
-		}
-	});
 </script>
 
 <div class="theme-switcher">

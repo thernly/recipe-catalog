@@ -238,7 +238,9 @@ describe("apiRequest", () => {
 
     const fetchCall = (global.fetch as any).mock.calls[0];
 
-    expect(fetchCall[1].headers["Content-Type"]).toBe("application/json");
+    expect(new Headers(fetchCall[1].headers).get("Content-Type")).toBe(
+      "application/json",
+    );
   });
 
   it("should not set Content-Type for FormData", async () => {
@@ -259,7 +261,7 @@ describe("apiRequest", () => {
 
     const fetchCall = (global.fetch as any).mock.calls[0];
 
-    expect(fetchCall[1].headers["Content-Type"]).toBeUndefined();
+    expect(new Headers(fetchCall[1].headers).get("Content-Type")).toBeNull();
   });
 
   it("should handle network errors", async () => {
@@ -328,7 +330,9 @@ describe("apiRequest", () => {
       call[0].includes("/api/test"),
     );
 
-    expect(fetchCall[1].headers["X-Custom-Header"]).toBe("custom-value");
+    expect(new Headers(fetchCall[1].headers).get("X-Custom-Header")).toBe(
+      "custom-value",
+    );
   });
 
   it("should merge custom headers with default headers", async () => {
@@ -350,7 +354,69 @@ describe("apiRequest", () => {
       call[0].includes("/api/test"),
     );
 
-    expect(fetchCall[1].headers["Content-Type"]).toBe("application/json");
-    expect(fetchCall[1].headers["X-Custom"]).toBe("value");
+    expect(new Headers(fetchCall[1].headers).get("Content-Type")).toBe(
+      "application/json",
+    );
+    expect(new Headers(fetchCall[1].headers).get("X-Custom")).toBe("value");
+  });
+});
+
+describe("session recovery", () => {
+  it("does not refresh twice when an old request returns a delayed 401", async () => {
+    let finishLate!: (response: Response) => void;
+    const late = new Promise<Response>((resolve) => {
+      finishLate = resolve;
+    });
+    let earlyCalls = 0;
+    let lateCalls = 0;
+    let refreshes = 0;
+    const success = () =>
+      new Response(JSON.stringify({ ok: true }), { status: 200 });
+    global.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      const path = String(url);
+      if (path.endsWith("/auth/refresh")) {
+        refreshes += 1;
+        return success();
+      }
+      if (path.endsWith("/early"))
+        return ++earlyCalls === 1
+          ? new Response(null, { status: 401 })
+          : success();
+      if (path.endsWith("/late")) return ++lateCalls === 1 ? late : success();
+      throw new Error("Unexpected request");
+    });
+    const first = apiRequest("/early");
+    const second = apiRequest("/late");
+    await first;
+    finishLate(new Response(null, { status: 401 }));
+    await second;
+    expect(refreshes).toBe(1);
+  });
+
+  it("retries blob exports after refreshing the session", async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }))
+      .mockResolvedValueOnce(new Response("recipe", { status: 200 }));
+    const downloaded = await apiRequest<Blob>("/export/recipes", {
+      responseType: "blob",
+    });
+    expect(await downloaded.text()).toBe("recipe");
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("clears auth without redirecting when redirectOnAuthFailure is false", async () => {
+    const { auth } = await import("#lib/stores/auth.js");
+    const logout = vi.spyOn(auth, "logout").mockResolvedValue(undefined);
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }));
+    await expect(
+      apiRequest("/users/me", { redirectOnAuthFailure: false }),
+    ).rejects.toThrow();
+    expect(logout).toHaveBeenCalledWith(false);
+    logout.mockRestore();
   });
 });

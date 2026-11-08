@@ -1,39 +1,20 @@
-# Backend Dockerfile for Recipe Catalog
-# Production-oriented image
-
-FROM python:3.13-slim AS base
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
-
-# System dependencies (build-essential only if native extensions appear later)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential curl && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install uv (Python package manager)
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:${PATH}"
-
+# Pin the dependency installer and keep build tools outside the runtime image.
+FROM python:3.13-slim AS build
+COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /bin/uv
 WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
 
-# Copy dependency manifests first for layer caching
-COPY pyproject.toml uv.lock* ./
-
-# Install dependencies (fallback if lock file absent)
-RUN uv sync --frozen --no-dev || uv sync --no-dev
-
-# Copy application code
-COPY . /app
-
-# Create data directory for SQLite persistence mounted as volume
-RUN mkdir -p /app/data
-
-# Environment defaults (override via compose env_file)
-ENV PORT=8000 \
-    DATABASE_URL=sqlite+aiosqlite:///./data/recipes.db
-
+FROM python:3.13-slim AS runtime
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH" \
+    DATABASE_URL=sqlite+aiosqlite:///./data/recipes.db \
+    ENVIRONMENT=production
+WORKDIR /app
+RUN useradd --uid 10001 --create-home recipe && mkdir -p /app/data /app/logs && chown -R recipe:recipe /app
+COPY --from=build /app/.venv /app/.venv
+COPY --chown=recipe:recipe . /app
+USER recipe
 EXPOSE 8000
-
-# Run with uv to ensure virtual env isolation
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=172.30.0.3"]

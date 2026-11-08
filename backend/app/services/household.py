@@ -2,27 +2,35 @@
 
 import secrets
 from datetime import UTC, datetime, timedelta
+from html import escape
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import Select
 from wonderwords import RandomWord
 
 from app.core.config import settings
 from app.core.email import email_service
+from app.core.security import hash_token
 from app.models._utils import is_expired
+from app.models.collection import Collection, RecipeCollection
 from app.models.household import (
     Household,
     HouseholdInvitation,
     HouseholdInviteLink,
     HouseholdMember,
 )
+from app.models.meal_plan import MealPlan, PlannedMeal
+from app.models.recipe import Recipe
+from app.models.shopping_list import ShoppingList
 from app.models.user import User
 
 
 # Initialize wonderwords random word generator
-_random_word = RandomWord()
+_random_word = RandomWord(rng=secrets.SystemRandom())
 
 
 # ============================================
@@ -66,6 +74,7 @@ async def create_default_household_for_new_user(
     # Add owner as a member with owner role
     member = HouseholdMember(household_id=household.id, user_id=user.id, role="owner")
     db.add(member)
+    await _adopt_owned_data(db, member.user_id, member.household_id)
 
     # Note: We don't commit here - let the calling function handle the transaction
     # This allows the household creation to be part of the larger registration transaction
@@ -91,6 +100,7 @@ async def create_household(
     Raises:
         HTTPException: If user already belongs to a household
     """
+    await _release_personal_membership(db, owner_user_id)
     # Check if user already belongs to a household (one household per user rule)
     existing_membership = await db.execute(
         select(HouseholdMember).where(HouseholdMember.user_id == owner_user_id)
@@ -109,6 +119,7 @@ async def create_household(
     # Add owner as a member with owner role
     member = HouseholdMember(household_id=household.id, user_id=owner_user_id, role="owner")
     db.add(member)
+    await _adopt_owned_data(db, member.user_id, member.household_id)
     await db.commit()
     await db.refresh(household)
 
@@ -204,6 +215,12 @@ async def delete_household(db: AsyncSession, household_id: int, user_id: int) ->
             detail="Only the household owner can delete the household",
         )
 
+    members = await get_household_members(db, household_id)
+    if any(member.user_id != user_id for member in members):
+        raise HTTPException(
+            status_code=400, detail="Remove other members before deleting the household"
+        )
+    await _move_owned_data(db, user_id, household_id)
     await db.delete(household)
     await db.commit()
 
@@ -228,6 +245,140 @@ async def get_household_members(db: AsyncSession, household_id: int) -> list[Hou
         select(HouseholdMember).where(HouseholdMember.household_id == household_id)
     )
     return list(result.scalars().all())
+
+
+async def _adopt_owned_data(db: AsyncSession, user_id: int, household_id: int) -> None:
+    for model, owner in (
+        (Recipe, Recipe.user_id),
+        (Collection, Collection.user_id),
+        (ShoppingList, ShoppingList.created_by_user_id),
+    ):
+        await db.execute(update(model).where(owner == user_id).values(household_id=household_id))
+    plans = (
+        (
+            await db.execute(
+                select(MealPlan).where(
+                    MealPlan.created_by_user_id == user_id, MealPlan.household_id != household_id
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for plan in plans:
+        existing = (
+            await db.execute(
+                select(MealPlan).where(
+                    MealPlan.household_id == household_id,
+                    MealPlan.week_start_date == plan.week_start_date,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing:
+            await db.execute(
+                update(PlannedMeal)
+                .where(PlannedMeal.meal_plan_id == plan.id)
+                .values(meal_plan_id=existing.id)
+            )
+            await db.execute(delete(MealPlan).where(MealPlan.id == plan.id))
+        else:
+            plan.household_id = household_id
+    await db.flush()
+    # The user's data has moved out, so a personal household they left is now empty.
+    await db.execute(
+        delete(Household).where(
+            Household.owner_user_id == user_id,
+            Household.is_personal.is_(True),
+            Household.id != household_id,
+            ~Household.id.in_(select(HouseholdMember.household_id)),
+        )
+    )
+
+
+async def _release_personal_membership(db: AsyncSession, user_id: int) -> None:
+    member = (
+        await db.execute(
+            select(HouseholdMember)
+            .join(Household)
+            .where(HouseholdMember.user_id == user_id, Household.is_personal.is_(True))
+        )
+    ).scalar_one_or_none()
+    if member:
+        others = await db.scalar(
+            select(func.count(HouseholdMember.id)).where(
+                HouseholdMember.household_id == member.household_id,
+                HouseholdMember.user_id != user_id,
+            )
+        )
+        if not others:
+            await db.delete(member)
+            await db.flush()
+
+
+async def _move_owned_data(db: AsyncSession, user_id: int, old_household_id: int) -> None:
+    """Move owned data to a usable private household in the same transaction."""
+    private = Household(
+        name="Personal recipes", owner_user_id=user_id, max_members=10, is_personal=True
+    )
+    db.add(private)
+    await db.flush()
+    db.add(HouseholdMember(household_id=private.id, user_id=user_id, role="owner"))
+    owned_recipes: Select[Any] = select(Recipe.id).where(Recipe.user_id == user_id)
+    owned_collections: Select[Any] = select(Collection.id).where(Collection.user_id == user_id)
+    await db.execute(
+        delete(RecipeCollection).where(
+            (
+                RecipeCollection.recipe_id.in_(owned_recipes)
+                & ~RecipeCollection.collection_id.in_(owned_collections)
+            )
+            | (
+                ~RecipeCollection.recipe_id.in_(owned_recipes)
+                & RecipeCollection.collection_id.in_(owned_collections)
+            )
+        )
+    )
+    # Only meals this user added move; meals with unknown authorship stay with the household.
+    rows = (
+        await db.execute(
+            select(PlannedMeal, MealPlan.week_start_date)
+            .join(MealPlan)
+            .where(
+                MealPlan.household_id == old_household_id,
+                PlannedMeal.created_by_user_id == user_id,
+            )
+        )
+    ).all()
+    plans: dict[Any, MealPlan] = {}
+    for meal, week in rows:
+        if week not in plans:
+            plan = MealPlan(
+                household_id=private.id, created_by_user_id=user_id, week_start_date=week
+            )
+            db.add(plan)
+            await db.flush()
+            plans[week] = plan
+        meal.meal_plan_id = plans[week].id
+        meal.created_by_user_id = user_id
+    for model, owner in (
+        (Recipe, Recipe.user_id),
+        (Collection, Collection.user_id),
+        (ShoppingList, ShoppingList.created_by_user_id),
+    ):
+        await db.execute(
+            update(model)
+            .where(owner == user_id, model.household_id == old_household_id)
+            .values(household_id=private.id)
+        )
+    old = await db.get(Household, old_household_id)
+    if old and old.owner_user_id != user_id:
+        await db.execute(
+            update(MealPlan)
+            .where(
+                MealPlan.household_id == old_household_id, MealPlan.created_by_user_id == user_id
+            )
+            .values(created_by_user_id=old.owner_user_id)
+        )
+    await db.flush()
 
 
 async def remove_household_member(
@@ -275,6 +426,7 @@ async def remove_household_member(
     if not member:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
 
+    await _move_owned_data(db, member_user_id, household_id)
     await db.delete(member)
     await db.commit()
 
@@ -352,6 +504,7 @@ async def create_invitation(
             detail="Household has reached its maximum size",
         )
 
+    invitee_email = invitee_email.lower()
     # Check if user is already invited or a member
     existing_invitation_result = await db.execute(
         select(HouseholdInvitation).where(
@@ -359,10 +512,11 @@ async def create_invitation(
                 HouseholdInvitation.household_id == household_id,
                 HouseholdInvitation.invitee_email == invitee_email,
                 HouseholdInvitation.accepted_at.is_(None),
+                HouseholdInvitation.expires_at > datetime.now(UTC),
             )
         )
     )
-    existing_invitation = existing_invitation_result.scalar_one_or_none()
+    existing_invitation = existing_invitation_result.scalars().first()
     # Check if invitation is still valid (not expired)
     if existing_invitation and not is_expired(existing_invitation.expires_at):
         raise HTTPException(
@@ -375,7 +529,9 @@ async def create_invitation(
     invitee = invitee_user.scalar_one_or_none()
     if invitee:
         existing_member = await db.execute(
-            select(HouseholdMember).where(HouseholdMember.user_id == invitee.id)
+            select(HouseholdMember)
+            .join(Household)
+            .where(HouseholdMember.user_id == invitee.id, Household.is_personal.is_(False))
         )
         if existing_member.scalar_one_or_none():
             raise HTTPException(
@@ -383,6 +539,8 @@ async def create_invitation(
                 detail=MSG_USER_ALREADY_IN_HOUSEHOLD,
             )
 
+    # Issuing an invitation makes a personal household a normal shared household.
+    household.is_personal = False
     # Create invitation
     token = generate_invitation_token()
     expires_at = datetime.now(UTC) + timedelta(days=expiration_days)
@@ -391,13 +549,14 @@ async def create_invitation(
         household_id=household_id,
         inviter_user_id=inviter_user_id,
         invitee_email=invitee_email,
-        token=token,
+        token=hash_token(token),
         expires_at=expires_at,
     )
     db.add(invitation)
     await db.commit()
     await db.refresh(invitation)
 
+    invitation.raw_token = token
     # Send invitation email
     await send_invitation_email(db, invitation)
 
@@ -419,7 +578,9 @@ async def send_invitation_email(db: AsyncSession, invitation: HouseholdInvitatio
     inviter = inviter_result.scalar_one()
 
     # Construct invitation URL using configured frontend URL
-    invitation_url = f"{settings.FRONTEND_URL}/invitations/accept?token={invitation.token}"
+    invitation_url = (
+        f"{settings.FRONTEND_URL}/invitations/accept/{quote(invitation.raw_token, safe='')}"
+    )
 
     subject = f"You've been invited to join {household.name}"
     body = f"""
@@ -460,13 +621,13 @@ async def send_invitation_email(db: AsyncSession, invitation: HouseholdInvitatio
             </div>
             <div class="content">
                 <h2>You've been invited!</h2>
-                <p>{inviter.email} has invited you to join their household "<strong>{household.name}</strong>" on Recipe Catalog.</p>
+                <p>{escape(inviter.email)} has invited you to join their household "<strong>{escape(household.name)}</strong>" on Recipe Catalog.</p>
                 <p style="text-align: center;">
-                    <a href="{invitation_url}" class="button">Accept Invitation</a>
+                    <a href="{escape(invitation_url, quote=True)}" class="button">Accept Invitation</a>
                 </p>
                 <p>Or copy and paste this link into your browser:</p>
                 <p style="word-break: break-all; background: #fff; padding: 10px; border-radius: 3px;">
-                    {invitation_url}
+                    {escape(invitation_url, quote=True)}
                 </p>
                 <p><strong>This invitation will expire on {invitation.expires_at.strftime("%Y-%m-%d %H:%M:%S UTC")}.</strong></p>
                 <p>If you don't have an account yet, you'll be prompted to create one.</p>
@@ -498,6 +659,7 @@ async def get_pending_invitations(db: AsyncSession, household_id: int) -> list[H
             and_(
                 HouseholdInvitation.household_id == household_id,
                 HouseholdInvitation.accepted_at.is_(None),
+                HouseholdInvitation.expires_at > datetime.now(UTC),
             )
         )
     )
@@ -523,7 +685,9 @@ async def get_invitation_by_token(db: AsyncSession, token: str) -> HouseholdInvi
     Returns:
         Invitation if found and not expired, None otherwise
     """
-    result = await db.execute(select(HouseholdInvitation).where(HouseholdInvitation.token == token))
+    result = await db.execute(
+        select(HouseholdInvitation).where(HouseholdInvitation.token == hash_token(token))
+    )
     invitation = result.scalar_one_or_none()
 
     if not invitation:
@@ -552,7 +716,9 @@ async def accept_invitation(db: AsyncSession, token: str, user_id: int) -> House
         HTTPException: If invitation not found, expired, or user already in a household
     """
     # Find invitation
-    result = await db.execute(select(HouseholdInvitation).where(HouseholdInvitation.token == token))
+    result = await db.execute(
+        select(HouseholdInvitation).where(HouseholdInvitation.token == hash_token(token))
+    )
     invitation = result.scalar_one_or_none()
 
     if not invitation:
@@ -576,12 +742,13 @@ async def accept_invitation(db: AsyncSession, token: str, user_id: int) -> House
     user_result = await db.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one()
 
-    if user.email != invitation.invitee_email:
+    if user.email.lower() != invitation.invitee_email.lower():
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invitation is for a different email address",
         )
 
+    await _release_personal_membership(db, user_id)
     # Check if user already belongs to a household
     existing_membership = await db.execute(
         select(HouseholdMember).where(HouseholdMember.user_id == user_id)
@@ -602,6 +769,7 @@ async def accept_invitation(db: AsyncSession, token: str, user_id: int) -> House
     # Create household member
     member = HouseholdMember(household_id=invitation.household_id, user_id=user_id, role="member")
     db.add(member)
+    await _adopt_owned_data(db, member.user_id, member.household_id)
 
     # Mark invitation as accepted
     invitation.accepted_at = datetime.now(UTC)
@@ -624,7 +792,9 @@ async def decline_invitation(db: AsyncSession, token: str, user_id: int) -> None
     Raises:
         HTTPException: If invitation not found
     """
-    result = await db.execute(select(HouseholdInvitation).where(HouseholdInvitation.token == token))
+    result = await db.execute(
+        select(HouseholdInvitation).where(HouseholdInvitation.token == hash_token(token))
+    )
     invitation = result.scalar_one_or_none()
 
     if not invitation:
@@ -638,7 +808,10 @@ async def decline_invitation(db: AsyncSession, token: str, user_id: int) -> None
     # household_id is a non-null FK, so the lookup cannot miss; narrows the type for mypy.
     assert household is not None
 
-    if user.email != invitation.invitee_email and user_id != household.owner_user_id:
+    if (
+        user.email.lower() != invitation.invitee_email.lower()
+        and user_id != household.owner_user_id
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to decline this invitation",
@@ -693,17 +866,12 @@ def generate_invite_code() -> str:
     Returns:
         A code in the format "word1-word2-word3"
     """
-    words = []
-    for _ in range(3):
-        # Exclude compound words containing hyphens to keep the code format unambiguous
-        for _ in range(20):
-            w = _random_word.word(include_parts_of_speech=["nouns"])
-            if "-" not in w:
-                words.append(w)
-                break
-        else:
-            # Fallback: strip hyphens if no simple word found in 20 attempts
-            words.append(_random_word.word(include_parts_of_speech=["nouns"]).replace("-", ""))
+    # Draw from the library's noun list with a cryptographically secure RNG.
+    words: list[str] = []
+    while len(words) < 5:
+        word = _random_word.word(include_parts_of_speech=["nouns"]).lower()
+        if word.isalpha() and len(word) <= 16:
+            words.append(word)
     return "-".join(words)
 
 
@@ -733,27 +901,22 @@ async def create_invite_link(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Household not found")
 
     # Verify user is owner or member of household
-    if not await check_user_household_access(db, created_by_user_id, household_id):
+    if household.owner_user_id != created_by_user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User does not have access to this household",
         )
 
+    household.is_personal = False
     # Generate unique code
     max_attempts = 10
     for _ in range(max_attempts):
-        code = generate_invite_code()
-        # Check if code already exists
-        existing = await db.execute(
-            select(HouseholdInviteLink).where(HouseholdInviteLink.code == code)
-        )
-        if not existing.scalar_one_or_none():
+        code = generate_invite_code().lower()
+        if not await get_invite_link_by_code(db, code):
             break
     else:
         # Fallback to UUID-based code if we can't generate unique word-based code
-        import uuid
-
-        code = str(uuid.uuid4())[:8]
+        code = secrets.token_hex(24)
 
     # Create invite link
     expires_at = datetime.now(UTC) + timedelta(days=expires_in_days)
@@ -792,7 +955,7 @@ async def get_invite_link_by_code(db: AsyncSession, code: str) -> HouseholdInvit
             == normalized_code
         )
     )
-    return result.scalar_one_or_none()
+    return result.scalars().first()
 
 
 async def join_via_invite_link(db: AsyncSession, code: str, user_id: int) -> HouseholdMember:
@@ -833,6 +996,7 @@ async def join_via_invite_link(db: AsyncSession, code: str, user_id: int) -> Hou
             detail="This invite code has expired",
         )
 
+    await _release_personal_membership(db, user_id)
     # Check if user already belongs to a household
     existing_membership = await db.execute(
         select(HouseholdMember).where(HouseholdMember.user_id == user_id)
@@ -865,6 +1029,7 @@ async def join_via_invite_link(db: AsyncSession, code: str, user_id: int) -> Hou
         role="member",
     )
     db.add(member)
+    await _adopt_owned_data(db, member.user_id, member.household_id)
 
     # Mark invite link as used (one-time use)
     invite_link.used_at = datetime.now(UTC)
@@ -932,6 +1097,7 @@ async def leave_household(db: AsyncSession, user_id: int) -> dict[str, Any]:
         )
 
     # Remove user from household
+    await _move_owned_data(db, user_id, household_id)
     await db.delete(member)
 
     household_deleted = False

@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { downloadBlob } from "#lib/utils/download.js";
 	import { onMount } from 'svelte';
 	import { getUserStats } from '#lib/api/users.js';
 	import type { UserStats } from '#lib/api/users.js';
-	import { API_V1_URL } from '#lib/config.js';
+	import { apiRequest } from '#lib/api/client.js';
+	import { TOAST_DURATION } from '#lib/constants.js';
 	import ExportCard from '#lib/components/export/ExportCard.svelte';
 
 	let stats: UserStats | null = null;
@@ -38,38 +40,14 @@
 		exportStatus = '';
 
 		try {
-			// Build URL with format parameter (only if format is provided)
-			const url = format
-				? `${API_V1_URL}/export/${endpoint}?format=${format}`
-				: `${API_V1_URL}/export/${endpoint}`;
-
-			// Fetch the export using cookie-based authentication
-			const response = await fetch(url, {
-				credentials: 'include', // Send authentication cookies
-			});
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				throw new Error(
-					`Export failed: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`,
-				);
-			}
-
-			// Get the blob
-			const blob = await response.blob();
+            const query = format ? `?format=${encodeURIComponent(format)}` : '';
+            const blob = await apiRequest<Blob>(`/export/${endpoint}${query}`, {responseType: 'blob'});
 
 			// Create download link
-			const downloadUrl = window.URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = downloadUrl;
-			a.download = filename;
-			document.body.appendChild(a);
-			a.click();
-			window.URL.revokeObjectURL(downloadUrl);
-			document.body.removeChild(a);
+			downloadBlob(blob, filename);
 
 			exportStatus = `✓ Export successful! Download started.`;
-			setTimeout(() => (exportStatus = ''), 5000);
+			setTimeout(() => (exportStatus = ''), TOAST_DURATION);
 		} catch (err) {
 			exportStatus = `✗ Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`;
 			console.error('Export failed:', err);

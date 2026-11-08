@@ -3,7 +3,7 @@ Collection management API endpoints.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -327,36 +327,44 @@ async def add_recipes_to_collection(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
 
     # Track results
-    added = []
-    skipped = []
-    not_found = []
+    added: list[int] = []
+    skipped: list[int] = []
+    not_found: list[int] = []
 
-    # Add recipes to collection
-    for recipe_id in recipe_data.recipe_ids:
-        # Verify recipe belongs to user
-        result = await db.execute(
-            select(Recipe).where(Recipe.id == recipe_id, Recipe.user_id == current_user.id)
-        )
-        recipe = result.scalar_one_or_none()
-
-        if not recipe:
-            not_found.append(recipe_id)
-            continue
-
-        # Check if already in collection
-        result = await db.execute(
-            select(RecipeCollection).where(
-                RecipeCollection.recipe_id == recipe_id,
-                RecipeCollection.collection_id == collection_id,
+    recipe_ids = list(dict.fromkeys(recipe_data.recipe_ids))
+    owned: list[int] = list(
+        (
+            await db.execute(
+                select(Recipe.id).where(
+                    Recipe.id.in_(recipe_ids),
+                    Recipe.user_id == current_user.id,
+                    Recipe.deleted_at.is_(None),
+                )
             )
         )
-        existing = result.scalar_one_or_none()
-
-        if existing:
+        .scalars()
+        .all()
+    )
+    owned_ids = set(owned)
+    linked_ids = set(
+        (
+            await db.execute(
+                select(RecipeCollection.recipe_id).where(
+                    RecipeCollection.collection_id == collection_id,
+                    RecipeCollection.recipe_id.in_(recipe_ids),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for recipe_id in recipe_ids:
+        if recipe_id not in owned_ids:
+            not_found.append(recipe_id)
+        elif recipe_id in linked_ids:
             skipped.append(recipe_id)
         else:
-            recipe_collection = RecipeCollection(recipe_id=recipe_id, collection_id=collection_id)
-            db.add(recipe_collection)
+            db.add(RecipeCollection(recipe_id=recipe_id, collection_id=collection_id))
             added.append(recipe_id)
 
     await db.commit()
@@ -399,18 +407,12 @@ async def remove_recipes_from_collection(
     if not collection:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
 
-    # Remove recipes from collection
-    for recipe_id in recipe_data.recipe_ids:
-        result = await db.execute(
-            select(RecipeCollection).where(
-                RecipeCollection.recipe_id == recipe_id,
-                RecipeCollection.collection_id == collection_id,
-            )
+    await db.execute(
+        delete(RecipeCollection).where(
+            RecipeCollection.collection_id == collection_id,
+            RecipeCollection.recipe_id.in_(recipe_data.recipe_ids),
         )
-        recipe_collection = result.scalar_one_or_none()
-
-        if recipe_collection:
-            await db.delete(recipe_collection)
+    )
 
     await db.commit()
 

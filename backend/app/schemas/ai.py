@@ -1,22 +1,29 @@
 """AI-related Pydantic schemas."""
 
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
+
+
+ShortText = Annotated[str, Field(max_length=500)]
 
 
 class AIRecipeGenerateRequest(BaseModel):
     """Schema for AI recipe generation request."""
 
-    ingredients: list[str] = Field(..., min_length=1, description="List of available ingredients")
+    ingredients: list[ShortText] = Field(
+        ..., min_length=1, max_length=100, description="List of available ingredients"
+    )
     cuisine: str | None = Field(None, max_length=100, description="Cuisine type")
     time_limit: int | None = Field(
         None, ge=1, le=480, description="Maximum cooking time in minutes"
     )
-    dietary_preferences: list[str] | None = Field(
-        default=None, description="Dietary preferences (e.g., vegetarian, vegan)"
+    dietary_preferences: list[ShortText] | None = Field(
+        default=None, max_length=50, description="Dietary preferences (e.g., vegetarian, vegan)"
     )
-    equipment: list[str] | None = Field(default=None, description="Available kitchen equipment")
+    equipment: list[ShortText] | None = Field(
+        default=None, max_length=50, description="Available kitchen equipment"
+    )
 
 
 class AIRecipeGenerateResponse(BaseModel):
@@ -30,12 +37,13 @@ class AIMenuGenerateRequest(BaseModel):
     """Schema for AI menu suggestion generation request."""
 
     days: int = Field(..., ge=1, le=14, description="Number of days for the menu")
-    meals_per_day: list[str] = Field(
+    meals_per_day: list[ShortText] = Field(
         ...,
+        max_length=4,
         description="Meal types to include (e.g., ['breakfast', 'lunch', 'dinner'])",
     )
-    dietary_preferences: list[str] | None = Field(
-        default=None, description="Dietary preferences (e.g., vegetarian, vegan)"
+    dietary_preferences: list[ShortText] | None = Field(
+        default=None, max_length=50, description="Dietary preferences (e.g., vegetarian, vegan)"
     )
     cuisine: str | None = Field(None, max_length=100, description="Cuisine preference")
     mode: str = Field(
@@ -45,6 +53,7 @@ class AIMenuGenerateRequest(BaseModel):
     )
     household_recipe_ids: list[int] | None = Field(
         default=None,
+        max_length=500,
         description="Available recipe IDs from household catalog (for catalog-first mode)",
     )
 

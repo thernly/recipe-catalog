@@ -21,7 +21,7 @@ async def test_create_invite_link(client: AsyncClient, auth_headers: dict, test_
     data = response.json()
     assert "code" in data
     assert "-" in data["code"]  # Should be word-word-word format
-    assert len(data["code"].split("-")) == 3  # Three words
+    assert len(data["code"].split("-")) == 5  # Three words
     assert data["household_id"] == test_household["id"]
     assert data["used_at"] is None
 
@@ -35,7 +35,7 @@ async def test_invite_code_format(db: AsyncSession, test_household: dict):
 
     # Should be three words separated by hyphens
     words = invite_link.code.split("-")
-    assert len(words) == 3
+    assert len(words) == 5
     # Each word should be lowercase alphabetic (or contain hyphens for compound words)
     for word in words:
         assert word.islower()

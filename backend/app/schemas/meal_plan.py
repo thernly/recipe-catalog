@@ -19,7 +19,7 @@ class PlannedMealBase(BaseModel):
     day_of_week: int = Field(..., ge=0, le=6, description="0=Monday, 6=Sunday")
     meal_type: str = Field(..., pattern="^(breakfast|lunch|dinner|snack|other)$")
     servings: int | None = Field(None, ge=1)
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=10000)
 
 
 class PlannedMealCreate(PlannedMealBase):
@@ -41,7 +41,7 @@ class PlannedMealUpdate(BaseModel):
     day_of_week: int | None = Field(None, ge=0, le=6)
     meal_type: str | None = Field(None, pattern="^(breakfast|lunch|dinner|snack|other)$")
     servings: int | None = Field(None, ge=1)
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=10000)
 
     @field_validator("notes")
     @classmethod
