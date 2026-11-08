@@ -31,9 +31,10 @@ Use the `responses` parameter in the route decorator to document all possible re
             "content": {
                 "application/json": {
                     "example": {
-                        "error_code": "invalid_input",
+                        "error_code": "INVALID_INPUT",
                         "message": "Description of the error",
-                        "details": {}
+                        "details": {},
+                        "correlation_id": "..."
                     }
                 }
             },
@@ -43,9 +44,10 @@ Use the `responses` parameter in the route decorator to document all possible re
             "content": {
                 "application/json": {
                     "example": {
-                        "error_code": "unauthorized",
+                        "error_code": "UNAUTHORIZED",
                         "message": "Not authenticated",
-                        "details": {}
+                        "details": {},
+                        "correlation_id": "..."
                     }
                 }
             },
@@ -55,13 +57,14 @@ Use the `responses` parameter in the route decorator to document all possible re
             "content": {
                 "application/json": {
                     "example": {
-                        "error_code": "validation_error",
+                        "error_code": "VALIDATION_ERROR",
                         "message": "Validation error",
                         "details": {
                             "errors": [
                                 {"field": "field_name", "message": "Error description"}
                             ]
-                        }
+                        },
+                        "correlation_id": "..."
                     }
                 }
             },
@@ -97,7 +100,7 @@ async def example_endpoint(...):
     Detailed explanation of the endpoint's functionality, including any important
     details about how it processes data, what side effects it may have, etc.
 
-    **Authentication:** Required/None required (Bearer token)
+    **Authentication:** Required (session cookie or Bearer token) / None required
 
     **Rate Limit:** X requests per minute per IP address (or "None")
 
@@ -119,24 +122,25 @@ async def example_endpoint(...):
 
 ## Standard Error Response Format
 
-All errors should follow the standardized format defined in `app/schemas/common.py`:
+The exception handlers in `app/main.py` shape every error into one envelope:
 
 ```python
 {
-    "error_code": "machine_readable_code",
+    "error_code": "MACHINE_READABLE_CODE",
     "message": "Human-readable error message",
     "details": {},  # Optional additional context
+    "correlation_id": "...",  # Present when a correlation ID is set
 }
 ```
 
-Common error codes:
-- `unauthorized`: User is not authenticated
-- `forbidden`: User is authenticated but lacks permission
-- `not_found`: Requested resource doesn't exist
-- `invalid_input`: Request data is invalid
-- `validation_error`: Pydantic validation failed
-- `account_locked`: Account is temporarily locked
-- `authentication_failed`: Invalid credentials
+Raise an `AppException` subclass from `app/core/exceptions.py` (e.g. `InvalidInputError`)
+rather than building responses by hand. Codes come from its `ErrorCode` enum:
+`UNAUTHORIZED`, `INVALID_CREDENTIALS`, `TOKEN_EXPIRED`, `TOKEN_INVALID`,
+`INSUFFICIENT_PERMISSIONS`, `INVALID_INPUT`, `VALIDATION_ERROR`, `RECIPE_NOT_FOUND`
+(and other `*_NOT_FOUND`), `RATE_LIMIT_EXCEEDED`, `EXTERNAL_SERVICE_ERROR`,
+`AI_SERVICE_ERROR`, `INTERNAL_ERROR`. A bare `HTTPException` is mapped by status
+(400 `INVALID_INPUT`, 401/403 `UNAUTHORIZED`, 404 `RESOURCE_NOT_FOUND`, 500
+`INTERNAL_ERROR`, 503 `EXTERNAL_SERVICE_ERROR`).
 
 ## Rate Limiting
 
@@ -162,7 +166,7 @@ async def login(...):
 
 Document authentication requirements in the docstring:
 
-- `**Authentication:** Required (Bearer token)` - For protected endpoints
+- `**Authentication:** Required (session cookie or Bearer token)` - For protected endpoints
 - `**Authentication:** None required` - For public endpoints
 
 ## Examples

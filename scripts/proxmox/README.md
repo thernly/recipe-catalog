@@ -1,85 +1,82 @@
-# Recipe Catalog - Deployment Scripts
+# Recipe Catalog - Proxmox LXC Deployment
 
-This directory contains automation scripts for deploying Recipe Catalog.
+This directory contains the scripts for deploying Recipe Catalog to a Proxmox LXC container running Debian 12, and for updating it afterwards.
 
 ## Available Scripts
 
 ### `deploy-lxc.sh` - Automated LXC Deployment
 
-Fully automated deployment script for installing Recipe Catalog on a Proxmox LXC container running Debian 12.
+Installs Recipe Catalog on a fresh Debian 12 container:
+
+- System package updates and dependencies (git, nginx, certbot, sqlite3)
+- Node.js 24.x and pnpm
+- UV package manager and Python 3.13 via UV (pre-built binaries)
+- Application code (Git clone, or files already in `/opt/recipe-catalog`)
+- Backend and frontend configuration, database migrations
+- Nginx reverse proxy and a systemd service for the backend
+- Optional SSL/TLS with Let's Encrypt
+- Optional UFW firewall (interactive mode only)
+
+It runs interactively (prompts, recommended for first-time setup) or non-interactively (for automation), logs to `/var/log/recipe-catalog-deployment.log`, and checks backend health at the end.
 
 ### `update-app.sh` - Automated Application Updates
 
-Automated update script for safely updating Recipe Catalog to the latest version with automatic database backups.
+Updates an existing install to the latest code, with a database backup first. See [Updating the Application](#updating-the-application).
 
-#### Features
+## Creating the Container
 
-✅ **Automated Installation**
+In the Proxmox web UI, click **Create CT**: Debian 12 template, 2+ cores, 2048MB+ memory (4096MB recommended), 8GB+ disk (16GB recommended), bridged network (static IP or DHCP), **Start at boot** enabled. Then `pct enter <container-id>` (or SSH in) and run the deploy script.
 
-- System package updates and dependency installation
-- Node.js 20.x and pnpm installation
-- UV package manager setup
-- Python 3.13 installation via UV (pre-built binaries)
-- Application code setup (Git clone or local)
-- Backend and frontend configuration
-- Database initialization
-- Nginx web server configuration
-- Systemd service creation
-- Optional SSL/TLS setup with Let's Encrypt
-- Optional firewall configuration
+## Prerequisites
 
-✅ **Interactive & Non-Interactive Modes**
-
-- Interactive mode with prompts (recommended for first-time setup)
-- Non-interactive mode for automation and CI/CD
-
-✅ **Comprehensive Error Handling**
-
-- Detailed logging to `/var/log/recipe-catalog-deployment.log`
-- Color-coded console output
-- Pre-flight system checks
-- Service health verification
+1. **LXC container** as described above.
+2. **Access**: root access to the container and an internet connection.
+3. **DNS (for HTTPS)**: a domain name pointed at the server. Production mode (the default) requires it; see below.
 
 ## Quick Start
 
 ### Interactive Deployment (Recommended)
 
-The easiest way to deploy is using interactive mode:
+The script lives in the repository, so get the code onto the container first (clone it, or copy it to `/opt/recipe-catalog`), then:
 
 ```bash
 # As root on your LXC container
-cd /opt/recipe-catalog/scripts
-sudo bash deploy-lxc.sh
+cd /opt/recipe-catalog/scripts/proxmox
+bash deploy-lxc.sh
 ```
 
 The script will prompt you for:
 
 - Server IP address or domain name
-- Git repository URL (or use local files)
-- SSL/TLS configuration (optional)
+- Git repository URL (or `local` to use existing files)
+- SSL/TLS configuration (domain name)
 - SMTP email settings
 - Firewall setup (optional)
 
 ### Non-Interactive Deployment
 
-For automated deployments or CI/CD pipelines:
-
 ```bash
-sudo bash deploy-lxc.sh \
+bash deploy-lxc.sh \
     --non-interactive \
     --repo-url https://github.com/yourusername/recipe-catalog.git \
     --server-ip 192.168.1.100 \
     --domain recipes.example.com
 ```
 
-Production mode (the default) requires HTTPS, so pass `--domain`. For a plain-HTTP install on a trusted local network, pass `--development` instead of `--domain` (cookies are not marked Secure; switch to production once SSL is set up). In interactive mode, declining SSL offers development mode.
+In non-interactive mode the SMTP password is left empty and the firewall step is skipped; set them afterwards.
+
+### Production vs. Development Mode
+
+The script writes `ENVIRONMENT=production` to the backend `.env` by default (override with `--development` or `DEPLOY_ENVIRONMENT=development`). Production mode marks auth cookies `Secure`, which browsers only send over HTTPS, so the script refuses to run in production without `--domain`.
+
+For a plain-HTTP install on a trusted local network, pass `--development` instead of `--domain`. That writes `ENVIRONMENT=development`: cookies are not marked `Secure` and the backend uses a relaxed CSP. In interactive mode, declining SSL offers development mode. Once you add HTTPS, change the line to `ENVIRONMENT=production` and restart the backend (`update-app.sh` warns if SSL is configured but the `.env` still says `development`).
 
 ### Using Existing Files
 
 If you've already copied the application files to `/opt/recipe-catalog`:
 
 ```bash
-sudo bash deploy-lxc.sh --repo-url local
+bash deploy-lxc.sh --repo-url local
 ```
 
 ## Command Line Options
@@ -94,106 +91,70 @@ sudo bash deploy-lxc.sh --repo-url local
 | `--skip-python` | Skip Python 3.13 installation | `--skip-python` |
 | `--help` | Show help message | `--help` |
 
-## Prerequisites
-
-Before running the deployment script:
-
-1. **LXC Container Setup**
-   - Create Debian 12.12-1 LXC container in Proxmox
-   - Minimum specs:
-     - 2 CPU cores
-     - 2GB RAM (4GB recommended)
-     - 8GB disk (16GB recommended)
-   - Network configured with static IP or DHCP
-
-2. **Access**
-   - Root access to the container
-   - Internet connection for downloading dependencies
-
-3. **DNS (Optional, for SSL)**
-   - Domain name pointed to your server IP
-   - Required only if you want SSL/TLS certificates
-
 ## What The Script Does
 
 ### 1. System Preparation
 
 - Updates all system packages
-- Installs essential system dependencies (git, nginx, certbot, sqlite3)
-- Installs Node.js 20.x and pnpm
+- Installs git, nginx, certbot (with the nginx plugin), sqlite3, curl, wget, gnupg
+- Installs Node.js 24.x (NodeSource) and pnpm 10.17.1, unless already present
 
 ### 2. Application Setup
 
-- Creates `recipe-app` user for running the application
-- Creates directory structure in `/opt/recipe-catalog`
-- Clones repository or uses existing files
-- Installs UV package manager for Python
-- Installs Python 3.13 using UV (downloads pre-built binary, ~30 seconds)
-- Pins the project to use Python 3.13
-- Configures ENVIRONMENT=development for HTTP (required for cookies to work)
+- Creates the `recipe-app` system user
+- Creates `/opt/recipe-catalog` (with `backend/data` and `backend/logs`)
+- Clones the repository (or pulls if already cloned), or uses existing files
+- Installs UV to `/home/recipe-app/.local/bin/uv` (checksum-verified release)
+- Installs Python 3.13 with UV and pins the project to it
 
 ### 3. Backend Configuration
 
-- Installs Python dependencies using UV
-- Generates secure `.env` file with:
-  - Random SECRET_KEY
-  - Database configuration
-  - CORS settings
-  - Email/SMTP settings
-  - Rate limiting
-  - ENVIRONMENT=development (for HTTP deployments)
-- Initializes SQLite database with migrations
+- Installs Python dependencies with `uv sync --frozen`
+- Generates `backend/.env` (mode 600) with:
+  - Random `SECRET_KEY`
+  - SQLite database at `data/recipes.db`
+  - `ALLOWED_ORIGINS` and `FRONTEND_URL` set to the public origin (`https://<domain>` or `http://<server-ip>`)
+  - `OAUTH_REDIRECT_BASE_URL` set to `<public origin>/api/v1/auth`
+  - SMTP settings
+  - `ENVIRONMENT` (`production` or `development`, see above) and `DEBUG=False`
+  - Rate limiting, upload limits, logging
+- Runs `alembic upgrade head` to create the database
 
 ### 4. Frontend Configuration
 
-- Installs Node.js dependencies
-- Generates `.env` file with API URL
-- Builds production frontend bundle
+- Installs dependencies with `pnpm install --frozen-lockfile`
+- Generates `frontend/.env` with `VITE_API_URL`
+- Builds the production bundle
 
 ### 5. Web Server Setup
 
-- Configures Nginx as reverse proxy
-- Sets up static file serving for frontend
-- Proxies API requests to backend
+- Configures Nginx to serve the frontend build and proxy `/api` to the backend on `127.0.0.1:8000`
 - Adds security headers
-- Optionally installs SSL certificate
+- With `--domain`, obtains a Let's Encrypt certificate for the domain and `www.` subdomain via `certbot --nginx` (the SMTP user is used as the contact email)
 
 ### 6. Service Management
 
-- Creates systemd service for backend
-- Enables auto-start on boot
-- Starts all services
-- Verifies service health
+- Creates and enables the `recipe-catalog-backend` systemd service (uvicorn, 1 worker)
+- Starts the backend and Nginx
+- Polls `http://127.0.0.1:8000/health`
 
-### 7. Security (Optional)
+### 7. Firewall (Optional, interactive only)
 
-- Configures UFW firewall
-- Opens ports 22 (SSH), 80 (HTTP), 443 (HTTPS)
+- Installs UFW and opens ports 22 (SSH), 80 (HTTP), 443 (HTTPS)
 
 ## Post-Deployment
 
-After successful deployment:
+1. **Access the application** at `https://<domain>` (or `http://<server-ip>` in development mode).
 
-1. **Access the Application**
-
-   ```text
-   http://your-server-ip
-   ```
-
-2. **View API Documentation**
-
-   ```text
-   http://your-server-ip/api/docs
-   ```
-
-3. **Check Service Status**
+2. **Check service status**
 
    ```bash
    systemctl status recipe-catalog-backend
    systemctl status nginx
+   curl http://127.0.0.1:8000/health
    ```
 
-4. **View Logs**
+3. **View logs**
 
    ```bash
    # Deployment log
@@ -206,246 +167,26 @@ After successful deployment:
    tail -f /var/log/nginx/recipe-catalog-error.log
    ```
 
-5. **Register First User**
-   - Navigate to the application in your browser
-   - Click "Register" to create your account
-   - Check email for verification (if SMTP configured)
+4. **Register the first user** in the browser. A verification email is sent if SMTP is configured.
 
-## Troubleshooting
-
-### Git Permission Errors During Update
-
-If you see `error: insufficient permission for adding an object to repository database .git/objects`:
-
-```bash
-# Fix repository ownership (run as root)
-chown -R recipe-app:recipe-app /opt/recipe-catalog
-
-# Then retry the update
-bash /opt/recipe-catalog/scripts/proxmox/update-app.sh
-```
-
-This happens if some git repository files were created by root instead of the `recipe-app` user. The update script now automatically fixes this, but you can run the command above manually if needed.
-
-### Script Fails During Python Installation
-
-If Python installation via UV fails:
-
-```bash
-# Check if UV is installed
-su - recipe-app
-~/.local/bin/uv --version
-
-# Try installing Python manually
-~/.local/bin/uv python install 3.13
-
-# List installed Python versions
-~/.local/bin/uv python list
-
-# If still failing, check logs
-cat /var/log/recipe-catalog-deployment.log
-```
-
-### Backend Service Won't Start
-
-```bash
-# Check the logs
-journalctl -u recipe-catalog-backend -n 50
-
-# Test backend manually
-su - recipe-app
-cd /opt/recipe-catalog/backend
-~/.local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
-### Frontend Build Fails
-
-```bash
-# Check if pnpm is installed
-pnpm --version
-
-# Try building manually
-su - recipe-app
-cd /opt/recipe-catalog/frontend
-pnpm install
-pnpm build
-```
-
-### Can't Access Application
-
-```bash
-# Check if services are running
-systemctl status recipe-catalog-backend
-systemctl status nginx
-
-# Check if ports are listening
-ss -tulpn | grep -E ':(80|8000)'
-
-# Check Nginx configuration
-nginx -t
-
-# Check firewall
-ufw status
-```
+The interactive API docs (`/docs`) are disabled because the generated `.env` sets `DEBUG=False`, and Nginx only proxies `/api` to the backend.
 
 ## Manual Configuration
 
-After deployment, you may want to customize:
-
 ### Backend Environment Variables
 
-Edit `/opt/recipe-catalog/backend/.env`:
+Edit `/opt/recipe-catalog/backend/.env`, then `systemctl restart recipe-catalog-backend`.
 
-```bash
-sudo nano /opt/recipe-catalog/backend/.env
-```
+Important settings:
 
-**Important Settings:**
+- `ENVIRONMENT`: `production` (Secure cookies, strict CSP; needs HTTPS) or `development` (plain HTTP on a trusted network). See [Production vs. Development Mode](#production-vs-development-mode).
+- `ALLOWED_ORIGINS`, `FRONTEND_URL`: must match the URL users browse to.
+- `OAUTH_REDIRECT_BASE_URL`: base for OAuth callbacks, normally `https://<domain>/api/v1/auth`. Register `<that>/google/callback` (likewise `/microsoft/callback`, `/github/callback`) with each provider you enable.
+- `SECRET_KEY`: keep it secret and unique.
 
-- `ENVIRONMENT`: Set to `development` for HTTP or `production` for HTTPS
-  - `development`: Allows cookies over HTTP (required for non-SSL deployments)
-  - `production`: Requires HTTPS for secure cookies
-- `ALLOWED_ORIGINS`: Must include your server IP/domain
-- `SECRET_KEY`: Keep this secure and unique
+### Email Providers
 
-After changes, restart the backend:
-
-```bash
-sudo systemctl restart recipe-catalog-backend
-```
-
-### Frontend Environment Variables
-
-Edit `/opt/recipe-catalog/frontend/.env`:
-
-```bash
-sudo nano /opt/recipe-catalog/frontend/.env
-```
-
-After changes, rebuild and restart:
-
-```bash
-su - recipe-app
-cd /opt/recipe-catalog/frontend
-pnpm build
-exit
-sudo systemctl reload nginx
-```
-
-### Nginx Configuration
-
-Edit `/etc/nginx/sites-available/recipe-catalog`:
-
-```bash
-sudo nano /etc/nginx/sites-available/recipe-catalog
-```
-
-Test and reload:
-
-```bash
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-## Updating the Application
-
-### Automated Update (Recommended)
-
-Use the update script for safe, automated updates with automatic database backups:
-
-```bash
-# Standard update from git
-sudo bash /opt/recipe-catalog/scripts/proxmox/update-app.sh
-
-# Update from specific branch
-sudo bash update-app.sh --branch develop
-
-# Update without pulling from git (for local development)
-sudo bash update-app.sh --skip-git
-
-# Update without backup (not recommended)
-sudo bash update-app.sh --skip-backup
-```
-
-**What the script does:**
-
-1. **Backs up critical data:**
-   - Creates timestamped database backup (keeps last 10)
-   - Backs up backend and frontend `.env` files
-2. Stops backend service
-3. **Protects configuration files:**
-   - Temporarily moves `.env` files before git operations
-   - Pulls latest code from git
-   - Restores `.env` files immediately (before migrations)
-4. Validates `.env` files are present before proceeding
-5. Updates backend dependencies with UV
-6. Runs database migrations
-7. **Verifies database integrity** after migrations
-8. Updates frontend dependencies
-9. Builds frontend production bundle
-10. Restarts services
-11. Verifies service health
-
-**Safety Features:**
-
-- ✅ **`.env` files are never overwritten** - moved before git pull, restored after
-- ✅ **Database backups** before any migrations
-- ✅ **Database integrity checks** after migrations
-- ✅ **Automatic rollback** if database corruption detected
-- ✅ **Detailed rollback instructions** in case of issues
-- ✅ **Service verification** before declaring success
-
-**Script options:**
-
-- `--skip-git`: Skip git pull (use for local development)
-- `--skip-backup`: Skip database backup (not recommended)
-- `--branch <name>`: Specify git branch (default: main)
-- `--help`: Show usage information
-
-**Features:**
-
-- Automatic database backups in `/opt/recipe-catalog-backups/`
-- **Preserves `.env` configuration files** (never overwritten)
-- Database integrity verification after migrations
-- Automatic rollback on database corruption
-- Detailed logging to `/var/log/recipe-catalog-update.log`
-- Service health verification
-- Complete rollback instructions if issues occur
-
-### Manual Update
-
-To update manually (if you prefer step-by-step control):
-
-```bash
-# Stop services
-sudo systemctl stop recipe-catalog-backend
-
-# Update code (if using git)
-cd /opt/recipe-catalog
-sudo -u recipe-app git pull
-
-# Update backend
-cd backend
-sudo -u recipe-app ~/.local/bin/uv sync
-sudo -u recipe-app ~/.local/bin/uv run alembic upgrade head
-
-# Update frontend
-cd ../frontend
-sudo -u recipe-app pnpm install
-sudo -u recipe-app pnpm build
-
-# Restart services
-sudo systemctl start recipe-catalog-backend
-sudo systemctl reload nginx
-```
-
-## Creating the Container
-
-In the Proxmox web UI, click **Create CT**: Debian 12 template, 2+ cores, 2048MB+ memory (4096MB recommended), 8GB+ disk (16GB recommended), bridged network, **Start at boot** enabled. Then `pct enter <container-id>` (or SSH in) and run the deploy script.
-
-## Email Providers
-
-Set these in `/opt/recipe-catalog/backend/.env`, then `systemctl restart recipe-catalog-backend`:
+Set these in `backend/.env`, then restart the backend:
 
 ```bash
 # Gmail (needs 2FA and an App Password)
@@ -457,6 +198,80 @@ FROM_EMAIL=your-email@gmail.com
 
 # SendGrid: SMTP_HOST=smtp.sendgrid.net, SMTP_USER=apikey, SMTP_PASSWORD=<api key>
 # Mailgun:  SMTP_HOST=smtp.mailgun.org,  SMTP_USER=postmaster@<domain>, SMTP_PASSWORD=<password>
+```
+
+### Frontend Environment Variables
+
+Edit `/opt/recipe-catalog/frontend/.env`, then rebuild:
+
+```bash
+su - recipe-app
+cd /opt/recipe-catalog/frontend
+pnpm build
+exit
+systemctl reload nginx
+```
+
+### Nginx Configuration
+
+Edit `/etc/nginx/sites-available/recipe-catalog`, then:
+
+```bash
+nginx -t
+systemctl reload nginx
+```
+
+## Updating the Application
+
+### Automated Update (Recommended)
+
+```bash
+# Standard update from git (branch main)
+bash /opt/recipe-catalog/scripts/proxmox/update-app.sh
+
+# Update from a specific branch
+bash /opt/recipe-catalog/scripts/proxmox/update-app.sh --branch develop
+
+# Update without pulling from git
+bash /opt/recipe-catalog/scripts/proxmox/update-app.sh --skip-git
+
+# Update without backup (not recommended)
+bash /opt/recipe-catalog/scripts/proxmox/update-app.sh --skip-backup
+```
+
+Run as root. Options: `--skip-git`, `--skip-backup`, `--branch <name>` (default `main`), `--help`.
+
+What it does:
+
+1. Backs up the database to `/opt/recipe-catalog-backups/recipes-<timestamp>.db` (keeps the last 10) and copies both `.env` files there
+2. Stops the backend service
+3. Fixes repository ownership, moves the `.env` files aside, stashes local changes, checks out the branch and pulls, then restores the `.env` files
+4. Verifies `backend/.env` exists, and warns if SSL is configured but `ENVIRONMENT` is still `development`
+5. Runs `uv sync --frozen` and `alembic upgrade head`
+6. Runs a SQLite integrity check; on failure, restores the backup and stops
+7. Runs `pnpm install --frozen-lockfile` and `pnpm build`
+8. Starts the backend, reloads Nginx, and checks `/health`
+
+It logs to `/var/log/recipe-catalog-update.log` and prints rollback commands at the end.
+
+### Manual Update
+
+```bash
+systemctl stop recipe-catalog-backend
+
+cd /opt/recipe-catalog
+sudo -u recipe-app git pull
+
+cd backend
+sudo -u recipe-app /home/recipe-app/.local/bin/uv sync --frozen
+sudo -u recipe-app /home/recipe-app/.local/bin/uv run alembic upgrade head
+
+cd ../frontend
+sudo -u recipe-app pnpm install --frozen-lockfile
+sudo -u recipe-app pnpm build
+
+systemctl start recipe-catalog-backend
+systemctl reload nginx
 ```
 
 ## Scheduled Backups
@@ -477,50 +292,84 @@ echo "0 2 * * * /usr/local/bin/backup-recipe-db.sh" | crontab -
 
 ## Hardening
 
-- Firewall: `apt install ufw`, allow 22/80/443 only, `ufw enable`.
+- Firewall: `apt install ufw`, allow 22/80/443 only, `ufw enable` (the deploy script offers this interactively).
 - `apt install fail2ban` and enable it.
 - In `/etc/ssh/sshd_config`: `PermitRootLogin no`, `PasswordAuthentication no` (use SSH keys).
 - Keep the system updated with `apt update` and `apt upgrade`.
 
-## Uninstalling
+## Troubleshooting
 
-To completely remove Recipe Catalog:
+### Git Permission Errors During Update
+
+If you see `error: insufficient permission for adding an object to repository database .git/objects`:
 
 ```bash
-# Stop and disable services
-sudo systemctl stop recipe-catalog-backend
-sudo systemctl disable recipe-catalog-backend
-sudo rm /etc/systemd/system/recipe-catalog-backend.service
-sudo systemctl daemon-reload
-
-# Remove Nginx configuration
-sudo rm /etc/nginx/sites-available/recipe-catalog
-sudo rm /etc/nginx/sites-enabled/recipe-catalog
-sudo systemctl reload nginx
-
-# Remove application files
-sudo rm -rf /opt/recipe-catalog
-
-# Remove user
-sudo userdel -r recipe-app
-
-# Remove logs
-sudo rm /var/log/recipe-catalog-deployment.log
-sudo rm /var/log/nginx/recipe-catalog-*.log
+chown -R recipe-app:recipe-app /opt/recipe-catalog
+bash /opt/recipe-catalog/scripts/proxmox/update-app.sh
 ```
 
-## Support
+`update-app.sh` already fixes ownership before pulling; run the `chown` by hand if you hit this with manual git commands.
 
-For issues with the deployment script:
+### Script Fails During Python Installation
 
-1. Check the deployment log: `/var/log/recipe-catalog-deployment.log`
-2. Review the troubleshooting section above
-3. Check service logs with `journalctl`
+```bash
+su - recipe-app
+~/.local/bin/uv --version
+~/.local/bin/uv python install 3.13
+~/.local/bin/uv python list
+```
 
-## Script Version
+Then check `/var/log/recipe-catalog-deployment.log`.
 
-Current version: **1.0.0**
+### Backend Service Won't Start
 
-## License
+```bash
+journalctl -u recipe-catalog-backend -n 50
 
-This script is part of the Recipe Catalog project.
+# Test manually
+su - recipe-app
+cd /opt/recipe-catalog/backend
+~/.local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+The backend refuses to start if the database is behind the latest migration; run `uv run alembic upgrade head` in `backend/` as `recipe-app`.
+
+### Frontend Build Fails
+
+```bash
+su - recipe-app
+cd /opt/recipe-catalog/frontend
+pnpm install --frozen-lockfile
+pnpm build
+```
+
+### Can't Access Application or Can't Stay Logged In
+
+```bash
+systemctl status recipe-catalog-backend
+systemctl status nginx
+ss -tulpn | grep -E ':(80|443|8000)'
+nginx -t
+ufw status
+```
+
+If the page loads but login doesn't stick over plain HTTP, `ENVIRONMENT` is probably `production` (Secure cookies); see [Production vs. Development Mode](#production-vs-development-mode).
+
+## Uninstalling
+
+```bash
+systemctl stop recipe-catalog-backend
+systemctl disable recipe-catalog-backend
+rm /etc/systemd/system/recipe-catalog-backend.service
+systemctl daemon-reload
+
+rm /etc/nginx/sites-available/recipe-catalog
+rm /etc/nginx/sites-enabled/recipe-catalog
+systemctl reload nginx
+
+rm -rf /opt/recipe-catalog /opt/recipe-catalog-backups
+userdel -r recipe-app
+
+rm /var/log/recipe-catalog-deployment.log /var/log/recipe-catalog-update.log
+rm /var/log/nginx/recipe-catalog-*.log
+```
