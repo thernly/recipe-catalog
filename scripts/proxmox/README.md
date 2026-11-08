@@ -439,6 +439,49 @@ sudo systemctl start recipe-catalog-backend
 sudo systemctl reload nginx
 ```
 
+## Creating the Container
+
+In the Proxmox web UI, click **Create CT**: Debian 12 template, 2+ cores, 2048MB+ memory (4096MB recommended), 8GB+ disk (16GB recommended), bridged network, **Start at boot** enabled. Then `pct enter <container-id>` (or SSH in) and run the deploy script.
+
+## Email Providers
+
+Set these in `/opt/recipe-catalog/backend/.env`, then `systemctl restart recipe-catalog-backend`:
+
+```bash
+# Gmail (needs 2FA and an App Password)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-16-char-app-password
+FROM_EMAIL=your-email@gmail.com
+
+# SendGrid: SMTP_HOST=smtp.sendgrid.net, SMTP_USER=apikey, SMTP_PASSWORD=<api key>
+# Mailgun:  SMTP_HOST=smtp.mailgun.org,  SMTP_USER=postmaster@<domain>, SMTP_PASSWORD=<password>
+```
+
+## Scheduled Backups
+
+`update-app.sh` backs up the database before each update. For daily backups as well:
+
+```bash
+cat > /usr/local/bin/backup-recipe-db.sh << 'EOF'
+#!/bin/bash
+BACKUP_DIR="/opt/backups"
+mkdir -p "$BACKUP_DIR"
+cp /opt/recipe-catalog/backend/data/recipes.db "$BACKUP_DIR/recipes-$(date +%Y%m%d-%H%M%S).db"
+find "$BACKUP_DIR" -name "recipes-*.db" -mtime +30 -delete
+EOF
+chmod +x /usr/local/bin/backup-recipe-db.sh
+echo "0 2 * * * /usr/local/bin/backup-recipe-db.sh" | crontab -
+```
+
+## Hardening
+
+- Firewall: `apt install ufw`, allow 22/80/443 only, `ufw enable`.
+- `apt install fail2ban` and enable it.
+- In `/etc/ssh/sshd_config`: `PermitRootLogin no`, `PasswordAuthentication no` (use SSH keys).
+- Keep the system updated with `apt update` and `apt upgrade`.
+
 ## Uninstalling
 
 To completely remove Recipe Catalog:
@@ -472,8 +515,7 @@ For issues with the deployment script:
 
 1. Check the deployment log: `/var/log/recipe-catalog-deployment.log`
 2. Review the troubleshooting section above
-3. Consult the main installation guide: `PROXMOX-LXC-INSTALL.md`
-4. Check service logs with `journalctl`
+3. Check service logs with `journalctl`
 
 ## Script Version
 
