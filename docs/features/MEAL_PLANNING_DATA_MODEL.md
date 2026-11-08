@@ -338,7 +338,6 @@ def upgrade():
 ## Related Documentation
 
 - **API Documentation**: See `API_GUIDE.md` for endpoint details
-- **User Guide**: See `MEAL_PLANNING_USER_GUIDE.md` for end-user instructions
 - **Feature Requirements**: See `Recipe_Catalog_App_PRD_Next_Features_v2.1.md`, Feature 16
 
 ---
