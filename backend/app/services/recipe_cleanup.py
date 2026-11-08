@@ -13,6 +13,7 @@ Deterministic recipe cleanup, shared by every write path (design doc §4.4).
 No model is involved. The same function drives the backfill script.
 """
 
+import math
 import re
 from dataclasses import dataclass, field
 from fractions import Fraction
@@ -62,7 +63,7 @@ def parse_duration_minutes(duration: Any) -> int | None:
     if isinstance(duration, bool):
         return None
     if isinstance(duration, int | float):
-        return int(round(duration)) if duration >= 0 else None
+        return int(round(duration)) if 0 <= duration <= 2**31 - 1 else None
     if not isinstance(duration, str):
         return None
 
@@ -81,7 +82,7 @@ def parse_duration_minutes(duration: Any) -> int | None:
             + float(parts["minutes"] or 0)
             + float(parts["seconds"] or 0) / 60
         )
-        return int(round(total))
+        return int(round(total)) if math.isfinite(total) and total <= 2**31 - 1 else None
 
     for char, replacement in _UNICODE_HALF.items():
         text = text.replace(char, replacement)
@@ -94,10 +95,12 @@ def parse_duration_minutes(duration: Any) -> int | None:
             if match:
                 total += _number(match.group(1)) * factor
                 found = True
-    except (ValueError, ZeroDivisionError):
+    except (ValueError, ZeroDivisionError, OverflowError):
         return None
 
     if not found:
+        return None
+    if not math.isfinite(total) or total > 2**31 - 1:
         return None
     rounded = int(round(total))
     return rounded if rounded > 0 else None
@@ -119,7 +122,7 @@ def normalize_time(value: Any) -> Any:
         return value
     minutes = parse_duration_minutes(value)
     if minutes is None:
-        return value.strip() if isinstance(value, str) else value
+        return value.strip() if isinstance(value, str) else None
     return format_iso_duration(minutes)
 
 
@@ -147,7 +150,7 @@ def normalize_yield(value: Any) -> Any:
     if value is None or isinstance(value, bool):
         return value
     if isinstance(value, int | float):
-        return str(int(value)) if float(value).is_integer() else str(value)
+        return str(value)
     if isinstance(value, str):
         return _normalize_yield_text(value) if value.strip() else value
     if isinstance(value, list):

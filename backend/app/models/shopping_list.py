@@ -22,11 +22,13 @@ class ShoppingList(Base):
     __tablename__ = "shopping_lists"
 
     id = Column(Integer, primary_key=True, index=True)
-    household_id = Column(Integer, ForeignKey("households.id"), nullable=False, index=True)
+    household_id = Column(
+        Integer, ForeignKey("households.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     status = Column(String(20), nullable=False, default="active", index=True)  # active, archived
-    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
@@ -44,7 +46,9 @@ class ShoppingListItem(Base):
     __tablename__ = "shopping_list_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    list_id = Column(Integer, ForeignKey("shopping_lists.id"), nullable=False, index=True)
+    list_id = Column(
+        Integer, ForeignKey("shopping_lists.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     item_name = Column(String(255), nullable=False)
     quantity = Column(String(100), nullable=True)
     unit = Column(String(50), nullable=True)

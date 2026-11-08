@@ -2,20 +2,22 @@
 Authentication API endpoints.
 """
 
+import time
+from collections import deque
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.constants import (
     AUTH_RATE_LIMIT_REGISTRATION,
     AUTH_RATE_LIMIT_TEST_MODE,
-    LOCKOUT_DURATION_MINUTES,
-    MAX_LOGIN_ATTEMPTS,
 )
 from app.core.database import get_db
 from app.core.logging import get_logger
@@ -44,8 +46,36 @@ from app.schemas.user import (
 
 
 router = APIRouter()
+_DUMMY_PASSWORD_HASH = get_password_hash("dummy-login-password-never-valid")
 logger = get_logger(__name__)
 limiter = Limiter(key_func=get_remote_address)
+
+
+# Per-account login throttle: at most LOGIN_FAILURE_LIMIT failed attempts per email in a
+# sliding LOGIN_FAILURE_WINDOW_S window, on top of the per-IP limit. The window slides, so an
+# attacker can only keep an account throttled by continuously spending attempts against it,
+# and nothing persists: it is never a durable lockout.
+# ponytail: in-process dict, so per-worker; move to a shared store if we run >1 worker.
+LOGIN_FAILURE_LIMIT = 10
+LOGIN_FAILURE_WINDOW_S = 15 * 60
+_login_failures: dict[str, deque[float]] = {}
+REFRESH_REUSE_GRACE_S = 30
+
+
+def _recent_failures(email: str) -> deque[float]:
+    cutoff = time.monotonic() - LOGIN_FAILURE_WINDOW_S
+    failures = _login_failures.get(email, deque())
+    while failures and failures[0] < cutoff:
+        failures.popleft()
+    return failures
+
+
+def _record_login_failure(email: str) -> None:
+    if len(_login_failures) > 10_000:  # bound memory under email-spraying
+        _login_failures.clear()
+    failures = _recent_failures(email)
+    failures.append(time.monotonic())
+    _login_failures[email] = failures
 
 
 def _get_rate_limit(limit: str) -> str:
@@ -204,7 +234,7 @@ async def register(
             key="access_token",
             value=access_token,
             httponly=True,
-            secure=settings.ENVIRONMENT == "production",
+            secure=settings.cookie_secure,
             samesite="strict",
             max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
@@ -213,7 +243,7 @@ async def register(
             key="refresh_token",
             value=refresh_token_value,
             httponly=True,
-            secure=settings.ENVIRONMENT == "production",
+            secure=settings.cookie_secure,
             samesite="strict",
             max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         )
@@ -224,7 +254,7 @@ async def register(
             key="csrf_token",
             value=csrf_token,
             httponly=False,
-            secure=settings.ENVIRONMENT == "production",
+            secure=settings.cookie_secure,
             samesite="strict",
             max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         )
@@ -235,7 +265,7 @@ async def register(
         raise
     except Exception:
         # Log unexpected errors and re-raise
-        logger.exception(f"Unexpected error during registration for {user_data.email}")
+        logger.exception("registration_unexpected_error", email=user_data.email)
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -269,20 +299,10 @@ async def register(
                 }
             },
         },
-        403: {
-            "description": "Account locked due to failed login attempts",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "error_code": "account_locked",
-                        "message": "Account is locked due to multiple failed login attempts. Try again in 15 minute(s).",
-                        "details": {},
-                    }
-                }
-            },
-        },
+        403: {"description": "Account is inactive"},
         429: {
-            "description": "Rate limit exceeded (10 requests per minute per IP)",
+            "description": "Rate limit exceeded (10 requests per minute per IP, "
+            "or 10 failed attempts per 15 minutes per account)",
             "content": {"application/json": {"example": {"error": "Rate limit exceeded"}}},
         },
     },
@@ -298,9 +318,10 @@ async def login(
     Authenticate user and set httpOnly cookies.
 
     Authenticates the user with email and password. On success, sets secure httpOnly cookies
-    for access token and refresh token. Account is locked for 15 minutes after 5 failed attempts.
+    for access token and refresh token.
 
-    **Rate Limit:** 10 requests per minute per IP address
+    **Rate Limit:** 10 requests per minute per IP address, plus 10 failed attempts per
+    15-minute sliding window per email (429; no persistent lockout)
 
     **Authentication:** None required
 
@@ -314,47 +335,28 @@ async def login(
 
     Raises:
         HTTPException 401: If credentials are invalid
-        HTTPException 403: If account is locked due to failed login attempts
-        HTTPException 429: If rate limit exceeded
+        HTTPException 403: If the account is inactive
+        HTTPException 429: If the IP or per-account rate limit is exceeded
     """
+    request.session.clear()
+    email = login_data.email.lower()
+    if len(_recent_failures(email)) >= LOGIN_FAILURE_LIMIT:
+        logger.warning("login_throttled", email=email)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed login attempts. Try again later.",
+        )
     # Get user by email
-    result = await db.execute(select(User).where(User.email == login_data.email.lower()))
+    result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
-    # Check if account is locked (if user exists)
-    if user and user.is_locked():
-        # Calculate remaining lockout time for better UX
-        now = datetime.now(UTC)
-        locked_until_utc = (
-            user.locked_until.replace(tzinfo=UTC)
-            if user.locked_until.tzinfo is None
-            else user.locked_until
-        )
-        remaining_minutes = int((locked_until_utc - now).total_seconds() / 60)
-
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Account is locked due to multiple failed login attempts. Try again in {remaining_minutes} minute(s).",
-        )
-
     # Verify user exists and password is correct
-    if not user or not verify_password(login_data.password, user.hashed_password):
-        # Track failed login attempt
-        if user:
-            user.failed_login_attempts += 1
-
-            # Lock account if max attempts reached
-            if user.failed_login_attempts >= MAX_LOGIN_ATTEMPTS:
-                user.locked_until = datetime.now(UTC) + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
-                await db.commit()
-
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Account locked due to {MAX_LOGIN_ATTEMPTS} failed login attempts. Try again in {LOCKOUT_DURATION_MINUTES} minutes.",
-                )
-
-            await db.commit()
-
+    password_valid = verify_password(
+        login_data.password,
+        user.hashed_password if user and user.hashed_password else _DUMMY_PASSWORD_HASH,
+    )
+    if not user or not user.hashed_password or not password_valid:
+        _record_login_failure(email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -365,27 +367,24 @@ async def login(
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
 
-    # Reset failed login attempts on successful login
-    if user.failed_login_attempts > 0 or user.locked_until is not None:
-        user.failed_login_attempts = 0
-        user.locked_until = None
-        await db.flush()
-        await db.commit()
+    _login_failures.pop(email, None)
+    csrf_token = await issue_session(db, user, response)
+    return {"message": "Login successful", "csrf_token": csrf_token}
 
-    # Create access token
+
+async def issue_session(db: AsyncSession, user: User, response: Response) -> str:
+    """Store a new refresh token and set access/refresh/CSRF cookies. Returns the CSRF token."""
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
 
-    # Generate and store refresh token
     refresh_token_value = generate_refresh_token()
-    refresh_token = RefreshToken(
-        token=hash_token(refresh_token_value),
-        user_id=user.id,
-        expires_at=get_refresh_token_expiry(),
-        revoked=False,
+    db.add(
+        RefreshToken(
+            token=hash_token(refresh_token_value),
+            user_id=user.id,
+            expires_at=get_refresh_token_expiry(),
+            revoked=False,
+        )
     )
-    # Ensure session is clean before adding
-    await db.flush()
-    db.add(refresh_token)
     await db.commit()
 
     # Set httpOnly cookies
@@ -394,7 +393,7 @@ async def login(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=settings.ENVIRONMENT == "production",  # HTTPS only in production
+        secure=settings.cookie_secure,
         samesite="strict",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
@@ -404,7 +403,7 @@ async def login(
         key="refresh_token",
         value=refresh_token_value,
         httponly=True,
-        secure=settings.ENVIRONMENT == "production",
+        secure=settings.cookie_secure,
         samesite="strict",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
@@ -415,12 +414,11 @@ async def login(
         key="csrf_token",
         value=csrf_token,
         httponly=False,  # Frontend needs to read this
-        secure=settings.ENVIRONMENT == "production",
+        secure=settings.cookie_secure,
         samesite="strict",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,  # Same as refresh token
     )
-
-    return {"message": "Login successful", "csrf_token": csrf_token}
+    return csrf_token
 
 
 @router.post("/refresh")
@@ -471,8 +469,25 @@ async def refresh_token(
             detail="Invalid refresh token",
         )
 
-    # Check if token is revoked
+    # Check if token is revoked. A token rotated moments ago is almost always a concurrent
+    # tab or retry losing the race, so just reject it; reuse after the grace window is
+    # treated as theft and revokes every session for the user.
     if refresh_token_record.revoked:
+        revoked_at = refresh_token_record.revoked_at
+        if revoked_at is not None and not is_expired(
+            revoked_at + timedelta(seconds=REFRESH_REUSE_GRACE_S)
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token has been revoked",
+            )
+        logger.warning("refresh_token_reuse_detected", user_id=refresh_token_record.user_id)
+        await db.execute(
+            update(RefreshToken)
+            .where(RefreshToken.user_id == refresh_token_record.user_id)
+            .values(revoked=True, revoked_at=datetime.now(UTC))
+        )
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token has been revoked",
@@ -496,12 +511,16 @@ async def refresh_token(
     # Create new access token
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
 
-    # Revoke old refresh token
-    refresh_token_record.revoked = True
-    refresh_token_record.revoked_at = datetime.now(UTC)
-
-    # Commit the revocation first
-    await db.commit()
+    # Claim rotation atomically, including on SQLite where FOR UPDATE is ignored.
+    claimed: Result[Any] = await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.id == refresh_token_record.id, RefreshToken.revoked.is_(False))
+        .values(revoked=True, revoked_at=datetime.now(UTC))
+        .returning(RefreshToken.id)
+    )
+    if claimed.scalar_one_or_none() is None:
+        await db.rollback()
+        raise HTTPException(status_code=401, detail="Refresh token has been revoked")
 
     # Generate new refresh token (token rotation for security)
     new_refresh_token_value = generate_refresh_token()
@@ -521,7 +540,7 @@ async def refresh_token(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=settings.ENVIRONMENT == "production",
+        secure=settings.cookie_secure,
         samesite="strict",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
@@ -530,7 +549,7 @@ async def refresh_token(
         key="refresh_token",
         value=new_refresh_token_value,
         httponly=True,
-        secure=settings.ENVIRONMENT == "production",
+        secure=settings.cookie_secure,
         samesite="strict",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
@@ -541,7 +560,7 @@ async def refresh_token(
         key="csrf_token",
         value=csrf_token,
         httponly=False,
-        secure=settings.ENVIRONMENT == "production",
+        secure=settings.cookie_secure,
         samesite="strict",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
@@ -568,6 +587,7 @@ async def logout(
     """
     from datetime import datetime
 
+    request.session.clear()
     # Get refresh token from cookie
     refresh_token_value = request.cookies.get("refresh_token")
 
@@ -595,7 +615,7 @@ async def logout(
 @router.post("/forgot-password")
 @limiter.limit(lambda: _get_rate_limit("3/hour"))
 async def forgot_password(
-    req: Request, request: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
+    request: Request, request_data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
 ):
     """
     Send password reset email.
@@ -614,14 +634,14 @@ async def forgot_password(
 
     # Always return success to prevent email enumeration
     # Find user by email
-    result = await db.execute(select(User).where(User.email == request.email))
+    result = await db.execute(select(User).where(User.email == request_data.email.lower()))
     user = result.scalar_one_or_none()
 
     if user and user.is_active:
         # Invalidate any existing reset tokens
         existing_tokens_result = await db.execute(
             select(PasswordResetToken).where(
-                PasswordResetToken.user_id == user.id, not PasswordResetToken.used
+                PasswordResetToken.user_id == user.id, PasswordResetToken.used.is_(False)
             )
         )
         existing_tokens = existing_tokens_result.scalars().all()
@@ -646,7 +666,7 @@ async def forgot_password(
 @router.post("/reset-password")
 @limiter.limit(lambda: _get_rate_limit("5/hour"))
 async def reset_password(
-    req: Request, request: ResetPasswordRequest, db: AsyncSession = Depends(get_db)
+    request: Request, request_data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)
 ):
     """
     Reset password with token.
@@ -666,7 +686,7 @@ async def reset_password(
     from app.models.token import PasswordResetToken
 
     # Find token
-    hashed_request_token = hash_token(request.token)
+    hashed_request_token = hash_token(request_data.token)
     result = await db.execute(
         select(PasswordResetToken).where(PasswordResetToken.token == hashed_request_token)
     )
@@ -683,8 +703,13 @@ async def reset_password(
         raise HTTPException(status_code=404, detail="User not found")
 
     # Update password
-    user.hashed_password = get_password_hash(request.new_password)
+    user.hashed_password = get_password_hash(request_data.new_password)
     reset_token.used = True
+    await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.user_id == user.id)
+        .values(revoked=True, revoked_at=datetime.now(UTC))
+    )
 
     await db.commit()
 
@@ -727,6 +752,19 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    if verification_token.pending_email:
+        existing = (
+            await db.execute(
+                select(User).where(
+                    User.email == verification_token.pending_email, User.id != user.id
+                )
+            )
+        ).scalar_one_or_none()
+        if existing:
+            from app.core.exceptions import InvalidInputError
+
+            raise InvalidInputError("Email address is unavailable")
+        user.email = verification_token.pending_email
     # Mark user as verified
     user.is_verified = True
     verification_token.used = True
@@ -739,7 +777,7 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
 @router.post("/resend-verification")
 @limiter.limit(lambda: _get_rate_limit("3/hour"))
 async def resend_verification(
-    req: Request, request: ResendVerificationRequest, db: AsyncSession = Depends(get_db)
+    request: Request, request_data: ResendVerificationRequest, db: AsyncSession = Depends(get_db)
 ):
     """
     Resend verification email.
@@ -760,19 +798,16 @@ async def resend_verification(
     from app.models.token import VerificationToken
 
     # Find user
-    result = await db.execute(select(User).where(User.email == request.email))
+    result = await db.execute(select(User).where(User.email == request_data.email.lower()))
     user = result.scalar_one_or_none()
 
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if user.is_verified:
-        raise HTTPException(status_code=400, detail="Email already verified")
+    if not user or user.is_verified or not user.is_active:
+        return {"message": "If eligible, a verification email has been sent"}
 
     # Invalidate existing verification tokens
     existing_tokens_result = await db.execute(
         select(VerificationToken).where(
-            VerificationToken.user_id == user.id, not VerificationToken.used
+            VerificationToken.user_id == user.id, VerificationToken.used.is_(False)
         )
     )
     existing_tokens = existing_tokens_result.scalars().all()
@@ -791,4 +826,4 @@ async def resend_verification(
         user_name=user.display_name,
     )
 
-    return {"message": "Verification email sent"}
+    return {"message": "If eligible, a verification email has been sent"}

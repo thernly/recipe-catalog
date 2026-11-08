@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { browser } from '$app/env';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.js';
-	import { API_V1_URL } from '#lib/config.js';
+	import { completeOAuthFlow } from '#lib/api/oauth.js';
 
 	let loading = true;
 	let error = '';
@@ -37,33 +36,9 @@
 		}
 
 		try {
-			// Exchange code for token by calling backend callback endpoint
-			const callbackUrl = `${API_V1_URL}/auth/${provider}/callback?code=${code}&state=${state}`;
-
-			const response = await fetch(callbackUrl, {
-				method: 'GET',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-			});
-
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}));
-				throw new Error(errorData.detail || 'Authentication failed');
-			}
-
-			const data = await response.json();
-
-			// Store the access token
-			if (data.access_token) {
-				if (browser) {
-					localStorage.setItem('auth_token', data.access_token);
-				}
-				await auth.init();
-				goto('/dashboard');
-			} else {
-				throw new Error('No access token received');
-			}
+			await completeOAuthFlow(provider, code, state);
+            await auth.init();
+            await goto('/dashboard');
 		} catch (err) {
 			loading = false;
 			error =
@@ -129,7 +104,7 @@
 	}
 
 	.btn-outline {
-		background: white;
+		background: var(--neutral-white);
 		border: 1px solid var(--neutral-300);
 		color: var(--text-900);
 		padding: 0.75rem 1.5rem;

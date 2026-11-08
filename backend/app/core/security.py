@@ -181,7 +181,7 @@ def is_safe_redirect_url(url: str) -> bool:
 
     # Relative URLs (no scheme/netloc) are safe - they can't redirect to external sites
     if not parsed.scheme and not parsed.netloc:
-        return True
+        return url.startswith("/") and not url.startswith("//") and "\\" not in url
 
     # Build list of allowed origins
     allowed_origins = []

@@ -11,7 +11,7 @@ from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 from app.core.security import hash_token
-from app.models._utils import utc_now
+from app.models._utils import is_expired, utc_now
 
 
 class VerificationToken(Base):
@@ -28,6 +28,7 @@ class VerificationToken(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     token = Column(String(64), unique=True, index=True, nullable=False)
     expires_at = Column(DateTime, nullable=False)
+    pending_email = Column(String(255), nullable=True)
     used = Column(Boolean, default=False)
     created_at = Column(DateTime, default=utc_now)
 
@@ -55,7 +56,7 @@ class VerificationToken(Base):
 
     def is_valid(self) -> bool:
         """Check if token is still valid"""
-        return not self.used and self.expires_at > datetime.now(UTC)
+        return not self.used and not is_expired(self.expires_at)
 
 
 class PasswordResetToken(Base):
@@ -99,4 +100,4 @@ class PasswordResetToken(Base):
 
     def is_valid(self) -> bool:
         """Check if token is still valid"""
-        return not self.used and self.expires_at > datetime.now(UTC)
+        return not self.used and not is_expired(self.expires_at)

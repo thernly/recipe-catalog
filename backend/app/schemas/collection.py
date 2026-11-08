@@ -16,7 +16,7 @@ class CollectionBase(BaseModel):
     """Base collection schema."""
 
     name: str = Field(..., min_length=1, max_length=100)
-    description: str | None = None
+    description: str | None = Field(None, max_length=10000)
     icon: str | None = Field(None, max_length=50)
 
 
@@ -36,7 +36,7 @@ class CollectionUpdate(BaseModel):
     """Schema for updating a collection."""
 
     name: str | None = Field(None, min_length=1, max_length=100)
-    description: str | None = None
+    description: str | None = Field(None, max_length=10000)
     icon: str | None = Field(None, max_length=50)
 
     @field_validator("name", "description")
@@ -71,10 +71,10 @@ class CollectionWithCount(Collection):
 class CollectionRecipeAdd(BaseModel):
     """Schema for adding recipes to a collection."""
 
-    recipe_ids: list[int] = Field(..., min_length=1)
+    recipe_ids: list[int] = Field(..., min_length=1, max_length=500)
 
 
 class CollectionRecipeRemove(BaseModel):
     """Schema for removing recipes from a collection."""
 
-    recipe_ids: list[int] = Field(..., min_length=1)
+    recipe_ids: list[int] = Field(..., min_length=1, max_length=500)

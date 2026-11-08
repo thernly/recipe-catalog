@@ -8,7 +8,7 @@ from sqlalchemy import JSON, Column, DateTime, Integer, String
 
 from app.core.database import Base
 from app.core.security import hash_token
-from app.models._utils import utc_now
+from app.models._utils import is_expired, utc_now
 
 
 class OAuthState(Base):
@@ -71,7 +71,7 @@ class OAuthState(Base):
 
     def is_valid(self) -> bool:
         """Check if state token is still valid."""
-        return self.expires_at > datetime.now(UTC)
+        return not is_expired(self.expires_at)
 
     @classmethod
     async def cleanup_expired(cls, db_session):

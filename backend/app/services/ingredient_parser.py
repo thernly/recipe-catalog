@@ -16,7 +16,7 @@ from fractions import Fraction
 from typing import Any
 
 
-def parse_quantity(quantity_str: str) -> float:
+def parse_quantity(quantity_str: str | float | None) -> float:
     """
     Parse a quantity string into a float.
     Handles fractions (1/2, 3/4), mixed numbers (1 1/2), decimals, and ranges (1-2).
@@ -27,10 +27,13 @@ def parse_quantity(quantity_str: str) -> float:
     Returns:
         float: Parsed quantity value
     """
+    # parsedIngredients store quantities as numbers
+    if isinstance(quantity_str, (int, float)):
+        return float(quantity_str)
     if not quantity_str or not quantity_str.strip():
         return 0.0
 
-    quantity_str = quantity_str.strip()
+    quantity_str = _normalize_line(quantity_str, strip_bullets=False)
 
     # Handle ranges (e.g., "1-2" -> use the higher value)
     if "-" in quantity_str and not quantity_str.startswith("-"):
@@ -38,7 +41,7 @@ def parse_quantity(quantity_str: str) -> float:
         if len(parts) == 2:
             try:
                 return max(float(Fraction(parts[0].strip())), float(Fraction(parts[1].strip())))
-            except (ValueError, ZeroDivisionError):
+            except (ValueError, ZeroDivisionError, OverflowError):
                 pass
 
     # Handle mixed numbers (e.g., "1 1/2")
@@ -48,13 +51,13 @@ def parse_quantity(quantity_str: str) -> float:
             whole = float(Fraction(parts[0]))
             fraction = float(Fraction(parts[1]))
             return whole + fraction
-        except (ValueError, ZeroDivisionError):
+        except (ValueError, ZeroDivisionError, OverflowError):
             pass
 
     # Handle simple fractions and decimals
     try:
         return float(Fraction(quantity_str))
-    except (ValueError, ZeroDivisionError):
+    except (ValueError, ZeroDivisionError, OverflowError):
         return 0.0
 
 
@@ -313,7 +316,7 @@ def singularize_ingredient(name: str) -> str:
 
 
 def consolidate_ingredients(
-    ingredients_data: list[dict[str, str | None]],
+    ingredients_data: list[dict[str, Any]],
 ) -> list[dict[str, str | None]]:
     """
     Consolidate ingredients by name and unit, summing quantities.
@@ -332,7 +335,7 @@ def consolidate_ingredients(
     consolidated: dict[tuple[str, str | None], dict[str, Any]] = {}
 
     for ing in ingredients_data:
-        name = ing.get("name", "").strip()  # type: ignore[union-attr]  # latent: an explicit None name raises
+        name = str(ing.get("name") or "").strip()
         if not name:
             continue
 
@@ -575,7 +578,10 @@ def _normalize_line(text: str, strip_bullets: bool = True) -> str:
 
 
 def _to_number(text: str) -> float:
-    return float(sum(Fraction(part) for part in text.split()))
+    value = float(sum(Fraction(part) for part in text.split()))
+    if abs(value) > 10**12:
+        raise ValueError("Ingredient quantity is too large")
+    return value
 
 
 def _tidy_number(value: float) -> int | float:
@@ -768,6 +774,8 @@ def parse_ingredient_line(raw: str) -> dict[str, Any]:
     parentheses, and lines too long to be an ingredient.
     """
     unparsed = _make_entry(raw, parsed_by=None)
+    if len(raw) > 500:
+        return unparsed
     text = _normalize_line(raw)
     if not text:
         return unparsed
@@ -806,7 +814,7 @@ def parse_ingredient_line(raw: str) -> dict[str, Any]:
             elif word in _ARTICLES and _UNIT_RE.match(rest.strip()):
                 quantity = 1.0
                 text = rest.strip()
-    except (ValueError, ZeroDivisionError):
+    except (ValueError, ZeroDivisionError, OverflowError):
         return unparsed
 
     if quantity is not None:
@@ -855,7 +863,7 @@ def parse_ingredient_line(raw: str) -> dict[str, Any]:
                     quantity = _to_number(trailing.group("q1"))
                     if trailing.group("q2"):
                         quantity_max = _to_number(trailing.group("q2"))
-                except (ValueError, ZeroDivisionError):
+                except (ValueError, ZeroDivisionError, OverflowError):
                     return unparsed
                 unit = _canonical_unit(trailing_unit.group("unit")) if trailing_unit else None
                 comma_note = ""

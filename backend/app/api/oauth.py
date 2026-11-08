@@ -7,10 +7,11 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.responses import RedirectResponse
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_optional_current_user
 from app.core.logging import get_logger
 from app.core.oauth import (
     extract_user_info,
@@ -49,6 +50,8 @@ async def authorize_provider(
     request: Request,
     provider: str,
     return_url: str | None = None,
+    link: bool = False,
+    current_user: User | None = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -89,10 +92,16 @@ async def authorize_provider(
             )
         validated_return_url = return_url
 
+    if link and (not current_user or not current_user.is_verified):
+        raise HTTPException(
+            status_code=403, detail="Sign in with a verified account before linking a provider"
+        )
+    if link and current_user:
+        request.session["link_user_id"] = current_user.id
     # Create OAuth state in database for CSRF protection
     oauth_state = OAuthState.create_state(
         provider=provider,
-        link_user_id=None,
+        link_user_id=current_user.id if link and current_user else None,
         redirect_url=validated_return_url,
     )
     db.add(oauth_state)
@@ -185,6 +194,19 @@ async def oauth_callback(
     await db.delete(oauth_state)
     await db.commit()
 
+    def finish_login(csrf_token: str):
+        request.session.pop("link_user_id", None)
+        if "text/html" in request.headers.get("accept", ""):
+            destination = state_data.get("redirect_url") or f"{settings.FRONTEND_URL}/dashboard"
+            if not is_safe_redirect_url(destination):
+                destination = f"{settings.FRONTEND_URL}/dashboard"
+            redirect = RedirectResponse(destination, status_code=303)
+            redirect.raw_headers.extend(
+                (key, value) for key, value in response.raw_headers if key == b"set-cookie"
+            )
+            return redirect
+        return {"message": "Login successful", "csrf_token": csrf_token}
+
     try:
         # Exchange authorization code for token
         token = await client.authorize_access_token(request)
@@ -216,6 +238,40 @@ async def oauth_callback(
         )
         existing_idp = idp_result.scalar_one_or_none()
 
+        linking_user_id = state_data.get("link_user_id")
+        if linking_user_id:
+            linking_user = await db.get(User, linking_user_id)
+            # The signed browser session validated by Authlib carries this state.
+            # Recheck the current login so a logout/account switch invalidates linking.
+            session_user_id = request.session.pop("link_user_id", None)
+            if (
+                not linking_user
+                or not linking_user.is_active
+                or not linking_user.is_verified
+                or session_user_id != linking_user.id
+            ):
+                raise HTTPException(
+                    status_code=403, detail="Sign in again before linking this provider"
+                )
+            if existing_idp and existing_idp.user_id != linking_user.id:
+                raise HTTPException(
+                    status_code=400, detail="Provider is already linked to another account"
+                )
+            if not existing_idp:
+                existing_idp = IdentityProvider(
+                    user_id=linking_user.id,
+                    provider_name=provider,
+                    provider_subject=user_data["subject"],
+                    email_at_provider=user_data.get("email") or linking_user.email,
+                )
+                db.add(existing_idp)
+                await db.flush()
+        elif provider == "microsoft" and not existing_idp:
+            raise HTTPException(
+                status_code=400,
+                detail="Create and verify an account first, then link Microsoft in Settings",
+            )
+
         if existing_idp:
             # Update last used timestamp
             existing_idp.last_used_at = datetime.now(UTC)
@@ -229,7 +285,7 @@ async def oauth_callback(
                     detail="User account is inactive",
                 )
 
-            logger.info(f"User {user.id} logged in via {provider}")
+            logger.info("oauth_login", user_id=user.id, provider=provider)
 
             # Create access token
             access_token = create_access_token(data={"sub": str(user.id)})
@@ -250,7 +306,7 @@ async def oauth_callback(
                 key="access_token",
                 value=access_token,
                 httponly=True,
-                secure=settings.ENVIRONMENT == "production",
+                secure=settings.cookie_secure,
                 samesite="strict",
                 max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             )
@@ -258,7 +314,7 @@ async def oauth_callback(
                 key="refresh_token",
                 value=refresh_token_value,
                 httponly=True,
-                secure=settings.ENVIRONMENT == "production",
+                secure=settings.cookie_secure,
                 samesite="strict",
                 max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
             )
@@ -269,23 +325,25 @@ async def oauth_callback(
                 key="csrf_token",
                 value=csrf_token,
                 httponly=False,
-                secure=settings.ENVIRONMENT == "production",
+                secure=settings.cookie_secure,
                 samesite="strict",
                 max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
             )
 
-            return {"message": "Login successful", "csrf_token": csrf_token}
+            return finish_login(csrf_token)
+
+        email = user_data.get("email")
+        if not isinstance(email, str) or not email:
+            raise HTTPException(status_code=400, detail="Provider did not supply an email address")
 
         # Check if email already exists (for account linking)
-        email_result = await db.execute(
-            select(User).where(User.email == user_data["email"].lower())  # type: ignore[union-attr]  # latent: provider may return no email
-        )
+        email_result = await db.execute(select(User).where(User.email == email.lower()))
         existing_user = email_result.scalar_one_or_none()
 
         if existing_user:
             # Email exists - this requires user confirmation for linking
             # For simplicity, we'll auto-link if email is verified by provider
-            if not user_data["email_verified"]:
+            if provider == "microsoft" or not user_data["email_verified"]:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Email not verified by provider. Cannot auto-link account.",
@@ -307,7 +365,7 @@ async def oauth_callback(
 
             await db.commit()
 
-            logger.info(f"Linked {provider} to existing user {existing_user.id}")
+            logger.info("oauth_provider_linked", user_id=existing_user.id, provider=provider)
 
             access_token = create_access_token(data={"sub": str(existing_user.id)})
 
@@ -327,7 +385,7 @@ async def oauth_callback(
                 key="access_token",
                 value=access_token,
                 httponly=True,
-                secure=settings.ENVIRONMENT == "production",
+                secure=settings.cookie_secure,
                 samesite="strict",
                 max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             )
@@ -335,7 +393,7 @@ async def oauth_callback(
                 key="refresh_token",
                 value=refresh_token_value,
                 httponly=True,
-                secure=settings.ENVIRONMENT == "production",
+                secure=settings.cookie_secure,
                 samesite="strict",
                 max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
             )
@@ -346,16 +404,16 @@ async def oauth_callback(
                 key="csrf_token",
                 value=csrf_token,
                 httponly=False,
-                secure=settings.ENVIRONMENT == "production",
+                secure=settings.cookie_secure,
                 samesite="strict",
                 max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
             )
 
-            return {"message": "Login successful", "csrf_token": csrf_token}
+            return finish_login(csrf_token)
 
         # Create new user account
         new_user = User(
-            email=user_data["email"].lower(),  # type: ignore[union-attr]  # latent: provider may return no email
+            email=email.lower(),
             hashed_password=None,  # Passwordless account
             display_name=user_data["display_name"],
             is_active=True,
@@ -403,7 +461,7 @@ async def oauth_callback(
 
         await db.commit()
 
-        logger.info(f"Created new user {new_user.id} via {provider}")
+        logger.info("oauth_user_created", user_id=new_user.id, provider=provider)
 
         # Create access token
         access_token = create_access_token(data={"sub": str(new_user.id)})
@@ -424,7 +482,7 @@ async def oauth_callback(
             key="access_token",
             value=access_token,
             httponly=True,
-            secure=settings.ENVIRONMENT == "production",
+            secure=settings.cookie_secure,
             samesite="strict",
             max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
@@ -432,7 +490,7 @@ async def oauth_callback(
             key="refresh_token",
             value=refresh_token_value,
             httponly=True,
-            secure=settings.ENVIRONMENT == "production",
+            secure=settings.cookie_secure,
             samesite="strict",
             max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         )
@@ -443,18 +501,20 @@ async def oauth_callback(
             key="csrf_token",
             value=csrf_token,
             httponly=False,
-            secure=settings.ENVIRONMENT == "production",
+            secure=settings.cookie_secure,
             samesite="strict",
             max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         )
 
-        return {"message": "Login successful", "csrf_token": csrf_token}
+        return finish_login(csrf_token)
 
-    except Exception as e:
-        logger.error(f"OAuth callback error: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("oauth_callback_failed")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"OAuth authentication failed: {str(e)}",
+            detail="OAuth authentication failed. Please try again.",
         )
 
 
@@ -505,4 +565,4 @@ async def unlink_provider(
     await db.delete(idp)
     await db.commit()
 
-    logger.info(f"User {current_user.id} unlinked provider {idp.provider_name}")
+    logger.info("oauth_provider_unlinked", user_id=current_user.id, provider=idp.provider_name)

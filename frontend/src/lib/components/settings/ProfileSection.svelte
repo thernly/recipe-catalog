@@ -12,6 +12,8 @@
 		email: user.email,
 		display_name: user.display_name,
 	};
+	let currentPassword = "";
+	let emailPending = false;
 	let saving = false;
 	let success = false;
 
@@ -22,8 +24,11 @@
 		try {
 			const updated = await updateProfile({
 				email: profileForm.email,
+				current_password: currentPassword || undefined,
 				display_name: profileForm.display_name,
 			});
+			emailPending = profileForm.email.toLowerCase() !== updated.email;
+			currentPassword = '';
 			dispatch('update', updated);
 			success = true;
 			setTimeout(() => (success = false), 3000);
@@ -66,6 +71,15 @@
 			/>
 		</div>
 
+        {#if profileForm.email.toLowerCase() !== user.email}
+            <div class="form-group">
+                <label for="email-current-password" class="form-label">Current password</label>
+                <input id="email-current-password" type="password" bind:value={currentPassword}
+                    required maxlength="128" autocomplete="current-password" class="form-input" />
+                <p>We’ll send a verification link to the new address before changing your email.</p>
+            </div>
+        {/if}
+        {#if emailPending}<p role="status">Check your new email address for a verification link.</p>{/if}
 		<div class="form-actions">
 			<button type="submit" class="btn btn-primary" disabled={saving}>
 				{saving ? 'Saving...' : 'Save Changes'}

@@ -1,25 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { browser } from '$app/env';
-	import type { Theme } from '#lib/types/index.js';
+	import { theme } from '#lib/stores/theme.js';
 
-	let theme: Theme = 'classic';
-
+	// The root layout's watchTheme() applies and persists the store value.
 	function toggleTheme() {
-		theme = theme === 'classic' ? 'professional' : 'classic';
-		document.documentElement.setAttribute('data-theme', theme);
-		if (browser) {
-			localStorage.setItem('theme', theme);
-		}
+		theme.update((t) => (t === 'bistro' ? 'garden-fresh' : 'bistro'));
 	}
-
-	onMount(() => {
-		if (browser) {
-			const savedTheme = localStorage.getItem('theme') || 'classic';
-			theme = savedTheme as Theme;
-			document.documentElement.setAttribute('data-theme', savedTheme);
-		}
-	});
 </script>
 
 <svelte:head>
@@ -55,7 +40,7 @@
 				class="px-4 py-2 rounded-md hover:bg-white/10 transition"
 				title="Toggle theme"
 			>
-				{theme === 'classic' ? '🎨' : '💼'}
+				{$theme === 'bistro' ? '💼' : '🎨'}
 			</button>
 		</div>
 	</nav>

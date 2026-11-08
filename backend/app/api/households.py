@@ -1,10 +1,13 @@
 """Household API endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.household import Household, HouseholdMember
@@ -36,6 +39,7 @@ from app.services import household as household_service
 
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 # ============================================
@@ -335,7 +339,7 @@ async def get_invitation_by_token(
         household_id=invitation.household_id,
         inviter_user_id=invitation.inviter_user_id,
         invitee_email=invitation.invitee_email,
-        token=invitation.token,
+        token=token,
         expires_at=invitation.expires_at,
         accepted_at=invitation.accepted_at,
         created_at=invitation.created_at,
@@ -450,7 +454,9 @@ async def create_invite_link(
 
 
 @router.get("/join/{code}", response_model=HouseholdInviteLinkSchema)
+@limiter.limit(lambda: "100000/minute" if settings.TESTING else "10/minute")
 async def get_invite_link_info(
+    request: Request,
     code: str,
     db: AsyncSession = Depends(get_db),
 ):
@@ -499,8 +505,10 @@ async def get_invite_link_info(
 
 
 @router.post("/join", response_model=HouseholdMemberSchema)
+@limiter.limit(lambda: "100000/minute" if settings.TESTING else "10/minute")
 async def join_via_invite_code(
-    request: JoinViaInviteLinkRequest,
+    request: Request,
+    request_data: JoinViaInviteLinkRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -522,7 +530,7 @@ async def join_via_invite_code(
         400: If code already used, expired, or user already in a household
         404: If code not found
     """
-    member = await household_service.join_via_invite_link(db, request.code, current_user.id)
+    member = await household_service.join_via_invite_link(db, request_data.code, current_user.id)
 
     # Get user details
     user_result = await db.execute(select(User).where(User.id == member.user_id))

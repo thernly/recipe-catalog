@@ -298,3 +298,28 @@ async def test_concurrent_login_attempts_trigger_lockout(client: AsyncClient):
     # Otherwise in test environment, login might succeed
     # We just verify the endpoint responds (doesn't crash)
     assert correct_login_response.status_code in [200, 401, 403]
+
+
+async def test_current_meal_plan_race_returns_the_same_plan(client, test_user_headers, monkeypatch):
+    """Concurrent first visits must recover from the unique-week insert race."""
+    from app.models.meal_plan import MealPlan
+
+    original_commit = AsyncSession.commit
+    all_creating = asyncio.Event()
+    waiting = 0
+
+    async def synchronized_commit(session):
+        nonlocal waiting
+        if any(isinstance(row, MealPlan) for row in session.new):
+            waiting += 1
+            if waiting == 3:
+                all_creating.set()
+            await asyncio.wait_for(all_creating.wait(), timeout=5)
+        return await original_commit(session)
+
+    monkeypatch.setattr(AsyncSession, "commit", synchronized_commit)
+    responses = await asyncio.gather(
+        *[client.get("/api/v1/meal-plans/current", headers=test_user_headers) for _ in range(3)]
+    )
+    assert all(response.status_code == 200 for response in responses)
+    assert len({response.json()["id"] for response in responses}) == 1

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from fpdf import FPDF, XPos, YPos
+from starlette.concurrency import run_in_threadpool
 
 from app.core.config import settings
 from app.core.constants import (
@@ -26,6 +27,7 @@ from app.core.constants import (
     PDF_TOC_MIN_RECIPES,
 )
 from app.core.logging import get_logger
+from app.utils.recipe_display import display_ingredients, display_steps
 from app.utils.recipe_format import convert_to_schema_org
 
 
@@ -216,56 +218,41 @@ async def generate_recipe_pdf(recipe: "Recipe") -> bytes:
     Returns:
         bytes: PDF file content
     """
-    # Convert recipe to schema.org format
-    schema_recipe = await convert_to_schema_org(recipe)
+    schema_recipe = await convert_to_schema_org(recipe, fetch_images=False)
+    return await run_in_threadpool(_render_recipe_pdf, schema_recipe)
 
-    # Create PDF
+
+def _render_recipe_pdf(schema_recipe: dict[str, Any]) -> bytes:
     pdf = RecipePDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=PDF_MARGIN)
-
-    # Add recipe content
     _add_recipe_to_pdf(pdf, schema_recipe)
-
-    # Return PDF as bytes
-    output = pdf.output()
-    return bytes(output) if not isinstance(output, bytes) else output
+    return bytes(pdf.output())
 
 
 async def generate_collection_pdf(
     collection_name: str, collection_description: str, recipes: list["Recipe"]
 ) -> bytes:
-    """
-    Generate a PDF for a collection of recipes.
+    schema_recipes = [await convert_to_schema_org(recipe, fetch_images=False) for recipe in recipes]
+    return await run_in_threadpool(
+        _render_collection_pdf, collection_name, collection_description, recipes, schema_recipes
+    )
 
-    Args:
-        collection_name: Name of the collection
-        collection_description: Description of the collection
-        recipes: List of Recipe model instances
 
-    Returns:
-        bytes: PDF file content
-    """
+def _render_collection_pdf(
+    name: str, description: str, recipes: list["Recipe"], schema_recipes: list[dict[str, Any]]
+) -> bytes:
     pdf = RecipePDF()
     pdf.set_auto_page_break(auto=True, margin=PDF_MARGIN)
-
-    # Add cover page
     pdf.add_page()
-    _add_collection_cover(pdf, collection_name, collection_description)
-
-    # Add table of contents
+    _add_collection_cover(pdf, name, description)
     if len(recipes) > PDF_TOC_MIN_RECIPES:
         pdf.add_page()
         _add_table_of_contents(pdf, recipes)
-
-    # Add each recipe
-    for recipe in recipes:
+    for schema_recipe in schema_recipes:
         pdf.add_page()
-        schema_recipe = await convert_to_schema_org(recipe)
         _add_recipe_to_pdf(pdf, schema_recipe)
-
-    output = pdf.output()
-    return bytes(output) if not isinstance(output, bytes) else output
+    return bytes(pdf.output())
 
 
 def _add_collection_cover(pdf: FPDF, name: str, description: str):
@@ -276,14 +263,14 @@ def _add_collection_cover(pdf: FPDF, name: str, description: str):
     # Collection title
     pdf.set_font(pdf.font_family, "B", FONT_SIZE_COVER_TITLE)
     pdf.set_text_color(*COLOR_PRIMARY_TEXT)
-    pdf.multi_cell(0, 15, _clean_text(name), align="C")
+    pdf.multi_cell(0, 15, _clean_text(name, pdf.font_family), align="C")
 
     # Description
     if description:
         pdf.ln(10)
         pdf.set_font(pdf.font_family, "", FONT_SIZE_DESCRIPTION)
         pdf.set_text_color(*COLOR_SECONDARY_TEXT)
-        pdf.multi_cell(0, 8, _clean_text(description), align="C")
+        pdf.multi_cell(0, 8, _clean_text(description, pdf.font_family), align="C")
 
 
 def _add_table_of_contents(pdf: FPDF, recipes: list["Recipe"]):
@@ -304,7 +291,7 @@ def _add_table_of_contents(pdf: FPDF, recipes: list["Recipe"]):
     pdf.set_text_color(*COLOR_BODY_TEXT)
     for i, recipe in enumerate(recipes, 1):
         pdf.cell(10, 8, f"{i}.")
-        pdf.multi_cell(0, 8, _clean_text(recipe.name))
+        pdf.multi_cell(0, 8, _clean_text(recipe.name, pdf.font_family))
 
 
 def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
@@ -312,7 +299,9 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
     # Recipe title
     pdf.set_font(pdf.font_family, "B", FONT_SIZE_TITLE)
     pdf.set_text_color(*COLOR_PRIMARY_TEXT)
-    pdf.multi_cell(0, 10, _clean_text(schema_recipe.get("name", "Untitled Recipe")))
+    pdf.multi_cell(
+        0, 10, _clean_text(schema_recipe.get("name", "Untitled Recipe"), pdf.font_family)
+    )
 
     # Underline
     pdf.set_draw_color(*COLOR_BORDER)
@@ -324,7 +313,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
     if schema_recipe.get("description"):
         pdf.set_font(pdf.font_family, "I", FONT_SIZE_DESCRIPTION)
         pdf.set_text_color(*COLOR_SECONDARY_TEXT)
-        pdf.multi_cell(0, 6, _clean_text(schema_recipe["description"]))
+        pdf.multi_cell(0, 6, _clean_text(schema_recipe["description"], pdf.font_family))
         pdf.ln(3)
 
     # Metadata box
@@ -338,7 +327,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
         _add_section_header(pdf, "Ingredients")
         pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
         pdf.set_text_color(*COLOR_BODY_TEXT)
-        for ingredient in schema_recipe["recipeIngredient"]:
+        for ingredient in display_ingredients(schema_recipe["recipeIngredient"]):
             # Calculate available width accounting for margins and indentation
             indent = PDF_INDENT
             left_margin = pdf.l_margin
@@ -347,7 +336,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
             available_width = page_width - left_margin - right_margin - indent
 
             pdf.set_x(left_margin + indent)  # Indent for bullet
-            pdf.multi_cell(available_width, 6, f"- {_clean_text(ingredient)}")
+            pdf.multi_cell(available_width, 6, f"- {_clean_text(ingredient, pdf.font_family)}")
             pdf.set_x(left_margin)  # Reset to left margin for next item
         pdf.ln(3)
 
@@ -368,7 +357,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
             available_width = page_width - left_margin - right_margin - indent
 
             pdf.set_x(left_margin + indent)  # Indent for bullet
-            pdf.multi_cell(available_width, 6, f"- {_clean_text(item)}")
+            pdf.multi_cell(available_width, 6, f"- {_clean_text(item, pdf.font_family)}")
             pdf.set_x(left_margin)  # Reset to left margin for next item
         pdf.ln(3)
 
@@ -380,8 +369,8 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
         if isinstance(instructions, list):
             pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
             pdf.set_text_color(*COLOR_BODY_TEXT)
-            for i, step in enumerate(instructions, 1):
-                step_text = step.get("text", str(step)) if isinstance(step, dict) else str(step)
+            for i, step in enumerate(display_steps(instructions), 1):
+                step_text = str(step)
 
                 # Calculate available width accounting for margins and indentation
                 indent = PDF_INDENT
@@ -391,11 +380,13 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
                 available_width = page_width - left_margin - right_margin - indent
 
                 pdf.set_x(left_margin + indent)  # Indent for number
-                pdf.multi_cell(available_width, 6, f"{i}. {_clean_text(step_text)}")
+                pdf.multi_cell(
+                    available_width, 6, f"{i}. {_clean_text(step_text, pdf.font_family)}"
+                )
                 pdf.set_x(left_margin)  # Reset to left margin for next item
         elif isinstance(instructions, str):
             pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
-            pdf.multi_cell(0, 6, _clean_text(instructions))
+            pdf.multi_cell(0, 6, _clean_text(instructions, pdf.font_family))
 
         pdf.ln(3)
 
@@ -404,7 +395,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
         _add_section_header(pdf, "Notes")
         pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
         pdf.set_text_color(*COLOR_BODY_TEXT)
-        pdf.multi_cell(0, 6, _clean_text(schema_recipe["notes"]))
+        pdf.multi_cell(0, 6, _clean_text(schema_recipe["notes"], pdf.font_family))
         pdf.ln(3)
 
     # Nutrition
@@ -420,7 +411,7 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
             col_width = PDF_COLUMN_WIDTH
             for key, value in nutrition_items:
                 label = "".join([" " + c if c.isupper() else c for c in key]).strip().title()
-                pdf.cell(col_width, 6, f"{label}: {_clean_text(str(value))}")
+                pdf.cell(col_width, 6, f"{label}: {_clean_text(str(value), pdf.font_family)}")
                 pdf.ln(6)
 
 
@@ -460,7 +451,7 @@ def _add_metadata_box(pdf: FPDF, items: list[tuple[str, str]]):
         pdf.set_font(pdf.font_family, "B", FONT_SIZE_BODY)
         pdf.cell(PDF_LABEL_WIDTH, line_height, f"{label}:")
         pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
-        pdf.cell(0, line_height, _clean_text(value))
+        pdf.cell(0, line_height, _clean_text(value, pdf.font_family))
         text_y += line_height
 
     # Reset Y position to after the box
@@ -485,12 +476,14 @@ def _collect_metadata(schema_recipe: dict[str, Any]) -> list[tuple[str, str]]:
 
     if schema_recipe.get("recipeCategory"):
         categories = schema_recipe["recipeCategory"]
-        category_str = ", ".join(categories) if isinstance(categories, list) else str(categories)
+        category_str = (
+            ", ".join(map(str, categories)) if isinstance(categories, list) else str(categories)
+        )
         items.append(("Category", category_str))
 
     if schema_recipe.get("recipeCuisine"):
         cuisines = schema_recipe["recipeCuisine"]
-        cuisine_str = ", ".join(cuisines) if isinstance(cuisines, list) else str(cuisines)
+        cuisine_str = ", ".join(map(str, cuisines)) if isinstance(cuisines, list) else str(cuisines)
         items.append(("Cuisine", cuisine_str))
 
     if schema_recipe.get("keywords"):
@@ -563,7 +556,7 @@ def _replace_unicode_punctuation(text: str) -> tuple[str, bool]:
     return text, changed
 
 
-def _clean_text(text: str) -> str:
+def _clean_text(text: str, font_family: str = "Helvetica") -> str:
     """
     Clean and unescape HTML entities in text for PDF output.
 
@@ -597,7 +590,7 @@ def _clean_text(text: str) -> str:
     replaced_any = False
     for char in text:
         code = ord(char)
-        if code > 255:
+        if code > 255 and font_family.lower() == "helvetica":
             cleaned_chars.append("?")
             replaced_any = True
         else:

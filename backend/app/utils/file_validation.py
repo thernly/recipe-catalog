@@ -27,8 +27,11 @@ async def validate_file_size(file: UploadFile, max_size_mb: int | None = None) -
     max_bytes = max_size_mb * 1024 * 1024
 
     # Read file to check size
-    contents = await file.read()
-    file_size = len(contents)
+    file_size = 0
+    while chunk := await file.read(min(65536, max_bytes + 1 - file_size)):
+        file_size += len(chunk)
+        if file_size > max_bytes:
+            break
 
     # Reset file pointer for subsequent reads
     await file.seek(0)

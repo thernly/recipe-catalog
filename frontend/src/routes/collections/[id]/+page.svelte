@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { downloadBlob } from "#lib/utils/download.js";
 	import { onMount } from 'svelte';
 	import { browser } from '$app/env';
 	import { goto } from '$app/navigation';
@@ -99,14 +100,7 @@
 			const filename = `${safeName}.pdf`;
 
 			// Create download
-			const url = window.URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = filename;
-			document.body.appendChild(a);
-			a.click();
-			window.URL.revokeObjectURL(url);
-			document.body.removeChild(a);
+			downloadBlob(blob, filename);
 		} catch (err) {
 			toast.error(
 				`Failed to export collection: ${err instanceof Error ? err.message : 'Unknown error'}`,

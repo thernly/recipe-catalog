@@ -2,7 +2,12 @@
  * OAuth/OIDC authentication API client
  */
 
-import { apiRequest } from "./client";
+import { apiRequest, buildQueryString } from "./client";
+import { API_V1_URL } from "#lib/config.js";
+
+export function completeOAuthFlow(provider: string, code: string, state: string): Promise<void> {
+  return apiRequest<void>(`/auth/${encodeURIComponent(provider)}/callback${buildQueryString({code, state})}`, {requireAuth: false});
+}
 
 export interface ProviderInfo {
   name: string;
@@ -32,9 +37,8 @@ export async function getAvailableProviders(): Promise<ProviderInfo[]> {
  * Initiate OAuth flow with specified provider
  * Redirects to provider's authorization URL
  */
-export function initiateOAuthFlow(provider: string): void {
-  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
-  window.location.href = `${apiUrl}/api/v1/auth/${provider}/authorize`;
+export function initiateOAuthFlow(provider: string, link = false): void {
+  window.location.href = `${API_V1_URL}/auth/${encodeURIComponent(provider)}/authorize${link ? "?link=true" : ""}`;
 }
 
 /**

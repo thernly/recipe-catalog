@@ -19,7 +19,7 @@
 		error = '';
 
 		try {
-			await apiRequest(`/api/auth/verify-email/${token}`, {
+			await apiRequest(`/auth/verify-email/${token}`, {
 				method: 'POST',
 				requireAuth: false,
 			});

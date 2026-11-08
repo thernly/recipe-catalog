@@ -588,6 +588,7 @@ async def generate_from_recipe(
         select(Recipe).where(
             and_(
                 Recipe.id == request_data.recipe_id,
+                Recipe.deleted_at.is_(None),
                 Recipe.household_id == household.id,
             )
         )
@@ -613,7 +614,7 @@ async def generate_from_recipe(
     if recipe.recipe_data:
         # Support both 'recipeIngredient' (Schema.org format from frontend)
         # and 'ingredients' (legacy/test format) for backward compatibility
-        ingredients = recipe.recipe_data.get(
+        ingredients = recipe.recipe_data.get("parsedIngredients") or recipe.recipe_data.get(
             "recipeIngredient", recipe.recipe_data.get("ingredients", [])
         )
         if isinstance(ingredients, list):
@@ -623,14 +624,17 @@ async def generate_from_recipe(
                     item_name = ingredient
                 elif isinstance(ingredient, dict):
                     # If ingredient is a dict, try to format it nicely
-                    name = ingredient.get("name", ingredient.get("ingredient", ""))
-                    quantity = ingredient.get("quantity", "")
-                    unit = ingredient.get("unit", "")
-                    if quantity and unit:
-                        item_name = f"{quantity} {unit} {name}".strip()
-                    elif name:
-                        item_name = name
-                    else:
+                    if ingredient.get("header"):
+                        continue
+                    # `raw` keeps unitless quantities, ranges and notes intact
+                    item_name = str(
+                        ingredient.get("raw")
+                        or ingredient.get("item")
+                        or ingredient.get("name")
+                        or ingredient.get("ingredient")
+                        or ""
+                    ).strip()
+                    if not item_name:
                         continue
                 else:
                     continue
@@ -718,15 +722,22 @@ async def generate_from_meal_plan(
     await db.flush()
 
     # Collect all ingredients from all recipes as structured data
-    ingredients_data = []
+    ingredients_data: list[dict[str, Any]] = []
+    recipe_result = await db.execute(
+        select(Recipe).where(
+            Recipe.id.in_([meal.recipe_id for meal in planned_meals]),
+            Recipe.household_id == household.id,
+            Recipe.deleted_at.is_(None),
+        )
+    )
+    recipes_by_id = {recipe.id: recipe for recipe in recipe_result.scalars()}
     for planned_meal in planned_meals:
-        recipe_result = await db.execute(select(Recipe).where(Recipe.id == planned_meal.recipe_id))
-        recipe = recipe_result.scalar_one_or_none()
+        recipe = recipes_by_id.get(planned_meal.recipe_id)
 
         if recipe and recipe.recipe_data:
             # Support both 'recipeIngredient' (Schema.org format from frontend)
             # and 'ingredients' (legacy/test format) for backward compatibility
-            ingredients = recipe.recipe_data.get(
+            ingredients = recipe.recipe_data.get("parsedIngredients") or recipe.recipe_data.get(
                 "recipeIngredient", recipe.recipe_data.get("ingredients", [])
             )
             if isinstance(ingredients, list):
@@ -744,8 +755,16 @@ async def generate_from_meal_plan(
                         )
                     elif isinstance(ingredient, dict):
                         # Use dict format directly
-                        name = ingredient.get("name", ingredient.get("ingredient", ""))
-                        quantity = ingredient.get("quantity", "")
+                        if ingredient.get("header"):
+                            continue
+                        name = (
+                            ingredient.get("item")
+                            or ingredient.get("name")
+                            or ingredient.get("ingredient")
+                            or ingredient.get("raw", "")
+                        )
+                        # Ranges: buy the upper bound, as parse_quantity does for "1-2"
+                        quantity = ingredient.get("quantityMax") or ingredient.get("quantity")
                         unit = ingredient.get("unit", "")
                         ingredients_data.append(
                             {

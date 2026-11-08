@@ -68,8 +68,11 @@ For automated deployments or CI/CD pipelines:
 sudo bash deploy-lxc.sh \
     --non-interactive \
     --repo-url https://github.com/yourusername/recipe-catalog.git \
-    --server-ip 192.168.1.100
+    --server-ip 192.168.1.100 \
+    --domain recipes.example.com
 ```
+
+Production mode (the default) requires HTTPS, so pass `--domain`. For a plain-HTTP install on a trusted local network, pass `--development` instead of `--domain` (cookies are not marked Secure; switch to production once SSL is set up). In interactive mode, declining SSL offers development mode.
 
 ### Using Existing Files
 
@@ -86,6 +89,8 @@ sudo bash deploy-lxc.sh --repo-url local
 | `--non-interactive` | Run without prompts (uses defaults) | `--non-interactive` |
 | `--repo-url <url>` | Git repository URL or 'local' | `--repo-url https://github.com/user/repo.git` |
 | `--server-ip <ip>` | Server IP address or domain | `--server-ip 192.168.1.100` |
+| `--domain <hostname>` | Configure HTTPS for production (required unless `--development`) | `--domain recipes.example.com` |
+| `--development` | Local plain-HTTP development mode | `--development` |
 | `--skip-python` | Skip Python 3.13 installation | `--skip-python` |
 | `--help` | Show help message | `--help` |
 

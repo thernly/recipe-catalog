@@ -127,7 +127,7 @@ async def test_accept_invitation(db: AsyncSession, test_user: User):
     )
 
     # Accept invitation
-    member = await household_service.accept_invitation(db, invitation.token, invitee.id)
+    member = await household_service.accept_invitation(db, invitation.raw_token, invitee.id)
 
     assert member.household_id == household.id
     assert member.user_id == invitee.id
@@ -165,7 +165,7 @@ async def test_accept_invitation_wrong_email(db: AsyncSession, test_user: User):
 
     # Attempt to accept should fail
     with pytest.raises(Exception) as exc_info:
-        await household_service.accept_invitation(db, invitation.token, wrong_user.id)
+        await household_service.accept_invitation(db, invitation.raw_token, wrong_user.id)
 
     assert "different email" in str(exc_info.value).lower()
 
@@ -189,7 +189,7 @@ async def test_remove_household_member(db: AsyncSession, test_user: User):
     invitation = await household_service.create_invitation(
         db, household.id, test_user.id, "member@example.com"
     )
-    await household_service.accept_invitation(db, invitation.token, member_user.id)
+    await household_service.accept_invitation(db, invitation.raw_token, member_user.id)
 
     # Verify 2 members
     members = await household_service.get_household_members(db, household.id)
@@ -240,7 +240,7 @@ async def test_household_size_limit(db: AsyncSession, test_user: User):
     invitation = await household_service.create_invitation(
         db, household.id, test_user.id, "member@example.com"
     )
-    await household_service.accept_invitation(db, invitation.token, member_user.id)
+    await household_service.accept_invitation(db, invitation.raw_token, member_user.id)
 
     # Attempt to invite another member should fail (would exceed limit)
     with pytest.raises(Exception) as exc_info:
@@ -299,7 +299,7 @@ async def test_decline_invitation(db: AsyncSession, test_user: User):
     )
 
     # Decline invitation
-    await household_service.decline_invitation(db, invitation.token, invitee.id)
+    await household_service.decline_invitation(db, invitation.raw_token, invitee.id)
 
     # Verify invitation is deleted
     pending = await household_service.get_pending_invitations(db, household.id)

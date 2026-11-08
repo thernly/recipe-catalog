@@ -59,7 +59,11 @@ async def get_current_user(
 
     # Get user ID from token
     user_id: int | None = payload.get("sub")
-    if user_id is None:
+    if (
+        not isinstance(user_id, (str, int))
+        or not str(user_id).isascii()
+        or not str(user_id).isdigit()
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",

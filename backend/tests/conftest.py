@@ -9,6 +9,9 @@ os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:5173")
 os.environ.setdefault("ALLOWED_METHODS", "GET,POST,PUT,DELETE,PATCH")
 os.environ.setdefault("ALLOWED_HEADERS", "Authorization,Content-Type,Accept,X-CSRF-Token")
+os.environ["SMTP_USER"] = ""
+os.environ["SMTP_PASSWORD"] = ""
+os.environ["DEBUG"] = "false"
 os.environ.setdefault("ALLOWED_IMAGE_TYPES", "image/jpeg,image/png,image/webp")
 
 import pytest
@@ -40,10 +43,14 @@ def enable_testing_mode():
 
 
 @pytest_asyncio.fixture
-async def test_engine():
+async def test_engine(request, tmp_path):
     """Create test database engine."""
     engine = create_async_engine(
-        TEST_DATABASE_URL,
+        (
+            f"sqlite+aiosqlite:///{tmp_path / 'concurrent.db'}"
+            if request.node.path.name == "test_concurrency.py"
+            else TEST_DATABASE_URL
+        ),
         echo=False,
         future=True,
     )
@@ -96,11 +103,16 @@ async def db(test_db):
 
 
 @pytest_asyncio.fixture
-async def client(test_db):
+async def client(test_db, request):
     """Create test client with database override."""
 
     async def override_get_db():
-        yield test_db
+        if request.node.path.name == "test_concurrency.py":
+            sessions = async_sessionmaker(test_db.bind, expire_on_commit=False)
+            async with sessions() as session:
+                yield session
+        else:
+            yield test_db
 
     app.dependency_overrides[get_db] = override_get_db
 

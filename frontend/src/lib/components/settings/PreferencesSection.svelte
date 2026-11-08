@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { theme } from "#lib/stores/theme.js";
 	import type { UserPreferences } from '#lib/api/users.js';
 	import { updatePreferences } from '#lib/api/users.js';
 	import { createEventDispatcher } from 'svelte';
@@ -49,7 +50,7 @@
 			success = true;
 
 			// Apply theme change
-			document.documentElement.setAttribute('data-theme', form.theme);
+			theme.set(form.theme);
 
 			setTimeout(() => (success = false), 3000);
 		} catch (err) {

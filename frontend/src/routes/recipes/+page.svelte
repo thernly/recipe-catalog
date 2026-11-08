@@ -127,7 +127,9 @@
 	}
 
 	// Load recipes
+	let searchVersion = 0;
 	async function loadRecipes() {
+		const version = ++searchVersion;
 		loading = true;
 		error = null;
 
@@ -143,13 +145,16 @@
 				min_time_minutes: minTime,
 			};
 
-			searchResult = await searchRecipes(params);
+			const result = await searchRecipes(params);
+			if (version !== searchVersion) return;
+			searchResult = result;
 			updateURL();
 		} catch (err) {
+			if (version !== searchVersion) return;
 			error = err instanceof Error ? err.message : 'Failed to load recipes';
 			console.error('Failed to load recipes:', err);
 		} finally {
-			loading = false;
+			if (version === searchVersion) loading = false;
 		}
 	}
 
@@ -158,6 +163,7 @@
 	function handleSearch(e: Event) {
 		const target = e.target as HTMLInputElement;
 		searchParams.query = target.value;
+		searchVersion += 1;
 
 		clearTimeout(searchTimeout);
 		searchTimeout = setTimeout(() => {

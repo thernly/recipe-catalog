@@ -24,6 +24,7 @@
 #===============================================================================
 
 set -e  # Exit on error
+umask 077
 # Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -38,6 +39,8 @@ BACKEND_SERVICE="recipe-catalog-backend"
 DATA_DIR="/opt/recipe-catalog/backend/data"
 NGINX_SERVICE="nginx"
 LOG_FILE="/var/log/recipe-catalog-update.log"
+touch "$LOG_FILE"
+chmod 600 "$LOG_FILE"
 BACKUP_DIR="/opt/recipe-catalog-backups"
 GIT_BRANCH="main"
 SKIP_GIT=false
@@ -172,6 +175,7 @@ if [[ "$SKIP_BACKUP" == false ]]; then
     # Create backup directory if it doesn't exist
     mkdir -p "$BACKUP_DIR"
     chown "$APP_USER:$APP_USER" "$BACKUP_DIR"
+    chmod 700 "$BACKUP_DIR"
     
     # Backup database with timestamp
     TIMESTAMP=$(date +'%Y%m%d-%H%M%S')
@@ -232,6 +236,8 @@ log_success "Backend service stopped"
 #===============================================================================
 
 if [[ "$SKIP_GIT" == false ]]; then
+    git check-ref-format --branch "$GIT_BRANCH" >/dev/null || error_exit "Invalid branch name"
+    printf -v quoted_branch '%q' "$GIT_BRANCH"
     log "Updating code from git (branch: $GIT_BRANCH)..."
     
     cd "$APP_DIR"
@@ -259,8 +265,8 @@ if [[ "$SKIP_GIT" == false ]]; then
         su -s /bin/bash "$APP_USER" -c "cd $APP_DIR && git stash save 'Auto-stash before update $(date +'%Y-%m-%d %H:%M:%S')'"
         
         # Pull latest changes
-        su -s /bin/bash "$APP_USER" -c "cd $APP_DIR && git checkout $GIT_BRANCH" || error_exit "Failed to checkout branch: $GIT_BRANCH"
-        su -s /bin/bash "$APP_USER" -c "cd $APP_DIR && git pull origin $GIT_BRANCH" || error_exit "Failed to pull from git"
+        su -s /bin/bash "$APP_USER" -c "cd $APP_DIR && git checkout $quoted_branch" || error_exit "Failed to checkout branch: $GIT_BRANCH"
+        su -s /bin/bash "$APP_USER" -c "cd $APP_DIR && git pull origin $quoted_branch" || error_exit "Failed to pull from git"
         
         # Restore .env files IMMEDIATELY (needed for migrations and builds)
         log "Restoring configuration files..."
@@ -305,6 +311,19 @@ if [[ ! -f "$APP_DIR/backend/.env" ]]; then
 fi
 log_success "Backend .env file exists"
 
+# Older installs were written with ENVIRONMENT=development even behind HTTPS.
+# Warn only; never rewrite the user's .env.
+NGINX_SITE="/etc/nginx/sites-available/recipe-catalog"
+if grep -q "^ENVIRONMENT=development" "$APP_DIR/backend/.env" && grep -q "ssl_certificate" "$NGINX_SITE" 2>/dev/null; then
+    log_warning "=================================================================="
+    log_warning "SSL is configured in $NGINX_SITE but $APP_DIR/backend/.env"
+    log_warning "still has ENVIRONMENT=development (relaxed CSP, non-Secure cookies)."
+    log_warning "Change that line to:"
+    log_warning "    ENVIRONMENT=production"
+    log_warning "then restart the backend: sudo systemctl restart $BACKEND_SERVICE"
+    log_warning "=================================================================="
+fi
+
 #===============================================================================
 # Update Backend
 #===============================================================================
@@ -319,7 +338,7 @@ if [[ ! -f "/home/$APP_USER/.local/bin/uv" ]]; then
 fi
 
 # Sync dependencies
-su -s /bin/bash "$APP_USER" -c "cd $APP_DIR/backend && /home/$APP_USER/.local/bin/uv sync" || error_exit "Failed to sync backend dependencies"
+su -s /bin/bash "$APP_USER" -c "cd $APP_DIR/backend && /home/$APP_USER/.local/bin/uv sync --frozen" || error_exit "Failed to sync backend dependencies"
 log_success "Backend dependencies updated"
 
 # Run database migrations
@@ -360,12 +379,14 @@ if ! command -v pnpm &> /dev/null; then
 fi
 
 # Install dependencies
-su -s /bin/bash "$APP_USER" -c "cd $APP_DIR/frontend && pnpm install" || error_exit "Failed to install frontend dependencies"
+su -s /bin/bash "$APP_USER" -c "cd $APP_DIR/frontend && pnpm install --frozen-lockfile" || error_exit "Failed to install frontend dependencies"
 log_success "Frontend dependencies updated"
 
 # Build frontend
 log "Building frontend..."
 su -s /bin/bash "$APP_USER" -c "cd $APP_DIR/frontend && pnpm build" || error_exit "Frontend build failed"
+chmod 755 "$APP_DIR" "$APP_DIR/frontend"
+chmod -R a+rX "$APP_DIR/frontend/build"
 log_success "Frontend build completed"
 
 #===============================================================================
@@ -413,7 +434,7 @@ else
 fi
 
 # Test backend health endpoint (if accessible)
-if curl -sf http://localhost:8000/api/health > /dev/null 2>&1; then
+if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
     log_success "Backend health check passed"
 else
     log_warning "Backend health check failed (endpoint may not exist)"

@@ -8,10 +8,6 @@ Create Date: 2025-11-18 13:00:00.000000
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
-
-from alembic import op
-
 
 # revision identifiers, used by Alembic.
 revision: str = "20251118_add_email_verified_at"
@@ -21,14 +17,10 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Add email_verified_at column to users table."""
-    # SQLite doesn't support ALTER COLUMN, so we add the column
-    op.add_column("users", sa.Column("email_verified_at", sa.DateTime(), nullable=True))
+    """email_verified_at was already introduced by 002_idp_support."""
+    pass
 
 
 def downgrade() -> None:
-    """Remove email_verified_at column from users table."""
-    # For SQLite, we would need to recreate the table to remove a column
-    # But for this migration, we'll use a simple drop column approach
-    with op.batch_alter_table("users", schema=None) as batch_op:
-        batch_op.drop_column("email_verified_at")
+    """Leave the column in place until 002_idp_support is rolled back."""
+    pass

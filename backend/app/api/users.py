@@ -2,7 +2,9 @@
 User profile and preferences API endpoints.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,7 +63,15 @@ async def update_user_profile(
     if user_update.display_name is not None:
         current_user.display_name = user_update.display_name
 
-    if user_update.email is not None:
+    if user_update.email is not None and user_update.email.lower() != current_user.email:
+        if (
+            not current_user.hashed_password
+            or not user_update.current_password
+            or not verify_password(user_update.current_password, current_user.hashed_password)
+        ):
+            from app.core.exceptions import InvalidInputError
+
+            raise InvalidInputError("Current password is required to change your email")
         # Check if new email is already in use
         result = await db.execute(
             select(User).where(User.email == user_update.email.lower(), User.id != current_user.id)
@@ -73,8 +83,25 @@ async def update_user_profile(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Email already in use"
             )
 
-        current_user.email = user_update.email.lower()
-        current_user.is_verified = False
+        from sqlalchemy import update
+
+        from app.core.email import email_service
+        from app.models.token import VerificationToken
+
+        await db.execute(
+            update(VerificationToken)
+            .where(VerificationToken.user_id == current_user.id, VerificationToken.used.is_(False))
+            .values(used=True)
+        )
+        verification = VerificationToken.create_for_user(current_user.id)
+        verification.pending_email = user_update.email.lower()
+        db.add(verification)
+        await db.commit()
+        await email_service.send_verification_email(
+            to_email=verification.pending_email,
+            verification_token=verification.raw_token,
+            user_name=current_user.display_name,
+        )
 
     await db.commit()
     await db.refresh(current_user)
@@ -85,6 +112,7 @@ async def update_user_profile(
 @router.post("/me/change-password")
 async def change_password(
     password_change: PasswordChange,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -100,7 +128,9 @@ async def change_password(
         dict: Success message
     """
     # Verify current password
-    if not verify_password(password_change.current_password, current_user.hashed_password):
+    if not current_user.hashed_password or not verify_password(
+        password_change.current_password, current_user.hashed_password
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect",
@@ -108,9 +138,20 @@ async def change_password(
 
     # Update password
     current_user.hashed_password = get_password_hash(password_change.new_password)
-    await db.commit()
+    from sqlalchemy import update
 
-    return {"message": "Password updated successfully"}
+    from app.api.auth import issue_session
+    from app.models.refresh_token import RefreshToken
+
+    # Sign out every session, then give this one fresh cookies so the user stays logged in.
+    await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.user_id == current_user.id, RefreshToken.revoked.is_(False))
+        .values(revoked=True, revoked_at=datetime.now(UTC))
+    )
+    csrf_token = await issue_session(db, current_user, response)
+
+    return {"message": "Password updated successfully", "csrf_token": csrf_token}
 
 
 @router.delete("/me")

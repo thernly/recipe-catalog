@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -86,14 +86,12 @@ async def validate_collection_ownership(
     """
     from app.models.collection import Collection
 
-    for collection_id in collection_ids:
-        result = await db.execute(select(Collection).where(Collection.id == collection_id))
-        collection = result.scalar_one_or_none()
-
+    result = await db.execute(select(Collection).where(Collection.id.in_(collection_ids)))
+    collections = {collection.id: collection for collection in result.scalars()}
+    for collection_id in dict.fromkeys(collection_ids):
+        collection = collections.get(collection_id)
         if not collection:
             raise InvalidInputError(message=f"Collection {collection_id} not found")
-
-        # Check if collection belongs to user or their household
         if collection.user_id != user_id and collection.household_id != household_id:
             raise InvalidInputError(
                 message=f"Collection {collection_id} does not belong to you or your household"
@@ -174,11 +172,9 @@ async def create_recipe(
         HTTPException 400: If collection_ids contains IDs not owned by user/household
         HTTPException 422: If request data is invalid
     """
-    # Sanitize user input to prevent XSS attacks
-    sanitized_name = sanitize_html(recipe_data.name) if recipe_data.name else None
-    sanitized_description = (
-        sanitize_html(recipe_data.description) if recipe_data.description else None
-    )
+    # name/description are already stripped to plain text by the RecipeCreate validator
+    sanitized_name = recipe_data.name or None
+    sanitized_description = recipe_data.description or None
     # Shared cleanup: yield, times, parsedIngredients
     cleaned_recipe_data = clean_recipe_data(sanitize_recipe_data(recipe_data.recipe_data)).data
     total_time_minutes = recipe_data.total_time_minutes
@@ -214,7 +210,7 @@ async def create_recipe(
             db,
         )
 
-        for collection_id in recipe_data.collection_ids:
+        for collection_id in dict.fromkeys(recipe_data.collection_ids):
             recipe_collection = RecipeCollection(
                 recipe_id=new_recipe.id, collection_id=collection_id
             )
@@ -253,7 +249,11 @@ async def get_recipe(
         HTTPException: If recipe not found or unauthorized
     """
     result = await db.execute(
-        select(Recipe).where(Recipe.id == recipe_id, Recipe.household_id == household.id)
+        select(Recipe).where(
+            Recipe.id == recipe_id,
+            Recipe.household_id == household.id,
+            or_(Recipe.deleted_at.is_(None), Recipe.user_id == current_user.id),
+        )
     )
     recipe = result.scalar_one_or_none()
 
@@ -294,7 +294,9 @@ async def update_recipe(
         HTTPException: If recipe not found or unauthorized
     """
     result = await db.execute(
-        select(Recipe).where(Recipe.id == recipe_id, Recipe.user_id == current_user.id)
+        select(Recipe).where(
+            Recipe.id == recipe_id, Recipe.user_id == current_user.id, Recipe.deleted_at.is_(None)
+        )
     )
     recipe = result.scalar_one_or_none()
 
@@ -304,11 +306,7 @@ async def update_recipe(
     # Update fields with sanitization
     update_data = recipe_update.model_dump(exclude_unset=True, exclude={"collection_ids"})
 
-    # Sanitize text fields
-    if "name" in update_data and update_data["name"]:
-        update_data["name"] = sanitize_html(update_data["name"])
-    if "description" in update_data and update_data["description"]:
-        update_data["description"] = sanitize_html(update_data["description"])
+    # name/description are already stripped to plain text by the RecipeUpdate validator
     if "recipe_data" in update_data and update_data["recipe_data"]:
         # Shared cleanup. Unchanged ingredient lines keep their stored model parses; the
         # previous entries come from the database, never from the request.
@@ -345,7 +343,7 @@ async def update_recipe(
         await db.execute(delete(RecipeCollection).where(RecipeCollection.recipe_id == recipe_id))
 
         # Add new collections
-        for collection_id in recipe_update.collection_ids:
+        for collection_id in dict.fromkeys(recipe_update.collection_ids):
             recipe_collection = RecipeCollection(recipe_id=recipe.id, collection_id=collection_id)
             db.add(recipe_collection)
 
@@ -469,6 +467,7 @@ async def duplicate_recipe(
     # Create duplicate
     duplicate = Recipe(
         user_id=current_user.id,
+        household_id=original_recipe.household_id,
         name=f"{original_recipe.name} (Copy)",
         description=original_recipe.description,
         image_url=original_recipe.image_url,

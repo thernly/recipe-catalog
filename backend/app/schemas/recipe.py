@@ -1,11 +1,13 @@
 """Recipe-related Pydantic schemas."""
 
+import html
 from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.core.security import sanitize_html
+from app.utils.urls import safe_http_url, validate_http_url
 
 
 # ============================================
@@ -17,10 +19,12 @@ class RecipeBase(BaseModel):
     """Base recipe schema."""
 
     name: str = Field(..., min_length=1, max_length=500)
-    description: str | None = None
-    image_url: str | None = None
+    description: str | None = Field(None, max_length=10000)
+    image_url: str | None = Field(None, max_length=2048)
     recipe_data: dict[str, Any]  # Full recipe JSON
-    source_url: str | None = None
+    source_url: str | None = Field(None, max_length=2048)
+
+    _validate_urls = field_validator("source_url", "image_url")(validate_http_url)
     cuisine: str | None = Field(None, max_length=100)
     category: str | None = Field(None, max_length=100)
     total_time_minutes: int | None = Field(None, ge=0)
@@ -30,40 +34,55 @@ class RecipeCreate(RecipeBase):
     """Schema for creating a recipe."""
 
     source_type: str = Field("manual", pattern="^(imported|manual|ai-generated)$")
-    collection_ids: list[int] | None = Field(default_factory=list)
+    collection_ids: list[int] | None = Field(default_factory=list, max_length=500)
 
     @field_validator("name", "description")
     @classmethod
     def sanitize_text_fields(cls, v: str | None) -> str | None:
-        """Sanitize text fields to prevent XSS attacks."""
+        """Strip markup; store plain text (the frontend escapes on render)."""
         if v is None:
             return v
-        return sanitize_html(v)
+        return html.unescape(sanitize_html(v))
 
 
 class RecipeUpdate(BaseModel):
     """Schema for updating a recipe."""
 
     name: str | None = Field(None, min_length=1, max_length=500)
-    description: str | None = None
-    image_url: str | None = None
+    description: str | None = Field(None, max_length=10000)
+    image_url: str | None = Field(None, max_length=2048)
+    _validate_image = field_validator("image_url")(validate_http_url)
+
     recipe_data: dict[str, Any] | None = None
     cuisine: str | None = Field(None, max_length=100)
     category: str | None = Field(None, max_length=100)
     total_time_minutes: int | None = Field(None, ge=0)
-    collection_ids: list[int] | None = None
+    collection_ids: list[int] | None = Field(None, max_length=500)
 
     @field_validator("name", "description")
     @classmethod
     def sanitize_text_fields(cls, v: str | None) -> str | None:
-        """Sanitize text fields to prevent XSS attacks."""
+        """Strip markup; store plain text (the frontend escapes on render)."""
         if v is None:
             return v
-        return sanitize_html(v)
+        return html.unescape(sanitize_html(v))
 
 
 class Recipe(RecipeBase):
-    """Full recipe schema (response)."""
+    """Full recipe schema (response).
+
+    Serializes stored rows, so the input limits from RecipeBase are lifted: a value
+    stored before a limit existed (or by import) must never 500 a read.
+    """
+
+    name: str
+    description: str | None = None
+    image_url: str | None = None
+    source_url: str | None = None
+    cuisine: str | None = None
+    category: str | None = None
+    total_time_minutes: int | None = None
+    _validate_urls = field_validator("source_url", "image_url", mode="before")(safe_http_url)
 
     id: int
     user_id: int
@@ -86,6 +105,7 @@ class RecipeSummary(BaseModel):
     name: str
     description: str | None = None
     image_url: str | None = None
+    _validate_image = field_validator("image_url", mode="before")(safe_http_url)
     cuisine: str | None = None
     category: str | None = None
     total_time_minutes: int | None = None
@@ -101,7 +121,7 @@ class RecipeSummary(BaseModel):
 class RecipeImport(BaseModel):
     """Schema for importing recipes from browser extension."""
 
-    recipes: list[dict[str, Any]]
+    recipes: list[dict[str, Any]] = Field(..., max_length=500)
     duplicate_handling: str = Field("skip", pattern="^(skip|update|create)$")
     collection_id: int | None = None
 
@@ -114,11 +134,11 @@ class RecipeImport(BaseModel):
 class RecipeSearchParams(BaseModel):
     """Search and filter parameters."""
 
-    query: str | None = None
-    cuisine: list[str] | None = None
-    category: list[str] | None = None
-    source_type: list[str] | None = None
-    collection_ids: list[int] | None = None
+    query: str | None = Field(None, max_length=500)
+    cuisine: list[str] | None = Field(None, max_length=100)
+    category: list[str] | None = Field(None, max_length=100)
+    source_type: list[str] | None = Field(None, max_length=3)
+    collection_ids: list[int] | None = Field(None, max_length=500)
     max_time_minutes: int | None = None
     min_time_minutes: int | None = None
     sort_by: str = Field(

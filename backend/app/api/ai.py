@@ -2,15 +2,21 @@
 AI-powered recipe generation API endpoints.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from typing import Any
+
+from fastapi import APIRouter, Depends, Request, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import and_, select
+from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import Select
 
 from app.core.config import settings
+from app.core.constants import MAX_RECIPES_IN_PROMPT
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
+from app.core.exceptions import AIServiceError
 from app.core.logging import get_logger
 from app.models.household import Household
 from app.models.recipe import Recipe
@@ -61,7 +67,9 @@ async def generate_recipe(
     """
     try:
         logger.info(
-            f"AI recipe generation requested by user {current_user.id} with {len(generation_request.ingredients)} ingredients"
+            "ai_recipe_requested",
+            user_id=current_user.id,
+            ingredient_count=len(generation_request.ingredients),
         )
 
         # Generate recipe using AI service
@@ -75,20 +83,23 @@ async def generate_recipe(
 
         return AIRecipeGenerateResponse(recipe=recipe_data, source_type="ai-generated")
 
-    except ValueError as e:
-        # Configuration error
-        logger.error(f"AI configuration error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e),
+    except AIServiceError:
+        # The service has already classified and logged the provider failure.
+        raise
+    except (ValueError, TypeError) as exc:
+        logger.exception(
+            "ai_response_invalid_shape",
+            operation="recipe",
+            model=ai_service.model,
+            user_id=current_user.id,
+            error_type=type(exc).__name__,
         )
-    except Exception as e:
-        # AI generation error
-        logger.error(f"AI generation failed: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+        raise AIServiceError("AI returned an invalid recipe. Please try again.") from exc
+    except Exception as exc:
+        logger.exception(
+            "ai_request_failed", error_type=type(exc).__name__, user_id=current_user.id
         )
+        raise AIServiceError("AI generation failed. Please try again.") from exc
 
 
 @router.post(
@@ -124,22 +135,25 @@ async def generate_menu(
         HTTPException: If AI generation fails or rate limit is exceeded
     """
     try:
-        logger.info(
-            f"AI menu generation requested by user {current_user.id} for {generation_request.days} days"
-        )
+        logger.info("ai_menu_requested", user_id=current_user.id, days=generation_request.days)
 
         # If catalog-first mode, fetch household recipes
-        household_recipes = None
+        household_recipes: list[dict[str, Any]] | None = None
         if generation_request.mode == "catalog-first":
-            result = await db.execute(
-                select(Recipe).where(
-                    and_(
-                        Recipe.household_id == household.id,
-                        Recipe.deleted_at.is_(None),
-                    )
+            catalog_query: Select[Any, Any, Any] = select(Recipe.id, Recipe.name, Recipe.category).where(
+                and_(
+                    Recipe.household_id == household.id,
+                    Recipe.deleted_at.is_(None),
                 )
             )
-            recipes = result.scalars().all()
+            if generation_request.household_recipe_ids is not None:
+                catalog_query = catalog_query.where(
+                    Recipe.id.in_(generation_request.household_recipe_ids)
+                )
+            result: Result[Any] = await db.execute(
+                catalog_query.order_by(Recipe.id).limit(MAX_RECIPES_IN_PROMPT)
+            )
+            recipes = result.all()
 
             # Convert to dict format for AI service
             household_recipes = [
@@ -161,25 +175,33 @@ async def generate_menu(
             household_recipes=household_recipes,
         )
 
-        # Convert to MealSuggestion objects
-        meal_suggestions = [MealSuggestion(**suggestion) for suggestion in suggestions]
+        allowed_ids = {entry["id"] for entry in household_recipes or []}
+        if not isinstance(suggestions, list):
+            raise ValueError("Invalid menu response")
+        meal_suggestions = [MealSuggestion.model_validate(suggestion) for suggestion in suggestions]
+        for suggestion in meal_suggestions:
+            if suggestion.recipe_id not in allowed_ids:
+                suggestion.recipe_id = None
 
         return AIMenuGenerateResponse(
             suggestions=meal_suggestions,
             mode=generation_request.mode,
         )
 
-    except ValueError as e:
-        # Configuration error
-        logger.error(f"AI configuration error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e),
+    except AIServiceError:
+        # The service has already classified and logged the provider failure.
+        raise
+    except (ValueError, TypeError) as exc:
+        logger.exception(
+            "ai_response_invalid_shape",
+            operation="menu",
+            model=ai_service.model,
+            user_id=current_user.id,
+            error_type=type(exc).__name__,
         )
-    except Exception as e:
-        # AI generation error
-        logger.error(f"AI menu generation failed: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+        raise AIServiceError("AI returned an invalid menu. Please try again.") from exc
+    except Exception as exc:
+        logger.exception(
+            "ai_request_failed", error_type=type(exc).__name__, user_id=current_user.id
         )
+        raise AIServiceError("AI generation failed. Please try again.") from exc

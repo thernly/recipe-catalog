@@ -3,7 +3,6 @@
  */
 
 import { apiRequest } from "./client";
-import { FETCH_CREDENTIALS } from "#lib/constants.js";
 
 export interface Collection {
   id: number;
@@ -120,21 +119,5 @@ export async function getCollectionRecipes(
  * Export a collection as PDF
  */
 export async function exportCollectionPdf(collectionId: number): Promise<Blob> {
-  const { API_V1_URL } = await import("#lib/config.js");
-
-  const response = await fetch(
-    `${API_V1_URL}/collections/${collectionId}/export/pdf`,
-    {
-      credentials: FETCH_CREDENTIALS, // Send cookies for authentication
-    },
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Export failed: ${response.statusText}${errorText ? ` - ${errorText}` : ""}`,
-    );
-  }
-
-  return response.blob();
+  return apiRequest<Blob>(`/collections/${collectionId}/export/pdf`, { responseType: "blob" });
 }
