@@ -14,47 +14,17 @@
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- written but not yet read by the template
 	let saving = false;
 
-	const defaultCuisines = [
-		'Italian',
-		'Mexican',
-		'Chinese',
-		'Japanese',
-		'Indian',
-		'Thai',
-		'French',
-		'Greek',
-		'Spanish',
-		'Mediterranean',
-		'American',
-		'Korean',
-		'Vietnamese',
-		'Middle Eastern',
-		'Other',
-	];
-
-	const defaultCategories = [
-		'Breakfast',
-		'Lunch',
-		'Dinner',
-		'Appetizer',
-		'Main Course',
-		'Side Dish',
-		'Dessert',
-		'Snack',
-		'Beverage',
-		'Salad',
-		'Soup',
-		'Pasta',
-		'Bread',
-		'Sauce',
-		'Other',
-	];
+	// Built-in options come from the backend; "Other" is always offered.
+	let defaultCuisines: string[] = ['Other'];
+	let defaultCategories: string[] = ['Other'];
 
 	onMount(async () => {
 		// Load custom filters from user preferences
 		loading = true;
 		try {
 			const prefs = await getPreferences();
+			defaultCuisines = [...prefs.default_cuisines, 'Other'];
+			defaultCategories = [...prefs.default_categories, 'Other'];
 			customCuisines = prefs.custom_cuisines || [];
 			customCategories = prefs.custom_categories || [];
 		} catch (err) {

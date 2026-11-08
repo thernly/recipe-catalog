@@ -9,60 +9,30 @@
 
 	const dispatch = createEventDispatcher();
 
-	// Default filter options
-	const defaultCuisines = [
-		'Italian',
-		'Mexican',
-		'Chinese',
-		'Japanese',
-		'Indian',
-		'Thai',
-		'French',
-		'Greek',
-		'Spanish',
-		'Mediterranean',
-		'American',
-		'Korean',
-		'Vietnamese',
-		'Middle Eastern',
+	// Options come from the backend (built-in + the user's custom ones), sorted, with
+	// "Other" last; the backend treats "Other" as "anything not in these lists".
+	let cuisineOptions: string[] = ['Other'];
+	let categoryOptions: string[] = ['Other'];
+
+	const withOther = (options: string[]) => [
+		...[...options].sort((a, b) => a.localeCompare(b)),
 		'Other',
 	];
 
-	const defaultCategories = [
-		'Breakfast',
-		'Lunch',
-		'Dinner',
-		'Appetizer',
-		'Main Course',
-		'Side Dish',
-		'Dessert',
-		'Snack',
-		'Beverage',
-		'Salad',
-		'Soup',
-		'Pasta',
-		'Bread',
-		'Sauce',
-		'Other',
-	];
-
-	let cuisineOptions = [...defaultCuisines];
-	let categoryOptions = [...defaultCategories];
-
-	// Load custom options from user preferences
 	onMount(async () => {
 		try {
 			const { getPreferences } = await import('#lib/api/users.js');
 			const prefs = await getPreferences();
-			const customCuisines = prefs.custom_cuisines || [];
-			const customCategories = prefs.custom_categories || [];
-			cuisineOptions = [...defaultCuisines, ...customCuisines];
-			categoryOptions = [...defaultCategories, ...customCategories];
+			cuisineOptions = withOther([
+				...prefs.default_cuisines,
+				...(prefs.custom_cuisines || []),
+			]);
+			categoryOptions = withOther([
+				...prefs.default_categories,
+				...(prefs.custom_categories || []),
+			]);
 		} catch (e) {
-			console.error('Failed to load custom filters:', e);
-			// Fall back to defaults if loading fails
-			cuisineOptions = [...defaultCuisines];
-			categoryOptions = [...defaultCategories];
+			console.error('Failed to load filter options:', e);
 		}
 	});
 
