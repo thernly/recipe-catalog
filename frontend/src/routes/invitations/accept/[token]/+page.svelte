@@ -14,7 +14,8 @@
 	let token = '';
 	let invitation: HouseholdInvitation | null = null;
 	let loading = true;
-	let error = '';
+	let error = ''; // invitation can't be used: replaces the page
+	let actionError = ''; // accept/decline failed: shown under the buttons
 	let accepting = false;
 	let declining = false;
 
@@ -53,14 +54,14 @@
 		}
 
 		accepting = true;
-		error = '';
+		actionError = '';
 
 		try {
 			await acceptInvitation({ token });
 			goto('/settings?section=household&message=joined');
 		} catch (err) {
 			console.error('Failed to accept invitation:', err);
-			error =
+			actionError =
 				err instanceof Error ? err.message : 'Failed to accept invitation';
 		} finally {
 			accepting = false;
@@ -69,14 +70,14 @@
 
 	async function handleDecline() {
 		declining = true;
-		error = '';
+		actionError = '';
 
 		try {
 			await declineInvitation(token);
 			goto('/?message=invitation-declined');
 		} catch (err) {
 			console.error('Failed to decline invitation:', err);
-			error =
+			actionError =
 				err instanceof Error ? err.message : 'Failed to decline invitation';
 		} finally {
 			declining = false;
@@ -191,8 +192,8 @@
 						</button>
 					</div>
 
-					{#if error}
-						<div class="error-message mt-4" role="alert">{error}</div>
+					{#if actionError}
+						<div class="error-message mt-4" role="alert">{actionError}</div>
 					{/if}
 				</div>
 			{/if}

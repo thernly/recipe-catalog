@@ -15,6 +15,12 @@
 		);
 	}
 
+	/** aria-current for a nav link: "page" on the exact page, "location" inside its section. */
+	function current(path: string): 'page' | 'location' | undefined {
+		if (page.url.pathname === path) return 'page';
+		return isActive(path) ? 'location' : undefined;
+	}
+
 	let user: User | null = null;
 	let currentTheme: Theme = 'garden-fresh';
 
@@ -70,20 +76,22 @@
 			<a
 				href="/dashboard"
 				class="nav-link"
-				class:active={isActive('/dashboard')}>Dashboard</a
+				class:active={isActive('/dashboard')}
+				aria-current={current('/dashboard')}>Dashboard</a
 			>
 
 			<a
 				href="/recipes"
 				class="nav-link"
-				class:active={page.url.pathname === '/recipes' ||
-					page.url.pathname.startsWith('/recipes/')}>Recipes</a
+				class:active={isActive('/recipes')}
+				aria-current={current('/recipes')}>Recipes</a
 			>
 
 			<a
 				href="/ai-generate"
 				class="nav-link"
 				class:active={isActive('/ai-generate')}
+				aria-current={current('/ai-generate')}
 			>
 				<Sparkles size={18} aria-hidden="true" />
 				<span>AI Generate</span>
@@ -92,6 +100,7 @@
 				href="/meal-plans"
 				class="nav-link"
 				class:active={isActive('/meal-plans')}
+				aria-current={current('/meal-plans')}
 			>
 				Meal Plans
 			</a>
@@ -99,13 +108,24 @@
 				href="/shopping-lists"
 				class="nav-link"
 				class:active={isActive('/shopping-lists')}
+				aria-current={current('/shopping-lists')}
 			>
 				Shopping Lists
 			</a>
-			<a href="/export" class="nav-link" class:active={isActive('/export')}>
+			<a
+				href="/export"
+				class="nav-link"
+				class:active={isActive('/export')}
+				aria-current={current('/export')}
+			>
 				Export
 			</a>
-			<a href="/settings" class="nav-link" class:active={isActive('/settings')}>
+			<a
+				href="/settings"
+				class="nav-link"
+				class:active={isActive('/settings')}
+				aria-current={current('/settings')}
+			>
 				Settings
 			</a>
 		</div>

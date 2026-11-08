@@ -6,6 +6,7 @@
 		type PlannedMealCreate,
 	} from '#lib/api/meal-plans.js';
 	import { searchRecipes, type RecipeSummary } from '#lib/api/recipes.js';
+	import { trapFocus } from '#lib/actions/trapFocus.js';
 
 	export let mealPlan: MealPlan;
 	export let day: number;
@@ -113,6 +114,7 @@
 	<div
 		class="modal-content"
 		bind:this={dialogEl}
+		use:trapFocus
 		on:click|stopPropagation
 		on:keydown|stopPropagation={(e) => e.key === 'Escape' && handleClose()}
 		role="dialog"

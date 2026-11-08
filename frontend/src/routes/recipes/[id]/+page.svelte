@@ -37,6 +37,7 @@
 	let checkedIngredients = new Set<number>();
 	let completedSteps = new Set<number>();
 	let showExportMenu = false;
+	let exportButton: HTMLButtonElement | undefined;
 	let exporting = false;
 	let showAddToShoppingListDialog = false;
 	// Set when the dialog is picking a list for one ingredient line
@@ -198,6 +199,30 @@
 		window.print();
 	}
 
+	/** Moves focus into the Export menu when it opens. */
+	function focusFirst(node: HTMLElement) {
+		node.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+	}
+
+	/** Up/Down/Home/End move between Export menu items (wrapping). */
+	function handleMenuKeydown(e: KeyboardEvent) {
+		const items = [
+			...(e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>(
+				'[role="menuitem"]',
+			),
+		];
+		const i = items.indexOf(document.activeElement as HTMLElement);
+		const next = {
+			ArrowDown: (i + 1) % items.length,
+			ArrowUp: (i - 1 + items.length) % items.length,
+			Home: 0,
+			End: items.length - 1,
+		}[e.key];
+		if (next === undefined) return;
+		e.preventDefault();
+		items[next].focus();
+	}
+
 	async function handleExport(format: 'json' | 'markdown' | 'text' | 'pdf') {
 		if (!recipe) return;
 
@@ -322,7 +347,10 @@
 
 <svelte:window
 	on:keydown={(e) => {
-		if (e.key === 'Escape') showExportMenu = false;
+		if (e.key === 'Escape' && showExportMenu) {
+			showExportMenu = false;
+			exportButton?.focus();
+		}
 	}}
 />
 
@@ -720,10 +748,11 @@
 						<!-- Export dropdown -->
 						<div class="export-dropdown">
 							<button
+								bind:this={exportButton}
 								on:click={() => (showExportMenu = !showExportMenu)}
 								class="btn btn-secondary flex items-center gap-2"
 								disabled={exporting}
-								aria-haspopup="true"
+								aria-haspopup="menu"
 								aria-expanded={showExportMenu}
 							>
 								{#if exporting}
@@ -734,10 +763,18 @@
 								<span>Export</span>
 							</button>
 							{#if showExportMenu}
-								<div class="export-menu export-menu-up">
+								<div
+									class="export-menu export-menu-up"
+									role="menu"
+									tabindex="-1"
+									aria-label="Export format"
+									use:focusFirst
+									on:keydown={handleMenuKeydown}
+								>
 									<button
 										on:click={() => handleExport('pdf')}
 										class="export-menu-item"
+										role="menuitem"
 									>
 										<FileText size={14} aria-hidden="true" />
 										<span>PDF</span>
@@ -745,6 +782,7 @@
 									<button
 										on:click={() => handleExport('json')}
 										class="export-menu-item"
+										role="menuitem"
 									>
 										<FileText size={14} aria-hidden="true" />
 										<span>JSON</span>
@@ -752,6 +790,7 @@
 									<button
 										on:click={() => handleExport('markdown')}
 										class="export-menu-item"
+										role="menuitem"
 									>
 										<FileText size={14} aria-hidden="true" />
 										<span>Markdown</span>
@@ -759,6 +798,7 @@
 									<button
 										on:click={() => handleExport('text')}
 										class="export-menu-item"
+										role="menuitem"
 									>
 										<FileText size={14} aria-hidden="true" />
 										<span>Plain Text</span>

@@ -321,7 +321,7 @@
 								on:click={() => confirmDelete(list)}
 								aria-label="Delete {list.name}"
 								class="px-3 py-1 rounded text-sm border"
-								style="color: var(--error-600, var(--text-900)); background: var(--neutral-100); border-color: var(--neutral-300);"
+								style="color: var(--color-error-text); background: var(--neutral-100); border-color: var(--neutral-300);"
 								>Delete</button
 							>
 						{/if}

@@ -365,7 +365,8 @@
 	}
 
 	.btn-danger:hover:not(:disabled) {
-		background: var(--error-700);
+		background: var(--error-600);
+		filter: brightness(0.9);
 	}
 
 	.btn-danger:disabled {
