@@ -39,8 +39,9 @@
 				on:click={toggleTheme}
 				class="px-4 py-2 rounded-md hover:bg-white/10 transition"
 				title="Toggle theme"
+				aria-label="Toggle theme"
 			>
-				{$theme === 'bistro' ? '💼' : '🎨'}
+				<span aria-hidden="true">{$theme === 'bistro' ? '💼' : '🎨'}</span>
 			</button>
 		</div>
 	</nav>

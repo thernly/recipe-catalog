@@ -43,6 +43,10 @@
 
 	export let params: { id: string };
 	$: listId = parseInt(params.id);
+	// Reload whenever the id changes: SvelteKit reuses this component when
+	// navigating list-to-list (e.g. after Duplicate), so onMount alone would
+	// leave the old list on screen while actions target the new id.
+	$: if (listId) void loadShoppingList();
 	$: sortedItems = sortItems(shoppingList?.items || []);
 	$: visibleItems = hideChecked
 		? sortedItems.filter((item) => !item.checked)
@@ -155,7 +159,8 @@
 		try {
 			const data: ShoppingListUpdate = {
 				name: editedName.trim(),
-				description: editedDescription.trim() || undefined,
+				// "" (not undefined) so clearing the description is saved
+				description: editedDescription.trim(),
 			};
 
 			await updateShoppingList(listId, data);
@@ -214,10 +219,7 @@
 		});
 	}
 
-	onMount(() => {
-		loadShoppingList();
-		loadCategories();
-	});
+	onMount(loadCategories);
 </script>
 
 <svelte:head
@@ -253,10 +255,13 @@
 					<input
 						type="text"
 						bind:value={editedName}
+						aria-label="List name"
 						class="text-3xl font-bold w-full border-b-2 border-blue-600 focus:outline-none mb-2"
+						style="background: var(--neutral-white); color: var(--text-900);"
 					/>
 					<textarea
 						bind:value={editedDescription}
+						aria-label="List description"
 						class="w-full rounded px-3 py-2 mt-2"
 						style="color: var(--text-600); border: 1px solid var(--neutral-300); background: var(--neutral-white);"
 						rows="2"
@@ -292,6 +297,7 @@
 					<button
 						on:click={() => (editingListName = true)}
 						class="text-blue-600 hover:underline text-sm"
+						aria-label="Edit list"
 					>
 						Edit
 					</button>
@@ -302,14 +308,16 @@
 			<div class="flex gap-2 mb-4 flex-wrap">
 				<button
 					on:click={handleDuplicateList}
-					class="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+					class="px-3 py-1 text-sm rounded"
+					style="background: var(--neutral-100); color: var(--text-900);"
 				>
 					Duplicate
 				</button>
 				{#if shoppingList.status === 'active'}
 					<button
 						on:click={handleArchiveList}
-						class="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+						class="px-3 py-1 text-sm rounded"
+						style="background: var(--neutral-100); color: var(--text-900);"
 					>
 						Archive
 					</button>
@@ -343,7 +351,7 @@
 		</div>
 
 		<!-- Add item form -->
-		<div class="bg-gray-50 rounded-lg p-4 mb-6">
+		<div class="rounded-lg p-4 mb-6" style="background: var(--neutral-100);">
 			<h2 class="font-semibold mb-3">Add Item</h2>
 			<form
 				on:submit|preventDefault={handleAddItem}
@@ -399,7 +407,8 @@
 			<div class="space-y-2">
 				{#each visibleItems as item (item.id)}
 					<div
-						class="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow"
+						class="flex items-center gap-3 p-3 border rounded-lg hover:shadow-sm transition-shadow"
+						style="background: var(--neutral-white); border-color: var(--neutral-200); color: var(--text-900);"
 					>
 						<!-- Checkbox -->
 						<input

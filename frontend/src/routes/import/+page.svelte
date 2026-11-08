@@ -261,32 +261,43 @@
 
 					<!-- Status messages -->
 					{#if error}
-						<div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-							<p class="text-red-800 whitespace-pre-line">{error}</p>
+						<div
+							class="mb-4 p-4 border rounded-md"
+							style="background: var(--color-error-bg); border-color: var(--color-error); color: var(--color-error-text);"
+							role="alert"
+						>
+							<p class="whitespace-pre-line">{error}</p>
 						</div>
 					{/if}
 
 					{#if success}
 						<div
-							class="mb-4 p-4 bg-green-50 border border-green-200 rounded-md"
+							class="mb-4 p-4 border rounded-md"
+							style="background: var(--color-success-bg); border-color: var(--color-success); color: var(--color-success-text);"
+							role="status"
 						>
-							<p class="text-green-800">{success}</p>
-							<p class="text-sm text-green-600 mt-1">
-								Redirecting to recipes page...
-							</p>
+							<p>{success}</p>
+							<p class="text-sm mt-1">Redirecting to recipes page...</p>
 						</div>
 					{/if}
 
 					<!-- Progress indicator -->
 					{#if loading && importProgress.total > 0}
-						<div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-							<p class="text-blue-800">
+						<div
+							class="mb-4 p-4 border rounded-md"
+							style="background: var(--primary-50); border-color: var(--primary-200);"
+							role="status"
+						>
+							<p style="color: var(--text-900);">
 								Importing file {importProgress.current} of {importProgress.total}...
 							</p>
-							<div class="mt-2 w-full bg-blue-200 rounded-full h-2">
+							<div
+								class="mt-2 w-full rounded-full h-2"
+								style="background: var(--primary-200);"
+							>
 								<div
-									class="bg-blue-600 h-2 rounded-full transition-all"
-									style="width: {(importProgress.current /
+									class="h-2 rounded-full transition-all"
+									style="background: var(--primary-500); width: {(importProgress.current /
 										importProgress.total) *
 										100}%"
 								></div>
@@ -353,7 +364,7 @@
 
 <style>
 	.card {
-		background: white;
+		background: var(--neutral-white);
 		border: 1px solid var(--neutral-200);
 		border-radius: var(--radius-lg);
 		padding: 1.5rem;

@@ -81,6 +81,13 @@
 		}
 	}
 
+	// Move focus into the dialog on open and give it back to the opener on close
+	function manageFocus(node: HTMLElement) {
+		const opener = document.activeElement as HTMLElement | null;
+		node.querySelector<HTMLElement>('#collection-name')?.focus();
+		return { destroy: () => opener?.focus() };
+	}
+
 	function handleBackdropClick(event: MouseEvent) {
 		if (event.target === event.currentTarget) {
 			handleCancel();
@@ -95,13 +102,23 @@
 		on:click={handleBackdropClick}
 		on:keydown={(e) => e.key === 'Escape' && handleCancel()}
 	>
-		<div class="modal" role="dialog" aria-modal="true" tabindex="0">
+		<div
+			class="modal"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="collection-modal-title"
+			tabindex="-1"
+			use:manageFocus
+		>
 			<div class="modal-header">
-				<h2 class="modal-title">
+				<h2 id="collection-modal-title" class="modal-title">
 					{collection ? 'Edit Collection' : 'Create Collection'}
 				</h2>
-				<button on:click={handleCancel} class="btn-close" aria-label="Close"
-					>×</button
+				<button
+					type="button"
+					on:click={handleCancel}
+					class="btn-close"
+					aria-label="Close">×</button
 				>
 			</div>
 
@@ -148,6 +165,7 @@
 									type="button"
 									class="icon-option"
 									class:selected={icon === iconOption}
+									aria-pressed={icon === iconOption}
 									on:click={() => (icon = iconOption)}
 								>
 									{iconOption}
@@ -294,7 +312,7 @@
 	}
 
 	.required {
-		color: #ef4444;
+		color: var(--color-error);
 	}
 
 	.form-input {
@@ -322,8 +340,8 @@
 
 	.error-banner {
 		padding: 0.75rem 1rem;
-		background: #fee2e2;
-		color: #991b1b;
+		background: var(--color-error-bg);
+		color: var(--color-error-text);
 		border-radius: var(--radius-md);
 		font-size: 0.875rem;
 		margin-bottom: 1.5rem;

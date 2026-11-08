@@ -201,7 +201,9 @@
 
 	{#if error}
 		<div
-			class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded mb-4"
+			class="border px-4 py-3 rounded mb-4"
+			style="background: var(--color-error-bg); border-color: var(--color-error); color: var(--color-error-text);"
+			role="alert"
 		>
 			{error}
 		</div>
@@ -220,7 +222,7 @@
 					min="1"
 					max="14"
 					bind:value={days}
-					class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+					class="themed-input w-full px-3 py-2 border rounded-md focus:ring-2"
 				/>
 			</div>
 
@@ -232,11 +234,9 @@
 						<button
 							type="button"
 							on:click={() => toggleMealType(mealType)}
-							class="px-4 py-2 rounded-md border transition-colors capitalize {selectedMealTypes.has(
-								mealType,
-							)
-								? 'bg-blue-600 text-white border-blue-600'
-								: 'bg-white dark:bg-gray-700  border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'}"
+							aria-pressed={selectedMealTypes.has(mealType)}
+							class="toggle px-4 py-2 rounded-md border transition-colors capitalize"
+							class:selected={selectedMealTypes.has(mealType)}
 						>
 							{mealType}
 						</button>
@@ -252,11 +252,9 @@
 						<button
 							type="button"
 							on:click={() => toggleDietary(option)}
-							class="px-4 py-2 rounded-md border text-sm transition-colors {dietaryPreferences.includes(
-								option,
-							)
-								? 'bg-green-600 text-white border-green-600'
-								: 'bg-white dark:bg-gray-700  border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'}"
+							aria-pressed={dietaryPreferences.includes(option)}
+							class="toggle px-4 py-2 rounded-md border text-sm transition-colors"
+							class:selected={dietaryPreferences.includes(option)}
 						>
 							{option}
 						</button>
@@ -274,7 +272,7 @@
 					type="text"
 					bind:value={cuisine}
 					placeholder="e.g., Italian, Mexican, Asian"
-					class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+					class="themed-input w-full px-3 py-2 border rounded-md focus:ring-2"
 				/>
 			</div>
 
@@ -318,7 +316,7 @@
 				<button
 					type="button"
 					on:click={() => goto('/meal-plans')}
-					class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+					class="btn-ghost px-4 py-2 rounded-md"
 				>
 					Cancel
 				</button>
@@ -326,7 +324,7 @@
 					type="button"
 					on:click={handleGenerate}
 					disabled={generating}
-					class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+					class="btn-solid px-6 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					{generating ? 'Generating...' : 'Generate Menu'}
 				</button>
@@ -346,9 +344,7 @@
 				{#each Array.from({ length: days }, (_, i) => i + 1) as day (day)}
 					{@const daySuggestions = getSuggestionsForDay(day)}
 					{#if daySuggestions.length > 0}
-						<div
-							class="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
-						>
+						<div class="themed-border border rounded-lg p-4">
 							<h3 class="font-medium mb-3">
 								{day <= 7 ? dayNames[day - 1] : `Day ${day}`}
 							</h3>
@@ -356,7 +352,7 @@
 								{#each daySuggestions as suggestion (suggestion)}
 									{@const suggestionIndex = suggestions.indexOf(suggestion)}
 									<label
-										class="flex items-start p-3 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
+										class="suggestion themed-border flex items-start p-3 rounded-md border cursor-pointer transition-colors"
 									>
 										<input
 											type="checkbox"
@@ -376,17 +372,20 @@
 														</div>
 													{/if}
 													<div
-														class="text-xs text-gray-500 dark:text-gray-500 mt-1"
+														class="text-xs mt-1"
+														style="color: var(--text-500);"
 													>
 														{#if suggestion.recipe_id}
 															<span
-																class="inline-flex items-center px-2 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
+																class="inline-flex items-center px-2 py-0.5 rounded"
+																style="background: var(--color-success-bg); color: var(--color-success-text);"
 															>
 																From Catalog
 															</span>
 														{:else}
 															<span
-																class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
+																class="inline-flex items-center px-2 py-0.5 rounded"
+																style="background: var(--primary-50); color: var(--text-900);"
 															>
 																AI Suggestion
 															</span>
@@ -411,9 +410,10 @@
 
 			{#if mode === 'ai-only'}
 				<div
-					class="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md"
+					class="mt-4 p-4 border rounded-md"
+					style="background: var(--color-warning-bg); border-color: var(--color-warning);"
 				>
-					<p class="text-sm text-yellow-800 dark:text-yellow-200">
+					<p class="text-sm" style="color: var(--color-warning-text);">
 						<strong>Note:</strong> These are AI-generated suggestions. To add them
 						to your meal plan, you'll need to first create these recipes in your catalog.
 					</p>
@@ -422,12 +422,12 @@
 
 			<!-- Action Buttons -->
 			<div
-				class="flex justify-between space-x-3 pt-6 mt-6 border-t border-gray-200 dark:border-gray-700"
+				class="themed-border flex justify-between space-x-3 pt-6 mt-6 border-t"
 			>
 				<button
 					type="button"
 					on:click={regenerate}
-					class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+					class="btn-ghost px-4 py-2 rounded-md"
 				>
 					Regenerate
 				</button>
@@ -435,7 +435,7 @@
 					<button
 						type="button"
 						on:click={goBack}
-						class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+						class="btn-ghost px-4 py-2 rounded-md"
 					>
 						Back
 					</button>
@@ -444,7 +444,7 @@
 							type="button"
 							on:click={handleApplyToMealPlan}
 							disabled={applying || selectedSuggestions.size === 0}
-							class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+							class="btn-solid px-6 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							{applying
 								? 'Applying...'
@@ -461,5 +461,38 @@
 	/* Override hardcoded colors with theme variables for better contrast */
 	:global(.AI-MENU-BG-PRIMARY) {
 		background: var(--neutral-white) !important;
+	}
+
+	.themed-input,
+	.themed-border,
+	.toggle {
+		border-color: var(--neutral-300);
+	}
+
+	.themed-input,
+	.toggle {
+		background: var(--neutral-white);
+		color: var(--text-900);
+	}
+
+	.themed-input:focus {
+		--tw-ring-color: var(--primary-500);
+	}
+
+	.toggle:hover,
+	.btn-ghost:hover,
+	.suggestion:hover {
+		background: var(--neutral-100);
+	}
+
+	.toggle.selected,
+	.btn-solid {
+		background: var(--primary-500);
+		border-color: var(--primary-500);
+		color: white;
+	}
+
+	.btn-solid:hover:not(:disabled) {
+		background: var(--primary-600);
 	}
 </style>

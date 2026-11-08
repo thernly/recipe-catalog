@@ -51,7 +51,7 @@
 			{#if success}
 				<!-- Success message -->
 				<div class="success-box">
-					<div class="success-icon">✓</div>
+					<div class="success-icon" aria-hidden="true">✓</div>
 					<h2 class="success-title">Check Your Email</h2>
 					<p class="success-text">
 						If an account exists with <strong>{email}</strong>, you will receive
@@ -82,7 +82,7 @@
 					</div>
 
 					{#if error}
-						<div class="error-box">{error}</div>
+						<div class="error-box" role="alert">{error}</div>
 					{/if}
 
 					<button
@@ -195,10 +195,10 @@
 
 	.error-box {
 		padding: 0.75rem;
-		background: var(--error-50);
-		border: 1px solid var(--error-200);
+		background: var(--color-error-bg);
+		border: 1px solid var(--color-error);
 		border-radius: var(--radius-md);
-		color: var(--error-700);
+		color: var(--color-error-text);
 		font-size: 0.875rem;
 		text-align: center;
 	}
@@ -210,8 +210,8 @@
 	.success-icon {
 		width: 4rem;
 		height: 4rem;
-		background: var(--success-100);
-		color: var(--success-600);
+		background: var(--color-success-bg);
+		color: var(--color-success-text);
 		border-radius: var(--radius-full);
 		display: flex;
 		align-items: center;

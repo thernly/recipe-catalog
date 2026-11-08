@@ -81,7 +81,7 @@ Rate limit: `RATE_LIMIT_PER_HOUR` (default 1000) per IP.
 
 No token is returned in the body. Send the cookies on every request and echo the CSRF
 token in `X-CSRF-Token` on POST/PUT/PATCH/DELETE; omitting it returns
-`403 csrf_token_invalid`. When the access token expires (401), call
+`403 CSRF_TOKEN_INVALID`. When the access token expires (401), call
 `POST /api/v1/auth/refresh` and retry once.
 
 ### `POST /api/v1/import/recipes/json`
@@ -161,9 +161,9 @@ Errors use one envelope:
 
 `error_code` is uppercase (`UNAUTHORIZED`, `INVALID_INPUT`, `VALIDATION_ERROR`,
 `RESOURCE_NOT_FOUND`, `INTERNAL_ERROR`, ...); see `ErrorCode` in
-`backend/app/core/exceptions.py`. Two exceptions: the CSRF failure uses
-`csrf_token_invalid`, and rate limiting (`429`) returns slowapi's
-`{"error": "Rate limit exceeded: ..."}`. Read `message`, not `detail`.
+`backend/app/core/exceptions.py`. A CSRF failure is `403 CSRF_TOKEN_INVALID`, and
+rate limiting is `429 RATE_LIMIT_EXCEEDED` with the limit in `details.limit`.
+Read `message`, not `detail`.
 
 ---
 

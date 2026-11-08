@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { downloadBlob } from "#lib/utils/download.js";
+	import { downloadBlob } from '#lib/utils/download.js';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/env';
 	import { goto } from '$app/navigation';
@@ -140,8 +140,8 @@
 		</div>
 	{:else if error || !collection}
 		<!-- Error state -->
-		<div class="container-custom py-16 text-center">
-			<div class="text-4xl mb-4">⚠️</div>
+		<div class="container-custom py-16 text-center" role="alert">
+			<div class="text-4xl mb-4" aria-hidden="true">⚠️</div>
 			<p class="text-lg mb-2" style="color: var(--text-900);">
 				Collection not found
 			</p>
@@ -154,7 +154,10 @@
 		</div>
 	{:else}
 		<!-- Header -->
-		<div class="sticky top-0 z-40 bg-white border-b border-neutral-200">
+		<div
+			class="sticky top-0 z-40 border-b border-neutral-200"
+			style="background: var(--neutral-white);"
+		>
 			<div class="container-custom py-4">
 				<button
 					on:click={() => goto('/recipes')}
@@ -200,6 +203,8 @@
 							class="view-btn"
 							class:active={viewMode === 'grid'}
 							title="Grid view"
+							aria-label="Grid view"
+							aria-pressed={viewMode === 'grid'}
 						>
 							⊞
 						</button>
@@ -208,6 +213,8 @@
 							class="view-btn"
 							class:active={viewMode === 'list'}
 							title="List view"
+							aria-label="List view"
+							aria-pressed={viewMode === 'list'}
 						>
 							≡
 						</button>

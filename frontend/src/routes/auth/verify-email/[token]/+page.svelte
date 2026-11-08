@@ -49,7 +49,7 @@
 			{#if loading}
 				<!-- Loading state -->
 				<div class="status-box">
-					<div class="loading-spinner">⏳</div>
+					<div class="loading-spinner" aria-hidden="true">⏳</div>
 					<h1 class="status-title">Verifying Your Email...</h1>
 					<p class="status-text">
 						Please wait while we verify your email address.
@@ -58,7 +58,7 @@
 			{:else if success}
 				<!-- Success state -->
 				<div class="status-box">
-					<div class="success-icon">✓</div>
+					<div class="success-icon" aria-hidden="true">✓</div>
 					<h1 class="status-title">Email Verified!</h1>
 					<p class="status-text">
 						Your email has been successfully verified. You can now use all
@@ -75,9 +75,9 @@
 			{:else if error}
 				<!-- Error state -->
 				<div class="status-box">
-					<div class="error-icon">⚠️</div>
+					<div class="error-icon" aria-hidden="true">⚠️</div>
 					<h1 class="status-title">Verification Failed</h1>
-					<p class="status-text error-text">{error}</p>
+					<p class="status-text error-text" role="alert">{error}</p>
 
 					<div class="error-actions">
 						<p class="action-hint">
@@ -150,8 +150,8 @@
 	.success-icon {
 		width: 4rem;
 		height: 4rem;
-		background: var(--success-100);
-		color: var(--success-600);
+		background: var(--color-success-bg);
+		color: var(--color-success-text);
 		border-radius: var(--radius-full);
 		display: flex;
 		align-items: center;
@@ -190,11 +190,11 @@
 	}
 
 	.status-text.error-text {
-		color: var(--error-700);
-		background: var(--error-50);
+		color: var(--color-error-text);
+		background: var(--color-error-bg);
 		padding: 0.75rem;
 		border-radius: var(--radius-md);
-		border: 1px solid var(--error-200);
+		border: 1px solid var(--color-error);
 	}
 
 	.status-hint {

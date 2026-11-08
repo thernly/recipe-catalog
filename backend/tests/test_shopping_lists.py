@@ -532,3 +532,28 @@ def test_case_insensitive_consolidation():
     assert garlic["quantity"] == "4"  # 2 + 1 + 1
     assert garlic["name"].lower() == "garlic"
     assert garlic["unit"] is None
+
+
+async def test_edit_and_delete_list_via_api(client, test_user_headers):
+    """A list can be renamed, have its description cleared, and be deleted."""
+    created = await client.post(
+        "/api/v1/shopping-lists/",
+        json={"name": "Weekly", "description": "Old notes"},
+        headers=test_user_headers,
+    )
+    assert created.status_code == 201
+    list_id = created.json()["id"]
+
+    patched = await client.patch(
+        f"/api/v1/shopping-lists/{list_id}",
+        json={"name": "Party", "description": ""},
+        headers=test_user_headers,
+    )
+    assert patched.status_code == 200
+    assert patched.json()["name"] == "Party"
+    assert patched.json()["description"] == ""
+
+    deleted = await client.delete(f"/api/v1/shopping-lists/{list_id}", headers=test_user_headers)
+    assert deleted.status_code == 204
+    gone = await client.get(f"/api/v1/shopping-lists/{list_id}", headers=test_user_headers)
+    assert gone.status_code == 404

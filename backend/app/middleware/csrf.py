@@ -12,6 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import settings
 from app.core.constants import API_TOKEN_PREFIX
+from app.core.exceptions import ErrorCode
 from app.core.security import verify_csrf_token
 
 
@@ -99,7 +100,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content={
-                    "error_code": "csrf_token_invalid",
+                    "error_code": ErrorCode.CSRF_TOKEN_INVALID,
                     "message": "CSRF token validation failed. Please refresh and try again.",
                     "details": {},
                 },

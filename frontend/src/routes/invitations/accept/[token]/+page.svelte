@@ -112,14 +112,16 @@
 			{:else if error}
 				<div class="py-8">
 					<div class="text-center mb-6">
-						<div class="text-4xl mb-4">⚠️</div>
+						<div class="text-4xl mb-4" aria-hidden="true">⚠️</div>
 						<p
 							class="text-lg font-semibold mb-2"
 							style="color: var(--text-900);"
 						>
 							Invalid Invitation
 						</p>
-						<p class="text-sm" style="color: var(--text-600);">{error}</p>
+						<p class="text-sm" style="color: var(--text-600);" role="alert">
+							{error}
+						</p>
 					</div>
 					<div class="text-center">
 						<a href="/" class="btn btn-primary">Go to Home</a>
@@ -190,7 +192,7 @@
 					</div>
 
 					{#if error}
-						<div class="error-message mt-4">{error}</div>
+						<div class="error-message mt-4" role="alert">{error}</div>
 					{/if}
 				</div>
 			{/if}
@@ -203,7 +205,7 @@
 		background: var(--neutral-white);
 		border: 1px solid var(--neutral-200);
 		border-radius: var(--radius-lg);
-		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+		box-shadow: var(--shadow-sm);
 		overflow: hidden;
 	}
 
@@ -269,7 +271,7 @@
 		content: '✓';
 		position: absolute;
 		left: 0;
-		color: var(--success-600, #22c55e);
+		color: var(--color-success);
 		font-weight: bold;
 	}
 
@@ -286,7 +288,7 @@
 	}
 
 	.btn-outline {
-		background: white;
+		background: var(--neutral-white);
 		border: 1px solid var(--neutral-300);
 		color: var(--text-900);
 	}
@@ -298,10 +300,10 @@
 
 	.error-message {
 		padding: 0.75rem;
-		background: var(--error-50);
-		border: 1px solid var(--error-200);
+		background: var(--color-error-bg);
+		border: 1px solid var(--color-error);
 		border-radius: var(--radius-md);
-		color: var(--error-700);
+		color: var(--color-error-text);
 		font-size: 0.875rem;
 		text-align: center;
 	}

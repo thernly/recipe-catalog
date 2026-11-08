@@ -45,7 +45,7 @@ async def test_cookie_request_to_intake_still_needs_csrf(
     # Cookies only (session from login), no CSRF header
     response = await client.post("/api/v1/intake", json=RECIPE)
     assert response.status_code == 403
-    assert response.json()["error_code"] == "csrf_token_invalid"
+    assert response.json()["error_code"] == "CSRF_TOKEN_INVALID"
 
     # With the CSRF header it goes through
     response = await client.post(
@@ -65,7 +65,7 @@ async def test_token_header_does_not_skip_csrf_elsewhere(
         headers={"Authorization": f"Bearer {api_token}"},
     )
     assert response.status_code == 403
-    assert response.json()["error_code"] == "csrf_token_invalid"
+    assert response.json()["error_code"] == "CSRF_TOKEN_INVALID"
 
 
 async def test_jwt_bearer_to_intake_still_needs_csrf(

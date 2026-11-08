@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { theme } from "#lib/stores/theme.js";
+	import { theme } from '#lib/stores/theme.js';
 	import type { UserPreferences } from '#lib/api/users.js';
 	import { updatePreferences } from '#lib/api/users.js';
 	import { createEventDispatcher } from 'svelte';
@@ -157,6 +157,7 @@
 					<button
 						type="button"
 						on:click={() => toggleDietary(option)}
+						aria-pressed={form.dietary_preferences?.includes(option) ?? false}
 						class="dietary-option {form.dietary_preferences?.includes(option)
 							? 'active'
 							: ''}"
@@ -264,7 +265,7 @@
 	}
 
 	.success-message {
-		color: var(--success-600);
+		color: var(--color-success-text);
 		font-size: 0.875rem;
 		font-weight: 500;
 	}
@@ -292,8 +293,8 @@
 	}
 
 	.dietary-option.active {
-		background: var(--accent-500);
-		color: white;
-		border-color: var(--accent-600);
+		background: var(--color-btn-primary-bg);
+		color: var(--color-btn-primary-text);
+		border-color: var(--color-btn-primary-bg);
 	}
 </style>

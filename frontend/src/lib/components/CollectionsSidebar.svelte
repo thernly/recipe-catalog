@@ -139,7 +139,9 @@
 		</div>
 	{:else if $collections.error}
 		<div class="sidebar-error">
-			<p class="text-sm" style="color: #EF4444;">{$collections.error}</p>
+			<p class="text-sm" style="color: var(--color-error-text);">
+				{$collections.error}
+			</p>
 			<button
 				on:click={() => collections.load()}
 				class="btn-sm btn-secondary mt-2"
@@ -205,6 +207,7 @@
 											on:click={() => openEditModal(collection)}
 											class="action-btn"
 											title="Edit collection"
+											aria-label="Edit collection {collection.name}"
 										>
 											✏️
 										</button>
@@ -212,6 +215,7 @@
 											on:click={() => handleDeleteCollection(collection)}
 											class="action-btn"
 											title="Delete collection"
+											aria-label="Delete collection {collection.name}"
 										>
 											🗑️
 										</button>
@@ -283,8 +287,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: var(--accent-500);
-		color: var(--neutral-white);
+		background: var(--color-btn-primary-bg);
+		color: var(--color-btn-primary-text);
 		border: none;
 		border-radius: var(--radius-md);
 		font-size: 1.25rem;
@@ -392,7 +396,8 @@
 		border-radius: var(--radius-sm);
 	}
 
-	.nav-item-group:hover .nav-item-actions {
+	.nav-item-group:hover .nav-item-actions,
+	.nav-item-group:focus-within .nav-item-actions {
 		display: flex;
 	}
 

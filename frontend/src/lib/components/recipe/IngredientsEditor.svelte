@@ -38,12 +38,14 @@
 					on:input={handleInput}
 					placeholder="e.g., 2 cups all-purpose flour"
 					class="form-input flex-1"
+					aria-label="Ingredient {index + 1}"
 				/>
 				<button
 					type="button"
 					on:click={() => removeIngredient(index)}
 					class="btn-remove"
 					title="Remove"
+					aria-label="Remove ingredient {index + 1}"
 				>
 					×
 				</button>
@@ -51,7 +53,11 @@
 		{/each}
 	</div>
 
-	<button type="button" on:click={addIngredient} class="btn btn-secondary btn-sm mt-3">
+	<button
+		type="button"
+		on:click={addIngredient}
+		class="btn btn-secondary btn-sm mt-3"
+	>
 		+ Add Ingredient
 	</button>
 </section>
@@ -74,13 +80,13 @@
 
 	.section-title.required::after {
 		content: '*';
-		color: #ef4444;
+		color: var(--color-error);
 		margin-left: 0.25rem;
 	}
 
 	.error-message {
 		font-size: 0.875rem;
-		color: #ef4444;
+		color: var(--color-error-text);
 		margin-top: 0.5rem;
 	}
 
@@ -152,9 +158,9 @@
 	}
 
 	.btn-remove:hover {
-		background: #fee2e2;
-		border-color: #ef4444;
-		color: #ef4444;
+		background: var(--color-error-bg);
+		border-color: var(--color-error);
+		color: var(--color-error-text);
 	}
 
 	.btn-sm {

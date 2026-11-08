@@ -5,7 +5,7 @@
 
 	function handleDeleteAccount() {
 		const confirmation = prompt(
-			'Are you absolutely sure? Type "DELETE" to confirm account deletion:'
+			'Are you absolutely sure? Type "DELETE" to confirm account deletion:',
 		);
 
 		if (confirmation !== 'DELETE') {
@@ -24,10 +24,13 @@
 		<div class="danger-info">
 			<h3 class="danger-card-title">Delete Account</h3>
 			<p class="danger-card-description">
-				Permanently delete your account and all associated data. This action cannot be undone.
+				Permanently delete your account and all associated data. This action
+				cannot be undone.
 			</p>
 		</div>
-		<button on:click={handleDeleteAccount} class="btn btn-danger"> Delete Account </button>
+		<button on:click={handleDeleteAccount} class="btn btn-danger">
+			Delete Account
+		</button>
 	</div>
 </div>
 
@@ -50,7 +53,7 @@
 	}
 
 	.danger-section .section-title {
-		color: var(--error-700);
+		color: var(--color-error-text);
 	}
 
 	.danger-card {
@@ -80,7 +83,7 @@
 	.btn-danger {
 		padding: 0.75rem 1.5rem;
 		background: var(--error-600);
-		color: var(--neutral-white);
+		color: #ffffff;
 		border: none;
 		border-radius: var(--radius-md);
 		font-weight: 600;

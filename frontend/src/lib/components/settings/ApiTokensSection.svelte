@@ -360,7 +360,7 @@
 
 	.btn-danger {
 		background: var(--error-600);
-		color: var(--neutral-white);
+		color: #ffffff;
 		border: none;
 	}
 

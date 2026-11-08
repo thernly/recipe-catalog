@@ -214,7 +214,8 @@
 		transition: opacity var(--transition-fast);
 	}
 
-	.recipe-card:hover .recipe-card-actions {
+	.recipe-card:hover .recipe-card-actions,
+	.recipe-card:focus-within .recipe-card-actions {
 		opacity: 1;
 	}
 
@@ -224,7 +225,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: rgba(255, 255, 255, 0.95);
+		background: var(--neutral-white);
 		border: 1px solid var(--neutral-200);
 		border-radius: var(--radius-md);
 		font-size: 1rem;

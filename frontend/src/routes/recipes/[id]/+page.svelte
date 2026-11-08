@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { downloadBlob } from "#lib/utils/download.js";
+	import { downloadBlob } from '#lib/utils/download.js';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto, afterNavigate } from '$app/navigation';
@@ -257,7 +257,10 @@
 		}
 	}
 
-	afterNavigate(() => { recipeId = Number(page.params.id); void loadRecipe(); });
+	afterNavigate(() => {
+		recipeId = Number(page.params.id);
+		void loadRecipe();
+	});
 
 	onMount(() => {
 		document.addEventListener('click', handleClickOutside);
@@ -266,6 +269,12 @@
 		};
 	});
 </script>
+
+<svelte:window
+	on:keydown={(e) => {
+		if (e.key === 'Escape') showExportMenu = false;
+	}}
+/>
 
 <svelte:head
 	><title>{recipe?.name || 'Loading...'} - Recipe Catalog</title></svelte:head
@@ -282,8 +291,8 @@
 		</div>
 	{:else if error || !recipe}
 		<!-- Error state -->
-		<div class="container-custom py-16 text-center">
-			<div class="text-4xl mb-4">⚠️</div>
+		<div class="container-custom py-16 text-center" role="alert">
+			<div class="text-4xl mb-4" aria-hidden="true">⚠️</div>
 			<p class="text-lg mb-2" style="color: var(--text-900);">
 				Recipe not found
 			</p>
@@ -319,7 +328,8 @@
 							<p class="text-base mb-2" style="color: var(--text-600);">
 								Source: <a
 									href={recipe.source_url}
-									target="_blank" rel="noopener noreferrer"
+									target="_blank"
+									rel="noopener noreferrer"
 									class="link"
 								>
 									{safeHttpUrl(recipe.source_url)?.hostname}
@@ -648,6 +658,8 @@
 								on:click={() => (showExportMenu = !showExportMenu)}
 								class="btn btn-secondary flex items-center gap-2"
 								disabled={exporting}
+								aria-haspopup="true"
+								aria-expanded={showExportMenu}
 							>
 								{#if exporting}
 									<Loader2 size={16} class="animate-spin" aria-hidden="true" />
@@ -1095,7 +1107,7 @@
 	}
 
 	.btn-danger {
-		background: #ef4444;
+		background: var(--color-error);
 		color: white;
 		padding: 0.5rem 1rem;
 		border-radius: var(--radius-md);
@@ -1106,7 +1118,8 @@
 	}
 
 	.btn-danger:hover {
-		background: #dc2626;
+		background: var(--color-error);
+		filter: brightness(0.9);
 	}
 
 	.export-dropdown {
@@ -1118,7 +1131,7 @@
 		top: 100%;
 		right: 0;
 		margin-top: 0.5rem;
-		background: white;
+		background: var(--neutral-white);
 		border: 1px solid var(--neutral-200);
 		border-radius: var(--radius-md);
 		box-shadow: var(--shadow-md);
@@ -1134,7 +1147,7 @@
 		width: 100%;
 		padding: 0.75rem 1rem;
 		text-align: left;
-		background: white;
+		background: var(--neutral-white);
 		border: none;
 		cursor: pointer;
 		font-size: 0.875rem;

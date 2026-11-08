@@ -108,7 +108,10 @@
 
 <div class="min-h-screen bg-neutral-50">
 	<!-- Header -->
-	<div class="sticky top-0 z-40 bg-white border-b border-neutral-200">
+	<div
+		class="sticky top-0 z-40 border-b border-neutral-200"
+		style="background: var(--neutral-white);"
+	>
 		<div class="container-custom py-4">
 			<button
 				on:click={() => goto('/recipes')}
@@ -149,8 +152,8 @@
 			</div>
 		{:else if error}
 			<!-- Error state -->
-			<div class="text-center py-16">
-				<div class="text-4xl mb-4">⚠️</div>
+			<div class="text-center py-16" role="alert">
+				<div class="text-4xl mb-4" aria-hidden="true">⚠️</div>
 				<p class="text-lg mb-2" style="color: var(--text-900);">
 					Failed to load trash
 				</p>
@@ -202,6 +205,7 @@
 									<div
 										class="w-full h-full flex items-center justify-center text-3xl"
 										style="background: var(--neutral-100);"
+										aria-hidden="true"
 									>
 										🍽️
 									</div>
@@ -347,13 +351,13 @@
 	}
 
 	.trash-warning-soon {
-		background: #fef3c7;
-		color: #92400e;
+		background: var(--color-warning-bg);
+		color: var(--color-warning-text);
 	}
 
 	.trash-warning-urgent {
-		background: #fee2e2;
-		color: #991b1b;
+		background: var(--color-error-bg);
+		color: var(--color-error-text);
 	}
 
 	.btn-sm {
@@ -362,7 +366,7 @@
 	}
 
 	.btn-danger {
-		background: #ef4444;
+		background: var(--color-error);
 		color: white;
 		padding: 0.5rem 1rem;
 		border-radius: var(--radius-md);
@@ -373,7 +377,8 @@
 	}
 
 	.btn-danger:hover {
-		background: #dc2626;
+		background: var(--color-error);
+		filter: brightness(0.9);
 	}
 
 	@media (max-width: 640px) {
