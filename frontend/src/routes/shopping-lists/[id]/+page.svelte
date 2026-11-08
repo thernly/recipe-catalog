@@ -11,6 +11,8 @@
 		updateShoppingListItem,
 		deleteShoppingListItem,
 		getCategories,
+		createdByLabel,
+		formatQuantityUnit,
 		type ShoppingList,
 		type ShoppingListItem,
 		type ShoppingListItemCreate,
@@ -18,6 +20,40 @@
 	} from '#lib/api/shopping-lists.js';
 	import { dialog } from '#lib/stores/dialog.js';
 	import { toast } from '#lib/stores/toast.js';
+	import { auth } from '#lib/stores/auth.js';
+
+	// Inline quantity/unit edit (no merging: merging happens only on add)
+	let editingItemId: number | null = null;
+	let editQuantity = '';
+	let editUnit = '';
+
+	function startEditQuantity(item: ShoppingListItem) {
+		editingItemId = item.id;
+		editQuantity = item.quantity ?? '';
+		editUnit = item.unit ?? '';
+	}
+
+	async function saveQuantity(item: ShoppingListItem) {
+		if (editingItemId !== item.id) return;
+		editingItemId = null;
+		const quantity = editQuantity.trim();
+		const unit = editUnit.trim();
+		if (quantity === (item.quantity ?? '') && unit === (item.unit ?? ''))
+			return;
+		try {
+			// "" (not undefined) so clearing a field is saved
+			await updateShoppingListItem(item.id, { quantity, unit });
+			await loadShoppingList();
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : 'Failed to update item');
+		}
+	}
+
+	function handleQuantityFocusOut(event: FocusEvent, item: ShoppingListItem) {
+		const form = event.currentTarget as HTMLElement;
+		if (!form.contains(event.relatedTarget as Node | null))
+			void saveQuantity(item);
+	}
 
 	let listId: number;
 	let shoppingList: ShoppingList | null = null;
@@ -293,6 +329,9 @@
 						{#if shoppingList.description}
 							<p style="color: var(--text-600);">{shoppingList.description}</p>
 						{/if}
+						<p class="text-sm mt-1" style="color: var(--text-600);">
+							{createdByLabel(shoppingList, $auth.user?.id)}
+						</p>
 					</div>
 					<button
 						on:click={() => (editingListName = true)}
@@ -355,13 +394,15 @@
 			<h2 class="font-semibold mb-3">Add Item</h2>
 			<form
 				on:submit|preventDefault={handleAddItem}
-				class="grid gap-3 md:grid-cols-4"
+				class="grid gap-3 md:grid-cols-5"
 			>
 				<div class="md:col-span-2">
 					<input
 						type="text"
 						bind:value={newItemName}
 						placeholder="Item name"
+						aria-label="Item name"
+						maxlength="255"
 						class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
 					/>
 				</div>
@@ -370,6 +411,18 @@
 						type="text"
 						bind:value={newItemQuantity}
 						placeholder="Quantity"
+						aria-label="Quantity"
+						maxlength="100"
+						class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+					/>
+				</div>
+				<div>
+					<input
+						type="text"
+						bind:value={newItemUnit}
+						placeholder="Unit (e.g. cup)"
+						aria-label="Unit"
+						maxlength="50"
 						class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
 					/>
 				</div>
@@ -384,7 +437,7 @@
 						{/each}
 					</select>
 				</div>
-				<div class="md:col-span-4">
+				<div class="md:col-span-5">
 					<button
 						type="submit"
 						class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded disabled:opacity-50"
@@ -425,9 +478,51 @@
 							style={item.checked ? 'color: var(--text-500);' : ''}
 						>
 							<div class="font-medium">{item.item_name}</div>
-							<div class="text-sm text-gray-600">
-								{#if item.quantity}
-									<span>{item.quantity}</span>
+							<div class="text-sm" style="color: var(--text-600);">
+								{#if editingItemId === item.id}
+									<form
+										class="inline-flex gap-2"
+										on:submit|preventDefault={() => saveQuantity(item)}
+										on:focusout={(e) => handleQuantityFocusOut(e, item)}
+									>
+										<!-- svelte-ignore a11y_autofocus -->
+										<input
+											bind:value={editQuantity}
+											aria-label="Quantity for {item.item_name}"
+											maxlength="100"
+											autofocus
+											on:keydown={(e) =>
+												e.key === 'Escape' && (editingItemId = null)}
+											class="w-20 px-2 py-0.5 border rounded"
+											style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900);"
+										/>
+										<input
+											bind:value={editUnit}
+											aria-label="Unit for {item.item_name}"
+											maxlength="50"
+											on:keydown={(e) =>
+												e.key === 'Escape' && (editingItemId = null)}
+											class="w-24 px-2 py-0.5 border rounded"
+											style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900);"
+										/>
+										<button type="submit" class="sr-only">Save quantity</button>
+									</form>
+								{:else}
+									<button
+										type="button"
+										on:click={() => startEditQuantity(item)}
+										aria-label="Quantity for {item.item_name}: {formatQuantityUnit(
+											item.quantity,
+											item.unit,
+										) || 'none'}. Edit"
+										class="underline decoration-dotted"
+									>
+										{formatQuantityUnit(item.quantity, item.unit) ||
+											'Add quantity'}
+									</button>
+								{/if}
+								{#if item.notes}
+									<span class="ml-2 italic">{item.notes}</span>
 								{/if}
 								{#if item.category}
 									<span class="ml-2 px-2 py-0.5 bg-gray-100 rounded text-xs">

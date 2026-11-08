@@ -34,10 +34,15 @@ class ShoppingList(Base):
 
     # Relationships
     household = relationship("Household")
-    creator = relationship("User", foreign_keys=[created_by_user_id])
+    # Joined so `created_by_name` never triggers a lazy load (and no N+1) in async code
+    creator = relationship("User", foreign_keys=[created_by_user_id], lazy="joined")
     items = relationship(
         "ShoppingListItem", back_populates="shopping_list", cascade="all, delete-orphan"
     )
+
+    @property
+    def created_by_name(self) -> str | None:
+        return self.creator.display_name if self.creator else None
 
 
 class ShoppingListItem(Base):

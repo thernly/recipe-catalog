@@ -25,6 +25,7 @@ export interface ShoppingList {
   description?: string;
   status: "active" | "archived";
   created_by_user_id: number;
+  created_by_name?: string | null;
   created_at: string;
   updated_at: string;
   items: ShoppingListItem[];
@@ -36,6 +37,8 @@ export interface ShoppingListSummary {
   name: string;
   description?: string;
   status: "active" | "archived";
+  created_by_user_id: number;
+  created_by_name?: string | null;
   created_at: string;
   item_count: number;
   checked_count: number;
@@ -74,12 +77,61 @@ export interface GenerateFromRecipeRequest {
   recipe_id: number;
   list_name?: string;
   servings?: number;
+  /** Add to this existing list (merging duplicates) instead of creating one */
+  shopping_list_id?: number;
+  /** Add only this recipeIngredient line */
+  ingredient_index?: number;
 }
 
 export interface GenerateFromMealPlanRequest {
   meal_plan_id: number;
   list_name?: string;
   selected_meal_ids?: number[];
+  shopping_list_id?: number;
+}
+
+const LAST_LIST_KEY = "lastShoppingListId";
+
+/** The list last added to in this browser session, for one-click adds. */
+export function getLastShoppingListId(): number | null {
+  try {
+    return Number(sessionStorage.getItem(LAST_LIST_KEY)) || null;
+  } catch {
+    return null;
+  }
+}
+
+export function setLastShoppingListId(id: number | null): void {
+  try {
+    if (id) sessionStorage.setItem(LAST_LIST_KEY, String(id));
+    else sessionStorage.removeItem(LAST_LIST_KEY);
+  } catch {
+    // storage unavailable: one-click adds just fall back to the picker
+  }
+}
+
+/** "Created by you" for the current user, else the creator's name. */
+export function createdByLabel(
+  list: { created_by_user_id: number; created_by_name?: string | null },
+  currentUserId: number | undefined,
+): string {
+  if (list.created_by_user_id === currentUserId) return "Created by you";
+  return `Created by ${list.created_by_name || "a household member"}`;
+}
+
+/** "2 cup flour" -> "2 cups flour": units are stored singular. */
+export function formatQuantityUnit(
+  quantity?: string | null,
+  unit?: string | null,
+): string {
+  if (!unit) return quantity ?? "";
+  const plural =
+    quantity && quantity.trim() !== "1" && !/^\d+\/\d+$/.test(quantity.trim());
+  let shown = unit;
+  if (plural && !unit.endsWith("s")) {
+    shown = /(ch|sh|x)$/.test(unit) ? `${unit}es` : `${unit}s`;
+  }
+  return quantity ? `${quantity} ${shown}` : shown;
 }
 
 /**

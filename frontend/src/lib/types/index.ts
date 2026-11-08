@@ -9,12 +9,25 @@ export type { User, UserPreferences, UserStats } from "#lib/api/users.js";
  * Schema.org Recipe format
  * @see https://schema.org/Recipe
  */
+export interface ParsedIngredient {
+  raw: string;
+  header?: boolean;
+  quantity?: number | null;
+  quantityMax?: number | null;
+  unit?: string | null;
+  item?: string | null;
+  note?: string | null;
+  group?: string | null;
+}
+
 export interface RecipeData {
   "@context"?: "https://schema.org";
   "@type"?: "Recipe";
   name?: string;
   description?: string;
   recipeIngredient?: string[];
+  /** Server-built, one entry per recipeIngredient line (header lines have `header: true`) */
+  parsedIngredients?: ParsedIngredient[];
   recipeInstructions?:
     | string
     | string[]

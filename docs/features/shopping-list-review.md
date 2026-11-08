@@ -9,7 +9,7 @@ Reviewed 2026-11-08 after a user report: "there seems to be no way to access the
 - `GET /categories`: fixed category list (Produce, Dairy, Meat, …).
 - `POST /`, `GET /`, `GET /{id}`, `PATCH /{id}`, `DELETE /{id}`, `POST /{id}/archive`, `POST /{id}/duplicate`.
 - `POST /{id}/items`, `PATCH /items/{item_id}`, `DELETE /items/{item_id}`.
-- `POST /from-recipe`: one item per ingredient line, using the stored `parsedIngredients[].raw` text (quantity and notes stay in the item name). Header lines are skipped.
+- `POST /from-recipe`: one item per ingredient line, using the stored `parsedIngredients[].raw` text (quantity and notes stay in the item name). Header lines are skipped. *(Superseded: see "Follow-up changes" below.)*
 - `POST /from-meal-plan`: collects `parsedIngredients` (`item`, `quantityMax` or `quantity`, `unit`) from every planned meal and merges them with `consolidate_ingredients` in `app/services/ingredient_parser.py` (it groups on singularized base name and unit and adds up quantities).
 - Models: `ShoppingList` (`household_id`, `created_by_user_id`, `status` active/archived) and `ShoppingListItem` (all quantities are strings). There is no `user_id` column.
 
@@ -49,12 +49,32 @@ No owner-gating was added, because the API allows household-wide edits (see reco
 
 | # | Recommendation | Rationale | Effort |
 |---|---|---|---|
-| 1 | Add a kebab menu or Rename/Delete buttons to each index card, with the card body as the link | The user looked for management controls on the list view. Today they are one click deeper | S (½ day) |
-| 2 | Decide the sharing rule and write it down: keep household-wide edits (normal for a shared grocery list), or switch to the owner-scoped mutation rule. If it stays shared, add `created_by_user_id` and a creator name to `ShoppingListSummary` and show "Created by X" on cards | The current rule differs from CLAUDE.md's recipe and collection rule without saying so. Showing the creator explains where the "other list" came from | S |
+| 1 | **Done.** Add a kebab menu or Rename/Delete buttons to each index card, with the card body as the link | The user looked for management controls on the list view. Today they are one click deeper | S (½ day) |
+| 2 | **Done (kept shared).** Decide the sharing rule and write it down: keep household-wide edits (normal for a shared grocery list), or switch to the owner-scoped mutation rule. If it stays shared, add `created_by_user_id` and a creator name to `ShoppingListSummary` and show "Created by X" on cards | The current rule differs from CLAUDE.md's recipe and collection rule without saying so. Showing the creator explains where the "other list" came from | S |
 | 3 | Add API tests for cross-household isolation on PATCH, DELETE and item routes, and for a second household member | Current tests use the ORM directly and never call the endpoints for these cases | S |
 | 4 | Keep ingredient notes when building a list from a meal plan. `from-meal-plan` builds `{quantity, unit, name}` from `parsedIngredients[].item` and drops `note` (for example "finely chopped" or "for garnish"), and `consolidate_ingredients` has no field for notes. Carry the notes into `ShoppingListItem.notes`, joining the distinct notes when lines merge | This is a known limit. Users lose prep and brand details that the from-recipe path keeps | M (1 day, including consolidation tests) |
-| 5 | Show `item.unit` and `item.notes` on the detail page (only `quantity` is shown now), and add a unit field to the add-item form | Meal-plan lists store units the UI never displays, so "2 cup flour" reads as "2 flour" | S |
+| 5 | **Done.** Show `item.unit` and `item.notes` on the detail page (only `quantity` is shown now), and add a unit field to the add-item form | Meal-plan lists store units the UI never displays, so "2 cup flour" reads as "2 flour" | S |
 | 6 | Check items off optimistically instead of refetching the whole list after each toggle | Every tap costs a round trip, which is slow on a phone in a shop | S |
-| 7 | Let users add a recipe or meal plan to an existing list as well as creating a new one. `recipes/[id]/+page.svelte` has an unused `shoppingLists` and `showAddToShoppingListDialog` scaffold for this | Shopping for several recipes now produces several lists | M |
+| 7 | **Done.** Let users add a recipe or meal plan to an existing list as well as creating a new one. `recipes/[id]/+page.svelte` has an unused `shoppingLists` and `showAddToShoppingListDialog` scaffold for this | Shopping for several recipes now produces several lists | M |
 | 8 | Remove the remaining hardcoded Tailwind grays and blues on both shopping-list pages, and move the index page's create dialog to a native `<dialog>` with focus handling | Theme and accessibility consistency with the rest of the app | S |
 | 9 | Add an unarchive action (PATCH `status: "active"` already works) and put item drag-reordering on `display_order` | Archived lists cannot be restored from the UI | S |
+
+## Follow-up changes (recommendations 1, 2, 5 and 7)
+
+**Sharing rule (decided).** Shopping lists stay a shared household resource: any member can rename, edit, check off, archive or delete any list in the household. This is a deliberate exception to the owner-scoped mutation rule for recipes and collections, because a grocery list is edited by whoever is shopping. Every endpoint scopes on `household_id`, and a list in another household returns 404 (`SHOPPING_LIST_NOT_FOUND`). Summary and detail responses carry `created_by_user_id` and `created_by_name` (the creator's `display_name`, loaded with a join, so there is no N+1). The UI shows "Created by you" or "Created by <name>".
+
+**Merge on add.** Every add path goes through `add_or_merge_item` in `app/api/shopping_lists.py`: manual add (`POST /{id}/items`), `from-recipe` and `from-meal-plan` (new list or an existing one via `shopping_list_id`), and the single-ingredient button on the recipe page, which uses `POST /{id}/items`. A new item merges into an existing **unchecked** item on the same list when:
+
+- the names have the same `ingredient_key` (the singular, lowercase base name that `consolidate_ingredients` groups on, so "Tomatoes" matches "tomato" and "garlic, minced" matches "garlic"), and
+- the normalized units are equal (`normalize_unit`; no unit on both sides counts as equal). Units are never converted, and
+- both quantities are numeric (`parse_quantity`: "2", "1/2", "1 1/2", "0.5"; a range counts as its upper bound) and are summed, formatted with `format_quantity` ("6", not "6.0"; "2 1/4"), or both quantities are blank.
+
+Otherwise a separate item is added: different units, one quantity blank and the other not, or a non-numeric quantity such as "a pinch". Distinct notes are joined with "; ", and the existing item's name is kept. Checked items are never merged into. Editing an item's quantity or unit (inline on the detail page, through `PATCH /items/{id}`) does not merge.
+
+**Other changes.**
+
+- Index cards: the card body is a link; Rename (inline) and Delete (confirmed through the `dialog` store) sit outside it and are labelled with the list name.
+- Detail page: shows the unit ("2 cups flour"; units are stored singular and pluralized for display) and notes, adds a unit field to the add-item form, and lets you edit a quantity and unit inline.
+- `from-recipe` builds structured items from `parsedIngredients` (`quantityMax` or `quantity`, `unit`, `item`, with `note` in `notes`). Lines the parser could not handle keep their raw text as the name.
+- `from-recipe` and `from-meal-plan` accept an optional `shopping_list_id` to add to an existing household list.
+- The recipe page and the meal-plan page share `AddToShoppingListDialog.svelte`, which lists active lists (plus "New list" where that makes sense). Each recipe ingredient line other than headers has an "Add … to shopping list" button. The list used last is remembered in `sessionStorage`, so later adds take one click and are confirmed with a toast.

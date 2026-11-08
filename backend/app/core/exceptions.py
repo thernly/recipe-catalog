@@ -89,6 +89,18 @@ class CollectionNotFoundError(AppException):
         )
 
 
+class ShoppingListNotFoundError(AppException):
+    """Raised when a shopping list cannot be found in the user's household."""
+
+    def __init__(self, list_id: int | None = None, details: dict[str, Any] | None = None):
+        super().__init__(
+            message="Shopping list not found",
+            error_code=ErrorCode.SHOPPING_LIST_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            details=details or ({"list_id": list_id} if list_id else None),
+        )
+
+
 class UnauthorizedAccessError(AppException):
     """Raised when a user attempts an unauthorized action."""
 

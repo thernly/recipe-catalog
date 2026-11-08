@@ -140,7 +140,9 @@ async def generate_menu(
         # If catalog-first mode, fetch household recipes
         household_recipes: list[dict[str, Any]] | None = None
         if generation_request.mode == "catalog-first":
-            catalog_query: Select[Any, Any, Any] = select(Recipe.id, Recipe.name, Recipe.category).where(
+            catalog_query: Select[Any, Any, Any] = select(
+                Recipe.id, Recipe.name, Recipe.category
+            ).where(
                 and_(
                     Recipe.household_id == household.id,
                     Recipe.deleted_at.is_(None),

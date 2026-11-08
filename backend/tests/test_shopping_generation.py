@@ -27,7 +27,7 @@ async def _recipe(test_db, recipe_data):
     return user, household, recipe
 
 
-async def test_from_recipe_keeps_raw_lines(client, test_db, test_user_headers):
+async def test_from_recipe_uses_parsed_ingredients(client, test_db, test_user_headers):
     _, _, recipe = await _recipe(test_db, clean_recipe_data({"recipeIngredient": LINES}).data)
     response = await client.post(
         "/api/v1/shopping-lists/from-recipe",
@@ -35,8 +35,14 @@ async def test_from_recipe_keeps_raw_lines(client, test_db, test_user_headers):
         headers=test_user_headers,
     )
     assert response.status_code == 200, response.text
-    names = [i["item_name"] for i in response.json()["items"]]
-    assert names == ["2 cups flour, sifted", "2 eggs", "1-2 tbsp oil"]
+    items = [
+        (i["quantity"], i["unit"], i["item_name"], i["notes"]) for i in response.json()["items"]
+    ]
+    assert items == [
+        ("2", "cup", "flour", None),  # prep notes stay off the list
+        ("2", None, "eggs", None),
+        ("2", "tablespoon", "oil", None),  # range: the upper bound
+    ]
 
 
 async def test_from_recipe_legacy_without_parsed(client, test_db, test_user_headers):
@@ -47,7 +53,8 @@ async def test_from_recipe_legacy_without_parsed(client, test_db, test_user_head
         headers=test_user_headers,
     )
     assert response.status_code == 200, response.text
-    assert [i["item_name"] for i in response.json()["items"]] == ["2 eggs", "salt"]
+    items = [(i["quantity"], i["item_name"]) for i in response.json()["items"]]
+    assert items == [("2", "eggs"), (None, "salt")]
 
 
 async def test_from_meal_plan_numeric_quantities(client, test_db, test_user_headers):

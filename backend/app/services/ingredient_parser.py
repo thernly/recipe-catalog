@@ -233,7 +233,7 @@ def get_base_ingredient_name(name: str) -> str:
 
     # Strip common preparation keywords at the end
     # These are preparation methods you do at home, so they shouldn't affect shopping
-    prep_keywords = [
+    prep_keywords = {
         "minced",
         "chopped",
         "diced",
@@ -256,12 +256,16 @@ def get_base_ingredient_name(name: str) -> str:
         "thickly",
         "cloves",
         "clove",  # for "garlic cloves" -> "garlic"
-    ]
+    }
 
     # Try to remove preparation keywords from the end
     words = base_name.strip().split()
     while words and words[-1].lower() in prep_keywords:
         words.pop()
+    # Leading prep words too ("chopped fresh parsley"), except forms sold that way
+    sold_as = {"grated", "shredded", "crushed", "sliced", "cloves", "clove"}
+    while len(words) > 1 and words[0].lower() in prep_keywords - sold_as:
+        words.pop(0)
 
     if words:
         base_name = " ".join(words)
@@ -375,41 +379,35 @@ def consolidate_ingredients(
                 "quantity_value": quantity_value,
             }
 
-    # Convert back to list with formatted quantities
-    result = []
-    for (_name_key, _unit_key), data in consolidated.items():
-        qty_value = data["quantity_value"]
+    return [
+        {
+            "name": data["name"],
+            "unit": data["unit"],
+            "quantity": format_quantity(data["quantity_value"]),
+        }
+        for data in consolidated.values()
+    ]
 
-        # Format quantity nicely
-        if qty_value == 0:
-            qty_str = None
-        elif qty_value == int(qty_value):
-            qty_str = str(int(qty_value))
-        else:
-            # Try to convert to fraction if it's close to a common fraction
-            frac = Fraction(qty_value).limit_denominator(16)
-            if abs(float(frac) - qty_value) < 0.01:
-                if frac.numerator > frac.denominator:
-                    whole = frac.numerator // frac.denominator
-                    remainder = frac.numerator % frac.denominator
-                    if remainder > 0:
-                        qty_str = f"{whole} {remainder}/{frac.denominator}"
-                    else:
-                        qty_str = str(whole)
-                else:
-                    qty_str = f"{frac.numerator}/{frac.denominator}"
-            else:
-                qty_str = f"{qty_value:.2f}".rstrip("0").rstrip(".")
 
-        result.append(
-            {
-                "name": data["name"],
-                "unit": data["unit"],
-                "quantity": qty_str,
-            }
-        )
+def ingredient_key(name: str) -> str:
+    """The grouping key `consolidate_ingredients` uses: singular, lowercase base name."""
+    return singularize_ingredient(get_base_ingredient_name(name)).lower()
 
-    return result
+
+def format_quantity(qty_value: float) -> str | None:
+    """Format a summed quantity: 6 (not 6.0), "1 1/2", "1/3"; None for zero."""
+    if qty_value == 0:
+        return None
+    if qty_value == int(qty_value):
+        return str(int(qty_value))
+    # Try to convert to fraction if it's close to a common fraction
+    frac = Fraction(qty_value).limit_denominator(16)
+    if abs(float(frac) - qty_value) >= 0.01:
+        return f"{qty_value:.2f}".rstrip("0").rstrip(".")
+    if frac.numerator > frac.denominator:
+        whole, remainder = divmod(frac.numerator, frac.denominator)
+        return f"{whole} {remainder}/{frac.denominator}" if remainder else str(whole)
+    return f"{frac.numerator}/{frac.denominator}"
 
 
 # ============================================

@@ -120,6 +120,7 @@ class ShoppingList(ShoppingListBase):
     household_id: int
     status: str
     created_by_user_id: int
+    created_by_name: str | None = None
     created_at: datetime
     updated_at: datetime
     items: list[ShoppingListItem] = []
@@ -133,6 +134,8 @@ class ShoppingListSummary(ShoppingListBase):
     id: int
     household_id: int
     status: str
+    created_by_user_id: int
+    created_by_name: str | None = None
     created_at: datetime
     item_count: int = 0
     checked_count: int = 0
@@ -151,6 +154,8 @@ class GenerateFromRecipeRequest(BaseModel):
     recipe_id: int
     list_name: str | None = Field(None, max_length=255)
     servings: int | None = Field(None, ge=1)
+    shopping_list_id: int | None = None  # add to this existing list instead of creating one
+    ingredient_index: int | None = Field(None, ge=0)  # add only this recipeIngredient line
 
 
 class GenerateFromMealPlanRequest(BaseModel):
@@ -159,6 +164,7 @@ class GenerateFromMealPlanRequest(BaseModel):
     meal_plan_id: int
     list_name: str | None = Field(None, max_length=255)
     selected_meal_ids: list[int] | None = Field(None, max_length=500)  # If None, use all meals
+    shopping_list_id: int | None = None  # add to this existing list instead of creating one
 
 
 class CategoryList(BaseModel):

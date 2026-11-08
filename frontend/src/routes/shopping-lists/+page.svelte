@@ -3,9 +3,56 @@
 	import {
 		listShoppingLists,
 		createShoppingList,
+		updateShoppingList,
+		deleteShoppingList,
+		createdByLabel,
 		type ShoppingListSummary,
 		type ShoppingListCreate,
 	} from '#lib/api/shopping-lists.js';
+	import { auth } from '#lib/stores/auth.js';
+	import { dialog } from '#lib/stores/dialog.js';
+	import { toast } from '#lib/stores/toast.js';
+
+	// Inline rename state
+	let renamingId: number | null = null;
+	let renameValue = '';
+
+	function startRename(list: ShoppingListSummary) {
+		renamingId = list.id;
+		renameValue = list.name;
+	}
+
+	async function saveRename(list: ShoppingListSummary) {
+		const name = renameValue.trim();
+		renamingId = null;
+		if (!name || name === list.name) return;
+		try {
+			await updateShoppingList(list.id, { name });
+			shoppingLists = shoppingLists.map((l) =>
+				l.id === list.id ? { ...l, name } : l,
+			);
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : 'Failed to rename list');
+		}
+	}
+
+	function confirmDelete(list: ShoppingListSummary) {
+		dialog.show({
+			title: 'Delete shopping list',
+			message: `Delete "${list.name}" and all its items? This cannot be undone.`,
+			onConfirm: async () => {
+				try {
+					await deleteShoppingList(list.id);
+					shoppingLists = shoppingLists.filter((l) => l.id !== list.id);
+					toast.success(`Deleted "${list.name}"`);
+				} catch (err) {
+					toast.error(
+						err instanceof Error ? err.message : 'Failed to delete list',
+					);
+				}
+			},
+		});
+	}
 
 	let shoppingLists: ShoppingListSummary[] = [];
 	let loading = true;
@@ -154,49 +201,31 @@
 	{:else}
 		<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 			{#each shoppingLists as list (list.id)}
-				<a
-					href="/shopping-lists/{list.id}"
-					class="block rounded-lg shadow-sm border hover:shadow-md transition-shadow p-6"
+				<div
+					class="flex flex-col rounded-lg shadow-sm border hover:shadow-md transition-shadow"
 					style="background: var(--neutral-white); border-color: var(--neutral-200);"
 				>
-					<h3
-						class="text-lg font-semibold mb-2"
-						style="color: var(--text-900);"
-					>
-						{list.name}
-					</h3>
+					<a href="/shopping-lists/{list.id}" class="block p-6 pb-3 grow">
+						<h3
+							class="text-lg font-semibold mb-2"
+							style="color: var(--text-900);"
+						>
+							{list.name}
+						</h3>
 
-					{#if list.description}
-						<p
-							class="text-sm mb-3 line-clamp-2"
+						{#if list.description}
+							<p
+								class="text-sm mb-3 line-clamp-2"
+								style="color: var(--text-600);"
+							>
+								{list.description}
+							</p>
+						{/if}
+
+						<div
+							class="flex items-center gap-4 text-sm"
 							style="color: var(--text-600);"
 						>
-							{list.description}
-						</p>
-					{/if}
-
-					<div
-						class="flex items-center gap-4 text-sm"
-						style="color: var(--text-600);"
-					>
-						<div class="flex items-center gap-1">
-							<svg
-								class="w-4 h-4"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-								/>
-							</svg>
-							<span>{list.item_count} items</span>
-						</div>
-
-						{#if list.item_count > 0}
 							<div class="flex items-center gap-1">
 								<svg
 									class="w-4 h-4"
@@ -208,26 +237,96 @@
 										stroke-linecap="round"
 										stroke-linejoin="round"
 										stroke-width="2"
-										d="M5 13l4 4L19 7"
+										d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
 									/>
 								</svg>
-								<span>{list.checked_count} checked</span>
+								<span>{list.item_count} items</span>
 							</div>
-						{/if}
 
-						{#if list.status === 'archived'}
-							<span
-								class="text-xs px-2 py-1 rounded"
-								style="background: var(--neutral-100); color: var(--text-900);"
-								>Archived</span
+							{#if list.item_count > 0}
+								<div class="flex items-center gap-1">
+									<svg
+										class="w-4 h-4"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M5 13l4 4L19 7"
+										/>
+									</svg>
+									<span>{list.checked_count} checked</span>
+								</div>
+							{/if}
+
+							{#if list.status === 'archived'}
+								<span
+									class="text-xs px-2 py-1 rounded"
+									style="background: var(--neutral-100); color: var(--text-900);"
+									>Archived</span
+								>
+							{/if}
+						</div>
+
+						<div class="text-xs mt-3" style="color: var(--text-600);">
+							{createdByLabel(list, $auth.user?.id)} · {new Date(
+								list.created_at,
+							).toLocaleDateString()}
+						</div>
+					</a>
+					<div class="flex items-center gap-2 px-6 pb-4">
+						{#if renamingId === list.id}
+							<form
+								class="flex gap-2 w-full"
+								on:submit|preventDefault={() => saveRename(list)}
+							>
+								<!-- svelte-ignore a11y_autofocus -->
+								<input
+									bind:value={renameValue}
+									aria-label="New name for {list.name}"
+									autofocus
+									required
+									maxlength="255"
+									on:keydown={(e) => e.key === 'Escape' && (renamingId = null)}
+									class="flex-1 px-2 py-1 border rounded"
+									style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900);"
+								/>
+								<button
+									type="submit"
+									class="px-3 py-1 rounded text-white text-sm"
+									style="background: var(--accent-500);">Save</button
+								>
+								<button
+									type="button"
+									on:click={() => (renamingId = null)}
+									class="px-3 py-1 rounded text-sm"
+									style="color: var(--text-900); background: var(--neutral-100);"
+									>Cancel</button
+								>
+							</form>
+						{:else}
+							<button
+								type="button"
+								on:click={() => startRename(list)}
+								aria-label="Rename {list.name}"
+								class="px-3 py-1 rounded text-sm border"
+								style="color: var(--text-900); background: var(--neutral-100); border-color: var(--neutral-300);"
+								>Rename</button
+							>
+							<button
+								type="button"
+								on:click={() => confirmDelete(list)}
+								aria-label="Delete {list.name}"
+								class="px-3 py-1 rounded text-sm border"
+								style="color: var(--error-600, var(--text-900)); background: var(--neutral-100); border-color: var(--neutral-300);"
+								>Delete</button
 							>
 						{/if}
 					</div>
-
-					<div class="text-xs mt-3" style="color: var(--text-600);">
-						Created {new Date(list.created_at).toLocaleDateString()}
-					</div>
-				</a>
+				</div>
 			{/each}
 		</div>
 	{/if}
