@@ -95,6 +95,13 @@
 			>
 				Meal Plans
 			</a>
+			<a
+				href="/shopping-lists"
+				class="nav-link"
+				class:active={isActive('/shopping-lists')}
+			>
+				Shopping Lists
+			</a>
 			<a href="/export" class="nav-link" class:active={isActive('/export')}>
 				Export
 			</a>

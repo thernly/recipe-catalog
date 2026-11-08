@@ -70,7 +70,12 @@ Use the `responses` parameter in the route decorator to document all possible re
             "description": "Rate limit exceeded",
             "content": {
                 "application/json": {
-                    "example": {"error": "Rate limit exceeded"}
+                    "example": {
+                        "error_code": "RATE_LIMIT_EXCEEDED",
+                        "message": "Rate limit exceeded: 10 per 1 minute",
+                        "details": {"limit": "10 per 1 minute"},
+                        "correlation_id": "...",
+                    }
                 }
             }
         },

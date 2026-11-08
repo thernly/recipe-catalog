@@ -254,11 +254,14 @@ Rate limit exceeded.
 
 ```json
 {
-  "detail": "Rate limit exceeded"
+  "error_code": "RATE_LIMIT_EXCEEDED",
+  "message": "Rate limit exceeded: 5 per 1 minute",
+  "details": {"limit": "5 per 1 minute"},
+  "correlation_id": "..."
 }
 ```
 
-**Solution**: Wait before making additional requests. The API allows 20,000 requests per hour.
+**Solution**: Wait for the number of seconds in the `Retry-After` response header. The auth endpoints (login, register, password reset, verification) are limited per IP address.
 
 ### 500 Internal Server Error
 

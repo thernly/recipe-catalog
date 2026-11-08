@@ -383,7 +383,7 @@
 <style>
 	.input-field {
 		padding: 0.75rem;
-		border: 1px solid #d1d5db;
+		border: 1px solid var(--neutral-300);
 		border-radius: 0.375rem;
 		font-size: 0.875rem;
 		transition: border-color 0.15s;
@@ -417,9 +417,9 @@
 
 	.btn-secondary {
 		padding: 0.75rem 1.5rem;
-		background-color: white;
+		background-color: var(--neutral-white);
 		color: var(--text-700);
-		border: 1px solid #d1d5db;
+		border: 1px solid var(--neutral-300);
 		border-radius: 0.375rem;
 		font-weight: 600;
 		cursor: pointer;
@@ -427,6 +427,6 @@
 	}
 
 	.btn-secondary:hover {
-		background-color: #f9fafb;
+		background-color: var(--neutral-100);
 	}
 </style>

@@ -137,6 +137,7 @@
 				type="text"
 				bind:value={newCuisine}
 				placeholder="Add custom cuisine..."
+				aria-label="New custom cuisine"
 				class="add-input"
 				maxlength="30"
 			/>
@@ -181,6 +182,7 @@
 				type="text"
 				bind:value={newCategory}
 				placeholder="Add custom category..."
+				aria-label="New custom category"
 				class="add-input"
 				maxlength="30"
 			/>

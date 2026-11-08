@@ -4,7 +4,12 @@
 	export let icon: string;
 	export let title: string;
 	export let description: string;
-	export let formats: Array<{ name: string; emoji: string; desc: string; value: string }> = [];
+	export let formats: Array<{
+		name: string;
+		emoji: string;
+		desc: string;
+		value: string;
+	}> = [];
 	export let featured = false;
 	export let exporting = false;
 
@@ -17,7 +22,7 @@
 
 <div class="export-card" class:featured>
 	<div class="card-header">
-		<div class="card-icon">{icon}</div>
+		<div class="card-icon" aria-hidden="true">{icon}</div>
 		<div>
 			<h2 class="card-title">{title}</h2>
 			<p class="card-description">{description}</p>
@@ -40,7 +45,7 @@
 								<span class="format-name">{format.emoji} {format.name}</span>
 								<span class="format-desc">{format.desc}</span>
 							</div>
-							<span class="download-icon">⬇️</span>
+							<span class="download-icon" aria-hidden="true">⬇️</span>
 						</button>
 					{/each}
 				</div>

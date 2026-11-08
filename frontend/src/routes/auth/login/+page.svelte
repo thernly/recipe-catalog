@@ -26,7 +26,9 @@
 			await auth.login(email, password);
 			goto(safeRedirect(page.url.searchParams.get('redirect')));
 		} catch (err) {
-			error = (err instanceof Error && err.message) ||'Login failed. Please check your credentials.';
+			error =
+				(err instanceof Error && err.message) ||
+				'Login failed. Please check your credentials.';
 		} finally {
 			loading = false;
 		}
@@ -97,9 +99,11 @@
 							type="button"
 							on:click={() => handleOAuthLogin(provider.name)}
 							class="w-full px-4 py-3 rounded-md border border-neutral-300 hover:border-neutral-400 transition-colors flex items-center justify-center gap-3 font-medium"
-							style="background: white; color: var(--text-900);"
+							style="background: var(--neutral-white); color: var(--text-900);"
 						>
-							<span class="text-xl">{getProviderIcon(provider.name)}</span>
+							<span class="text-xl" aria-hidden="true"
+								>{getProviderIcon(provider.name)}</span
+							>
 							<span>Continue with {provider.display_name}</span>
 						</button>
 					{/each}
@@ -135,7 +139,7 @@
 						bind:value={email}
 						required
 						class="w-full px-4 py-3 rounded-md border border-neutral-300 focus:outline-none focus:ring-2"
-						style="border-color: var(--neutral-300); background: white;"
+						style="border-color: var(--neutral-300); background: var(--neutral-white);"
 						placeholder="you@example.com"
 						disabled={loading}
 					/>
@@ -156,7 +160,7 @@
 						bind:value={password}
 						required
 						class="w-full px-4 py-3 rounded-md border border-neutral-300 focus:outline-none focus:ring-2"
-						style="border-color: var(--neutral-300); background: white;"
+						style="border-color: var(--neutral-300); background: var(--neutral-white);"
 						placeholder="••••••••"
 						disabled={loading}
 					/>
@@ -165,6 +169,7 @@
 				<!-- Error Message -->
 				{#if error}
 					<div
+						role="alert"
 						class="p-4 rounded-md"
 						style="background: var(--color-error-bg); color: var(--color-error-text);"
 					>

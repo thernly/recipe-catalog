@@ -19,11 +19,11 @@
 	function getColors(type: string) {
 		switch (type) {
 			case 'success':
-				return 'bg-green-600 text-white';
+				return 'bg-green-700 text-white';
 			case 'error':
-				return 'bg-red-600 text-white';
+				return 'bg-red-700 text-white';
 			case 'warning':
-				return 'bg-yellow-600 text-white';
+				return 'bg-yellow-700 text-white';
 			case 'info':
 			default:
 				return 'bg-blue-600 text-white';
@@ -31,7 +31,11 @@
 	}
 </script>
 
-<div class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-md">
+<div
+	class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-md"
+	role="status"
+	aria-live="polite"
+>
 	{#each $toasts as toast (toast.id)}
 		<div
 			transition:fly={{ y: -20, duration: 300 }}

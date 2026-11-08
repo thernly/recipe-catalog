@@ -220,7 +220,8 @@
 		opacity: 0;
 	}
 
-	.recipe-list-item:hover .action-btn-small {
+	.recipe-list-item:hover .action-btn-small,
+	.recipe-list-item:focus-within .action-btn-small {
 		opacity: 1;
 	}
 

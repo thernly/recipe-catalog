@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { downloadBlob } from "#lib/utils/download.js";
+	import { downloadBlob } from '#lib/utils/download.js';
 	import { onMount } from 'svelte';
 	import { getUserStats } from '#lib/api/users.js';
 	import type { UserStats } from '#lib/api/users.js';
@@ -40,8 +40,10 @@
 		exportStatus = '';
 
 		try {
-            const query = format ? `?format=${encodeURIComponent(format)}` : '';
-            const blob = await apiRequest<Blob>(`/export/${endpoint}${query}`, {responseType: 'blob'});
+			const query = format ? `?format=${encodeURIComponent(format)}` : '';
+			const blob = await apiRequest<Blob>(`/export/${endpoint}${query}`, {
+				responseType: 'blob',
+			});
 
 			// Create download link
 			downloadBlob(blob, filename);
@@ -118,7 +120,11 @@
 		{:else if stats}
 			<!-- Export status message -->
 			{#if exportStatus}
-				<div class="status-message" class:success={exportStatus.includes('✓')}>
+				<div
+					class="status-message"
+					class:success={exportStatus.includes('✓')}
+					role="status"
+				>
 					{exportStatus}
 				</div>
 			{/if}

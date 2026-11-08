@@ -326,6 +326,7 @@
 					<input
 						type="search"
 						placeholder="Search recipes..."
+						aria-label="Search recipes"
 						value={searchParams.query}
 						on:input={handleSearch}
 						class="search-input"
@@ -336,6 +337,7 @@
 				<select
 					value={searchParams.sort_by}
 					on:change={handleSortChange}
+					aria-label="Sort recipes"
 					class="sort-select"
 				>
 					<option value="recently_added">Recently Added</option>

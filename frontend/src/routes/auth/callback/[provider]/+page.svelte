@@ -37,8 +37,8 @@
 
 		try {
 			await completeOAuthFlow(provider, code, state);
-            await auth.init();
-            await goto('/dashboard');
+			await auth.init();
+			await goto('/dashboard');
 		} catch (err) {
 			loading = false;
 			error =
@@ -72,11 +72,11 @@
 			</div>
 		{:else if error}
 			<div class="card">
-				<div class="mb-4 text-6xl">⚠️</div>
+				<div class="mb-4 text-6xl" aria-hidden="true">⚠️</div>
 				<h1 class="text-2xl font-bold mb-2" style="color: var(--text-900);">
 					Authentication Failed
 				</h1>
-				<p class="mb-6" style="color: var(--text-600);">{error}</p>
+				<p class="mb-6" style="color: var(--text-600);" role="alert">{error}</p>
 				<div class="flex gap-4 justify-center">
 					<a href="/auth/login" class="btn btn-primary">Back to Login</a>
 					<a href="/" class="btn btn-outline">Go Home</a>

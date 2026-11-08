@@ -244,35 +244,36 @@
 				</div>
 
 				{#each mealTypes as mealType (mealType)}
-					<div
-						class="meal-cell"
-						on:click={() => openAddDialog(dayIndex, mealType)}
-						on:keydown={(e) =>
-							e.key === 'Enter' && openAddDialog(dayIndex, mealType)}
-						role="button"
-						tabindex="0"
-					>
+					<div class="meal-cell">
 						{#each getMealsForCell(dayIndex, mealType) as meal (meal.id)}
-							<div
+							<button
+								type="button"
 								class="meal-item"
-								on:click|stopPropagation={() => openEditDialog(meal)}
-								on:keydown|stopPropagation={(e) =>
-									e.key === 'Enter' && openEditDialog(meal)}
-								role="button"
-								tabindex="0"
+								on:click={() => openEditDialog(meal)}
 							>
-								<div class="meal-name">
+								<span class="meal-name">
 									{meal.recipe_name || `Recipe #${meal.recipe_id}`}
-								</div>
+								</span>
 								{#if meal.servings}
-									<div class="meal-servings">{meal.servings} servings</div>
+									<span class="meal-servings">{meal.servings} servings</span>
 								{/if}
 								{#if meal.notes}
-									<div class="meal-notes" title={meal.notes}>📝</div>
+									<span class="meal-notes" title={meal.notes}
+										><span aria-hidden="true">📝</span><span class="sr-only"
+											>Has notes</span
+										></span
+									>
 								{/if}
-							</div>
+							</button>
 						{/each}
-						<div class="add-meal-hint">+ Add meal</div>
+						<button
+							type="button"
+							class="add-meal-hint"
+							aria-label="Add {mealType} on {dayNames[dayIndex]}"
+							on:click={() => openAddDialog(dayIndex, mealType)}
+						>
+							+ Add meal
+						</button>
 					</div>
 				{/each}
 			{/each}
@@ -409,17 +410,16 @@
 		border-color: var(--accent-300);
 	}
 
-	.meal-cell:focus {
-		outline: 2px solid var(--accent-500);
-		outline-offset: -2px;
-	}
-
 	.meal-cell:has(.meal-item) {
 		border-style: solid;
 		border-color: var(--neutral-200);
 	}
 
 	.meal-item {
+		display: block;
+		width: 100%;
+		text-align: left;
+		font: inherit;
 		background-color: var(--accent-50);
 		border: 1px solid var(--accent-200);
 		border-radius: var(--radius-md);
@@ -440,6 +440,12 @@
 		outline-offset: 2px;
 	}
 
+	.meal-name,
+	.meal-servings,
+	.meal-notes {
+		display: block;
+	}
+
 	.meal-name {
 		font-weight: 500;
 		margin-bottom: var(--space-xs);
@@ -457,6 +463,12 @@
 	}
 
 	.add-meal-hint {
+		display: block;
+		width: 100%;
+		background: none;
+		border: none;
+		cursor: pointer;
+		font: inherit;
 		color: var(--text-400);
 		font-size: 0.875rem;
 		text-align: center;

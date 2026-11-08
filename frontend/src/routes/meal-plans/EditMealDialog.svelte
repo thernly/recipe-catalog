@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import {
 		updatePlannedMeal,
 		deletePlannedMeal,
@@ -13,6 +13,12 @@
 	export let meal: PlannedMeal;
 
 	const dispatch = createEventDispatcher();
+
+	let dialogEl: HTMLDivElement;
+	const previouslyFocused =
+		typeof document !== 'undefined'
+			? (document.activeElement as HTMLElement | null)
+			: null;
 
 	let recipes: RecipeSummary[] = [];
 	let loading = false;
@@ -125,7 +131,12 @@
 	}
 
 	onMount(() => {
+		dialogEl?.focus();
 		loadRecipes();
+	});
+
+	onDestroy(() => {
+		previouslyFocused?.focus?.();
 	});
 </script>
 
@@ -137,20 +148,28 @@
 >
 	<div
 		class="modal-content"
+		bind:this={dialogEl}
 		on:click|stopPropagation
-		on:keydown|stopPropagation
+		on:keydown|stopPropagation={(e) => e.key === 'Escape' && handleClose()}
 		role="dialog"
-		tabindex="0"
+		tabindex="-1"
 		aria-modal="true"
+		aria-labelledby="edit-meal-title"
 	>
 		<div class="modal-header">
-			<h2>Edit Meal</h2>
-			<button class="close-btn" on:click={handleClose}>&times;</button>
+			<h2 id="edit-meal-title">Edit Meal</h2>
+			<button
+				type="button"
+				class="close-btn"
+				on:click={handleClose}
+				aria-label="Close dialog"
+				><span aria-hidden="true">&times;</span></button
+			>
 		</div>
 
 		<div class="modal-body">
 			{#if error}
-				<div class="error">{error}</div>
+				<div class="error" role="alert">{error}</div>
 			{/if}
 
 			<div class="form-row">
@@ -188,33 +207,35 @@
 			</div>
 
 			<div class="form-group">
-				<label for="recipe-select">Select Recipe</label>
-				<div class="recipe-list">
+				<span class="label" id="edit-recipe-select-label">Select Recipe</span>
+				<div
+					class="recipe-list"
+					role="group"
+					aria-labelledby="edit-recipe-select-label"
+				>
 					{#if loading}
 						<div class="loading-small">Loading recipes...</div>
 					{:else if recipes.length === 0}
 						<div class="no-recipes">No recipes found</div>
 					{:else}
 						{#each recipes as recipe (recipe.id)}
-							<div
+							<button
+								type="button"
 								class="recipe-item"
 								class:selected={selectedRecipeId === recipe.id}
+								aria-pressed={selectedRecipeId === recipe.id}
 								on:click={() => (selectedRecipeId = recipe.id)}
-								on:keydown={(e) =>
-									e.key === 'Enter' && (selectedRecipeId = recipe.id)}
-								role="button"
-								tabindex="0"
 							>
-								<div class="recipe-name">{recipe.name}</div>
+								<span class="recipe-name">{recipe.name}</span>
 								{#if recipe.cuisine || recipe.total_time_minutes}
-									<div class="recipe-meta">
+									<span class="recipe-meta">
 										{#if recipe.cuisine}<span>{recipe.cuisine}</span>{/if}
 										{#if recipe.total_time_minutes}
 											<span>{recipe.total_time_minutes} min</span>
 										{/if}
-									</div>
+									</span>
 								{/if}
-							</div>
+							</button>
 						{/each}
 					{/if}
 				</div>
@@ -286,7 +307,7 @@
 	}
 
 	.modal-content {
-		background-color: white;
+		background-color: var(--neutral-white);
 		border-radius: 8px;
 		max-width: 600px;
 		width: 100%;
@@ -301,7 +322,7 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 1.5rem;
-		border-bottom: 1px solid #ddd;
+		border-bottom: 1px solid var(--neutral-300);
 	}
 
 	.modal-header h2 {
@@ -314,7 +335,7 @@
 		border: none;
 		font-size: 2rem;
 		cursor: pointer;
-		color: #666;
+		color: var(--text-600);
 		padding: 0;
 		width: 2rem;
 		height: 2rem;
@@ -324,7 +345,7 @@
 	}
 
 	.close-btn:hover {
-		color: #333;
+		color: var(--text-900);
 	}
 
 	.modal-body {
@@ -343,7 +364,8 @@
 		gap: 1rem;
 	}
 
-	label {
+	label,
+	.label {
 		display: block;
 		margin-bottom: 0.5rem;
 		font-weight: 500;
@@ -352,27 +374,34 @@
 	.input {
 		width: 100%;
 		padding: 0.5rem;
-		border: 1px solid #ddd;
+		border: 1px solid var(--neutral-300);
 		border-radius: 4px;
 		font-size: 1rem;
 	}
 
 	.input:focus {
 		outline: none;
-		border-color: #2196f3;
+		border-color: var(--primary-500);
 	}
 
 	.recipe-list {
 		max-height: 200px;
 		overflow-y: auto;
-		border: 1px solid #ddd;
+		border: 1px solid var(--neutral-300);
 		border-radius: 4px;
 	}
 
 	.recipe-item {
+		display: block;
+		width: 100%;
+		text-align: left;
+		background: none;
+		border: none;
+		font: inherit;
+		color: inherit;
 		padding: 0.75rem;
 		cursor: pointer;
-		border-bottom: 1px solid #eee;
+		border-bottom: 1px solid var(--neutral-200);
 		transition: background-color 0.2s;
 	}
 
@@ -381,27 +410,28 @@
 	}
 
 	.recipe-item:hover {
-		background-color: #f9f9f9;
+		background-color: var(--neutral-100);
 	}
 
 	.recipe-item.selected {
-		background-color: #e3f2fd;
-		border-left: 3px solid #2196f3;
+		background-color: var(--primary-50);
+		border-left: 3px solid var(--primary-500);
 	}
 
 	.recipe-item:focus {
-		outline: 2px solid #2196f3;
+		outline: 2px solid var(--primary-500);
 		outline-offset: -2px;
 	}
 
 	.recipe-name {
+		display: block;
 		font-weight: 500;
 		margin-bottom: 0.25rem;
 	}
 
 	.recipe-meta {
 		font-size: 0.875rem;
-		color: #666;
+		color: var(--text-600);
 		display: flex;
 		gap: 1rem;
 	}
@@ -410,12 +440,12 @@
 	.no-recipes {
 		padding: 2rem;
 		text-align: center;
-		color: #666;
+		color: var(--text-600);
 	}
 
 	.error {
-		background-color: #ffebee;
-		color: #c62828;
+		background-color: var(--color-error-bg);
+		color: var(--color-error-text);
 		padding: 0.75rem;
 		border-radius: 4px;
 		margin-bottom: 1rem;
@@ -423,7 +453,7 @@
 
 	.modal-footer {
 		padding: 1.5rem;
-		border-top: 1px solid #ddd;
+		border-top: 1px solid var(--neutral-300);
 		display: flex;
 		justify-content: flex-end;
 		gap: 1rem;
@@ -445,45 +475,45 @@
 	}
 
 	.btn-primary {
-		background-color: #2196f3;
+		background-color: var(--primary-500);
 		color: white;
 	}
 
 	.btn-primary:hover:not(:disabled) {
-		background-color: #1976d2;
+		background-color: var(--primary-600);
 	}
 
 	.btn-primary:disabled {
-		background-color: #ccc;
+		background-color: var(--neutral-300);
 		cursor: not-allowed;
 	}
 
 	.btn-secondary {
-		background-color: white;
-		color: #333;
-		border: 1px solid #ddd;
+		background-color: var(--neutral-white);
+		color: var(--text-900);
+		border: 1px solid var(--neutral-300);
 	}
 
 	.btn-secondary:hover:not(:disabled) {
-		background-color: #f5f5f5;
+		background-color: var(--neutral-100);
 	}
 
 	.btn-secondary:disabled {
-		color: #999;
+		color: var(--text-500);
 		cursor: not-allowed;
 	}
 
 	.btn-danger {
-		background-color: #f44336;
+		background-color: var(--color-error);
 		color: white;
 	}
 
 	.btn-danger:hover:not(:disabled) {
-		background-color: #d32f2f;
+		filter: brightness(0.9);
 	}
 
 	.btn-danger:disabled {
-		background-color: #ccc;
+		background-color: var(--neutral-300);
 		cursor: not-allowed;
 	}
 </style>

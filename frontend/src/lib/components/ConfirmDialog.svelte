@@ -139,8 +139,8 @@
 	.btn-confirm {
 		padding: 0.5rem 1rem;
 		border-radius: var(--radius-md);
-		background: #EF4444;
-		color: #FFFFFF;
+		background: var(--error-600);
+		color: #ffffff;
 		font-weight: 500;
 		border: none;
 		cursor: pointer;
@@ -148,6 +148,6 @@
 	}
 
 	.btn-confirm:hover {
-		background: #DC2626;
+		background: var(--error-700);
 	}
 </style>

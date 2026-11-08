@@ -209,6 +209,7 @@
 					on:click={() => setTimePreset(preset.max)}
 					class="time-preset-btn"
 					class:active={maxTime === preset.max && minTime === undefined}
+					aria-pressed={maxTime === preset.max && minTime === undefined}
 				>
 					{preset.label}
 				</button>
@@ -395,9 +396,9 @@
 	}
 
 	.time-preset-btn.active {
-		background: var(--accent-500);
-		border-color: var(--accent-500);
-		color: var(--neutral-white);
+		background: var(--color-btn-primary-bg);
+		border-color: var(--color-btn-primary-bg);
+		color: var(--color-btn-primary-text);
 		font-weight: 500;
 	}
 

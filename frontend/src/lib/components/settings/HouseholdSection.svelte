@@ -339,6 +339,7 @@
 						bind:value={newName}
 						class="form-input"
 						placeholder="Household name"
+						aria-label="Household name"
 						required
 					/>
 					<div class="button-group">
@@ -432,6 +433,7 @@
 						bind:value={inviteeEmail}
 						class="form-input"
 						placeholder="Email address"
+						aria-label="Invitee email address"
 						required
 					/>
 					<button
@@ -914,12 +916,12 @@
 	}
 
 	.text-error {
-		color: var(--error-600);
+		color: var(--color-error-text);
 		font-weight: 500;
 	}
 
 	.btn-outline {
-		background: white;
+		background: var(--neutral-white);
 		border: 1px solid var(--neutral-300);
 		color: var(--text-900);
 	}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { theme } from "#lib/stores/theme.js";
+	import { theme } from '#lib/stores/theme.js';
 	import { createEventDispatcher } from 'svelte';
 
 	export let currentTheme: string = 'light';
@@ -10,18 +10,20 @@
 		{
 			id: 'garden-fresh' as const,
 			name: 'Garden Fresh',
-			description: 'Fresh herb greens with warm terracotta accents, inspired by farmers markets',
+			description:
+				'Fresh herb greens with warm terracotta accents, inspired by farmers markets',
 			primary: '#1B4332',
 			accent: '#D35400',
-			preview: 'Herb Green & Terracotta'
+			preview: 'Herb Green & Terracotta',
 		},
 		{
 			id: 'bistro' as const,
 			name: 'Bistro',
-			description: 'Sophisticated burgundy with champagne gold, inspired by upscale dining',
+			description:
+				'Sophisticated burgundy with champagne gold, inspired by upscale dining',
 			primary: '#722F37',
 			accent: '#C9B037',
-			preview: 'Burgundy & Gold'
+			preview: 'Burgundy & Gold',
 		},
 		{
 			id: 'dark' as const,
@@ -29,7 +31,7 @@
 			description: 'Easy on the eyes with dark backgrounds',
 			primary: '#1f2937',
 			accent: '#60a5fa',
-			preview: 'Dark Blue'
+			preview: 'Dark Blue',
 		},
 		{
 			id: 'high-contrast' as const,
@@ -37,7 +39,7 @@
 			description: 'Maximum readability with high contrast',
 			primary: '#000000',
 			accent: '#0052cc',
-			preview: 'Black & Blue'
+			preview: 'Black & Blue',
 		},
 		{
 			id: 'system' as const,
@@ -45,8 +47,8 @@
 			description: 'Follow your device theme preference',
 			primary: '#6b7280',
 			accent: '#6b7280',
-			preview: 'Auto'
-		}
+			preview: 'Auto',
+		},
 	];
 
 	function selectTheme(themeId: string) {
@@ -54,18 +56,20 @@
 		theme.set(themeId);
 		dispatch('change', themeId);
 	}
-
 </script>
 
 <div class="theme-switcher">
 	<h3 class="switcher-title">Choose Your Theme</h3>
-	<p class="switcher-description">Select a color scheme for your recipe catalog</p>
+	<p class="switcher-description">
+		Select a color scheme for your recipe catalog
+	</p>
 
 	<div class="theme-options">
 		{#each themes as theme (theme.id)}
 			<button
 				class="theme-card"
 				class:active={currentTheme === theme.id}
+				aria-pressed={currentTheme === theme.id}
 				on:click={() => selectTheme(theme.id)}
 			>
 				<!-- Theme Preview -->
@@ -74,8 +78,14 @@
 						<div class="system-icon">⚙️</div>
 					{:else}
 						<div class="preview-colors">
-							<div class="color-block" style="background-color: {theme.primary};"></div>
-							<div class="color-block" style="background-color: {theme.accent};"></div>
+							<div
+								class="color-block"
+								style="background-color: {theme.primary};"
+							></div>
+							<div
+								class="color-block"
+								style="background-color: {theme.accent};"
+							></div>
 						</div>
 					{/if}
 					{#if currentTheme === theme.id}
@@ -145,7 +155,11 @@
 	.theme-preview {
 		position: relative;
 		height: 120px;
-		background: linear-gradient(135deg, var(--neutral-100) 0%, var(--neutral-200) 100%);
+		background: linear-gradient(
+			135deg,
+			var(--neutral-100) 0%,
+			var(--neutral-200) 100%
+		);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -168,8 +182,8 @@
 		top: 0.75rem;
 		right: 0.75rem;
 		padding: 0.25rem 0.75rem;
-		background: var(--accent-500);
-		color: var(--neutral-white);
+		background: var(--color-btn-primary-bg);
+		color: var(--color-btn-primary-text);
 		font-size: 0.75rem;
 		font-weight: 600;
 		border-radius: var(--radius-full);

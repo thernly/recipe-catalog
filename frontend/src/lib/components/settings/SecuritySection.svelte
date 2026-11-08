@@ -364,7 +364,7 @@
 	}
 
 	.success-message {
-		color: var(--success-600);
+		color: var(--color-success-text);
 		font-size: 0.875rem;
 		font-weight: 500;
 	}
@@ -417,15 +417,15 @@
 
 	.warning-box {
 		padding: 0.75rem;
-		background: var(--warning-50, #fff3cd);
-		border: 1px solid var(--warning-200, #ffc107);
+		background: var(--color-warning-bg);
+		border: 1px solid var(--color-warning);
 		border-radius: var(--radius-md);
-		color: var(--warning-800, #856404);
+		color: var(--color-warning-text);
 		font-size: 0.875rem;
 	}
 
 	.text-warning {
-		color: var(--warning-600, #f59e0b);
+		color: var(--color-warning-text);
 		font-weight: 500;
 	}
 
@@ -442,7 +442,7 @@
 	}
 
 	.btn-outline {
-		background: white;
+		background: var(--neutral-white);
 		border: 1px solid var(--neutral-300);
 		color: var(--text-900);
 	}

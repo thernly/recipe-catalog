@@ -450,12 +450,14 @@
 							bind:value={equipment[index]}
 							placeholder="e.g., Stand mixer, 9x13 baking pan"
 							class="form-input flex-1"
+							aria-label="Equipment {index + 1}"
 						/>
 						<button
 							type="button"
 							on:click={() => removeEquipment(index)}
 							class="btn-remove"
 							title="Remove"
+							aria-label="Remove equipment {index + 1}"
 						>
 							×
 						</button>
@@ -563,7 +565,7 @@
 
 	.form-label.required::after {
 		content: '*';
-		color: #ef4444;
+		color: var(--color-error);
 		margin-left: 0.25rem;
 	}
 
@@ -585,11 +587,11 @@
 	}
 
 	.form-input.error {
-		border-color: #ef4444;
+		border-color: var(--color-error);
 	}
 
 	.form-input.error:focus {
-		box-shadow: 0 0 0 3px #fee2e2;
+		box-shadow: 0 0 0 3px var(--color-error-bg);
 	}
 
 	.form-help {
@@ -600,7 +602,7 @@
 
 	.error-message {
 		font-size: 0.875rem;
-		color: #ef4444;
+		color: var(--color-error-text);
 		margin-top: 0.5rem;
 	}
 

@@ -92,8 +92,8 @@
 		</div>
 	{:else if error || !recipe}
 		<!-- Error state -->
-		<div class="container-custom text-center py-16">
-			<div class="text-4xl mb-4">⚠️</div>
+		<div class="container-custom text-center py-16" role="alert">
+			<div class="text-4xl mb-4" aria-hidden="true">⚠️</div>
 			<p class="text-lg mb-2" style="color: var(--text-900);">
 				Recipe not found
 			</p>

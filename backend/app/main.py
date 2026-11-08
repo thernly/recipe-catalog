@@ -11,7 +11,7 @@ from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from starlette.middleware.sessions import SessionMiddleware
@@ -21,7 +21,7 @@ from app.core.config import settings
 
 # Database and core dependencies
 from app.core.database import AsyncSessionLocal, cleanup_expired_data, close_db, init_db
-from app.core.exceptions import AppException
+from app.core.exceptions import AppException, ErrorCode
 from app.core.logging import configure_logging, get_logger
 from app.middleware.correlation_id import CorrelationIdMiddleware
 from app.middleware.csrf import CSRFMiddleware
@@ -66,7 +66,21 @@ app = FastAPI(
 
 # Add rate limiter to app state
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]  # slowapi types the handler for its own exception
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    """Return 429s in the standard error envelope, keeping slowapi's Retry-After headers."""
+    content = {
+        "error_code": ErrorCode.RATE_LIMIT_EXCEEDED,
+        "message": f"Rate limit exceeded: {exc.detail}",
+        "details": {"limit": str(exc.detail)},
+        "correlation_id": structlog.contextvars.get_contextvars().get("correlation_id")
+        or request.headers.get("X-Correlation-ID"),
+    }
+    response = JSONResponse(status_code=429, content=content)
+    return request.app.state.limiter._inject_headers(response, request.state.view_rate_limit)
+
 
 # Authlib binds authorization state to this signed browser session.
 app.add_middleware(
@@ -146,7 +160,7 @@ async def limit_request_size(request: Request, call_next):
         return JSONResponse(
             status_code=413,
             content={
-                "error_code": "request_too_large",
+                "error_code": ErrorCode.REQUEST_TOO_LARGE,
                 "message": "Request body too large",
                 "details": {},
                 "correlation_id": request.headers.get("X-Correlation-ID"),

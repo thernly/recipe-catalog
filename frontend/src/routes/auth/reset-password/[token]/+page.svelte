@@ -84,7 +84,7 @@
 			{#if success}
 				<!-- Success message -->
 				<div class="success-box">
-					<div class="success-icon">✓</div>
+					<div class="success-icon" aria-hidden="true">✓</div>
 					<h2 class="success-title">Password Reset Complete</h2>
 					<p class="success-text">
 						Your password has been successfully updated. You will be redirected
@@ -151,7 +151,7 @@
 					</div>
 
 					{#if error}
-						<div class="error-box">{error}</div>
+						<div class="error-box" role="alert">{error}</div>
 					{/if}
 
 					<button
@@ -273,13 +273,13 @@
 	}
 
 	.validation-hint.error {
-		color: var(--error-700);
-		background: var(--error-50);
+		color: var(--color-error-text);
+		background: var(--color-error-bg);
 	}
 
 	.validation-hint.success {
-		color: var(--success-700);
-		background: var(--success-50);
+		color: var(--color-success-text);
+		background: var(--color-success-bg);
 	}
 
 	.password-requirements {
@@ -321,13 +321,13 @@
 	}
 
 	.requirements-list li.met {
-		color: var(--success-700);
+		color: var(--color-success-text);
 		font-weight: 500;
 	}
 
 	.requirements-list li.met::before {
 		content: '✓';
-		color: var(--success-600);
+		color: var(--color-success);
 	}
 
 	.btn-block {
@@ -336,10 +336,10 @@
 
 	.error-box {
 		padding: 0.75rem;
-		background: var(--error-50);
-		border: 1px solid var(--error-200);
+		background: var(--color-error-bg);
+		border: 1px solid var(--color-error);
 		border-radius: var(--radius-md);
-		color: var(--error-700);
+		color: var(--color-error-text);
 		font-size: 0.875rem;
 		text-align: center;
 	}
@@ -351,8 +351,8 @@
 	.success-icon {
 		width: 4rem;
 		height: 4rem;
-		background: var(--success-100);
-		color: var(--success-600);
+		background: var(--color-success-bg);
+		color: var(--color-success-text);
 		border-radius: var(--radius-full);
 		display: flex;
 		align-items: center;
