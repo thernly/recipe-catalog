@@ -128,9 +128,9 @@
 	function handleBackToRecipes() {
 		// Check if we have a returnUrl query parameter first
 		const returnUrl = page.url.searchParams.get('returnUrl');
-		if (returnUrl) {
+		if (returnUrl?.startsWith('/recipes')) {
 			// Use the explicit return URL (preserves search filters)
-			goto(decodeURIComponent(returnUrl)).catch(() => goto('/recipes'));
+			goto(returnUrl).catch(() => goto('/recipes'));
 		} else {
 			// Fallback: Check if we came from the recipes page by looking at the referrer
 			const referrer = document.referrer;

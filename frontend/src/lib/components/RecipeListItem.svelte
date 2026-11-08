@@ -12,6 +12,7 @@
 
 	export let recipe: RecipeSummary;
 	export let onview: ((recipe: RecipeSummary) => void) | undefined = undefined;
+	export let href: string | undefined = undefined;
 	export let onedit: ((recipe: RecipeSummary) => void) | undefined = undefined;
 	export let ondelete: ((recipe: RecipeSummary) => void) | undefined =
 		undefined;
@@ -46,7 +47,13 @@
 <article class="recipe-list-item group">
 	<div class="flex items-center gap-4 p-4">
 		<!-- Thumbnail -->
-		<button on:click={handleView} class="recipe-list-thumbnail shrink-0">
+		<svelte:element
+			this={href ? 'a' : 'button'}
+			{href}
+			role={href ? 'link' : 'button'}
+			on:click={href ? undefined : handleView}
+			class="recipe-list-thumbnail block shrink-0"
+		>
 			{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
 				<img
 					src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe
@@ -68,10 +75,16 @@
 					<UtensilsCrossed size={32} aria-hidden="true" />
 				</div>
 			{/if}
-		</button>
+		</svelte:element>
 
 		<!-- Content (clickable) -->
-		<button on:click={handleView} class="flex-1 min-w-0 text-left">
+		<svelte:element
+			this={href ? 'a' : 'button'}
+			{href}
+			role={href ? 'link' : 'button'}
+			on:click={href ? undefined : handleView}
+			class="block flex-1 min-w-0 text-left"
+		>
 			<h3 class="recipe-list-title">{recipe.name}</h3>
 			{#if recipe.description}
 				<p class="recipe-list-description">{recipe.description}</p>
@@ -111,7 +124,7 @@
 					{/if}
 				</span>
 			</div>
-		</button>
+		</svelte:element>
 
 		<!-- Actions -->
 		<div class="flex items-center gap-2 shrink-0">
