@@ -1,261 +1,132 @@
-# Recipe Catalog - Docker Deployment Guide
+# Docker Deployment
 
-This guide explains how to run the Recipe Catalog application using Docker and Docker Compose. It creates two containers:
+`docker-compose.yml` runs three services:
 
-1. `backend` – FastAPI application (Python 3.13, uv, SQLite)
-2. `frontend` – Nginx serving the built SvelteKit static files and reverse-proxying `/api` to the backend
+| Service | What it does |
+|---------|--------------|
+| `data-permissions` | One-shot init container: `chown`s the `sqlite_data` volume to UID 10001 so the non-root backend can write to it, then exits |
+| `backend` | FastAPI on Python 3.13 (`backend/Dockerfile`). Runs `alembic upgrade head` on every start (`backend/docker-entrypoint.sh`), then uvicorn on port 8000. Port 8000 is only exposed on the internal network, not published to the host |
+| `frontend` | nginx (`frontend/Dockerfile`, `docker/nginx.conf`) serving the static SvelteKit build and proxying `/api` and `/health` to the backend. Published on `:8080` |
 
-SQLite data is persisted in a named volume.
+The database is `/app/data/recipes.db` inside the `sqlite_data` named volume.
 
----
+## Prerequisites
 
-## 1. Prerequisites
+Docker Engine with the Compose plugin (`docker compose version`).
 
-- Docker Engine 24+ and Docker Compose plugin (`docker compose version`) installed
-- Clone of repository (`git clone <repo> && cd recipe-catalog`)
-- (Optional) Domain name + reverse proxy / TLS termination (Traefik / Caddy / Nginx external)
-
----
-
-## 2. Directory & Files Added
-
-| Path | Purpose |
-|------|---------|
-| `backend/Dockerfile` | Builds backend image using uv and Python 3.13 |
-| `backend/.dockerignore` | Excludes unnecessary files from backend build context |
-| `frontend/Dockerfile` | Builds frontend static assets using adapter-static, serves via nginx |
-| `frontend/.dockerignore` | Excludes unnecessary files from frontend build context |
-| `docker/nginx.conf` | Nginx config for SPA + API proxy |
-| `docker-compose.yml` | Orchestrates services + volume + healthcheck |
-| `DOCKER-DEPLOYMENT.md` | This guide |
-
----
-
-## 3. Backend Environment
-
-Create `backend/.env` (do NOT commit secrets):
-
-```env
-DATABASE_URL=sqlite+aiosqlite:///./data/recipes.db
-SECRET_KEY=<generate-with: openssl rand -hex 32>
-# Comma-separated list (no brackets)
-ALLOWED_ORIGINS=http://localhost:8080
-SMTP_HOST=
-SMTP_PORT=
-SMTP_USER=
-SMTP_PASSWORD=
-FROM_EMAIL=noreply@recipecatalog.app
-FROM_NAME=Recipe Catalog
-APP_NAME=Recipe Catalog
-FRONTEND_URL=http://localhost:8080
-RATE_LIMIT_PER_MINUTE=60
-```
-
----
-
-## 4. Build & Run
+## Configure
 
 ```bash
-# Build images
-docker compose build
+cp backend/.env.example backend/.env
+```
 
-# Start services (detached)
-docker compose up -d
+Edit `backend/.env`. The settings that matter here:
 
-# View logs (combined)
+| Variable | Notes |
+|----------|-------|
+| `SECRET_KEY` | Required, at least 32 characters: `openssl rand -hex 32` |
+| `ENVIRONMENT` | `production` (the image default) |
+| `ALLOWED_ORIGINS` | Comma-separated, no brackets. Include the URL users browse to, e.g. `http://localhost:8080` |
+| `FRONTEND_URL` | Used in email links, e.g. `http://localhost:8080` |
+| `SMTP_*`, `FROM_EMAIL` | Needed for verification and password-reset emails |
+| `OAUTH_REDIRECT_BASE_URL`, `*_CLIENT_ID/SECRET` | Optional OAuth providers |
+| `OPENROUTER_API_KEY` | Optional AI features |
+
+Compose sets these itself, overriding `.env`:
+
+- `DATABASE_URL` is forced to `sqlite+aiosqlite:///./data/recipes.db` (the volume).
+- `COOKIE_SECURE=false`, because the stack serves plain HTTP on `:8080` and browsers drop `Secure` cookies over HTTP, which makes login silently fail. Remove this line from `docker-compose.yml` once you serve over HTTPS.
+- `APP_VERSION` is passed through from your shell. The build context has no git history, so set it when building:
+
+```bash
+APP_VERSION=$(scripts/app-version.sh) docker compose up -d --build
+```
+
+## Run
+
+```bash
+APP_VERSION=$(scripts/app-version.sh) docker compose up -d --build
 docker compose logs -f
 ```
 
-Access:
+Open <http://localhost:8080>. Migrations run automatically; there is no `uv` in the runtime image, so don't try `docker compose exec backend uv run ...`.
 
-- Frontend: <http://localhost:8080>
-- Backend API (proxied through frontend): <http://localhost:8080/api/docs>
+The interactive API docs (`/docs`, `/redoc`) are only served when `DEBUG=true`, and nginx does not proxy them (they are not under `/api`).
 
-**Note**: The backend port (8000) is not exposed publicly for security. Access the API through the frontend proxy at port 8080.
-
----
-
-## 5. Development Workflow (Optional)
-
-For active development you may want live reload. Suggested adjustments:
-
-1. Mount backend source into container:
-
-   ```yaml
-   backend:
-     volumes:
-       - ./backend:/app
-       - sqlite_data:/app/data
-   ```
-
-2. Install dev dependencies: remove `--no-dev` logic in Dockerfile or run interactively.
-3. Run with `--reload`:
-
-   ```yaml
-   command: ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-   ```
-
-4. Frontend: Instead of nginx build stage, run dev server separately:
-   - Comment out frontend service in compose
-   - Run locally: `cd frontend && pnpm dev --host`
-
----
-
-## 6. Production Considerations
-
-| Aspect | Recommendation |
-|--------|---------------|
-| Secrets | Use Docker secrets or env vars injected by orchestrator |
-| TLS | Terminate at external reverse proxy (Caddy, Traefik, Nginx) |
-| Scaling | Stateless frontend; backend can scale horizontally (move to Postgres for multi-instance) |
-| Persistence | Named volume `sqlite_data`; backup regularly |
-| Healthcheck | Add `healthcheck:` for backend hitting `/api/recipes` or `/api/docs` |
-| Logs | Aggregate via `docker logs` or ship to external system |
-
-### Sample Healthcheck
-
-The backend service includes a Python-based healthcheck (no curl required):
-
-```yaml
-healthcheck:
-  test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/docs').read()"]
-  interval: 30s
-  timeout: 5s
-  retries: 3
-  start_period: 10s
-```
-
----
-
-## 7. Updating
+## Update
 
 ```bash
-docker compose pull        # if switching to remote registry images
-docker compose build       # rebuild after code changes
-docker compose up -d       # recreate containers
+git pull
+APP_VERSION=$(scripts/app-version.sh) docker compose up -d --build
 ```
 
-Database migrations (after code update):
+The backend applies new migrations when it restarts.
+
+## Health checks
+
+- Backend: Python `urllib` request to `http://localhost:8000/health` inside the container.
+- Frontend: `wget` to `http://127.0.0.1:8080/health`, which nginx proxies to the backend.
+
+The frontend waits for the backend to be healthy before starting. `docker compose ps` shows the status. Both services use `restart: unless-stopped`.
+
+## Hardening
+
+Both long-running containers run with `read_only: true`, `cap_drop: [ALL]` and `no-new-privileges`. The writable paths are tmpfs mounts (backend `/tmp` and `/app/logs`, frontend `/tmp`, `/var/cache/nginx`, `/var/run`) plus the data volume. Because `/app/logs` is tmpfs, the backend's log file is lost on restart; use `docker compose logs`.
+
+The `app` network has a fixed subnet, `172.30.0.0/24`: backend `172.30.0.2`, frontend `172.30.0.3`. The backend trusts `X-Forwarded-*` headers only from `172.30.0.3` (`--forwarded-allow-ips` in `backend/Dockerfile`), which the rate limiter relies on for client IPs. If you change the frontend's address, change that flag too.
+
+## TLS / reverse proxy
+
+Terminate TLS in front of the stack and proxy everything to `:8080`:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name yourdomain.com;
+    # ssl_certificate ... (e.g. from certbot --nginx)
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+Once served over HTTPS, remove `COOKIE_SECURE=false` from `docker-compose.yml` and update `ALLOWED_ORIGINS` and `FRONTEND_URL` to the HTTPS URL.
+
+## Backups
 
 ```bash
-docker compose exec backend uv run alembic upgrade head
+docker compose cp backend:/app/data/recipes.db "recipes-$(date +%Y%m%d-%H%M%S).db"
 ```
 
----
-
-## 8. Backups
-
-SQLite file path inside volume: `/app/data/recipes.db`.
-
-Backup command:
+Restore with the backend stopped:
 
 ```bash
-# Create a temporary container to copy out the DB
-DB_CONTAINER=$(docker compose ps -q backend)
-docker cp "$DB_CONTAINER:/app/data/recipes.db" "recipes-$(date +%Y%m%d-%H%M%S).db"
+docker compose stop backend
+docker compose cp recipes-YYYYMMDD-HHMMSS.db backend:/app/data/recipes.db
+docker compose start backend
 ```
 
-Restore (container stopped):
+SQLite is single-writer: run one backend instance, not several.
+
+## Stop and remove
 
 ```bash
-docker cp recipes-yyyyMMdd-HHMMSS.db "$DB_CONTAINER:/app/data/recipes.db"
+docker compose down        # stop and remove containers
+docker compose down -v     # also delete the sqlite_data volume (DATA LOSS)
 ```
 
----
+## Troubleshooting
 
-## 9. Switching to Postgres (Optional Future)
+| Symptom | Check |
+|---------|-------|
+| 502 Bad Gateway | `docker compose logs backend`; a failed migration or bad `.env` stops the backend from starting |
+| Login appears to succeed but you're logged out | `COOKIE_SECURE` is true while serving over HTTP |
+| CORS errors | `ALLOWED_ORIGINS` must include the exact origin users browse to |
+| Backend can't write the database | The `data-permissions` service must complete; check `docker compose logs data-permissions` |
+| Stale frontend after changes | `docker compose build --no-cache frontend` |
 
-1. Add service:
-
-```yaml
-postgres:
-  image: postgres:16-alpine
-  environment:
-    - POSTGRES_DB=recipes
-    - POSTGRES_USER=recipe
-    - POSTGRES_PASSWORD=change_me
-  volumes:
-    - pg_data:/var/lib/postgresql/data
-  restart: unless-stopped
-```
-
-2. Update backend env:
-
-```bash
-DATABASE_URL=postgresql+asyncpg://recipe:change_me@postgres:5432/recipes
-```
-
-3. Run migrations: `docker compose exec backend uv run alembic upgrade head`
-
----
-
-## 10. Stopping & Removing
-
-```bash
-docker compose down            # stop & remove containers
-docker compose down -v         # also remove volumes (DATA LOSS!)
-```
-
----
-
-## 11. Troubleshooting
-
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| 502 Bad Gateway | Backend not reachable | `docker compose logs backend` / healthcheck failing |
-| API CORS errors | ALLOWED_ORIGINS mismatch | Update `ALLOWED_ORIGINS` in `.env` (comma-separated, no brackets) |
-| Email failures | SMTP misconfig | Check env & backend logs |
-| DB locked | Concurrent writes in SQLite | Consider Postgres for multi-user high write load |
-| Static not updating | Old image cached | `docker compose build --no-cache` |
-| SvelteKit build fails | Missing adapter-static | Ensure `@sveltejs/adapter-static` is in package.json devDependencies |
-
-Inspect running containers:
-
-```bash
-docker compose ps
-docker compose logs -f backend
-docker compose exec backend bash
-```
-
----
-
-## 12. Automatic Restart
-
-Containers use `restart: unless-stopped`; they will restart after daemon or host reboot. Verify with:
-
-```bash
-docker compose ps
-```
-
----
-
-## 13. Security Notes
-
-- Replace default `SECRET_KEY` immediately
-- Do not expose backend port publicly unless needed (remove `8000:8000` mapping)
-- Run Docker Engine with regular updates
-- Consider scanning images (`docker scout cves backend`)
-
----
-
-## 14. Quick Start Summary
-
-```bash
-git clone <repo>
-cd recipe-catalog
-cp backend/.env.example backend/.env   # create and edit secrets
-# (Edit backend/.env)
-docker compose build
-docker compose up -d
-docker compose logs -f
-```
-
-Access at: `http://localhost:8080`
-
----
-**Guide Version**: 1.1
-**Last Updated**: 2025-11-24
-
-**Changelog**:
-- v1.1 (2025-11-24): Fixed Dockerfile COPY paths, added .dockerignore files, configured adapter-static, added Python-based healthcheck, removed direct backend port exposure, clarified ALLOWED_ORIGINS format
-- v1.0 (2025-11-23): Initial version
+Shell into a container with `docker compose exec backend sh` (the Alpine-based frontend image has no `bash`).
