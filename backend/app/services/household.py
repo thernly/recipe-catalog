@@ -66,8 +66,10 @@ async def create_default_household_for_new_user(
         email_prefix = user.email.split("@")[0]
         household_name = f"{email_prefix}'s Household"
 
-    # Create household
-    household = Household(name=household_name, owner_user_id=user.id, max_members=max_members)
+    # Personal until it issues an invitation, so the user can still accept one elsewhere.
+    household = Household(
+        name=household_name, owner_user_id=user.id, max_members=max_members, is_personal=True
+    )
     db.add(household)
     await db.flush()
 
