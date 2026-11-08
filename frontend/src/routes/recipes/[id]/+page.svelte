@@ -13,8 +13,10 @@
 	} from '#lib/api/recipes.js';
 	import {
 		generateFromRecipe,
-		type ShoppingListSummary,
+		getLastShoppingListId,
+		setLastShoppingListId,
 	} from '#lib/api/shopping-lists.js';
+	import AddToShoppingListDialog from '#lib/components/AddToShoppingListDialog.svelte';
 	import { dialog } from '#lib/stores/dialog.js';
 	import { toast } from '#lib/stores/toast.js';
 	import {
@@ -36,10 +38,9 @@
 	let completedSteps = new Set<number>();
 	let showExportMenu = false;
 	let exporting = false;
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- written but not yet read by the template
 	let showAddToShoppingListDialog = false;
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- written but not yet read by the template
-	let shoppingLists: ShoppingListSummary[] = [];
+	// Set when the dialog is picking a list for one ingredient line
+	let pendingIngredient: { index: number; label: string } | null = null;
 	let addingToList = false;
 
 	// Get recipe ID from URL
@@ -235,23 +236,72 @@
 		}
 	}
 
-	async function handleAddToShoppingList() {
+	function openShoppingListDialog(
+		ingredient: { index: number; label: string } | null = null,
+	) {
+		pendingIngredient = ingredient;
+		showAddToShoppingListDialog = true;
+	}
+
+	/** The backend turns the line into items (drops prep notes, splits "or"). */
+	function addLineToList(listId: number, index: number) {
+		return generateFromRecipe({
+			recipe_id: (recipe as Recipe).id,
+			shopping_list_id: listId,
+			ingredient_index: index,
+		});
+	}
+
+	/** Adds one ingredient line; the first add picks a list, later adds reuse it. */
+	async function addIngredient(ingredient: { index: number; label: string }) {
+		const listId = getLastShoppingListId();
+		if (!listId) {
+			openShoppingListDialog(ingredient);
+			return;
+		}
+		try {
+			await addLineToList(listId, ingredient.index);
+			toast.success(`Added ${ingredient.label} to your shopping list`);
+		} catch (err) {
+			// The remembered list may have been deleted or archived: pick again
+			setLastShoppingListId(null);
+			openShoppingListDialog(ingredient);
+			console.error('Failed to add ingredient:', err);
+		}
+	}
+
+	async function handlePickShoppingList(listId: number | null) {
 		if (!recipe) return;
 
 		addingToList = true;
 		try {
-			const newList = await generateFromRecipe({
-				recipe_id: recipe.id,
-				list_name: `Shopping list for ${recipe.name}`,
-			});
+			if (pendingIngredient) {
+				await addLineToList(listId as number, pendingIngredient.index);
+				toast.success(`Added ${pendingIngredient.label} to your shopping list`);
+			} else if (listId) {
+				await generateFromRecipe({
+					recipe_id: recipe.id,
+					shopping_list_id: listId,
+				});
+				toast.success('Ingredients added to your shopping list');
+			} else {
+				const newList = await generateFromRecipe({
+					recipe_id: recipe.id,
+					list_name: `Shopping list for ${recipe.name}`,
+				});
+				setLastShoppingListId(newList.id);
+				showAddToShoppingListDialog = false;
+				toast.success('Shopping list created successfully');
+				goto(`/shopping-lists/${newList.id}`);
+				return;
+			}
+			setLastShoppingListId(listId);
 			showAddToShoppingListDialog = false;
-			toast.success('Shopping list created successfully');
-			goto(`/shopping-lists/${newList.id}`);
 		} catch (err) {
 			toast.error(
-				`Failed to create shopping list: ${err instanceof Error ? err.message : 'Unknown error'}`,
+				`Failed to add to shopping list: ${err instanceof Error ? err.message : 'Unknown error'}`,
 			);
-			console.error('Failed to create shopping list:', err);
+			console.error('Failed to add to shopping list:', err);
 		} finally {
 			addingToList = false;
 		}
@@ -507,6 +557,21 @@
 									>
 										{ingredient}
 									</label>
+									{#if !recipe.recipe_data.parsedIngredients?.[index]?.header}
+										{@const label =
+											recipe.recipe_data.parsedIngredients?.[index]?.item ||
+											ingredient}
+										<button
+											type="button"
+											on:click={() => addIngredient({ index, label })}
+											aria-label="Add {label} to shopping list"
+											title="Add to shopping list"
+											class="p-1 rounded"
+											style="color: var(--text-600);"
+										>
+											<ShoppingCart size={16} aria-hidden="true" />
+										</button>
+									{/if}
 								</li>
 							{/each}
 						</ul>
@@ -621,7 +686,7 @@
 							<span>Edit Recipe</span>
 						</button>
 						<button
-							on:click={handleAddToShoppingList}
+							on:click={() => openShoppingListDialog()}
 							class="btn btn-primary flex items-center gap-2"
 							disabled={addingToList}
 						>
@@ -718,6 +783,17 @@
 		</div>
 	{/if}
 </div>
+
+<AddToShoppingListDialog
+	open={showAddToShoppingListDialog}
+	heading={pendingIngredient
+		? `Add ${pendingIngredient.label} to…`
+		: 'Add ingredients to shopping list'}
+	allowNew={!pendingIngredient}
+	busy={addingToList}
+	onPick={handlePickShoppingList}
+	onClose={() => (showAddToShoppingListDialog = false)}
+/>
 
 <style>
 	.recipe-detail-container {

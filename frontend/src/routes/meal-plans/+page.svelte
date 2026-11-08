@@ -12,7 +12,9 @@
 	import {
 		generateFromMealPlan,
 		createShoppingList,
+		setLastShoppingListId,
 	} from '#lib/api/shopping-lists.js';
+	import AddToShoppingListDialog from '#lib/components/AddToShoppingListDialog.svelte';
 	import AddMealDialog from './AddMealDialog.svelte';
 	import EditMealDialog from './EditMealDialog.svelte';
 	import { toast } from '#lib/stores/toast.js';
@@ -33,6 +35,27 @@
 	// Shopping list generation
 	let generatingShoppingList = false;
 	let creatingBlankList = false;
+	let showAddToListDialog = false;
+
+	async function handleAddToExistingList(listId: number | null) {
+		if (!mealPlan || !listId) return;
+		generatingShoppingList = true;
+		try {
+			await generateFromMealPlan({
+				meal_plan_id: mealPlan.id,
+				shopping_list_id: listId,
+			});
+			setLastShoppingListId(listId);
+			showAddToListDialog = false;
+			toast.success('Meal plan ingredients added to your shopping list');
+		} catch (err) {
+			toast.error(
+				err instanceof Error ? err.message : 'Failed to add to shopping list',
+			);
+		} finally {
+			generatingShoppingList = false;
+		}
+	}
 
 	const dayNames = [
 		'Monday',
@@ -206,6 +229,13 @@
 					? '⏳ Generating...'
 					: '🛒 Generate Shopping List from Meal Plan'}
 			</button>
+			<button
+				on:click={() => (showAddToListDialog = true)}
+				class="btn-secondary"
+				disabled={generatingShoppingList}
+			>
+				➕ Add to Existing List
+			</button>
 		{/if}
 		<button
 			on:click={handleCreateBlankList}
@@ -280,6 +310,15 @@
 		</div>
 	{/if}
 </div>
+
+<AddToShoppingListDialog
+	open={showAddToListDialog}
+	heading="Add meal plan ingredients to…"
+	allowNew={false}
+	busy={generatingShoppingList}
+	onPick={handleAddToExistingList}
+	onClose={() => (showAddToListDialog = false)}
+/>
 
 {#if showAddDialog && mealPlan}
 	<AddMealDialog

@@ -6,7 +6,8 @@ import { render, fireEvent, waitFor } from "@testing-library/svelte/svelte5";
 import { get } from "svelte/store";
 
 vi.mock("$app/navigation", () => ({ goto: vi.fn() }));
-vi.mock("#lib/api/shopping-lists.js", () => ({
+vi.mock("#lib/api/shopping-lists.js", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   getShoppingList: vi.fn(),
   updateShoppingList: vi.fn(),
   deleteShoppingList: vi.fn(),
@@ -24,6 +25,7 @@ import {
   getShoppingList,
   updateShoppingList,
   deleteShoppingList,
+  updateShoppingListItem,
   getCategories,
 } from "#lib/api/shopping-lists.js";
 import { dialog } from "#lib/stores/dialog.js";
@@ -81,6 +83,69 @@ describe("shopping list detail page", () => {
 
     expect(await findByRole("heading", { name: "Weekly (Copy)" })).toBeTruthy();
     expect(getShoppingList).toHaveBeenLastCalledWith(8);
+  });
+
+  it("shows units and edits an item's quantity inline", async () => {
+    const flour = {
+      id: 3,
+      list_id: 7,
+      item_name: "flour",
+      quantity: "2",
+      unit: "cup",
+      checked: false,
+      display_order: 1,
+      created_at: "2026-11-01T00:00:00Z",
+      updated_at: "2026-11-01T00:00:00Z",
+    };
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: [flour] });
+    vi.mocked(updateShoppingListItem).mockResolvedValue(flour);
+    const { findByRole, getByLabelText, findByText } = render(Page, {
+      params: { id: "7" },
+    });
+
+    expect(await findByText("2 cups")).toBeTruthy();
+    await fireEvent.click(
+      await findByRole("button", { name: /Quantity for flour/ }),
+    );
+    const quantity = getByLabelText("Quantity for flour");
+    await fireEvent.input(quantity, { target: { value: "3" } });
+    await fireEvent.submit(quantity.closest("form") as HTMLFormElement);
+
+    await waitFor(() =>
+      expect(updateShoppingListItem).toHaveBeenCalledWith(3, {
+        quantity: "3",
+        unit: "cup",
+      }),
+    );
+  });
+
+  it("cancels a quantity edit on Escape", async () => {
+    const egg = {
+      id: 4,
+      list_id: 7,
+      item_name: "egg",
+      quantity: "2",
+      checked: false,
+      display_order: 1,
+      created_at: "2026-11-01T00:00:00Z",
+      updated_at: "2026-11-01T00:00:00Z",
+    };
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: [egg] });
+    const { findByRole, getByLabelText } = render(Page, {
+      params: { id: "7" },
+    });
+
+    await fireEvent.click(
+      await findByRole("button", { name: /Quantity for egg/ }),
+    );
+    const quantity = getByLabelText("Quantity for egg");
+    await fireEvent.input(quantity, { target: { value: "9" } });
+    await fireEvent.keyDown(quantity, { key: "Escape" });
+
+    expect(
+      await findByRole("button", { name: /Quantity for egg/ }),
+    ).toBeTruthy();
+    expect(updateShoppingListItem).not.toHaveBeenCalled();
   });
 
   it("deletes the list after confirmation", async () => {

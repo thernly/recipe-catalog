@@ -2,15 +2,17 @@
 Shopping List API endpoints.
 """
 
+import re
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import Result, Select, and_, case, func, select
+from sqlalchemy import Select, and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
+from app.core.exceptions import ShoppingListNotFoundError
 from app.models.household import Household
 from app.models.meal_plan import MealPlan, PlannedMeal
 from app.models.recipe import Recipe
@@ -34,8 +36,11 @@ from app.schemas.shopping_list import (
 )
 from app.services.ingredient_parser import (  # noqa: F401  (re-exported for callers and tests)
     consolidate_ingredients,
+    format_quantity,
     get_base_ingredient_name,
+    ingredient_key,
     normalize_unit,
+    parse_ingredient_lines,
     parse_ingredient_string,
     parse_quantity,
     singularize_ingredient,
@@ -43,6 +48,224 @@ from app.services.ingredient_parser import (  # noqa: F401  (re-exported for cal
 
 
 router = APIRouter()
+
+_ALTERNATIVES = re.compile(r"\s+(?:and/)?or\s+", re.IGNORECASE)
+
+# Words that describe how an ingredient is sourced or kept, not a different ingredient:
+# "homemade or store-bought chicken broth" is one item, "chicken broth".
+# ponytail: fixed word list; extend it as new recipes turn up other pairs
+_SOURCE_WORDS = {
+    "homemade", "store-bought", "storebought", "fresh", "frozen", "canned", "dried",
+    "jarred", "bottled", "boxed", "packaged", "thawed", "cooked", "uncooked", "raw",
+    "salted", "unsalted", "sweetened", "unsweetened", "ripe", "leftover",
+}  # fmt: skip
+
+
+# Alternatives that name nothing to buy: "or a combination", "or both", "or any ..."
+_VAGUE = re.compile(r"^(a combination|both|any\b|your favou?rite|another\b)", re.IGNORECASE)
+
+
+def _split_alternatives(name: str) -> list[str]:
+    """
+    One shopping name per alternative in "A or B".
+
+    - Full names split: "unsalted butter or olive oil" -> both.
+    - A one-word alternative shares the last one's noun: "chicken or vegetable stock" ->
+      "chicken stock", "vegetable stock"; "light or dark brown sugar" -> both sugars.
+      ponytail: a one-word ingredient before a longer one ("ghee or clarified butter")
+      gets the noun too ("ghee butter"); the user chose this trade-off over keeping
+      such lines whole.
+    - Source words collapse: "homemade or store-bought chicken broth" -> "chicken broth".
+    - "or other neutral oil" lends its noun ("grapeseed oil") but is not an item itself;
+      "or a combination" / "or both" are dropped.
+    """
+    parts = [p.strip() for p in _ALTERNATIVES.split(name)]
+    parts = [p for p in parts if p and not _VAGUE.match(p)]
+    if len(parts) < 2:
+        return parts
+    lefts, last = parts[:-1], parts[-1]
+    last_words = last.split()
+
+    if all(p.lower() in _SOURCE_WORDS for p in lefts):
+        while len(last_words) > 1 and last_words[0].lower() in _SOURCE_WORDS:
+            last_words.pop(0)
+        return [" ".join(last_words)]
+
+    is_other = last_words[0].lower() == "other"
+    if is_other:
+        last_words = last_words[1:]
+    shared = " ".join(last_words[1:])  # the noun the one-word alternatives share
+
+    names = []
+    for part in lefts:
+        if " " in part or not shared:
+            names.append(part)
+        elif part.lower() not in _SOURCE_WORDS:
+            names.append(f"{part} {shared}")
+    if not is_other:
+        names.append(last)
+    return names
+
+
+def recipe_shopping_items(
+    recipe_data: dict[str, Any], index: int | None = None
+) -> list[dict[str, Any]]:
+    """
+    Shopping items for a recipe's ingredients (or only line `index`).
+
+    Uses the stored `parsedIngredients`, parsing the raw lines for recipes saved before
+    the parser existed. Recipe notes ("divided", "235ml") and trailing prep words
+    ("finely chopped") are left off: they describe cooking, not shopping. A name with
+    alternatives ("butter or olive oil") becomes one item per alternative, each with the
+    line's amount. Ranges buy the upper bound.
+    """
+    entries = recipe_data.get("parsedIngredients")
+    if not entries:
+        lines = recipe_data.get("recipeIngredient") or recipe_data.get("ingredients") or []
+        entries = [
+            line if isinstance(line, dict) else parse_ingredient_lines([line])[0] for line in lines
+        ]
+    if index is not None:
+        entries = entries[index : index + 1]
+
+    items: list[dict[str, Any]] = []
+    for entry in entries:
+        if not isinstance(entry, dict) or entry.get("header"):
+            continue
+        name = str(
+            entry.get("item")
+            or entry.get("name")
+            or entry.get("ingredient")
+            or entry.get("raw")
+            or ""
+        )
+        quantity = _quantity_str(entry.get("quantityMax") or entry.get("quantity"))
+        unit = entry.get("unit")
+        for alternative in _split_alternatives(name):
+            alt_quantity, alt_unit = quantity, unit
+            if alternative[:1].isdigit() or alternative[:1] in "½¼¾⅓⅔⅛":
+                # "1 tsp kosher salt or 1/2 tsp coarse salt": each side has its own amount
+                parsed = parse_ingredient_lines([alternative])[0]
+                if parsed.get("item"):
+                    alternative = parsed["item"]
+                    alt_quantity = _quantity_str(
+                        parsed.get("quantityMax") or parsed.get("quantity")
+                    )
+                    alt_unit = parsed.get("unit")
+            item_name = get_base_ingredient_name(alternative)
+            if item_name:
+                items.append(
+                    {"item_name": item_name[:255], "quantity": alt_quantity, "unit": alt_unit}
+                )
+    return items
+
+
+def _numeric(quantity: str | None) -> float | None:
+    """A stored quantity as a number ("1 1/2" -> 1.5), or None when blank or not numeric."""
+    return parse_quantity(quantity) or None
+
+
+def _quantity_str(value: Any) -> str | None:
+    """parsedIngredients store numbers; items store strings ("6", not "6.0")."""
+    if isinstance(value, (int, float)):
+        return format_quantity(float(value))
+    return (str(value).strip() or None) if value else None
+
+
+async def add_or_merge_item(
+    db: AsyncSession,
+    list_id: int,
+    *,
+    item_name: str,
+    quantity: str | None = None,
+    unit: str | None = None,
+    category: str | None = None,
+    notes: str | None = None,
+) -> ShoppingListItem:
+    """
+    Add an item to a list, merging it into a matching unchecked item.
+
+    Every add path calls this. Items match on `ingredient_key` (the singular base name
+    `consolidate_ingredients` groups on). A blank amount ("salt, to taste") folds into
+    any match; two amounts are summed when the units match and both are numeric,
+    otherwise ("a pinch", cups vs grams) a separate item is added. Units are never
+    converted. Distinct notes
+    are joined with "; ". Checked items are never merged into.
+    """
+    unit = normalize_unit(unit)
+    quantity = (quantity or "").strip() or None
+    key = ingredient_key(item_name)
+    # ponytail: one query per added item; batch-load if lists grow to hundreds of adds
+    candidates = await db.execute(
+        select(ShoppingListItem)
+        .where(ShoppingListItem.list_id == list_id, ShoppingListItem.checked.is_(False))
+        .order_by(ShoppingListItem.id)
+    )
+    for existing in candidates.scalars():
+        if ingredient_key(existing.item_name) != key:
+            continue
+        old_quantity = (existing.quantity or "").strip() or None
+        if not old_quantity or not quantity:
+            # "salt, to taste" adds no amount: fold it into the same item either way
+            if not old_quantity and quantity:
+                existing.quantity, existing.unit = quantity, unit
+        elif normalize_unit(existing.unit) != unit:
+            continue
+        else:
+            old_value, new_value = _numeric(old_quantity), _numeric(quantity)
+            if old_value is None or new_value is None:
+                continue
+            existing.quantity = format_quantity(old_value + new_value)
+        if notes and notes not in (existing.notes or "").split("; "):
+            existing.notes = f"{existing.notes}; {notes}" if existing.notes else notes
+        existing.category = existing.category or category
+        await db.flush()
+        return existing
+
+    max_order = (
+        await db.execute(
+            select(func.max(ShoppingListItem.display_order)).where(
+                ShoppingListItem.list_id == list_id
+            )
+        )
+    ).scalar() or 0
+    item = ShoppingListItem(
+        list_id=list_id,
+        item_name=item_name,
+        quantity=quantity,
+        unit=unit,
+        category=category,
+        notes=notes,
+        checked=False,
+        display_order=max_order + 1,
+    )
+    db.add(item)
+    await db.flush()
+    return item
+
+
+async def _household_list(db: AsyncSession, list_id: int, household_id: int) -> ShoppingList:
+    """The list if it belongs to the household, else ShoppingListNotFoundError (404)."""
+    result = await db.execute(
+        select(ShoppingList).where(
+            ShoppingList.id == list_id, ShoppingList.household_id == household_id
+        )
+    )
+    shopping_list = result.unique().scalar_one_or_none()
+    if not shopping_list:
+        raise ShoppingListNotFoundError(list_id)
+    return shopping_list
+
+
+async def _load_with_items(db: AsyncSession, list_id: int) -> ShoppingList:
+    result = await db.execute(
+        select(ShoppingList)
+        .where(ShoppingList.id == list_id)
+        .options(selectinload(ShoppingList.items))
+        .execution_options(populate_existing=True)
+    )
+    return result.unique().scalar_one()
+
 
 # Default store categories
 DEFAULT_CATEGORIES = [
@@ -140,11 +363,14 @@ async def list_shopping_lists(
             ShoppingList.name,
             ShoppingList.description,
             ShoppingList.status,
+            ShoppingList.created_by_user_id,
+            User.display_name.label("created_by_name"),
             ShoppingList.created_at,
             func.count(ShoppingListItem.id).label("item_count"),
             func.sum(case((ShoppingListItem.checked, 1), else_=0)).label("checked_count"),
         )
         .outerjoin(ShoppingListItem, ShoppingList.id == ShoppingListItem.list_id)
+        .outerjoin(User, User.id == ShoppingList.created_by_user_id)
         .where(ShoppingList.household_id == household.id)
         .group_by(
             ShoppingList.id,
@@ -152,6 +378,8 @@ async def list_shopping_lists(
             ShoppingList.name,
             ShoppingList.description,
             ShoppingList.status,
+            ShoppingList.created_by_user_id,
+            User.display_name,
             ShoppingList.created_at,
         )
         .order_by(ShoppingList.created_at.desc())
@@ -172,6 +400,8 @@ async def list_shopping_lists(
             name=row.name,
             description=row.description,
             status=row.status,
+            created_by_user_id=row.created_by_user_id,
+            created_by_name=row.created_by_name,
             created_at=row.created_at,
             item_count=row.item_count or 0,
             checked_count=row.checked_count or 0,
@@ -399,17 +629,7 @@ async def duplicate_shopping_list(
         db.add(new_item)
 
     await db.commit()
-    await db.refresh(new_list)
-
-    # Load items
-    items_result = await db.execute(
-        select(ShoppingListItem)
-        .where(ShoppingListItem.list_id == new_list.id)
-        .order_by(ShoppingListItem.display_order, ShoppingListItem.created_at)
-    )
-    new_list.items = list(items_result.scalars().all())
-
-    return new_list
+    return await _load_with_items(db, new_list.id)
 
 
 @router.post(
@@ -425,46 +645,19 @@ async def add_item_to_list(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Add an item to a shopping list.
-
-    Args:
-        list_id: Shopping list ID
-        item_data: Item data
-        current_user: The authenticated user
-        household: The user's household
-        db: Database session
-
-    Returns:
-        ShoppingListItem: The created item
+    Add an item to a shopping list, merged into a matching unchecked item if there is
+    one (see `add_or_merge_item`). Returns the new or merged item.
     """
-    # Verify list exists and belongs to household
-    result = await db.execute(
-        select(ShoppingList).where(
-            and_(ShoppingList.id == list_id, ShoppingList.household_id == household.id)
-        )
-    )
-    shopping_list = result.scalar_one_or_none()
-
-    if not shopping_list:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shopping list not found")
-
-    # Get max display order
-    max_order_result: Result[Any] = await db.execute(
-        select(func.max(ShoppingListItem.display_order)).where(ShoppingListItem.list_id == list_id)
-    )
-    max_order = max_order_result.scalar() or 0
-
-    item = ShoppingListItem(
-        list_id=list_id,
+    await _household_list(db, list_id, household.id)
+    item = await add_or_merge_item(
+        db,
+        list_id,
         item_name=item_data.item_name,
         quantity=item_data.quantity,
         unit=item_data.unit,
         category=item_data.category,
         notes=item_data.notes,
-        checked=False,
-        display_order=max_order + 1,
     )
-    db.add(item)
     await db.commit()
     await db.refresh(item)
     return item
@@ -598,70 +791,25 @@ async def generate_from_recipe(
     if not recipe:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
 
-    # Create shopping list
-    list_name = request_data.list_name or f"Shopping list for {recipe.name}"
-    shopping_list = ShoppingList(
-        household_id=household.id,
-        name=list_name,
-        description=f"Generated from recipe: {recipe.name}",
-        status="active",
-        created_by_user_id=current_user.id,
-    )
-    db.add(shopping_list)
-    await db.flush()
+    if request_data.shopping_list_id is not None:
+        shopping_list = await _household_list(db, request_data.shopping_list_id, household.id)
+    else:
+        shopping_list = ShoppingList(
+            household_id=household.id,
+            name=request_data.list_name or f"Shopping list for {recipe.name}",
+            description=f"Generated from recipe: {recipe.name}",
+            status="active",
+            created_by_user_id=current_user.id,
+        )
+        db.add(shopping_list)
+        await db.flush()
 
     # Add ingredients as items
-    if recipe.recipe_data:
-        # Support both 'recipeIngredient' (Schema.org format from frontend)
-        # and 'ingredients' (legacy/test format) for backward compatibility
-        ingredients = recipe.recipe_data.get("parsedIngredients") or recipe.recipe_data.get(
-            "recipeIngredient", recipe.recipe_data.get("ingredients", [])
-        )
-        if isinstance(ingredients, list):
-            for idx, ingredient in enumerate(ingredients):
-                # Handle both string and dict ingredient formats
-                if isinstance(ingredient, str):
-                    item_name = ingredient
-                elif isinstance(ingredient, dict):
-                    # If ingredient is a dict, try to format it nicely
-                    if ingredient.get("header"):
-                        continue
-                    # `raw` keeps unitless quantities, ranges and notes intact
-                    item_name = str(
-                        ingredient.get("raw")
-                        or ingredient.get("item")
-                        or ingredient.get("name")
-                        or ingredient.get("ingredient")
-                        or ""
-                    ).strip()
-                    if not item_name:
-                        continue
-                else:
-                    continue
-
-                item = ShoppingListItem(
-                    list_id=shopping_list.id,
-                    item_name=item_name,
-                    quantity=None,
-                    unit=None,
-                    category=None,
-                    notes=None,
-                    checked=False,
-                    display_order=idx,
-                )
-                db.add(item)
+    for fields in recipe_shopping_items(recipe.recipe_data or {}, request_data.ingredient_index):
+        await add_or_merge_item(db, shopping_list.id, **fields)
 
     await db.commit()
-
-    # Reload shopping list with items eagerly loaded
-    result = await db.execute(
-        select(ShoppingList)
-        .where(ShoppingList.id == shopping_list.id)
-        .options(selectinload(ShoppingList.items))
-    )
-    shopping_list = result.scalar_one()
-
-    return shopping_list
+    return await _load_with_items(db, shopping_list.id)
 
 
 @router.post("/from-meal-plan", response_model=ShoppingListSchema)
@@ -709,17 +857,19 @@ async def generate_from_meal_plan(
     if not planned_meals:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No meals selected")
 
-    # Create shopping list
-    list_name = request_data.list_name or f"Shopping list for week of {meal_plan.week_start_date}"
-    shopping_list = ShoppingList(
-        household_id=household.id,
-        name=list_name,
-        description=f"Generated from meal plan for week of {meal_plan.week_start_date}",
-        status="active",
-        created_by_user_id=current_user.id,
-    )
-    db.add(shopping_list)
-    await db.flush()
+    if request_data.shopping_list_id is not None:
+        shopping_list = await _household_list(db, request_data.shopping_list_id, household.id)
+    else:
+        week = meal_plan.week_start_date
+        shopping_list = ShoppingList(
+            household_id=household.id,
+            name=request_data.list_name or f"Shopping list for week of {week}",
+            description=f"Generated from meal plan for week of {week}",
+            status="active",
+            created_by_user_id=current_user.id,
+        )
+        db.add(shopping_list)
+        await db.flush()
 
     # Collect all ingredients from all recipes as structured data
     ingredients_data: list[dict[str, Any]] = []
@@ -735,70 +885,22 @@ async def generate_from_meal_plan(
         recipe = recipes_by_id.get(planned_meal.recipe_id)
 
         if recipe and recipe.recipe_data:
-            # Support both 'recipeIngredient' (Schema.org format from frontend)
-            # and 'ingredients' (legacy/test format) for backward compatibility
-            ingredients = recipe.recipe_data.get("parsedIngredients") or recipe.recipe_data.get(
-                "recipeIngredient", recipe.recipe_data.get("ingredients", [])
+            ingredients_data.extend(
+                {"name": item["item_name"], "quantity": item["quantity"], "unit": item["unit"]}
+                for item in recipe_shopping_items(recipe.recipe_data)
             )
-            if isinstance(ingredients, list):
-                for ingredient in ingredients:
-                    # Handle both string and dict ingredient formats
-                    if isinstance(ingredient, str):
-                        # Parse string format
-                        quantity, unit, name = parse_ingredient_string(ingredient)
-                        ingredients_data.append(
-                            {
-                                "quantity": quantity,
-                                "unit": unit,
-                                "name": name,
-                            }
-                        )
-                    elif isinstance(ingredient, dict):
-                        # Use dict format directly
-                        if ingredient.get("header"):
-                            continue
-                        name = (
-                            ingredient.get("item")
-                            or ingredient.get("name")
-                            or ingredient.get("ingredient")
-                            or ingredient.get("raw", "")
-                        )
-                        # Ranges: buy the upper bound, as parse_quantity does for "1-2"
-                        quantity = ingredient.get("quantityMax") or ingredient.get("quantity")
-                        unit = ingredient.get("unit", "")
-                        ingredients_data.append(
-                            {
-                                "quantity": quantity if quantity else None,
-                                "unit": unit if unit else None,
-                                "name": name,
-                            }
-                        )
 
     # Consolidate ingredients by name and unit, summing quantities
     consolidated_ingredients = consolidate_ingredients(ingredients_data)
 
-    # Add consolidated ingredients as shopping list items
-    for idx, ingredient in enumerate(consolidated_ingredients):
-        item = ShoppingListItem(
-            list_id=shopping_list.id,
-            item_name=ingredient["name"],
+    for ingredient in consolidated_ingredients:
+        await add_or_merge_item(
+            db,
+            shopping_list.id,
+            item_name=str(ingredient["name"])[:255],
             quantity=ingredient["quantity"],
             unit=ingredient["unit"],
-            category=None,
-            notes=None,
-            checked=False,
-            display_order=idx,
         )
-        db.add(item)
 
     await db.commit()
-
-    # Reload shopping list with items eagerly loaded
-    result = await db.execute(
-        select(ShoppingList)
-        .where(ShoppingList.id == shopping_list.id)
-        .options(selectinload(ShoppingList.items))
-    )
-    shopping_list = result.scalar_one()
-
-    return shopping_list
+    return await _load_with_items(db, shopping_list.id)
