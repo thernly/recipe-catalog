@@ -13,7 +13,9 @@ RUN pnpm install --frozen-lockfile
 # Copy source
 COPY . ./
 
-# Build (produces static site in build/)
+# Build (produces static site in build/). APP_VERSION comes from docker-compose.
+ARG APP_VERSION
+ENV APP_VERSION=${APP_VERSION}
 RUN pnpm build
 
 # Stage 2: Nginx to serve static files and proxy API

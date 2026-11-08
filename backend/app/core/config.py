@@ -4,10 +4,11 @@ Application configuration settings.
 
 import os
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.constants import MIN_SECRET_KEY_LENGTH
+from app.core.version import get_app_version
 
 
 class Settings(BaseSettings):
@@ -15,7 +16,7 @@ class Settings(BaseSettings):
 
     # Application
     APP_NAME: str = "Recipe Catalog API"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = Field(default_factory=get_app_version)  # env var overrides
     DEBUG: bool = False
     ENVIRONMENT: str = "production"
     _TESTING: bool = False  # Internal flag - only enabled in non-production environments

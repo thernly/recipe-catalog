@@ -7,6 +7,9 @@ services:
     environment:
       # Override DB path to volume-mounted directory
       - DATABASE_URL=sqlite+aiosqlite:///./data/recipes.db
+      # Build contexts have no git history; pass the version in:
+      #   APP_VERSION=$(scripts/app-version.sh) docker compose up --build
+      - APP_VERSION
     volumes:
       - sqlite_data:/app/data
     expose:
@@ -20,7 +23,10 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - APP_VERSION
     container_name: recipe-frontend
     environment:
       - PUBLIC_API_URL=/api
