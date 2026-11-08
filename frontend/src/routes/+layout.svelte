@@ -1,4 +1,6 @@
 <script lang="ts">
+	import '@fontsource-variable/outfit';
+	import '@fontsource-variable/lora';
 	import '../app.css';
 	import { watchTheme } from '#lib/stores/theme.js';
 	import { onMount } from 'svelte';

@@ -10,7 +10,7 @@ metadata:
 - **Framework**: SvelteKit with Svelte 5, TypeScript, Vite v8
 - **CSS**: Tailwind CSS v4.3.0 via `@tailwindcss/postcss`. Entry point is `src/app.css` using `@import "tailwindcss"`, `@config "../tailwind.config.js"`, and `@plugin` directives (v4 syntax — NOT `@tailwind` directives).
 - **Theme system**: CSS custom properties in `app.css`. Four themes: `garden-fresh` (default), `bistro`, `dark`, `high-contrast`. Applied via `data-theme` attribute on `<html>`. Variables named `--primary-*`, `--accent-*`, `--neutral-*`, `--text-*`, `--space-*`, `--radius-*`.
-- **Fonts**: Outfit (sans/UI) and Lora (display) via Google Fonts. Loaded in `app.html`. Referenced via CSS vars `--font-sans`, `--font-display`.
+- **Fonts**: Outfit (sans/UI) and Lora (display), self-hosted via `@fontsource-variable/outfit` and `@fontsource-variable/lora`, imported in `src/routes/+layout.svelte`. Referenced via CSS vars `--font-sans`, `--font-ui`, `--font-display`. No external font requests, so the CSP allows fonts from `'self'` only.
 - **Icons**: `@lucide/svelte`
 - **Package manager**: pnpm (workspace config at `frontend/pnpm-workspace.yaml`)
 - **Testing**: Vitest v4 + jsdom + `@testing-library/svelte` v5. Config in `vite.config.ts`. Requires `svelteTesting()` plugin from `@testing-library/svelte/vite` for Svelte 5 browser bundle resolution.
