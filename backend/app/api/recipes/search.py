@@ -2,20 +2,38 @@
 Recipe search and filtering operations.
 """
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import DEFAULT_CATEGORIES, DEFAULT_CUISINES
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
 from app.models.collection import RecipeCollection
 from app.models.household import Household
 from app.models.recipe import Recipe
-from app.models.user import User
+from app.models.user import User, UserPreferences
 from app.schemas.recipe import RecipeSearchResult, RecipeSummary
 
 
 router = APIRouter()
+OTHER = "other"
+
+
+def _option_filter(column: Any, selected: list[str], known: list[str]) -> Any:
+    """Case-insensitive match on the checked options. "Other" matches blank values and
+    anything that isn't one of the known checkbox options."""
+    wanted = {s.lower() for s in selected}
+    clauses: list[Any] = []
+    exact = wanted - {OTHER}
+    if exact:
+        clauses.append(func.lower(column).in_(exact))
+    if OTHER in wanted:
+        known_lower = {k.lower() for k in known} - {OTHER}
+        clauses.append(or_(column.is_(None), column == "", func.lower(column).not_in(known_lower)))
+    return or_(*clauses)
 
 
 @router.get("/trash/list", response_model=list[RecipeSummary])
@@ -95,11 +113,18 @@ async def search_recipes(
         )
 
     # Apply filters
-    if cuisine:
-        stmt = stmt.where(Recipe.cuisine.in_(cuisine))
-
-    if category:
-        stmt = stmt.where(Recipe.category.in_(category))
+    if cuisine or category:
+        prefs = (
+            await db.execute(
+                select(UserPreferences).where(UserPreferences.user_id == current_user.id)
+            )
+        ).scalar_one_or_none()
+        if cuisine:
+            known = DEFAULT_CUISINES + (prefs.custom_cuisines if prefs else [])
+            stmt = stmt.where(_option_filter(Recipe.cuisine, cuisine, known))
+        if category:
+            known = DEFAULT_CATEGORIES + (prefs.custom_categories if prefs else [])
+            stmt = stmt.where(_option_filter(Recipe.category, category, known))
 
     if source_type:
         stmt = stmt.where(Recipe.source_type.in_(source_type))

@@ -4,6 +4,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.core.constants import DEFAULT_CATEGORIES, DEFAULT_CUISINES
+
 
 # ============================================
 # Shared Validators
@@ -178,6 +180,9 @@ class UserPreferences(UserPreferencesBase):
     user_id: int
     created_at: datetime
     updated_at: datetime
+    # Read-only: the built-in filter options, so the frontend doesn't keep its own copy.
+    default_cuisines: list[str] = Field(default_factory=lambda: list(DEFAULT_CUISINES))
+    default_categories: list[str] = Field(default_factory=lambda: list(DEFAULT_CATEGORIES))
 
     model_config = ConfigDict(from_attributes=True)
 

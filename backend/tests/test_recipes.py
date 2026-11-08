@@ -190,6 +190,33 @@ async def test_search_recipes_by_cuisine(client: AsyncClient, auth_headers: dict
     assert data["recipes"][0]["cuisine"] == "Italian"
 
 
+async def test_search_cuisine_other(client: AsyncClient, auth_headers: dict):
+    """ "Other" matches blank, literal "Other", and unlisted cuisines, not listed ones."""
+    for name, cuisine in [
+        ("Pasta", "italian"),
+        ("Injera", "Ethiopian"),
+        ("Mystery", None),
+        ("Stew", "Other"),
+        ("Pierogi", "Polish"),
+    ]:
+        await client.post(
+            "/api/v1/recipes/",
+            json={"name": name, "recipe_data": {}, "cuisine": cuisine},
+            headers=auth_headers,
+        )
+    await client.patch(
+        "/api/v1/users/me/preferences", json={"custom_cuisines": ["Polish"]}, headers=auth_headers
+    )
+
+    response = await client.get("/api/v1/recipes/search?cuisine=Other", headers=auth_headers)
+    assert {r["name"] for r in response.json()["recipes"]} == {"Injera", "Mystery", "Stew"}
+
+    response = await client.get(
+        "/api/v1/recipes/search?cuisine=Italian&cuisine=Other", headers=auth_headers
+    )
+    assert {r["name"] for r in response.json()["recipes"]} == {"Pasta", "Injera", "Mystery", "Stew"}
+
+
 @pytest.mark.asyncio
 async def test_search_recipes_with_pagination(client: AsyncClient, auth_headers: dict):
     """Test recipe search with pagination."""

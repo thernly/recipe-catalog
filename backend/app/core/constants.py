@@ -70,3 +70,14 @@ PDF_MIN_CHAR_CODE = 32  # Minimum character code for text cleaning
 # HTTP Status Codes (most commonly used)
 HTTP_RATE_LIMIT_ERROR = 429  # Rate limit exceeded
 HTTP_UNAUTHORIZED = 401  # Unauthorized access
+
+# Built-in cuisine/category filter options. Users add their own via preferences.
+# "Other" is always offered too and matches anything not in these lists.
+DEFAULT_CUISINES = [
+    "Italian", "Mexican", "Chinese", "Japanese", "Indian", "Thai", "French", "Greek",
+    "Spanish", "Mediterranean", "American", "Korean", "Vietnamese", "Middle Eastern",
+]  # fmt: skip
+DEFAULT_CATEGORIES = [
+    "Breakfast", "Lunch", "Dinner", "Appetizer", "Main Course", "Side Dish", "Dessert",
+    "Snack", "Beverage", "Salad", "Soup", "Pasta", "Bread", "Sauce",
+]  # fmt: skip

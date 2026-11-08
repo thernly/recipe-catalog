@@ -24,6 +24,9 @@ export interface UserPreferences {
   custom_cuisines: string[];
   custom_categories: string[];
   dietary_preferences: string[];
+  /** Built-in filter options (read-only, from the backend). */
+  default_cuisines: string[];
+  default_categories: string[];
 }
 
 export interface UserStats {
