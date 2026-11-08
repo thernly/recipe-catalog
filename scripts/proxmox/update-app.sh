@@ -467,7 +467,7 @@ if [[ "$SKIP_BACKUP" == false ]] && [[ -f "$BACKUP_FILE" ]]; then
     log ""
     log "If you encounter issues, rollback with:"
     log "  sudo systemctl stop $BACKEND_SERVICE"
-    log "  sudo cp $BACKUP_FILE $APP_DIR/backend/recipes.db"
+    log "  sudo cp $BACKUP_FILE $DATA_DIR/recipes.db"
     log "  sudo cp $BACKUP_DIR/backend-env-$TIMESTAMP $APP_DIR/backend/.env"
     log "  sudo cp $BACKUP_DIR/frontend-env-$TIMESTAMP $APP_DIR/frontend/.env"
     log "  sudo systemctl start $BACKEND_SERVICE"

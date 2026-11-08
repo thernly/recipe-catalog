@@ -1,220 +1,103 @@
 # OAuth / Identity Provider Authentication Setup
 
-This guide explains how to set up OAuth/OIDC authentication with Google, Microsoft, and GitHub for the Recipe Catalog application.
+How to configure sign-in with Google, GitHub and Microsoft. Code: `backend/app/api/oauth.py`, `backend/app/core/oauth.py`, settings in `backend/app/core/config.py`.
 
 ## Overview
 
-Feature 14 adds support for:
-- **Google OAuth 2.0 / OIDC** - Primary authentication method
-- **Microsoft OAuth 2.0 / OIDC** - Primary authentication method
-- **GitHub OAuth 2.0** - Optional authentication method
-- **Account Linking** - Users can link multiple providers to one account
-- **Passwordless Accounts** - Users can sign up without a password using IdPs
+- **Google** and **GitHub** — sign in, sign up (passwordless account), and auto-link to an existing account when the provider has verified the email.
+- **Microsoft** — link-only. Sign-up through Microsoft is off: a Microsoft login with no existing link is rejected with "Create and verify an account first, then link Microsoft in Settings", and Microsoft never auto-links by email. Migration `20261107_drop_legacy_microsoft_links` deleted all previously stored Microsoft links, so affected users must re-link from Settings.
+- **Linking** — a signed-in, verified user can link any provider from Settings → Security (`frontend/src/lib/components/settings/SecuritySection.svelte`, `src/lib/api/oauth.ts`).
 
 ## Architecture
 
-### Database Schema
+### Database
 
-**`identity_providers` table:**
-- `id` - Primary key
-- `user_id` - Foreign key to users table
-- `provider_name` - Provider identifier (google, microsoft, github)
-- `provider_subject` - Unique user ID from provider
-- `email_at_provider` - Email address from provider
-- `created_at` - When link was created
-- `last_used_at` - Last successful authentication
+**`identity_providers`:** `id`, `user_id`, `provider_name` (google, microsoft, github), `provider_subject`, `email_at_provider`, `created_at`, `last_used_at`.
 
-**`users` table changes:**
-- `hashed_password` - Now nullable (for IdP-only accounts)
-- `email_verified_at` - Timestamp when email was verified
+**`users`:** `hashed_password` is nullable (IdP-only accounts); `email_verified_at` records verification.
+
+**`oauth_states`:** one-time, expiring state tokens (stored hashed) carrying the provider, an optional link target user and an optional validated return URL.
 
 ### API Endpoints
 
-- `GET /api/v1/auth/providers` - List available OAuth providers
-- `GET /api/v1/auth/{provider}/authorize` - Initiate OAuth flow
-- `GET /api/v1/auth/{provider}/callback` - Handle OAuth callback
-- `GET /api/v1/auth/me/providers` - List user's linked providers
-- `DELETE /api/v1/auth/providers/{id}` - Unlink a provider
+All under `/api/v1/auth`:
+
+- `GET /providers` — list configured providers
+- `GET /{provider}/authorize?return_url=&link=` — start the flow (10/minute per IP). `return_url` must pass `is_safe_redirect_url`; `link=true` requires a signed-in, verified user.
+- `GET /{provider}/callback` — finish the flow (10/minute per IP)
+- `GET /me/providers` — list the current user's linked providers
+- `DELETE /providers/{id}` — unlink a provider
+
+### Callback behavior
+
+On success the callback sets the same cookies as password login: httpOnly `access_token` and `refresh_token` (a `refresh_tokens` row, so normal `/auth/refresh` works) plus a readable `csrf_token`. Then:
+
+- Browser requests (`Accept` contains `text/html`) get a **303** redirect to the state's `return_url` if it is still safe, otherwise `FRONTEND_URL/dashboard`.
+- Other clients get JSON `{"message": "Login successful", "csrf_token": "..."}`.
+
+Resolution order: existing link for this provider subject → explicit link request → (Microsoft: reject) → verified-email auto-link to an existing user (Google/GitHub only) → create a new passwordless user with household, preferences and a Favorites collection.
 
 ## Provider Setup
 
-### 1. Google OAuth Setup
+Each provider's redirect URI is `{OAUTH_REDIRECT_BASE_URL}/{provider}/callback`, e.g. `http://localhost:8000/api/v1/auth/google/callback` in development.
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing project
-3. Enable Google+ API (or Google Identity)
-4. Go to "Credentials" → "Create Credentials" → "OAuth 2.0 Client ID"
-5. Configure OAuth consent screen:
-   - User Type: External
-   - App name: Recipe Catalog
-   - Scopes: openid, email, profile
-6. Create OAuth 2.0 Client ID:
-   - Application type: Web application
-   - Authorized redirect URIs:
-     - `http://localhost:8000/api/v1/auth/google/callback` (development)
-     - `https://your-domain.com/api/v1/auth/google/callback` (production)
-7. Copy Client ID and Client Secret
+### Google
 
-**Environment Variables:**
-```bash
-GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-client-secret
-```
+1. [Google Cloud Console](https://console.cloud.google.com/) → Credentials → Create OAuth 2.0 Client ID (Web application).
+2. Consent screen scopes: `openid`, `email`, `profile`.
+3. Add the redirect URI; copy the client ID and secret into `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
 
-### 2. Microsoft OAuth Setup
+### GitHub
 
-1. Go to [Azure Portal](https://portal.azure.com/)
-2. Navigate to "Azure Active Directory" → "App registrations"
-3. Click "New registration"
-   - Name: Recipe Catalog
-   - Supported account types: "Accounts in any organizational directory and personal Microsoft accounts"
-   - Redirect URI: Web → `http://localhost:8000/api/v1/auth/microsoft/callback`
-4. After creation, note the "Application (client) ID"
-5. Go to "Certificates & secrets" → "New client secret"
-   - Description: Recipe Catalog Backend
-   - Copy the secret value (only shown once!)
-6. Go to "API permissions"
-   - Add permission → Microsoft Graph → Delegated permissions
-   - Add: openid, email, profile
+1. [GitHub Developer Settings](https://github.com/settings/developers) → New OAuth App.
+2. Authorization callback URL: the redirect URI above.
+3. Copy the client ID and secret into `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`.
 
-**Environment Variables:**
-```bash
-MICROSOFT_CLIENT_ID=your-application-id
-MICROSOFT_CLIENT_SECRET=your-client-secret
-```
+### Microsoft (link-only)
 
-### 3. GitHub OAuth Setup (Optional)
-
-1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
-2. Click "New OAuth App"
-   - Application name: Recipe Catalog
-   - Homepage URL: `http://localhost:5173` (development)
-   - Authorization callback URL: `http://localhost:8000/api/v1/auth/github/callback`
-3. Copy Client ID and generate Client Secret
-
-**Environment Variables:**
-```bash
-GITHUB_CLIENT_ID=your-github-client-id
-GITHUB_CLIENT_SECRET=your-github-client-secret
-```
+1. [Azure Portal](https://portal.azure.com/) → App registrations → New registration; supported account types "any organizational directory and personal Microsoft accounts"; Web redirect URI as above.
+2. Certificates & secrets → New client secret.
+3. API permissions: Microsoft Graph delegated `openid`, `email`, `profile`.
+4. Set `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET`.
 
 ## Configuration
 
-### Backend Environment Variables
-
-Add to `backend/.env`:
+`backend/.env`:
 
 ```bash
-# OAuth / Identity Providers
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+MICROSOFT_CLIENT_ID=
+MICROSOFT_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
 
-MICROSOFT_CLIENT_ID=your-microsoft-client-id
-MICROSOFT_CLIENT_SECRET=your-microsoft-client-secret
-
-GITHUB_CLIENT_ID=your-github-client-id
-GITHUB_CLIENT_SECRET=your-github-client-secret
-
-# OAuth Redirect URI base (must match provider configuration)
+# Auth API base; provider redirect URIs are {this}/{provider}/callback
 OAUTH_REDIRECT_BASE_URL=http://localhost:8000/api/v1/auth
+
+# Where browsers land after a successful callback (/dashboard)
+FRONTEND_URL=http://localhost:5173
 ```
 
-### Frontend Configuration
+A provider with an empty client ID/secret is not offered and its routes return 503.
 
-The frontend needs to be configured to:
-1. Display OAuth provider buttons on login/signup pages
-2. Handle OAuth redirect flows
-3. Allow users to manage linked providers in settings
+`OAUTH_REDIRECT_URI` was removed. If it is still set, the backend **fails at startup** with a message telling you to set `OAUTH_REDIRECT_BASE_URL` instead and unset it.
 
-## Security Considerations
+In production, set `OAUTH_REDIRECT_BASE_URL=https://your-domain.com/api/v1/auth`, `FRONTEND_URL` to the frontend origin, and update every provider's registered redirect URI to match.
 
-### CSRF Protection
+## Security
 
-- State tokens are generated and validated for each OAuth flow
-- Tokens are stored temporarily and deleted after use
-- State includes provider name to prevent substitution attacks
-
-### Account Linking
-
-- Automatic linking only occurs if:
-  - Email from provider matches existing account email
-  - Provider has verified the email address
-- Users can link multiple providers to one account
-- Users cannot remove their last authentication method
-
-### Email Verification
-
-- Emails verified by IdP are trusted
-- `is_verified` flag set to true for IdP signups
-- `email_verified_at` timestamp recorded
-
-### Data Minimization
-
-- Only essential user data is stored (subject ID, email, display name)
-- No access tokens or refresh tokens are persisted
-- Provider responses are not logged
-
-## Testing
-
-### Manual Testing
-
-1. Start the backend server: `cd backend && uv run uvicorn app.main:app --reload`
-2. Visit http://localhost:8000/api/v1/auth/providers to see configured providers
-3. Test OAuth flow:
-   - Navigate to http://localhost:8000/api/v1/auth/google/authorize
-   - Complete Google authentication
-   - Verify redirect to callback and token generation
-4. Test account linking:
-   - Create account with email/password
-   - Link Google account with same email
-   - Verify both authentication methods work
-
-### Production Deployment
-
-**Important:** Update redirect URIs in all provider configurations to use production URLs:
-- Google: `https://your-domain.com/api/v1/auth/google/callback`
-- Microsoft: `https://your-domain.com/api/v1/auth/microsoft/callback`
-- GitHub: `https://your-domain.com/api/v1/auth/github/callback`
-
-Update `OAUTH_REDIRECT_BASE_URL` in production environment:
-```bash
-OAUTH_REDIRECT_BASE_URL=https://your-domain.com/api/v1/auth
-```
+- **State**: generated per flow, stored hashed, one-time use, expiring, and bound to the provider name.
+- **Linking**: the link target user is re-checked at callback against the signed session; logging out or switching accounts mid-flow cancels the link. A provider account already linked to another user is rejected.
+- **Auto-linking**: only for Google/GitHub, and only when the provider reports the email verified.
+- **Unlinking**: blocked if the user has no password and this is their only linked provider ("Cannot remove last authentication method").
+- **IdP signups**: `is_verified` and `email_verified_at` are set from the provider's email-verified flag.
+- Provider access/refresh tokens are not persisted.
 
 ## Troubleshooting
 
-### "Provider not configured" error
-- Verify environment variables are set correctly
-- Restart backend server after changing .env file
-- Check that CLIENT_ID and CLIENT_SECRET are not empty strings
-
-### "Invalid state parameter" error
-- Clear browser cookies
-- State tokens expire after OAuth flow
-- Do not refresh the callback page
-
-### "Email already registered" with different provider
-- This is expected behavior for account security
-- User should log in with existing method first
-- Then link additional provider from settings
-
-### OAuth callback URL mismatch
-- Verify OAUTH_REDIRECT_BASE_URL matches provider configuration exactly
-- Include protocol (http:// or https://)
-- Ensure no trailing slashes
-
-## Migration Notes
-
-For existing users:
-- Existing accounts continue to work with email/password
-- Users can optionally link OAuth providers in settings
-- No data migration required for Feature 14
-- `hashed_password` made nullable but existing passwords remain
-
-## Future Enhancements
-
-- **Passkey Support** - WebAuthn/FIDO2 passwordless authentication
-- **Persistent State Storage** - Redis for production state management
-- **Token Refresh** - Store refresh tokens for long-lived sessions
-- **Provider Management UI** - Frontend settings page
-- **Admin Dashboard** - View OAuth usage analytics
+- **"Provider ... not configured" (503)** — client ID/secret missing; restart after editing `.env`.
+- **"Invalid state token" / "State token expired"** — restart the flow; don't refresh the callback page.
+- **"Create and verify an account first, then link Microsoft in Settings"** — expected; sign in another way and link Microsoft from Settings.
+- **"Email not verified by provider. Cannot auto-link account."** — the email belongs to an existing account and the provider is Microsoft or didn't verify it; sign in with the existing method, then link from Settings.
+- **Redirect URI mismatch** — `OAUTH_REDIRECT_BASE_URL` must exactly match what each provider has registered (scheme included, no trailing slash).
