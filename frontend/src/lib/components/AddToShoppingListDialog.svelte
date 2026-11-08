@@ -4,6 +4,7 @@
 		getLastShoppingListId,
 		type ShoppingListSummary,
 	} from '#lib/api/shopping-lists.js';
+	import { trapFocus } from '#lib/actions/trapFocus.js';
 
 	/** Whether the dialog is shown */
 	export let open = false;
@@ -53,6 +54,7 @@
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="add-to-list-heading"
+			use:trapFocus
 			class="rounded-lg shadow-xl max-w-md w-full p-6"
 			style="background: var(--neutral-white); color: var(--text-900);"
 		>

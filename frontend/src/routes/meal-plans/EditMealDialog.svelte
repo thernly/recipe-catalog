@@ -9,6 +9,7 @@
 	import { searchRecipes, type RecipeSummary } from '#lib/api/recipes.js';
 	import { dialog } from '#lib/stores/dialog.js';
 	import { toast } from '#lib/stores/toast.js';
+	import { trapFocus } from '#lib/actions/trapFocus.js';
 
 	export let meal: PlannedMeal;
 
@@ -155,6 +156,7 @@
 		tabindex="-1"
 		aria-modal="true"
 		aria-labelledby="edit-meal-title"
+		use:trapFocus
 	>
 		<div class="modal-header">
 			<h2 id="edit-meal-title">Edit Meal</h2>

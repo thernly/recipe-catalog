@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { theme } from "#lib/stores/theme.js";
+	import { theme } from '#lib/stores/theme.js';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import {
@@ -139,10 +139,11 @@
 			<!-- Settings layout -->
 			<div class="settings-layout">
 				<!-- Sidebar navigation -->
-				<aside class="settings-sidebar">
+				<nav class="settings-sidebar" aria-label="Settings sections">
 					<button
 						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'profile'}
+						aria-current={activeSection === 'profile' || undefined}
 						on:click={() => (activeSection = 'profile')}
 					>
 						<UserIcon size={18} aria-hidden="true" />
@@ -151,6 +152,7 @@
 					<button
 						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'preferences'}
+						aria-current={activeSection === 'preferences' || undefined}
 						on:click={() => (activeSection = 'preferences')}
 					>
 						<Palette size={18} aria-hidden="true" />
@@ -159,6 +161,7 @@
 					<button
 						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'security'}
+						aria-current={activeSection === 'security' || undefined}
 						on:click={() => (activeSection = 'security')}
 					>
 						<Lock size={18} aria-hidden="true" />
@@ -167,6 +170,7 @@
 					<button
 						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'api-tokens'}
+						aria-current={activeSection === 'api-tokens' || undefined}
 						on:click={() => (activeSection = 'api-tokens')}
 					>
 						<KeyRound size={18} aria-hidden="true" />
@@ -175,6 +179,7 @@
 					<button
 						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'household'}
+						aria-current={activeSection === 'household' || undefined}
 						on:click={() => (activeSection = 'household')}
 					>
 						<Home size={18} aria-hidden="true" />
@@ -183,6 +188,7 @@
 					<button
 						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'stats'}
+						aria-current={activeSection === 'stats' || undefined}
 						on:click={() => (activeSection = 'stats')}
 					>
 						<BarChart3 size={18} aria-hidden="true" />
@@ -191,6 +197,7 @@
 					<button
 						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'filters'}
+						aria-current={activeSection === 'filters' || undefined}
 						on:click={() => (activeSection = 'filters')}
 					>
 						<Search size={18} aria-hidden="true" />
@@ -199,13 +206,14 @@
 					<button
 						class="sidebar-link danger flex items-center gap-2"
 						class:active={activeSection === 'danger'}
+						aria-current={activeSection === 'danger' || undefined}
 						on:click={() => (activeSection = 'danger')}
 					>
 						<AlertTriangle size={18} aria-hidden="true" />
 						<span>Danger Zone</span>
 					</button>
 					<p class="app-version">Version {__APP_VERSION__}</p>
-				</aside>
+				</nav>
 
 				<!-- Main content -->
 				<div class="settings-content">
@@ -282,7 +290,7 @@
 	}
 
 	.sidebar-link.danger {
-		color: var(--error-600);
+		color: var(--color-error-text);
 	}
 
 	.sidebar-link.danger:hover {

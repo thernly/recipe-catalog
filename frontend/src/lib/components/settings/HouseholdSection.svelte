@@ -938,7 +938,8 @@
 	}
 
 	.btn-danger:hover:not(:disabled) {
-		background: var(--error-700, #c82333);
+		background: var(--error-600);
+		filter: brightness(0.9);
 	}
 
 	.btn-success {
@@ -948,7 +949,8 @@
 	}
 
 	.btn-success:hover:not(:disabled) {
-		background: var(--success-700, #218838);
+		background: var(--success-600);
+		filter: brightness(0.9);
 	}
 
 	.btn-danger:disabled,

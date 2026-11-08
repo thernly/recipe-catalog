@@ -25,16 +25,22 @@
   --color-info-bg: #dbeafe;
   --color-info-text: #1e40af;
 
-  /* Fixed error/success scales used by settings sections (light card + dark text in every theme) */
+  /* Error/success scales: 50 = card background, 200-300 = border,
+     500-600 = solid button (white text), 700-900 = text on the card. Dark theme overrides. */
   --error-50: #fee2e2;
   --error-200: #fecaca;
+  --error-300: #fca5a5;
+  --error-500: #dc2626;
   --error-600: #b91c1c;
   --error-700: #991b1b;
+  --error-800: #991b1b;
   --error-900: #7f1d1d;
   --success-50: #d1fae5;
   --success-200: #a7f3d0;
+  --success-300: #6ee7b7;
   --success-600: #047857;
   --success-700: #065f46;
+  --success-800: #065f46;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -292,6 +298,22 @@
   --color-error: #ef4444;
   --color-error-bg: #7f1d1d;
   --color-error-text: #fca5a5;
+
+  /* Error/success scales for dark: dark card, light text, buttons keep white text */
+  --error-50: #450a0a;
+  --error-200: #7f1d1d;
+  --error-300: #991b1b;
+  --error-500: #f87171;
+  --error-600: #dc2626;
+  --error-700: #fca5a5;
+  --error-800: #fecaca;
+  --error-900: #fee2e2;
+  --success-50: #022c22;
+  --success-200: #065f46;
+  --success-300: #047857;
+  --success-600: #059669;
+  --success-700: #6ee7b7;
+  --success-800: #a7f3d0;
 
   --color-warning: #f59e0b;
   --color-warning-bg: #78350f;

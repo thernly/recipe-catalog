@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { Collection } from '#lib/api/collections.js';
+	import { trapFocus } from '#lib/actions/trapFocus.js';
 
 	export let isOpen = false;
 	export let collection: Collection | null = null; // null for create, collection for edit
@@ -108,6 +109,7 @@
 			aria-modal="true"
 			aria-labelledby="collection-modal-title"
 			tabindex="-1"
+			use:trapFocus
 			use:manageFocus
 		>
 			<div class="modal-header">

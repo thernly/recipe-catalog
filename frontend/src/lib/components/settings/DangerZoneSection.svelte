@@ -93,7 +93,8 @@
 	}
 
 	.btn-danger:hover {
-		background: var(--error-700);
+		background: var(--error-600);
+		filter: brightness(0.9);
 		box-shadow: var(--shadow-md);
 	}
 
