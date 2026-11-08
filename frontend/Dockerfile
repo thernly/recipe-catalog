@@ -1,6 +1,6 @@
 # Frontend Dockerfile (multi-stage) for Recipe Catalog
 # Stage 1: Build SvelteKit app
-FROM node:24-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /frontend
 
 # Install pnpm
