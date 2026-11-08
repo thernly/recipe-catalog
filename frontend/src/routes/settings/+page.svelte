@@ -219,6 +219,7 @@
 						<AlertTriangle size={18} aria-hidden="true" />
 						<span>Danger Zone</span>
 					</button>
+					<p class="app-version">Version {__APP_VERSION__}</p>
 				</aside>
 
 				<!-- Main content -->
@@ -302,6 +303,15 @@
 	.sidebar-link.danger:hover {
 		background: var(--error-50);
 		color: var(--error-700);
+	}
+
+	.app-version {
+		margin-top: 0.5rem;
+		padding: 0.5rem 1rem 0;
+		border-top: 1px solid var(--neutral-200);
+		font-size: 0.75rem;
+		color: var(--text-500);
+		white-space: nowrap;
 	}
 
 	.settings-content {
