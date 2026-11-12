@@ -236,6 +236,32 @@
 		}
 	}
 
+	// One unchecked item per line: iOS Reminders splits pasted lines into items.
+	async function handleShareList() {
+		const text = sortedItems
+			.filter((item) => !item.checked)
+			.map((item) => {
+				const qty = formatQuantityUnit(item.quantity, item.unit);
+				return qty ? `${item.item_name} (${qty})` : item.item_name;
+			})
+			.join('\n');
+		if (!text) {
+			toast.error('No unchecked items to share');
+			return;
+		}
+		try {
+			if (navigator.share) {
+				await navigator.share({ text });
+			} else {
+				await navigator.clipboard.writeText(text);
+				toast.success('List copied to clipboard');
+			}
+		} catch (err) {
+			if (err instanceof Error && err.name === 'AbortError') return;
+			toast.error('Failed to share list');
+		}
+	}
+
 	async function handleDeleteList() {
 		dialog.show({
 			title: 'Delete List',
@@ -345,6 +371,13 @@
 
 			<!-- Actions -->
 			<div class="flex gap-2 mb-4 flex-wrap">
+				<button
+					on:click={handleShareList}
+					class="px-3 py-1 text-sm rounded"
+					style="background: var(--neutral-100); color: var(--text-900);"
+				>
+					Share
+				</button>
 				<button
 					on:click={handleDuplicateList}
 					class="px-3 py-1 text-sm rounded"
