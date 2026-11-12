@@ -67,24 +67,28 @@ _SOURCE_WORDS = {
 # ponytail: fixed word list; extend it as new recipes turn up other misses
 _WHOLE_INGREDIENTS = {
     "ghee", "lard", "butter", "margarine", "shortening", "oil", "honey", "molasses",
-    "water", "stock", "broth", "wine", "vinegar", "sugar", "salt",
+    "water", "stock", "broth", "wine", "vinegar", "sugar", "salt", "pepper",
 }  # fmt: skip
 
-# "and" joins two items only between full names on a line with no amount and no
-# punctuation: "Kosher salt and black pepper". One-word sides stay whole ("half and
-# half", "sweet and sour sauce"), and so do prep notes, which carry an amount or
-# punctuation ("2 potatoes peeled and cut", "butter, plus extra for the tin and to serve").
+# "and" joins two items only between full names (or `_WHOLE_INGREDIENTS` words) on a
+# line with no amount and no punctuation: "Kosher salt and black pepper", "Salt and
+# pepper". Other one-word sides stay whole ("half and half", "sweet and sour sauce"),
+# and so do prep notes, which carry an amount or punctuation ("2 potatoes peeled and
+# cut", "butter, plus extra for the tin and to serve").
 _AND = re.compile(r"\s+and\s+", re.IGNORECASE)
+_TO_TASTE = re.compile(r"\s+to (taste|season)\b.*$", re.IGNORECASE)
 
 
 def _split_items(name: str, has_quantity: bool) -> list[str]:
     """Split "A and B" into separate items (see `_AND`), then each "A or B"."""
+    if not has_quantity:
+        name = _TO_TASTE.sub("", name)
     parts = [p.strip() for p in _AND.split(name)]
     if (
         has_quantity
         or re.search(r"[\d(),;:]", name)
         or len(parts) < 2
-        or any(" " not in p for p in parts)
+        or any(" " not in p and p.lower() not in _WHOLE_INGREDIENTS for p in parts)
     ):
         parts = [name]
     return [alt for part in parts for alt in _split_alternatives(part)]
