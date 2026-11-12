@@ -249,6 +249,37 @@ def test_one_word_alternatives_share_the_noun():
     ]
 
 
+def test_name_heuristic_misses():
+    lines = [
+        "2 tablespoons ghee or clarified butter",
+        "1 cup medium or fine cornmeal",
+        "Kosher salt and black pepper",
+        "1 cup half and half",
+        "2 tablespoons sweet and sour sauce",
+        "4 ounces milk or dark chocolate",
+        "Kosher salt and black or white pepper",
+        "2 potatoes peeled and cut into cubes",
+        "For serving: chopped walnuts and extra honey",
+    ]
+    names = [i["item_name"] for i in recipe_shopping_items({"recipeIngredient": lines})]
+    assert names == [
+        "ghee",
+        "clarified butter",
+        "cornmeal",
+        "Kosher salt",
+        "black pepper",
+        "half and half",
+        "sweet and sour sauce",
+        "milk chocolate",
+        "dark chocolate",
+        "Kosher salt",
+        "black pepper",
+        "white pepper",
+        "potatoes peeled and cut into cubes",
+        "For serving: chopped walnuts and extra honey",
+    ]
+
+
 def test_recipe_items_single_line_and_header():
     data = {"recipeIngredient": ["For the sauce:", "1 cup milk", "2 eggs"]}
     assert recipe_shopping_items(data, 0) == []
