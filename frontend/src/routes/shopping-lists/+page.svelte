@@ -59,8 +59,20 @@
 	let error: string | null = null;
 	let statusFilter: 'active' | 'archived' | 'all' = 'active';
 
-	// Create dialog state
-	let showCreateDialog = false;
+	async function unarchive(list: ShoppingListSummary) {
+		try {
+			await updateShoppingList(list.id, { status: 'active' });
+			toast.success(`Restored "${list.name}"`);
+			await loadShoppingLists();
+		} catch (err) {
+			toast.error(
+				err instanceof Error ? err.message : 'Failed to restore list',
+			);
+		}
+	}
+
+	// Create dialog: native <dialog> gives the focus trap, Escape and focus return
+	let createDialog: HTMLDialogElement;
 	let newListName = '';
 	let newListDescription = '';
 	let creating = false;
@@ -92,9 +104,7 @@
 			};
 
 			const newList = await createShoppingList(data);
-			showCreateDialog = false;
-			newListName = '';
-			newListDescription = '';
+			createDialog.close();
 
 			// Navigate to the new list
 			goto(`/shopping-lists/${newList.id}`);
@@ -110,13 +120,7 @@
 	function openCreateDialog() {
 		newListName = '';
 		newListDescription = '';
-		showCreateDialog = true;
-	}
-
-	function closeCreateDialog() {
-		showCreateDialog = false;
-		newListName = '';
-		newListDescription = '';
+		createDialog.showModal();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-expressions -- lists reactive dependencies
@@ -133,7 +137,7 @@
 			<h1 class="text-3xl font-bold">Shopping Lists</h1>
 			<button
 				on:click={openCreateDialog}
-				class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg"
+				class="btn-primary font-semibold py-2 px-4 rounded-lg"
 			>
 				+ New List
 			</button>
@@ -176,7 +180,8 @@
 
 	{#if error}
 		<div
-			class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4"
+			class="border px-4 py-3 rounded mb-4"
+			style="background: var(--error-50); border-color: var(--error-200); color: var(--error-700);"
 		>
 			{error}
 		</div>
@@ -193,7 +198,7 @@
 			</p>
 			<button
 				on:click={openCreateDialog}
-				class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg"
+				class="btn-primary font-semibold py-2 px-4 rounded-lg"
 			>
 				Create Your First List
 			</button>
@@ -316,6 +321,16 @@
 								style="color: var(--text-900); background: var(--neutral-100); border-color: var(--neutral-300);"
 								>Rename</button
 							>
+							{#if list.status === 'archived'}
+								<button
+									type="button"
+									on:click={() => unarchive(list)}
+									aria-label="Unarchive {list.name}"
+									class="px-3 py-1 rounded text-sm border"
+									style="color: var(--text-900); background: var(--neutral-100); border-color: var(--neutral-300);"
+									>Unarchive</button
+								>
+							{/if}
 							<button
 								type="button"
 								on:click={() => confirmDelete(list)}
@@ -333,74 +348,84 @@
 </div>
 
 <!-- Create List Dialog -->
-{#if showCreateDialog}
-	<div
-		class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+<dialog
+	bind:this={createDialog}
+	aria-labelledby="create-list-title"
+	class="create-dialog rounded-lg shadow-xl max-w-md w-full p-6"
+>
+	<h2
+		id="create-list-title"
+		class="text-2xl font-bold mb-4"
+		style="color: var(--text-900);"
 	>
-		<div
-			class="rounded-lg shadow-xl max-w-md w-full p-6"
-			style="background: var(--neutral-white);"
-		>
-			<h2 class="text-2xl font-bold mb-4" style="color: var(--text-900);">
-				Create Shopping List
-			</h2>
+		Create Shopping List
+	</h2>
 
-			<form on:submit|preventDefault={handleCreateList}>
-				<div class="mb-4">
-					<label
-						for="name"
-						class="block text-sm font-medium mb-1"
-						style="color: var(--text-900);"
-					>
-						List Name <span class="text-red-500">*</span>
-					</label>
-					<input
-						id="name"
-						type="text"
-						bind:value={newListName}
-						required
-						class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
-						style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900); --tw-ring-color: var(--accent-500);"
-						placeholder="e.g., Weekly Groceries"
-					/>
-				</div>
-
-				<div class="mb-6">
-					<label
-						for="description"
-						class="block text-sm font-medium mb-1"
-						style="color: var(--text-900);"
-					>
-						Description (optional)
-					</label>
-					<textarea
-						id="description"
-						bind:value={newListDescription}
-						rows="3"
-						class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
-						style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900); --tw-ring-color: var(--accent-500);"
-						placeholder="Add any notes about this list..."></textarea>
-				</div>
-				<div class="flex justify-end gap-3">
-					<button
-						type="button"
-						on:click={closeCreateDialog}
-						class="px-4 py-2 rounded-lg"
-						style="color: var(--text-900); background: var(--neutral-100); border: 1px solid var(--neutral-300);"
-						disabled={creating}
-					>
-						Cancel
-					</button>
-					<button
-						type="submit"
-						class="px-4 py-2 text-white rounded-lg disabled:opacity-50"
-						style="background: var(--accent-500);"
-						disabled={creating || !newListName.trim()}
-					>
-						{creating ? 'Creating...' : 'Create List'}
-					</button>
-				</div>
-			</form>
+	<form on:submit|preventDefault={handleCreateList}>
+		<div class="mb-4">
+			<label
+				for="name"
+				class="block text-sm font-medium mb-1"
+				style="color: var(--text-900);"
+			>
+				List Name <span style="color: var(--error-500);">*</span>
+			</label>
+			<input
+				id="name"
+				type="text"
+				bind:value={newListName}
+				required
+				class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+				style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900); --tw-ring-color: var(--accent-500);"
+				placeholder="e.g., Weekly Groceries"
+			/>
 		</div>
-	</div>
-{/if}
+
+		<div class="mb-6">
+			<label
+				for="description"
+				class="block text-sm font-medium mb-1"
+				style="color: var(--text-900);"
+			>
+				Description (optional)
+			</label>
+			<textarea
+				id="description"
+				bind:value={newListDescription}
+				rows="3"
+				class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+				style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900); --tw-ring-color: var(--accent-500);"
+				placeholder="Add any notes about this list..."></textarea>
+		</div>
+		<div class="flex justify-end gap-3">
+			<button
+				type="button"
+				on:click={() => createDialog.close()}
+				class="px-4 py-2 rounded-lg"
+				style="color: var(--text-900); background: var(--neutral-100); border: 1px solid var(--neutral-300);"
+				disabled={creating}
+			>
+				Cancel
+			</button>
+			<button
+				type="submit"
+				class="px-4 py-2 text-white rounded-lg disabled:opacity-50"
+				style="background: var(--accent-500);"
+				disabled={creating || !newListName.trim()}
+			>
+				{creating ? 'Creating...' : 'Create List'}
+			</button>
+		</div>
+	</form>
+</dialog>
+
+<style>
+	.create-dialog {
+		margin: auto;
+		border: 1px solid var(--neutral-300);
+		background: var(--neutral-white);
+	}
+	.create-dialog::backdrop {
+		background: rgba(0, 0, 0, 0.5);
+	}
+</style>

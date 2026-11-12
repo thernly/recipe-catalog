@@ -148,6 +148,63 @@ describe("shopping list detail page", () => {
     expect(updateShoppingListItem).not.toHaveBeenCalled();
   });
 
+  const milk = {
+    id: 5,
+    list_id: 7,
+    item_name: "milk",
+    checked: false,
+    display_order: 1,
+    created_at: "2026-11-01T00:00:00Z",
+    updated_at: "2026-11-01T00:00:00Z",
+  };
+
+  it("checks an item off at once without refetching the list", async () => {
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: [milk] });
+    vi.mocked(updateShoppingListItem).mockResolvedValue({
+      ...milk,
+      checked: true,
+    });
+    const { findByRole } = render(Page, { params: { id: "7" } });
+
+    const box = (await findByRole("checkbox", {
+      name: "Got milk",
+    })) as HTMLInputElement;
+    await fireEvent.click(box);
+
+    expect(box.checked).toBe(true);
+    expect(updateShoppingListItem).toHaveBeenCalledWith(5, { checked: true });
+    expect(getShoppingList).toHaveBeenCalledTimes(1);
+  });
+
+  it("unchecks the item again when the update fails", async () => {
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: [milk] });
+    vi.mocked(updateShoppingListItem).mockRejectedValue(new Error("offline"));
+    const { findByRole } = render(Page, { params: { id: "7" } });
+
+    const box = (await findByRole("checkbox", {
+      name: "Got milk",
+    })) as HTMLInputElement;
+    await fireEvent.click(box);
+
+    await waitFor(() => expect(box.checked).toBe(false));
+  });
+
+  it("unarchives an archived list", async () => {
+    vi.mocked(getShoppingList).mockResolvedValue({
+      ...list,
+      status: "archived",
+    });
+    vi.mocked(updateShoppingList).mockResolvedValue(list);
+    const { findByRole, queryByRole } = render(Page, { params: { id: "7" } });
+
+    await fireEvent.click(await findByRole("button", { name: "Unarchive" }));
+
+    await waitFor(() =>
+      expect(updateShoppingList).toHaveBeenCalledWith(7, { status: "active" }),
+    );
+    expect(queryByRole("button", { name: "Archive" })).toBeNull();
+  });
+
   it("deletes the list after confirmation", async () => {
     vi.mocked(deleteShoppingList).mockResolvedValue();
     const { findByRole } = render(Page, { params: { id: "7" } });

@@ -161,13 +161,38 @@
 		}
 	}
 
+	function setChecked(itemId: number, checked: boolean) {
+		if (!shoppingList) return;
+		shoppingList = {
+			...shoppingList,
+			items: shoppingList.items.map((i) =>
+				i.id === itemId ? { ...i, checked } : i,
+			),
+		};
+	}
+
+	// Optimistic: flip locally at once (no refetch, so a tap in the shop is
+	// instant) and flip back if the server refuses.
 	async function handleToggleChecked(item: ShoppingListItem) {
+		const checked = !item.checked;
+		setChecked(item.id, checked);
 		try {
-			await updateShoppingListItem(item.id, { checked: !item.checked });
+			await updateShoppingListItem(item.id, { checked });
+		} catch (err) {
+			setChecked(item.id, !checked);
+			toast.error(err instanceof Error ? err.message : 'Failed to update item');
+		}
+	}
+
+	async function handleUnarchiveList() {
+		try {
+			await updateShoppingList(listId, { status: 'active' });
+			toast.success('List restored');
 			await loadShoppingList();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to update item';
-			console.error('Failed to update item:', err);
+			toast.error(
+				err instanceof Error ? err.message : 'Failed to restore list',
+			);
 		}
 	}
 
@@ -292,7 +317,8 @@
 <div class="container mx-auto px-4 py-8 max-w-4xl">
 	{#if error}
 		<div
-			class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4"
+			class="border px-4 py-3 rounded mb-4"
+			style="background: var(--error-50); border-color: var(--error-200); color: var(--error-700);"
 		>
 			{error}
 		</div>
@@ -307,7 +333,8 @@
 		<div class="mb-6">
 			<a
 				href="/shopping-lists"
-				class="text-blue-600 hover:underline mb-4 inline-block"
+				class="hover:underline mb-4 inline-block"
+				style="color: var(--primary-600);"
 			>
 				← Back to Lists
 			</a>
@@ -318,8 +345,8 @@
 						type="text"
 						bind:value={editedName}
 						aria-label="List name"
-						class="text-3xl font-bold w-full border-b-2 border-blue-600 focus:outline-none mb-2"
-						style="background: var(--neutral-white); color: var(--text-900);"
+						class="text-3xl font-bold w-full border-b-2 focus:outline-none mb-2"
+						style="background: var(--neutral-white); color: var(--text-900); border-color: var(--primary-600);"
 					/>
 					<textarea
 						bind:value={editedDescription}
@@ -331,7 +358,7 @@
 					<div class="flex gap-2 mt-2">
 						<button
 							on:click={handleUpdateList}
-							class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+							class="btn-primary px-3 py-1 rounded"
 						>
 							Save
 						</button>
@@ -361,7 +388,8 @@
 					</div>
 					<button
 						on:click={() => (editingListName = true)}
-						class="text-blue-600 hover:underline text-sm"
+						class="hover:underline text-sm"
+						style="color: var(--primary-600);"
 						aria-label="Edit list"
 					>
 						Edit
@@ -393,10 +421,19 @@
 					>
 						Archive
 					</button>
+				{:else}
+					<button
+						on:click={handleUnarchiveList}
+						class="px-3 py-1 text-sm rounded"
+						style="background: var(--neutral-100); color: var(--text-900);"
+					>
+						Unarchive
+					</button>
 				{/if}
 				<button
 					on:click={handleDeleteList}
-					class="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded"
+					class="px-3 py-1 text-sm rounded"
+					style="background: var(--error-50); color: var(--error-700);"
 				>
 					Delete
 				</button>
@@ -408,7 +445,8 @@
 					<span>Sort by:</span>
 					<select
 						bind:value={sortBy}
-						class="border border-gray-300 rounded px-2 py-1"
+						class="border rounded px-2 py-1"
+						style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900);"
 					>
 						<option value="order">Order</option>
 						<option value="category">Category</option>
@@ -436,7 +474,7 @@
 						placeholder="Item name"
 						aria-label="Item name"
 						maxlength="255"
-						class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+						class="add-field w-full px-3 py-2 border rounded"
 					/>
 				</div>
 				<div>
@@ -446,7 +484,7 @@
 						placeholder="Quantity"
 						aria-label="Quantity"
 						maxlength="100"
-						class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+						class="add-field w-full px-3 py-2 border rounded"
 					/>
 				</div>
 				<div>
@@ -456,13 +494,13 @@
 						placeholder="Unit (e.g. cup)"
 						aria-label="Unit"
 						maxlength="50"
-						class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+						class="add-field w-full px-3 py-2 border rounded"
 					/>
 				</div>
 				<div>
 					<select
 						bind:value={newItemCategory}
-						class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+						class="add-field w-full px-3 py-2 border rounded"
 					>
 						<option value="">Category</option>
 						{#each categories as category (category)}
@@ -473,7 +511,7 @@
 				<div class="md:col-span-5">
 					<button
 						type="submit"
-						class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded disabled:opacity-50"
+						class="btn-primary w-full font-semibold py-2 px-4 rounded disabled:opacity-50"
 						disabled={addingItem || !newItemName.trim()}
 					>
 						{addingItem ? 'Adding...' : 'Add Item'}
@@ -484,7 +522,7 @@
 
 		<!-- Shopping list items -->
 		{#if visibleItems.length === 0}
-			<div class="text-center py-12 text-gray-600">
+			<div class="text-center py-12" style="color: var(--text-600);">
 				{hideChecked && shoppingList.items.some((i) => i.checked)
 					? 'All items are checked! Uncheck "Hide checked items" to see them.'
 					: 'No items yet. Add your first item above.'}
@@ -501,7 +539,9 @@
 							type="checkbox"
 							checked={item.checked}
 							on:change={() => handleToggleChecked(item)}
-							class="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+							aria-label="Got {item.item_name}"
+							class="w-5 h-5 rounded"
+							style="accent-color: var(--primary-600);"
 						/>
 
 						<!-- Item details -->
@@ -558,7 +598,10 @@
 									<span class="ml-2 italic">{item.notes}</span>
 								{/if}
 								{#if item.category}
-									<span class="ml-2 px-2 py-0.5 bg-gray-100 rounded text-xs">
+									<span
+										class="ml-2 px-2 py-0.5 rounded text-xs"
+										style="background: var(--neutral-200);"
+									>
 										{item.category}
 									</span>
 								{/if}
@@ -568,8 +611,9 @@
 						<!-- Delete button -->
 						<button
 							on:click={() => handleDeleteItem(item.id)}
-							class="text-red-600 hover:text-red-800 p-1"
-							aria-label="Delete item"
+							class="p-1"
+							style="color: var(--error-600);"
+							aria-label="Delete {item.item_name}"
 						>
 							<svg
 								class="w-5 h-5"
@@ -590,7 +634,7 @@
 			</div>
 
 			<!-- Summary -->
-			<div class="mt-6 text-sm text-gray-600">
+			<div class="mt-6 text-sm" style="color: var(--text-600);">
 				{shoppingList.items.filter((i) => i.checked).length} of {shoppingList
 					.items.length} items checked
 			</div>
@@ -600,10 +644,23 @@
 			<p style="color: var(--text-600);">Shopping list not found.</p>
 			<a
 				href="/shopping-lists"
-				class="text-blue-600 hover:underline mt-4 inline-block"
+				class="hover:underline mt-4 inline-block"
+				style="color: var(--primary-600);"
 			>
 				← Back to Lists
 			</a>
 		</div>
 	{/if}
 </div>
+
+<style>
+	.add-field {
+		border-color: var(--neutral-300);
+		background: var(--neutral-white);
+		color: var(--text-900);
+	}
+	.add-field:focus {
+		outline: 2px solid var(--primary-500);
+		outline-offset: 1px;
+	}
+</style>

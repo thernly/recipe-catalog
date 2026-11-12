@@ -260,6 +260,7 @@ def test_name_heuristic_misses():
         "Kosher salt and black or white pepper",
         "2 potatoes peeled and cut into cubes",
         "For serving: chopped walnuts and extra honey",
+        "Salt and pepper to season",
     ]
     names = [i["item_name"] for i in recipe_shopping_items({"recipeIngredient": lines})]
     assert names == [
@@ -277,6 +278,8 @@ def test_name_heuristic_misses():
         "white pepper",
         "potatoes peeled and cut into cubes",
         "For serving: chopped walnuts and extra honey",
+        "Salt",
+        "pepper",
     ]
 
 
