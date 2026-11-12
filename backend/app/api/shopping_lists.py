@@ -58,7 +58,36 @@ _SOURCE_WORDS = {
     "homemade", "store-bought", "storebought", "fresh", "frozen", "canned", "dried",
     "jarred", "bottled", "boxed", "packaged", "thawed", "cooked", "uncooked", "raw",
     "salted", "unsalted", "sweetened", "unsweetened", "ripe", "leftover",
+    # grind and size: "medium or fine cornmeal" is one item, "cornmeal"
+    "fine", "medium", "coarse", "extra-fine", "large", "small",
 }  # fmt: skip
+
+# One-word ingredients that stand on their own and never borrow the next alternative's
+# noun: "ghee or clarified butter" -> "ghee", not "ghee butter".
+# ponytail: fixed word list; extend it as new recipes turn up other misses
+_WHOLE_INGREDIENTS = {
+    "ghee", "lard", "butter", "margarine", "shortening", "oil", "honey", "molasses",
+    "water", "stock", "broth", "wine", "vinegar", "sugar", "salt",
+}  # fmt: skip
+
+# "and" joins two items only between full names on a line with no amount and no
+# punctuation: "Kosher salt and black pepper". One-word sides stay whole ("half and
+# half", "sweet and sour sauce"), and so do prep notes, which carry an amount or
+# punctuation ("2 potatoes peeled and cut", "butter, plus extra for the tin and to serve").
+_AND = re.compile(r"\s+and\s+", re.IGNORECASE)
+
+
+def _split_items(name: str, has_quantity: bool) -> list[str]:
+    """Split "A and B" into separate items (see `_AND`), then each "A or B"."""
+    parts = [p.strip() for p in _AND.split(name)]
+    if (
+        has_quantity
+        or re.search(r"[\d(),;:]", name)
+        or len(parts) < 2
+        or any(" " not in p for p in parts)
+    ):
+        parts = [name]
+    return [alt for part in parts for alt in _split_alternatives(part)]
 
 
 # Alternatives that name nothing to buy: "or a combination", "or both", "or any ..."
@@ -72,9 +101,8 @@ def _split_alternatives(name: str) -> list[str]:
     - Full names split: "unsalted butter or olive oil" -> both.
     - A one-word alternative shares the last one's noun: "chicken or vegetable stock" ->
       "chicken stock", "vegetable stock"; "light or dark brown sugar" -> both sugars.
-      ponytail: a one-word ingredient before a longer one ("ghee or clarified butter")
-      gets the noun too ("ghee butter"); the user chose this trade-off over keeping
-      such lines whole.
+      Words in `_WHOLE_INGREDIENTS` don't: "ghee or clarified butter" -> "ghee",
+      "clarified butter".
     - Source words collapse: "homemade or store-bought chicken broth" -> "chicken broth".
     - "or other neutral oil" lends its noun ("grapeseed oil") but is not an item itself;
       "or a combination" / "or both" are dropped.
@@ -98,7 +126,7 @@ def _split_alternatives(name: str) -> list[str]:
 
     names = []
     for part in lefts:
-        if " " in part or not shared:
+        if " " in part or not shared or part.lower() in _WHOLE_INGREDIENTS:
             names.append(part)
         elif part.lower() not in _SOURCE_WORDS:
             names.append(f"{part} {shared}")
@@ -141,7 +169,7 @@ def recipe_shopping_items(
         )
         quantity = _quantity_str(entry.get("quantityMax") or entry.get("quantity"))
         unit = entry.get("unit")
-        for alternative in _split_alternatives(name):
+        for alternative in _split_items(name, quantity is not None):
             alt_quantity, alt_unit = quantity, unit
             if alternative[:1].isdigit() or alternative[:1] in "½¼¾⅓⅔⅛":
                 # "1 tsp kosher salt or 1/2 tsp coarse salt": each side has its own amount
