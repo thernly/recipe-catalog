@@ -184,7 +184,7 @@
 									{/if}
 									<button
 										type="button"
-										class="btn btn-outline btn-sm"
+										class="btn btn-outline btn-danger btn-sm"
 										on:click={() => handleDelete(note)}
 									>
 										Delete
@@ -218,21 +218,17 @@
 </section>
 
 <style>
-	/* Text on the left, buttons on the right; the buttons wrap below on narrow screens */
+	/* Text on the left, buttons top-aligned on the right; they wrap below on narrow screens */
 	.note-form,
 	.note-row {
 		display: flex;
 		flex-wrap: wrap;
+		align-items: flex-start;
 		gap: 0.5rem 0.75rem;
 	}
 
 	.note-form {
-		align-items: flex-end;
 		margin-top: 1.5rem;
-	}
-
-	.note-row {
-		align-items: flex-start;
 	}
 
 	.note-form > button,
@@ -319,6 +315,17 @@
 	.btn-outline:hover {
 		background: var(--neutral-50);
 		border-color: var(--neutral-600);
+	}
+
+	/* Destructive action: --error-700 is at least 6.8:1 on the card and on hover in every theme */
+	.btn-danger,
+	.btn-danger:hover {
+		border-color: var(--error-700);
+		color: var(--error-700);
+	}
+
+	.btn-danger:hover {
+		background: var(--error-50);
 	}
 
 	.btn-sm {
