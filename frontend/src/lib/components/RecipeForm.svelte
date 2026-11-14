@@ -485,10 +485,10 @@
 
 	<!-- Notes Section -->
 	<section class="form-section">
-		<h2 class="section-title">Notes & Tips</h2>
+		<h2 class="section-title">Recipe Notes</h2>
 
 		<div class="form-group">
-			<label for="recipe-notes" class="sr-only">Notes and Tips</label>
+			<label for="recipe-notes" class="sr-only">Recipe Notes</label>
 			<textarea
 				id="recipe-notes"
 				bind:value={notes}

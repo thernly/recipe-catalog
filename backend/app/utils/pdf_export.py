@@ -392,16 +392,16 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
 
     # Notes
     if schema_recipe.get("notes"):
-        _add_section_header(pdf, "Notes")
+        _add_section_header(pdf, "Recipe Notes")
         pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
         pdf.set_text_color(*COLOR_BODY_TEXT)
         pdf.multi_cell(0, 6, _clean_text(schema_recipe["notes"], pdf.font_family))
         pdf.ln(3)
 
-    # Cooking notes left by household members
+    # Notes left by household members
     comments = schema_recipe.get("comment")
     if comments:
-        _add_section_header(pdf, "Cooking Notes")
+        _add_section_header(pdf, "Household Notes")
         pdf.set_text_color(*COLOR_BODY_TEXT)
         for comment in comments:
             pdf.set_font(pdf.font_family, "B", FONT_SIZE_BODY)

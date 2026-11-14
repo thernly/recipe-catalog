@@ -1,5 +1,5 @@
 /**
- * Tests for the recipe cooking-notes section
+ * Tests for the recipe "Household Notes" section
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/svelte/svelte5";
@@ -60,6 +60,21 @@ describe("RecipeNotes", () => {
     expect(getByText("Milo")).toBeTruthy();
     expect(getByText("Sam")).toBeTruthy();
     expect(listNotes).toHaveBeenCalledWith(7);
+  });
+
+  it("shows existing notes above the add-note box", async () => {
+    vi.mocked(listNotes).mockResolvedValue([mine]);
+
+    const { findByText, getByLabelText, getByRole } = render(RecipeNotes, {
+      props: { recipeId: 7 },
+    });
+
+    expect(getByRole("heading", { name: "Household Notes" })).toBeTruthy();
+    const note = await findByText("Halved the sugar");
+    const input = getByLabelText("Add a note");
+    expect(
+      note.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("shows an empty state", async () => {

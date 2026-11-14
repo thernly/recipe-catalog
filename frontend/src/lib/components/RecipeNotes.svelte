@@ -109,32 +109,14 @@
 	onMount(loadNotes);
 </script>
 
-<section class="card mt-8" aria-labelledby="cooking-notes-heading">
+<section class="card mt-8" aria-labelledby="household-notes-heading">
 	<h2
-		id="cooking-notes-heading"
+		id="household-notes-heading"
 		class="text-xl font-semibold mb-3"
 		style="color: var(--text-900);"
 	>
-		Cooking notes
+		Household Notes
 	</h2>
-
-	<form on:submit|preventDefault={handleAdd} class="note-form no-print">
-		<label for="new-note" class="sr-only">Add a note</label>
-		<textarea
-			id="new-note"
-			bind:value={newText}
-			maxlength={MAX_LENGTH}
-			rows="3"
-			placeholder="How did it go? e.g. Halved the sugar, still sweet enough"
-			class="note-input"></textarea>
-		<button
-			type="submit"
-			class="btn btn-primary"
-			disabled={adding || !newText.trim()}
-		>
-			{adding ? 'Adding...' : 'Add note'}
-		</button>
-	</form>
 
 	{#if loading}
 		<p class="note-muted">Loading notes...</p>
@@ -211,6 +193,24 @@
 			{/each}
 		</ul>
 	{/if}
+
+	<form on:submit|preventDefault={handleAdd} class="note-form no-print">
+		<label for="new-note" class="sr-only">Add a note</label>
+		<textarea
+			id="new-note"
+			bind:value={newText}
+			maxlength={MAX_LENGTH}
+			rows="3"
+			placeholder="How did it go? e.g. Halved the sugar, still sweet enough"
+			class="note-input"></textarea>
+		<button
+			type="submit"
+			class="btn btn-primary"
+			disabled={adding || !newText.trim()}
+		>
+			{adding ? 'Adding...' : 'Add note'}
+		</button>
+	</form>
 </section>
 
 <style>
@@ -219,7 +219,7 @@
 		flex-direction: column;
 		align-items: flex-end;
 		gap: 0.5rem;
-		margin-bottom: 1.5rem;
+		margin-top: 1.5rem;
 	}
 
 	.note-input {

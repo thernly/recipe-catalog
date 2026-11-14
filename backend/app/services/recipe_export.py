@@ -11,11 +11,11 @@ from app.utils.recipe_format import comment_byline, convert_to_schema_org
 
 
 def cooking_note_lines(schema_recipe: dict[str, Any], markdown: bool) -> list[str]:
-    """The "Cooking Notes" section for a markdown or plain-text export."""
+    """The "Household Notes" section for a markdown or plain-text export."""
     comments = schema_recipe.get("comment")
     if not comments:
         return []
-    lines = ["\n## Cooking Notes"] if markdown else ["\nCOOKING NOTES:"]
+    lines = ["\n## Household Notes"] if markdown else ["\nHOUSEHOLD NOTES:"]
     for comment in comments:
         if markdown:
             text = comment["text"].replace("\n", "\n  ")
@@ -88,7 +88,7 @@ class RecipeExporter:
 
         # Notes
         if schema_recipe.get("notes"):
-            lines.append("\n## Notes\n")
+            lines.append("\n## Recipe Notes\n")
             lines.append(schema_recipe["notes"])
         lines.extend(cooking_note_lines(schema_recipe, markdown=True))
 
@@ -157,7 +157,7 @@ class RecipeExporter:
 
         # Notes
         if schema_recipe.get("notes"):
-            lines.append("\nNOTES:")
+            lines.append("\nRECIPE NOTES:")
             lines.append(f"  {schema_recipe['notes']}")
         lines.extend(cooking_note_lines(schema_recipe, markdown=False))
 

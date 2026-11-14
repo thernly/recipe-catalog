@@ -152,7 +152,7 @@ async def export_recipes(
 
             # Notes
             if schema_recipe.get("notes"):
-                lines.append("\n## Notes\n")
+                lines.append("\n## Recipe Notes\n")
                 lines.append(schema_recipe["notes"])
             lines.extend(cooking_note_lines(schema_recipe, markdown=True))
 
@@ -284,7 +284,7 @@ async def export_recipes(
 
             # Notes
             if schema_recipe.get("notes"):
-                lines.append("\nNOTES:")
+                lines.append("\nRECIPE NOTES:")
                 lines.append(f"  {schema_recipe['notes']}")
             lines.extend(cooking_note_lines(schema_recipe, markdown=False))
 

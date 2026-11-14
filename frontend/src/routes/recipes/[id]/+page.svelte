@@ -670,7 +670,7 @@
 							class="text-xl font-semibold mb-3"
 							style="color: var(--text-900);"
 						>
-							Notes & Tips
+							Recipe Notes
 						</h2>
 						<p style="color: var(--text-700);">{recipe.recipe_data.notes}</p>
 					</div>
