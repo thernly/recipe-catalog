@@ -11,6 +11,7 @@ from app.core.deps import get_current_user, get_user_household
 from app.models.collection import Collection, RecipeCollection
 from app.models.household import Household
 from app.models.recipe import Recipe
+from app.models.recipe_note import load_recipe_notes
 from app.models.user import User
 from app.schemas.collection import (
     Collection as CollectionSchema,
@@ -507,6 +508,7 @@ async def export_collection_pdf(
         .join(RecipeCollection)
         .where(RecipeCollection.collection_id == collection_id, Recipe.deleted_at.is_(None))
         .order_by(RecipeCollection.added_at.asc())
+        .options(load_recipe_notes())
     )
 
     result = await db.execute(stmt)

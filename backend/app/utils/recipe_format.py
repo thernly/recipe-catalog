@@ -4,12 +4,15 @@ Utilities for converting between internal recipe format and Schema.org Recipe JS
 
 import base64
 import html
+from datetime import UTC, datetime
 from typing import Any
 
 from app.core.config import settings
 from app.core.constants import MAX_FETCHED_IMAGE_BYTES
 from app.core.logging import get_logger
 from app.core.security import sanitize_html
+from app.models._utils import ensure_utc
+from app.models.recipe_note import MAX_NOTE_LENGTH, note_author_name
 from app.services.recipe_cleanup import parse_duration_minutes
 from app.utils.safe_fetch import SafeFetchError, safe_fetch
 from app.utils.urls import safe_http_url
@@ -18,6 +21,7 @@ from app.utils.urls import safe_http_url
 logger = get_logger(__name__)
 
 MAX_IMAGES = 5
+MAX_IMPORTED_NOTES = 500
 
 
 def plain_text(text: str) -> str:
@@ -72,9 +76,78 @@ async def convert_to_schema_org(recipe_db: Any, *, fetch_images: bool = True) ->
         "aggregateRating": recipe_data.get("aggregateRating", {}),
         "nutrition": recipe_data.get("nutrition", {}),
         "url": recipe_db.source_url or "",
+        "comment": notes_to_schema(recipe_db),
     }
 
     return schema_recipe
+
+
+def notes_to_schema(recipe_db: Any) -> list[dict[str, Any]]:
+    """A recipe's notes as schema.org Comments, oldest first.
+
+    Reads `recipe.notes` and each note's user, so ORM recipes must be loaded with
+    load_recipe_notes() (async sessions cannot lazy-load).
+    """
+    return [
+        {
+            "@type": "Comment",
+            "text": note.text,
+            "dateCreated": ensure_utc(note.created_at).isoformat(),
+            "author": {"@type": "Person", "name": note_author_name(note)},
+        }
+        for note in getattr(recipe_db, "notes", None) or []
+    ]
+
+
+def notes_from_schema(comments: Any) -> list[dict[str, Any]]:
+    """Validate schema.org Comments from an imported file into note fields.
+
+    Bad entries are dropped, never fatal. Returns dicts with `text`, `author_name`
+    and `created_at` (aware UTC, or None when the file gives no usable date).
+    """
+    if isinstance(comments, dict):
+        comments = [comments]
+    if not isinstance(comments, list):
+        return []
+    notes: list[dict[str, Any]] = []
+    for comment in comments:
+        if len(notes) >= MAX_IMPORTED_NOTES:
+            break
+        if not isinstance(comment, dict) or not isinstance(comment.get("text"), str):
+            continue
+        text = plain_text(comment["text"])[:MAX_NOTE_LENGTH]
+        if not text:
+            continue
+        author = comment.get("author")
+        if isinstance(author, list):
+            author = author[0] if author else None
+        name = author.get("name") if isinstance(author, dict) else author
+        name = plain_text(name)[:100] if isinstance(name, str) else ""
+        notes.append(
+            {
+                "text": text,
+                "author_name": name or "Unknown",
+                "created_at": _parse_datetime(comment.get("dateCreated")),
+            }
+        )
+    return notes
+
+
+def _parse_datetime(value: Any) -> datetime | None:
+    """An ISO 8601 string as an aware UTC datetime; None if missing or invalid."""
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.strip())
+    except ValueError:
+        return None
+    return ensure_utc(parsed).astimezone(UTC)
+
+
+def comment_byline(comment: dict[str, Any]) -> str:
+    """ "Sam, 2026-11-14 18:02 UTC" for a Comment made by notes_to_schema."""
+    when = datetime.fromisoformat(comment["dateCreated"]).astimezone(UTC)
+    return f"{comment['author']['name']}, {when:%Y-%m-%d %H:%M} UTC"
 
 
 async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, Any]:
@@ -214,6 +287,8 @@ async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, An
         "category": category,
         "total_time_minutes": total_time_minutes,
         "source_type": "imported",
+        # Restored as recipe notes by the importer; kept out of recipe_data
+        "notes": notes_from_schema(schema_recipe.get("comment")),
     }
 
 

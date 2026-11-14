@@ -16,6 +16,7 @@ from app.core.deps import get_current_user, get_user_household
 from app.core.logging import get_logger
 from app.models.household import Household
 from app.models.recipe import Recipe
+from app.models.recipe_note import load_recipe_notes
 from app.models.user import User
 from app.services.recipe_export import RecipeExporter
 
@@ -50,11 +51,13 @@ async def export_recipe(
     """
     # Fetch the recipe
     result = await db.execute(
-        select(Recipe).where(
+        select(Recipe)
+        .where(
             Recipe.id == recipe_id,
             Recipe.household_id == household.id,
             Recipe.deleted_at.is_(None),
         )
+        .options(load_recipe_notes())
     )
     recipe = result.scalar_one_or_none()
 

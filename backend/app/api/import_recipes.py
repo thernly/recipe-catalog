@@ -12,14 +12,17 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
 from app.core.exceptions import AppException, ErrorCode, InvalidInputError
 from app.core.logging import get_logger
+from app.models._utils import ensure_utc, utc_now
 from app.models.collection import Collection, RecipeCollection
 from app.models.household import Household
 from app.models.recipe import Recipe
+from app.models.recipe_note import RecipeNote, note_author_name
 from app.models.user import User
 from app.services.recipe_cleanup import clean_recipe_data, derive_total_time_minutes
 from app.utils.file_validation import validate_file_size
@@ -81,6 +84,45 @@ async def _commit_import_results(db: AsyncSession) -> None:
         await db.rollback()
         logger.exception("import_commit_failed")
         raise AppException("Failed to save recipes", ErrorCode.INTERNAL_ERROR) from e
+
+
+async def _restore_notes(
+    recipe: Recipe,
+    notes: list[dict[str, Any]],
+    user_id: int,
+    is_new: bool,
+    db: AsyncSession,
+) -> None:
+    """Add a file's notes to a created or updated recipe, skipping any already there.
+
+    A note matches when its author name, timestamp and text are all the same, so
+    importing the same file twice adds nothing the second time.
+    """
+    if not notes:
+        return
+    seen: set[tuple[str, datetime, str]] = set()
+    if not is_new:
+        rows = await db.execute(
+            select(RecipeNote)
+            .where(RecipeNote.recipe_id == recipe.id)
+            .options(selectinload(RecipeNote.user))
+        )
+        seen = {(note_author_name(n), ensure_utc(n.created_at), n.text) for n in rows.scalars()}
+    for note in notes:
+        created_at = note["created_at"] or utc_now()
+        key = (note["author_name"], created_at, note["text"])
+        if key in seen:
+            continue
+        seen.add(key)
+        db.add(
+            RecipeNote(
+                recipe_id=recipe.id,
+                user_id=user_id,
+                author_name=note["author_name"],
+                text=note["text"],
+                created_at=created_at,
+            )
+        )
 
 
 async def _import_recipes_internal(
@@ -219,6 +261,14 @@ async def _import_recipes_internal(
                 results["items"].append(
                     {"index": idx, "status": "created", "recipe_id": new_recipe.id}
                 )
+
+            await _restore_notes(
+                recipe_to_add,
+                recipe_dict["notes"],
+                user_id,
+                is_new=recipe_to_add is not existing_recipe,
+                db=db,
+            )
 
             # Add to collection if specified
             if collection and recipe_to_add:

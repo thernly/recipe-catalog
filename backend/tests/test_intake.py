@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.models.api_token import ApiToken
 from app.models.household import HouseholdMember
 from app.models.recipe import Recipe
+from app.models.recipe_note import RecipeNote
 from app.models.user import User
 from app.utils.safe_fetch import FetchResult
 
@@ -110,6 +111,23 @@ async def test_inactive_user_token_is_rejected(
     client.cookies.clear()
 
     assert (await client.get(CHECK_URL, headers=token_headers)).status_code == 403
+
+
+async def test_intake_ignores_page_comments(
+    client: AsyncClient, test_user_headers: dict, token_headers: dict, db: AsyncSession
+):
+    """Readers' comments on a recipe page never become household notes."""
+    client.cookies.clear()
+    recipe = {
+        **SIPHON_RECIPE,
+        "comment": [{"@type": "Comment", "text": "Loved it!", "author": {"name": "Stranger"}}],
+    }
+
+    response = await client.post(INTAKE_URL, json=recipe, headers=token_headers)
+
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "created"
+    assert (await db.execute(select(RecipeNote))).scalars().all() == []
 
 
 async def test_intake_creates_recipe(

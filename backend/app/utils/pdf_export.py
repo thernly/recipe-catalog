@@ -28,7 +28,7 @@ from app.core.constants import (
 )
 from app.core.logging import get_logger
 from app.utils.recipe_display import display_ingredients, display_steps
-from app.utils.recipe_format import convert_to_schema_org
+from app.utils.recipe_format import comment_byline, convert_to_schema_org
 
 
 if TYPE_CHECKING:
@@ -397,6 +397,31 @@ def _add_recipe_to_pdf(pdf: FPDF, schema_recipe: dict[str, Any]):
         pdf.set_text_color(*COLOR_BODY_TEXT)
         pdf.multi_cell(0, 6, _clean_text(schema_recipe["notes"], pdf.font_family))
         pdf.ln(3)
+
+    # Cooking notes left by household members
+    comments = schema_recipe.get("comment")
+    if comments:
+        _add_section_header(pdf, "Cooking Notes")
+        pdf.set_text_color(*COLOR_BODY_TEXT)
+        for comment in comments:
+            pdf.set_font(pdf.font_family, "B", FONT_SIZE_BODY)
+            pdf.multi_cell(
+                0,
+                6,
+                _clean_text(comment_byline(comment), pdf.font_family),
+                new_x=XPos.LMARGIN,
+                new_y=YPos.NEXT,
+            )
+            pdf.set_font(pdf.font_family, "", FONT_SIZE_BODY)
+            pdf.multi_cell(
+                0,
+                6,
+                _clean_text(comment["text"], pdf.font_family),
+                new_x=XPos.LMARGIN,
+                new_y=YPos.NEXT,
+            )
+            pdf.ln(2)
+        pdf.ln(1)
 
     # Nutrition
     nutrition = schema_recipe.get("nutrition")
