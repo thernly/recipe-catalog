@@ -14,6 +14,9 @@ who wrote it and when. Notes survive recipe edits and re-imports.
    see 6.)
 4. **Existing "Notes & Tips"** (`recipe_data.notes`) stays as it is: recipe content from
    the source/AI. The new feature is a separate "Cooking notes" section. No data migration.
+   *Renamed (owner, 2026-11-14) to make the source clear: "Notes & Tips" → **Recipe Notes**
+   and "Cooking notes" → **Household Notes**, on the recipe page, the edit form and every
+   export. On the recipe page, existing notes (newest first) sit above the add-note box.*
 5. **Export:** notes are included in every export format (JSON, Markdown, text, PDF; single
    and bulk).
 6. **Import:** notes in an imported JSON file are restored as notes, keeping the original
@@ -92,7 +95,7 @@ Add schema.org's standard `comment` property (Recipe inherits it from CreativeWo
              "author": {"@type": "Person", "name": "sam"}}]
 ```
 
-Then render a "Cooking Notes" section (author, date in UTC, text), oldest first, in:
+Then render a "Household Notes" section (author, date in UTC, text), oldest first, in:
 `app/services/recipe_export.py` (`cooking_note_lines`, shared by the single and bulk
 markdown/text exports in `app/api/export.py`) and `app/utils/pdf_export.py` (single and
 collection PDFs). The `export_all_data` backup carries `comment` per recipe too.
@@ -126,7 +129,7 @@ the same file again adds it again (its timestamp differs each time).
   `note.id`), add form (textarea + button), inline edit for own notes, delete via the
   `dialog` store, errors and success via the `toast` store. Timestamps with
   `toLocaleString()`. Theme variables only. Check garden-fresh, dark and high-contrast.
-- Mount it on `src/routes/recipes/[id]/+page.svelte` below the existing "Notes & Tips"
+- Mount it on `src/routes/recipes/[id]/+page.svelte` below the existing "Recipe Notes"
   block. Not shown on the edit page; editing the recipe never sends notes.
 
 ## Tests

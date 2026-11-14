@@ -40,20 +40,20 @@ async def test_json_export_uses_schema_org_comments(client: AsyncClient):
     assert comments[0]["@type"] == "Comment"
     assert comments[0]["author"]["@type"] == "Person"
     assert datetime.fromisoformat(comments[0]["dateCreated"]).tzinfo is not None
-    # Notes are not mixed into the recipe's own "Notes & Tips"
+    # Notes are not mixed into the recipe's own "Recipe Notes"
     assert exported["notes"] == ""
 
 
-async def test_markdown_and_text_exports_have_a_cooking_notes_section(client: AsyncClient):
+async def test_markdown_and_text_exports_have_a_household_notes_section(client: AsyncClient):
     owner, _, recipe_id = await _recipe_with_notes(client)
 
     markdown = (await _export(client, owner, recipe_id, "markdown")).text
-    assert "## Cooking Notes" in markdown
+    assert "## Household Notes" in markdown
     assert "- **Milo, " in markdown
     assert " UTC:** Halved the sugar,\n  still sweet" in markdown
 
     text = (await _export(client, owner, recipe_id, "text")).text
-    assert "COOKING NOTES:" in text
+    assert "HOUSEHOLD NOTES:" in text
     assert "  - Olive, " in text
     assert " UTC: Halved the sugar,\n    still sweet" in text
 
@@ -85,9 +85,9 @@ async def test_bulk_and_backup_exports_include_notes(client: AsyncClient):
         "Halved the sugar,\nstill sweet",
     ]
     markdown = (await client.get("/api/v1/export/recipes?format=markdown", headers=owner)).text
-    assert "## Cooking Notes" in markdown and "Needs more salt" in markdown
+    assert "## Household Notes" in markdown and "Needs more salt" in markdown
     text = (await client.get("/api/v1/export/recipes?format=text", headers=owner)).text
-    assert "COOKING NOTES:" in text and "Needs more salt" in text
+    assert "HOUSEHOLD NOTES:" in text and "Needs more salt" in text
 
     backup = (await client.get("/api/v1/export/all", headers=owner)).json()
     assert [c["author"]["name"] for c in backup["recipes"][0]["comment"]] == ["Olive", "Milo"]
