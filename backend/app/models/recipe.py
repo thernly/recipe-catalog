@@ -60,6 +60,12 @@ class Recipe(Base):
     collections = relationship(
         "RecipeCollection", back_populates="recipe", cascade="all, delete-orphan"
     )
+    notes = relationship(
+        "RecipeNote",
+        back_populates="recipe",
+        cascade="all, delete-orphan",
+        order_by="RecipeNote.created_at",
+    )
 
     # Composite indexes for the household-scoped list and search queries.
     # Created in migration 291505919b8f; declared here so --autogenerate does not

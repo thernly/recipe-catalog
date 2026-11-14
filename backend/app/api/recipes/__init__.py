@@ -8,6 +8,7 @@ from fastapi import APIRouter
 
 from .crud import router as crud_router
 from .export import router as export_router
+from .notes import router as notes_router
 from .search import router as search_router
 
 
@@ -18,4 +19,5 @@ router = APIRouter()
 # This ensures /search matches before /{recipe_id}
 router.include_router(search_router, tags=["recipes"])
 router.include_router(export_router, tags=["recipes"])
+router.include_router(notes_router, tags=["recipes"])
 router.include_router(crud_router, tags=["recipes"])
