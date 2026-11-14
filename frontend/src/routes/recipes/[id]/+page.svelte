@@ -17,6 +17,8 @@
 		setLastShoppingListId,
 	} from '#lib/api/shopping-lists.js';
 	import AddToShoppingListDialog from '#lib/components/AddToShoppingListDialog.svelte';
+	import RecipeNotes from '#lib/components/RecipeNotes.svelte';
+	import { auth } from '#lib/stores/auth.js';
 	import { dialog } from '#lib/stores/dialog.js';
 	import { toast } from '#lib/stores/toast.js';
 	import {
@@ -672,6 +674,16 @@
 						</h2>
 						<p style="color: var(--text-700);">{recipe.recipe_data.notes}</p>
 					</div>
+				{/if}
+
+				<!-- Household cooking notes (a trashed recipe has none to show) -->
+				{#if !recipe.deleted_at}
+					{#key recipe.id}
+						<RecipeNotes
+							recipeId={recipe.id}
+							isRecipeOwner={recipe.user_id === $auth.user?.id}
+						/>
+					{/key}
 				{/if}
 
 				<!-- Nutrition (if any) -->
