@@ -142,52 +142,56 @@
 					</p>
 
 					{#if editingId === note.id}
-						<label for="edit-note-{note.id}" class="sr-only">Edit note</label>
-						<textarea
-							id="edit-note-{note.id}"
-							bind:value={editText}
-							maxlength={MAX_LENGTH}
-							rows="3"
-							class="note-input"></textarea>
-						<div class="note-actions">
-							<button
-								type="button"
-								class="btn btn-primary btn-sm"
-								disabled={saving || !editText.trim()}
-								on:click={() => saveEdit(note)}
-							>
-								{saving ? 'Saving...' : 'Save'}
-							</button>
-							<button
-								type="button"
-								class="btn btn-outline btn-sm"
-								on:click={cancelEdit}
-							>
-								Cancel
-							</button>
-						</div>
-					{:else}
-						<p class="note-text">{note.text}</p>
-						{#if note.is_author || isRecipeOwner}
-							<div class="note-actions no-print">
-								{#if note.is_author}
-									<button
-										type="button"
-										class="btn btn-outline btn-sm"
-										on:click={() => startEdit(note)}
-									>
-										Edit
-									</button>
-								{/if}
+						<div class="note-row">
+							<label for="edit-note-{note.id}" class="sr-only">Edit note</label>
+							<textarea
+								id="edit-note-{note.id}"
+								bind:value={editText}
+								maxlength={MAX_LENGTH}
+								rows="3"
+								class="note-input"></textarea>
+							<div class="note-actions">
+								<button
+									type="button"
+									class="btn btn-primary btn-sm"
+									disabled={saving || !editText.trim()}
+									on:click={() => saveEdit(note)}
+								>
+									{saving ? 'Saving...' : 'Save'}
+								</button>
 								<button
 									type="button"
 									class="btn btn-outline btn-sm"
-									on:click={() => handleDelete(note)}
+									on:click={cancelEdit}
 								>
-									Delete
+									Cancel
 								</button>
 							</div>
-						{/if}
+						</div>
+					{:else}
+						<div class="note-row">
+							<p class="note-text">{note.text}</p>
+							{#if note.is_author || isRecipeOwner}
+								<div class="note-actions no-print">
+									{#if note.is_author}
+										<button
+											type="button"
+											class="btn btn-outline btn-sm"
+											on:click={() => startEdit(note)}
+										>
+											Edit
+										</button>
+									{/if}
+									<button
+										type="button"
+										class="btn btn-outline btn-sm"
+										on:click={() => handleDelete(note)}
+									>
+										Delete
+									</button>
+								</div>
+							{/if}
+						</div>
 					{/if}
 				</li>
 			{/each}
@@ -200,7 +204,7 @@
 			id="new-note"
 			bind:value={newText}
 			maxlength={MAX_LENGTH}
-			rows="3"
+			rows="2"
 			placeholder="How did it go? e.g. Halved the sugar, still sweet enough"
 			class="note-input"></textarea>
 		<button
@@ -214,18 +218,34 @@
 </section>
 
 <style>
-	.note-form {
+	/* Text on the left, buttons on the right; the buttons wrap below on narrow screens */
+	.note-form,
+	.note-row {
 		display: flex;
-		flex-direction: column;
+		flex-wrap: wrap;
+		gap: 0.5rem 0.75rem;
+	}
+
+	.note-form {
 		align-items: flex-end;
-		gap: 0.5rem;
 		margin-top: 1.5rem;
 	}
 
+	.note-row {
+		align-items: flex-start;
+	}
+
+	.note-form > button,
+	.note-actions {
+		flex-shrink: 0;
+	}
+
+	/* Borders use --neutral-500: at least 3:1 against the card in every theme (WCAG 1.4.11) */
 	.note-input {
-		width: 100%;
+		flex: 1 1 16rem;
+		min-width: 0;
 		padding: 0.75rem;
-		border: 1px solid var(--neutral-200);
+		border: 1px solid var(--neutral-500);
 		border-radius: var(--radius-md);
 		font-size: 1rem;
 		color: var(--text-900);
@@ -265,6 +285,8 @@
 	}
 
 	.note-text {
+		flex: 1 1 16rem;
+		min-width: 0;
 		color: var(--text-700);
 		white-space: pre-line;
 		overflow-wrap: anywhere;
@@ -274,7 +296,6 @@
 	.note-actions {
 		display: flex;
 		gap: 0.5rem;
-		margin-top: 0.5rem;
 	}
 
 	.note-muted {
@@ -291,13 +312,13 @@
 
 	.btn-outline {
 		background: var(--neutral-white);
-		border: 1px solid var(--neutral-300);
+		border: 1px solid var(--neutral-500);
 		color: var(--text-900);
 	}
 
 	.btn-outline:hover {
 		background: var(--neutral-50);
-		border-color: var(--neutral-400);
+		border-color: var(--neutral-600);
 	}
 
 	.btn-sm {
