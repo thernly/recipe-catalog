@@ -92,15 +92,16 @@ Add schema.org's standard `comment` property (Recipe inherits it from CreativeWo
              "author": {"@type": "Person", "name": "sam"}}]
 ```
 
-Then render a "Cooking notes" section (author · date — text) in:
-`app/services/recipe_export.py` (markdown, text), `app/utils/pdf_export.py`, and the
-duplicated markdown/text formatters in `app/api/export.py`. Add `notes` to the
-`export_all_data` backup too.
+Then render a "Cooking Notes" section (author, date in UTC, text), oldest first, in:
+`app/services/recipe_export.py` (`cooking_note_lines`, shared by the single and bulk
+markdown/text exports in `app/api/export.py`) and `app/utils/pdf_export.py` (single and
+collection PDFs). The `export_all_data` backup carries `comment` per recipe too.
 
-Async SQLAlchemy can't lazy-load, so every query feeding the converter needs
-`selectinload(Recipe.notes).selectinload(RecipeNote.user)`:
-`app/api/recipes/export.py:52`, `app/api/export.py` (recipes, collections, all),
-and the PDF bulk path.
+Async SQLAlchemy can't lazy-load, so every query feeding the converter adds
+`load_recipe_notes()` (`app/models/recipe_note.py`): the single-recipe export, the bulk
+recipes export, the complete backup, and the collection PDF. The collections JSON and
+markdown exports list only recipe names, so they need no notes. *(As built in PR 3; the
+plan originally listed the collections export here.)*
 
 ## Import
 
@@ -113,6 +114,9 @@ In `_import_recipes_internal`, for created and "update" recipes only, add a `Rec
 per entry with `user_id` = importing user, `author_name` and `created_at` from the
 file, skipping entries whose (author name, timestamp, text) matches a note already on
 the recipe. Skipped recipes get nothing. Intake (`/api/v1/intake`) is out of scope.
+
+Known limit: an entry with no usable `dateCreated` gets the import time, so importing
+the same file again adds it again (its timestamp differs each time).
 
 ## Frontend
 

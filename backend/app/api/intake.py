@@ -78,6 +78,10 @@ async def intake_recipe(
     # Read before any rollback/commit can expire the loaded objects
     user_id = current_user.id
 
+    # Recipe pages often embed their readers' comments as schema.org `comment`; those
+    # are not this household's notes, so intake never restores them
+    recipe = {key: value for key, value in recipe.items() if key != "comment"}
+
     results = await _import_recipes_internal(
         recipes_data=[recipe],
         user_id=user_id,

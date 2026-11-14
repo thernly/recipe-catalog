@@ -4,10 +4,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.models.recipe_note import MAX_NOTE_LENGTH
 from app.utils.recipe_format import plain_text
-
-
-MAX_NOTE_LENGTH = 10000
 
 
 class RecipeNoteWrite(BaseModel):

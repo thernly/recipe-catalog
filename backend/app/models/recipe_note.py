@@ -9,10 +9,15 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import DateTime, ForeignKey, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, selectinload
+from sqlalchemy.sql.base import ExecutableOption
 
 from app.core.database import Base
 from app.models._utils import utc_now
+from app.models.recipe import Recipe
+
+
+MAX_NOTE_LENGTH = 10000
 
 
 class RecipeNote(Base):
@@ -42,3 +47,23 @@ class RecipeNote(Base):
 def live_author_name(user: Any) -> str:
     """A user's display name, else the part of their email before "@"."""
     return str(user.display_name or "") or str(user.email).split("@", 1)[0]
+
+
+def note_author_name(note: RecipeNote) -> str:
+    """The name a note is shown under. Needs `note.user` loaded.
+
+    A saved name (imported note, or deleted author) wins; otherwise look it up live.
+    """
+    if note.author_name:
+        return note.author_name
+    return live_author_name(note.user) if note.user else "Former member"
+
+
+def load_recipe_notes() -> ExecutableOption:
+    """Eager-load a recipe's notes and their authors.
+
+    Async sessions cannot lazy-load: add this to any Recipe query whose results are
+    exported (convert_to_schema_org reads recipe.notes and each note's user). A
+    function, not a constant, so the mappers are configured only once all models exist.
+    """
+    return selectinload(Recipe.notes).selectinload(RecipeNote.user)

@@ -223,6 +223,13 @@ Conversion notes (`convert_from_schema_org`):
 - `recipeCategory`/`recipeCuisine`: the first value (truncated to 100 chars) feeds the
   search filter columns; the full value is stored.
 - `author`, `recipeInstructions`, `nutrition`, and the other fields are stored as sent.
+- `comment` (schema.org `Comment` objects, or one object) becomes the recipe's notes,
+  not part of the recipe: `text` (markup stripped, up to 10 000 chars; empty entries
+  dropped), `author.name` (or a plain string; "Unknown" if missing) and `dateCreated`
+  (ISO 8601, stored in UTC; the import time if missing or invalid). At most 500 per
+  recipe. Notes are added for created and updated recipes only, and a note with the
+  same author, time and text as one already on the recipe is skipped. Every export
+  writes notes back out in this shape. The intake route ignores `comment`.
 
 Every import runs the same cleanup as other write paths (yield and time
 normalization, ingredient parsing). Source: `backend/app/api/import_recipes.py`,

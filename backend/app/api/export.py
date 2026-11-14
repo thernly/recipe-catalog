@@ -15,8 +15,10 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.collection import Collection, RecipeCollection
 from app.models.recipe import Recipe
+from app.models.recipe_note import load_recipe_notes
 from app.models.user import User, UserPreferences
-from app.utils.recipe_format import convert_to_schema_org
+from app.services.recipe_export import cooking_note_lines
+from app.utils.recipe_format import convert_to_schema_org, notes_to_schema
 
 
 router = APIRouter()
@@ -42,6 +44,7 @@ async def export_recipes(
         .where(Recipe.user_id == current_user.id)
         .where(Recipe.deleted_at.is_(None))
         .order_by(Recipe.created_at.desc())
+        .options(load_recipe_notes())
     )
     recipes = result.scalars().all()
 
@@ -151,6 +154,7 @@ async def export_recipes(
             if schema_recipe.get("notes"):
                 lines.append("\n## Notes\n")
                 lines.append(schema_recipe["notes"])
+            lines.extend(cooking_note_lines(schema_recipe, markdown=True))
 
             # Nutrition
             if schema_recipe.get("nutrition"):
@@ -282,6 +286,7 @@ async def export_recipes(
             if schema_recipe.get("notes"):
                 lines.append("\nNOTES:")
                 lines.append(f"  {schema_recipe['notes']}")
+            lines.extend(cooking_note_lines(schema_recipe, markdown=False))
 
             # Nutrition
             if schema_recipe.get("nutrition"):
@@ -451,6 +456,7 @@ async def export_all_data(
         .where(Recipe.user_id == current_user.id)
         .where(Recipe.deleted_at.is_(None))
         .order_by(Recipe.created_at.desc())
+        .options(load_recipe_notes())
     )
     recipes = recipe_result.scalars().all()
 
@@ -502,6 +508,7 @@ async def export_all_data(
                 "total_time_minutes": recipe.total_time_minutes,
                 "created_at": recipe.created_at.isoformat() if recipe.created_at else None,
                 "updated_at": recipe.updated_at.isoformat() if recipe.updated_at else None,
+                "comment": notes_to_schema(recipe),
             }
             for recipe in recipes
         ],
