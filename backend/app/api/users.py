@@ -168,6 +168,21 @@ async def delete_account(
     Returns:
         dict: Success message
     """
+    from sqlalchemy import func, update
+
+    from app.models.recipe_note import RecipeNote, live_author_name
+
+    # Keep the user's recipe notes, under the name they had. Notes on their own
+    # recipes still go, with those recipes.
+    await db.execute(
+        update(RecipeNote)
+        .where(RecipeNote.user_id == current_user.id)
+        .values(
+            author_name=func.coalesce(RecipeNote.author_name, live_author_name(current_user)),
+            user_id=None,
+        )
+    )
+
     # Delete user (cascade will delete all related data)
     await db.delete(current_user)
     await db.commit()

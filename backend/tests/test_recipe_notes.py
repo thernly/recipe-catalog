@@ -208,19 +208,38 @@ async def test_permanent_delete_removes_notes(client: AsyncClient, test_db: Asyn
     assert rows == []
 
 
-async def test_account_deletion_removes_that_users_notes(
+async def test_account_deletion_keeps_notes_on_other_members_recipes(
     client: AsyncClient, test_db: AsyncSession
 ):
     owner, member = await _household(client)
-    recipe_id = await _recipe(client, owner)
-    await _add(client, owner, recipe_id, "Owner's note")
-    await _add(client, member, recipe_id, "Member's note")
+    owners_recipe = await _recipe(client, owner)
+    members_recipe = await _recipe(client, member)
+    await _add(client, owner, owners_recipe, "Owner's note")
+    kept = await _add(client, member, owners_recipe, "Member's note")
+    await _add(client, member, members_recipe, "On the member's own recipe")
+    await _add(client, owner, members_recipe, "Owner on the member's recipe")
 
     assert (await client.delete("/api/v1/users/me", headers=member)).status_code == 200
 
-    texts = [
-        n["text"] for n in (await client.get(f"{RECIPES}/{recipe_id}/notes", headers=owner)).json()
-    ]
-    assert texts == ["Owner's note"]
     remaining_users = (await test_db.execute(select(User.email))).scalars().all()
     assert "member@example.com" not in remaining_users
+
+    # The member's note on the owner's recipe stays, under the member's name
+    notes = (await client.get(f"{RECIPES}/{owners_recipe}/notes", headers=owner)).json()
+    assert [(n["text"], n["author_name"], n["is_author"]) for n in notes] == [
+        ("Member's note", "Milo", False),
+        ("Owner's note", "Olive", True),
+    ]
+    stored = (
+        await test_db.execute(select(RecipeNote).where(RecipeNote.id == kept["id"]))
+    ).scalar_one()
+    assert stored.user_id is None
+
+    # Nobody can edit it any more; the recipe's owner can still delete it
+    note_url = f"{RECIPES}/{owners_recipe}/notes/{kept['id']}"
+    assert (await client.patch(note_url, json={"text": "x"}, headers=owner)).status_code == 403
+    assert (await client.delete(note_url, headers=owner)).status_code == 204
+
+    # The member's own recipe goes with the account, and so do all notes on it
+    texts = (await test_db.execute(select(RecipeNote.text))).scalars().all()
+    assert texts == ["Owner's note"]

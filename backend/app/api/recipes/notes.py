@@ -23,7 +23,7 @@ from app.core.exceptions import (
 from app.models._utils import ensure_utc, utc_now
 from app.models.household import Household
 from app.models.recipe import Recipe
-from app.models.recipe_note import RecipeNote
+from app.models.recipe_note import RecipeNote, live_author_name
 from app.models.user import User
 from app.schemas.recipe_note import RecipeNoteResponse, RecipeNoteWrite
 
@@ -62,14 +62,14 @@ async def _get_note(recipe: Recipe, note_id: int, db: AsyncSession) -> RecipeNot
 
 
 def _to_response(note: RecipeNote, current_user: User) -> RecipeNoteResponse:
-    author: User = note.user
-    # Imported notes keep their original author's name; otherwise look it up live
-    live_name = str(author.display_name or "") or str(author.email).split("@", 1)[0]
+    # A saved name (imported note, or deleted author) wins; otherwise look it up live
+    author: User | None = note.user
+    author_name = note.author_name or (live_author_name(author) if author else "Former member")
     return RecipeNoteResponse(
         id=note.id,
         recipe_id=note.recipe_id,
         text=note.text,
-        author_name=note.author_name or live_name,
+        author_name=author_name,
         is_author=note.user_id == current_user.id,
         created_at=ensure_utc(note.created_at),
         updated_at=ensure_utc(note.updated_at) if note.updated_at else None,
