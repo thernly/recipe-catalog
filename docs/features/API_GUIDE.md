@@ -175,7 +175,9 @@ characters). Notes are listed newest first:
 ```
 
 `author_name` is the author's display name, or the part of their email before `@`
-when they have none; emails are never returned. A recipe outside your household, a
+when they have none; emails are never returned. If the author deletes their account,
+their notes on other members' recipes stay, under the name they last had; nobody can
+edit those notes, and the recipe's owner can still delete them. A recipe outside your household, a
 trashed recipe, or a note under the wrong recipe is `404`; a permitted-household call
 you may not make (editing someone else's note) is `403 UNAUTHORIZED`.
 

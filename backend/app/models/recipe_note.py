@@ -6,6 +6,7 @@ which replace `recipe_data` wholesale, never touch them.
 """
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -21,10 +22,13 @@ class RecipeNote(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     recipe_id: Mapped[int] = mapped_column(ForeignKey("recipes.id", ondelete="CASCADE"), index=True)
-    # The account that added the note (for an imported note, the importing user)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    # Set only for imported notes: the original author's name, shown instead of the
-    # live name lookup
+    # The account that added the note (for an imported note, the importing user).
+    # NULL once that account is deleted; the note stays, under its saved author_name.
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    # Shown instead of the live name lookup. Set for imported notes (the original
+    # author) and when the author's account is deleted (their last name).
     author_name: Mapped[str | None] = mapped_column(String(100))
     text: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
@@ -33,3 +37,8 @@ class RecipeNote(Base):
 
     recipe = relationship("Recipe", back_populates="notes")
     user = relationship("User", back_populates="recipe_notes")
+
+
+def live_author_name(user: Any) -> str:
+    """A user's display name, else the part of their email before "@"."""
+    return str(user.display_name or "") or str(user.email).split("@", 1)[0]

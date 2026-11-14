@@ -46,9 +46,14 @@ New `RecipeNote` model in `app/models/recipe_note.py` (new module → `Mapped[..
 
 Relationships: `Recipe.notes` (`cascade="all, delete-orphan"`, ordered by `created_at`)
 and `RecipeNote.user`. Soft-deleting a recipe leaves its notes; restoring brings them back;
-a manual purge deletes them via the cascade. Deleting an account deletes that user's
-notes too (`User.recipe_notes` cascade), matching how account deletion removes the
-user's other content. *(Assumption made during PR 1 — owner to confirm.)*
+a manual purge deletes them via the cascade.
+
+**Account deletion (owner decision, 2026-11-15):** deleting an account *keeps* that
+person's notes on other members' recipes. `delete_account` saves their name into
+`author_name` and clears `user_id` (nullable, `ON DELETE SET NULL`). Such a note can no
+longer be edited; the recipe's owner can still delete it. Notes on the deleted user's own
+recipes go with those recipes. (PR 1 originally deleted the notes; reversed in a
+follow-up PR.)
 
 Migration: `alembic revision --autogenerate -m "add recipe notes"` on top of
 `20261107_solo_households_personal`; review it and test up + down.
