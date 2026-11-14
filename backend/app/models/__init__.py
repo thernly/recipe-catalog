@@ -7,6 +7,7 @@ from app.models.identity_provider import IdentityProvider
 from app.models.meal_plan import MealPlan, PlannedMeal
 from app.models.oauth_state import OAuthState
 from app.models.recipe import Recipe
+from app.models.recipe_note import RecipeNote
 from app.models.refresh_token import RefreshToken
 from app.models.shopping_list import ShoppingList, ShoppingListItem
 from app.models.token import PasswordResetToken, VerificationToken
@@ -17,6 +18,7 @@ __all__ = [
     "User",
     "UserPreferences",
     "Recipe",
+    "RecipeNote",
     "Collection",
     "RecipeCollection",
     "VerificationToken",

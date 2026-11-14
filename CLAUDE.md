@@ -70,7 +70,9 @@ Every user belongs to exactly one household (created at registration via `app/se
 - **Mutations and deletes** scope by owner: `WHERE user_id == current_user.id`.
 - **Trash views** scope by owner too: `Recipe.user_id == current_user.id, Recipe.deleted_at.isnot(None)`.
 
-Getting this wrong either leaks other members' data or hides shared recipes. Mirror the existing query in `app/api/recipes/search.py` and `app/api/collections.py`.
+Getting this wrong either leaks other members' data or hides shared recipes.
+
+**Recipe notes are the deliberate exception** (`app/api/recipes/notes.py`): any household member may add a note to a household recipe, only the note's author may edit it, and the author or the recipe's owner may delete it. The recipe is still loaded through the household first, so other households get 404. Mirror the existing query in `app/api/recipes/search.py` and `app/api/collections.py`.
 
 ### Recipe storage model
 

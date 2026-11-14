@@ -146,6 +146,41 @@ Response (`200`, also for partial failure):
 
 ---
 
+## Recipe notes (cookie session)
+
+Dated notes household members leave on a recipe. They live outside the recipe's
+`recipe_data`, so editing or re-importing the recipe leaves them in place. All routes
+need a session (cookie plus `X-CSRF-Token` on writes, or a JWT bearer).
+
+| Method   | Path                                       | Who may call it                              |
+|----------|--------------------------------------------|----------------------------------------------|
+| `GET`    | `/api/v1/recipes/{recipe_id}/notes`        | any member of the recipe's household         |
+| `POST`   | `/api/v1/recipes/{recipe_id}/notes`        | any member of the recipe's household         |
+| `PATCH`  | `/api/v1/recipes/{recipe_id}/notes/{id}`   | the note's author                            |
+| `DELETE` | `/api/v1/recipes/{recipe_id}/notes/{id}`   | the note's author or the recipe's owner      |
+
+`POST` and `PATCH` take `{"text": "..."}` (plain text, markup stripped, 1–10 000
+characters). Notes are listed newest first:
+
+```json
+{
+  "id": 7,
+  "recipe_id": 42,
+  "text": "Halved the sugar, still sweet enough",
+  "author_name": "Sam",
+  "is_author": true,
+  "created_at": "2026-11-14T18:02:00Z",
+  "updated_at": null
+}
+```
+
+`author_name` is the author's display name, or the part of their email before `@`
+when they have none; emails are never returned. A recipe outside your household, a
+trashed recipe, or a note under the wrong recipe is `404`; a permitted-household call
+you may not make (editing someone else's note) is `403 UNAUTHORIZED`.
+
+---
+
 ## Errors
 
 Errors use one envelope:

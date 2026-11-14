@@ -55,6 +55,7 @@ class User(Base):
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"
     )
     api_tokens = relationship("ApiToken", back_populates="user", cascade="all, delete-orphan")
+    recipe_notes = relationship("RecipeNote", back_populates="user", cascade="all, delete-orphan")
 
     async def has_valid_auth_method(self, db: AsyncSession) -> bool:
         """
