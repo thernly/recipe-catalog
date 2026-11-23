@@ -49,7 +49,7 @@
   "dependencies": {
     "@fontsource-variable/lora": "^5.3.0",
     "@fontsource-variable/outfit": "^5.3.0",
-    "@lucide/svelte": "^1.70.0",
+    "@lucide/svelte": "^1.77.0",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/typography": "^0.5.20"
   },
