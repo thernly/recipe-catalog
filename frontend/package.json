@@ -32,7 +32,7 @@
     "eslint-plugin-svelte": "^3.24.1",
     "globals": "^17.14.0",
     "jsdom": "^31.0.1",
-    "postcss": "^8.5.32",
+    "postcss": "^8.5.33",
     "prettier": "^3.10.1",
     "prettier-plugin-svelte": "^4.1.1",
     "svelte": "^5.57.3",
@@ -42,7 +42,7 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.2",
     "vite": "^8.3.8",
-    "vitest": "^5.1.0",
+    "vitest": "^5.1.1",
     "wrangler": "^4.158.0"
   },
   "type": "module",
