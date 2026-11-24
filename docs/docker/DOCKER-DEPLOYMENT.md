@@ -5,7 +5,7 @@
 | Service | What it does |
 |---------|--------------|
 | `data-permissions` | One-shot init container: `chown`s the `sqlite_data` volume to UID 10001 so the non-root backend can write to it, then exits |
-| `backend` | FastAPI on Python 3.13 (`backend/Dockerfile`). Runs `alembic upgrade head` on every start (`backend/docker-entrypoint.sh`), then uvicorn on port 8000. Port 8000 is only exposed on the internal network, not published to the host |
+| `backend` | FastAPI on Python 3.14 (`backend/Dockerfile`). Runs `alembic upgrade head` on every start (`backend/docker-entrypoint.sh`), then uvicorn on port 8000. Port 8000 is only exposed on the internal network, not published to the host |
 | `frontend` | nginx (`frontend/Dockerfile`, `docker/nginx.conf`) serving the static SvelteKit build and proxying `/api` and `/health` to the backend. Published on `:8080` |
 
 The database is `/app/data/recipes.db` inside the `sqlite_data` named volume.
