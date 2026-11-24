@@ -92,3 +92,7 @@ cd frontend && pnpm audit
 ```
 
 Dependabot opens PRs for vulnerable dependencies (`.github/dependabot.yml`).
+
+## Troubleshooting
+
+**`pnpm dev` fails with `Invalid declaration: …` on a `?svelte&type=style&lang.css` module** (usually right after a dependency update): Vite's cache is stale. Stop the dev server, run `rm -rf frontend/node_modules/.vite`, restart, and hard-refresh the browser tab.
