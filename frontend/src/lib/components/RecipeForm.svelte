@@ -81,11 +81,18 @@
 		}
 	}
 
-	// Calculate total time when prep/cook changes
+	// A stored total can differ from prep + cook (resting time, or no split at
+	// all), so it is only recalculated once prep or cook is actually changed.
+	const initialPrepCook =
+		prepTimeHours * 60 + prepTimeMinutes + cookTimeHours * 60 + cookTimeMinutes;
+	const initialTotal = totalTimeMinutes || initialPrepCook;
 	$: {
-		const prep = prepTimeHours * 60 + prepTimeMinutes;
-		const cook = cookTimeHours * 60 + cookTimeMinutes;
-		totalTimeMinutes = prep + cook;
+		const prepCook =
+			(prepTimeHours || 0) * 60 +
+			(prepTimeMinutes || 0) +
+			(cookTimeHours || 0) * 60 +
+			(cookTimeMinutes || 0);
+		totalTimeMinutes = prepCook === initialPrepCook ? initialTotal : prepCook;
 	}
 
 	// Handle ingredient/instruction changes
@@ -148,8 +155,11 @@
 			return;
 		}
 
-		// Build recipe data
+		// Build recipe data. Start from the stored data so fields this form does
+		// not show (nutrition, embedded images, author, rating) survive an edit;
+		// a field cleared here is undefined and so dropped from the request.
 		const recipeData = {
+			...baseRecipeData,
 			name,
 			recipeIngredient: ingredients.filter((i) => i.trim()),
 			recipeInstructions: instructions.filter((i) => i.trim()),
@@ -327,15 +337,14 @@
 					</div>
 					<span class="py-2" aria-hidden="true">:</span>
 					<div class="flex-1">
-						<label for="prep-time-minutes" class="sr-only"
-							>Prep time minutes</label
-						>
+						<label for="prep-time-minutes" class="sr-only">
+							Prep time minutes
+						</label>
 						<input
 							id="prep-time-minutes"
 							type="number"
 							bind:value={prepTimeMinutes}
 							min="0"
-							max="59"
 							placeholder="Minutes"
 							class="form-input"
 						/>
@@ -359,15 +368,14 @@
 					</div>
 					<span class="py-2" aria-hidden="true">:</span>
 					<div class="flex-1">
-						<label for="cook-time-minutes" class="sr-only"
-							>Cook time minutes</label
-						>
+						<label for="cook-time-minutes" class="sr-only">
+							Cook time minutes
+						</label>
 						<input
 							id="cook-time-minutes"
 							type="number"
 							bind:value={cookTimeMinutes}
 							min="0"
-							max="59"
 							placeholder="Minutes"
 							class="form-input"
 						/>
