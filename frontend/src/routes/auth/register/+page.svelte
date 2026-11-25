@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { safeRedirect } from '#lib/utils/urls.js';
+	import { passwordProblem } from '#lib/utils/password.js';
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import {
@@ -30,23 +31,9 @@
 		}
 
 		// Validate password strength
-		if (password.length < 12) {
-			error = 'Password must be at least 12 characters long';
-			return;
-		}
-
-		if (!/[A-Z]/.test(password)) {
-			error = 'Password must contain at least one uppercase letter';
-			return;
-		}
-
-		if (!/[a-z]/.test(password)) {
-			error = 'Password must contain at least one lowercase letter';
-			return;
-		}
-
-		if (!/[0-9]/.test(password)) {
-			error = 'Password must contain at least one number';
+		const problem = passwordProblem(password);
+		if (problem) {
+			error = problem;
 			return;
 		}
 

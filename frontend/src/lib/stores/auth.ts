@@ -131,7 +131,12 @@ function createAuthStore() {
 
       // Redirect to login page if requested and in browser
       if (redirect && browser) {
-        globalThis.location.href = "/auth/login";
+        // Carry the current page along so signing in again returns to it.
+        const { pathname, search } = globalThis.location;
+        const back = pathname.startsWith("/auth")
+          ? ""
+          : `?redirect=${encodeURIComponent(pathname + search)}`;
+        globalThis.location.href = `/auth/login${back}`;
       }
     },
 

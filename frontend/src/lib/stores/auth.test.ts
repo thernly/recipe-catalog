@@ -72,6 +72,19 @@ describe("Auth Store", () => {
     expect(state.isLoading).toBe(false);
   });
 
+  it("returns to the current page after a forced logout", async () => {
+    (global.fetch as any).mockResolvedValueOnce({ ok: true });
+    const location = { pathname: "/recipes/5/edit", search: "?x=1", href: "" };
+    vi.stubGlobal("location", location);
+
+    await auth.logout(true);
+
+    expect(location.href).toBe(
+      "/auth/login?redirect=%2Frecipes%2F5%2Fedit%3Fx%3D1",
+    );
+    vi.unstubAllGlobals();
+  });
+
   it("should clear user on logout", async () => {
     // Mock logout response
     (global.fetch as any).mockResolvedValueOnce({

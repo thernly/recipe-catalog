@@ -8,6 +8,21 @@
 	let loading = true;
 	let success = false;
 	let error = '';
+	let resendEmail = '';
+	let resent = false;
+
+	async function resend() {
+		try {
+			await apiRequest('/auth/resend-verification', {
+				method: 'POST',
+				requireAuth: false,
+				body: JSON.stringify({ email: resendEmail }),
+			});
+			resent = true;
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to send a new link';
+		}
+	}
 
 	onMount(async () => {
 		token = page.params.token!;
@@ -83,12 +98,27 @@
 						<p class="action-hint">
 							This verification link may have expired or already been used.
 						</p>
-						<button
-							on:click={() => goto('/auth/resend-verification')}
-							class="btn btn-secondary"
-						>
-							Request New Link
-						</button>
+						{#if resent}
+							<p class="action-hint" role="status">
+								If that address needs verifying, a new link is on its way.
+							</p>
+						{:else}
+							<form on:submit|preventDefault={resend} class="error-actions">
+								<label for="resend-email" class="sr-only">Email address</label>
+								<input
+									id="resend-email"
+									type="email"
+									bind:value={resendEmail}
+									required
+									placeholder="you@example.com"
+									class="w-full px-4 py-3 rounded-md border"
+									style="border-color: var(--neutral-300); background: var(--neutral-white);"
+								/>
+								<button type="submit" class="btn btn-secondary">
+									Request New Link
+								</button>
+							</form>
+						{/if}
 						<button
 							on:click={() => goto('/auth/login')}
 							class="btn btn-primary"
