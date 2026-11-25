@@ -221,18 +221,29 @@
 		background: rgba(255, 255, 255, 0.1);
 	}
 
-	/* The seven links plus the email need about this much room on one row */
-	@media (max-width: 1150px) {
+	.user-email {
+		max-width: 14rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* Measured in the browser: logo and links take about 1030px and the theme and
+	   Logout buttons about 140px, so one row needs roughly 1220px without the
+	   email and 1450px with it. */
+	@media (max-width: 1500px) {
+		.user-email {
+			display: none;
+		}
+	}
+
+	@media (max-width: 1280px) {
 		.navbar {
 			padding: 0 0.75rem;
 		}
 
 		.menu-toggle {
 			display: flex;
-		}
-
-		.user-email {
-			display: none;
 		}
 
 		.nav-links {
@@ -266,6 +277,7 @@
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
+		white-space: nowrap;
 		color: inherit;
 		text-decoration: none;
 		transition: opacity var(--transition-fast);
@@ -280,6 +292,7 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-sm);
+		white-space: nowrap;
 		padding: var(--space-sm) var(--space-md);
 		min-height: 2.75rem;
 		border-radius: var(--radius-md);
