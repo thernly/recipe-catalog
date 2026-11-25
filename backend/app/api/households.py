@@ -25,6 +25,7 @@ from app.schemas.household import (
     InvitationDeclineRequest,
     JoinViaInviteLinkRequest,
     LeaveHouseholdResponse,
+    TransferOwnershipRequest,
 )
 from app.schemas.household import (
     HouseholdInvitation as HouseholdInvitationSchema,
@@ -237,6 +238,27 @@ async def remove_household_member(
         db: Database session
     """
     await household_service.remove_household_member(db, household_id, user_id, current_user.id)
+
+
+@router.post("/{household_id}/transfer-ownership", response_model=HouseholdSchema)
+async def transfer_household_ownership(
+    household_id: int,
+    transfer: TransferOwnershipRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Make another member the owner (owner only). You stay in the household as a member,
+    and can then leave it.
+
+    Raises:
+        400: If transferring to yourself
+        403: If you are not the owner
+        404: If the household or the member does not exist
+    """
+    return await household_service.transfer_ownership(
+        db, household_id, transfer.new_owner_user_id, current_user.id
+    )
 
 
 # ============================================
@@ -561,7 +583,8 @@ async def leave_household(
     Leave your current household.
 
     If you are the owner and the only member, the household will be deleted.
-    If you are the owner with other members, you must transfer ownership first.
+    If you are the owner with other members, you must transfer ownership first
+    (POST /households/{household_id}/transfer-ownership).
 
     Args:
         current_user: The authenticated user

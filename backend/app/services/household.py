@@ -433,6 +433,51 @@ async def remove_household_member(
     await db.commit()
 
 
+async def transfer_ownership(
+    db: AsyncSession, household_id: int, new_owner_user_id: int, requester_user_id: int
+) -> Household:
+    """
+    Make another member the household owner; the current owner becomes a member.
+
+    Ownership lives in both `Household.owner_user_id` and `HouseholdMember.role`, so both
+    change together. Recipes and other data keep their `user_id` owners.
+
+    Raises:
+        HTTPException: If household not found, requester is not owner, target is the
+            requester, or target is not a member
+    """
+    household = await get_household(db, household_id)
+    if not household:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Household not found")
+
+    if household.owner_user_id != requester_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the household owner can transfer ownership",
+        )
+
+    if new_owner_user_id == requester_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You already own this household",
+        )
+
+    members = await get_household_members(db, household_id)
+    new_owner = next((m for m in members if m.user_id == new_owner_user_id), None)
+    if not new_owner:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+
+    for m in members:
+        if m.user_id == requester_user_id:
+            m.role = "member"
+    new_owner.role = "owner"
+    household.owner_user_id = new_owner_user_id
+    await db.commit()
+    await db.refresh(household)
+
+    return household
+
+
 async def check_household_size_limit(db: AsyncSession, household_id: int) -> bool:
     """
     Check if household has reached its size limit.

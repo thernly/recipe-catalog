@@ -28,6 +28,12 @@ class HouseholdUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=100)
 
 
+class TransferOwnershipRequest(BaseModel):
+    """Schema for handing household ownership to another member."""
+
+    new_owner_user_id: int
+
+
 class Household(HouseholdBase):
     """Full household schema (response)."""
 
