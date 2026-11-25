@@ -348,4 +348,18 @@ describe("RecipeCard", () => {
 
     expect(getByText(/1h 1min/)).toBeTruthy();
   });
+
+  it("hides edit and delete on a recipe another member added", () => {
+    // Nobody is signed in here, so user 9 is "someone else"
+    const theirs = { ...mockRecipe, user_id: 9, creator_display_name: "Sam" };
+
+    const { getByText, queryByLabelText } = render(RecipeCard, {
+      props: { recipe: theirs },
+    });
+
+    expect(queryByLabelText("Edit recipe")).toBeNull();
+    expect(queryByLabelText("Delete recipe")).toBeNull();
+    expect(queryByLabelText("Add to favorites")).toBeTruthy();
+    expect(getByText("Added by Sam")).toBeTruthy();
+  });
 });

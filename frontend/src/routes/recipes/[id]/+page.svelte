@@ -34,6 +34,9 @@
 	} from '@lucide/svelte';
 
 	let recipe: Recipe | null = null;
+	// Only the member who added a recipe can edit or delete it; anyone in the
+	// household can add notes or save their own copy.
+	$: isOwner = recipe?.user_id === $auth.user?.id;
 	let loading = true;
 	let error: string | null = null;
 	let checkedIngredients = new Set<number>();
@@ -449,6 +452,13 @@
 								<span>• Created by {recipe.creator_display_name}</span>
 							{/if}
 						</div>
+						{#if !isOwner && $auth.user}
+							<p class="text-sm mt-2 no-print" style="color: var(--text-600);">
+								Only {recipe.creator_display_name || 'the member who added it'} can
+								edit this recipe. You can add notes to it, or save a copy of your
+								own to change.
+							</p>
+						{/if}
 					</div>
 				</div>
 			</div>
@@ -721,13 +731,15 @@
 				<div class="action-bar-content">
 					<!-- Primary Actions -->
 					<div class="action-group">
-						<button
-							on:click={() => goto(`/recipes/${recipe?.id}/edit`)}
-							class="btn btn-primary flex items-center gap-2"
-						>
-							<Edit size={18} aria-hidden="true" />
-							<span>Edit Recipe</span>
-						</button>
+						{#if isOwner}
+							<button
+								on:click={() => goto(`/recipes/${recipe?.id}/edit`)}
+								class="btn btn-primary flex items-center gap-2"
+							>
+								<Edit size={18} aria-hidden="true" />
+								<span>Edit Recipe</span>
+							</button>
+						{/if}
 						<button
 							on:click={() => openShoppingListDialog()}
 							class="btn btn-primary flex items-center gap-2"
@@ -749,7 +761,7 @@
 							class="btn btn-secondary flex items-center gap-2"
 						>
 							<Copy size={16} aria-hidden="true" />
-							<span>Duplicate</span>
+							<span>{isOwner ? 'Duplicate' : 'Save a copy'}</span>
 						</button>
 						<button
 							on:click={handlePrint}
@@ -824,15 +836,17 @@
 					</div>
 
 					<!-- Danger Actions -->
-					<div class="action-group">
-						<button
-							on:click={handleDelete}
-							class="btn btn-danger flex items-center gap-2"
-						>
-							<Trash2 size={16} aria-hidden="true" />
-							<span>Delete</span>
-						</button>
-					</div>
+					{#if isOwner}
+						<div class="action-group">
+							<button
+								on:click={handleDelete}
+								class="btn btn-danger flex items-center gap-2"
+							>
+								<Trash2 size={16} aria-hidden="true" />
+								<span>Delete</span>
+							</button>
+						</div>
+					{/if}
 				</div>
 			</div>
 		</div>

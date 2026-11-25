@@ -31,6 +31,8 @@ export interface Recipe {
 
 export interface RecipeSummary {
   id: number;
+  /** Who added it; only they can edit or delete it. */
+  user_id?: number;
   name: string;
   description?: string;
   image_url?: string;
@@ -212,5 +214,7 @@ export async function exportRecipe(
   id: number,
   format: "json" | "markdown" | "text" | "pdf",
 ): Promise<Blob> {
-  return apiRequest<Blob>(`/recipes/${id}/export?format=${format}`, { responseType: "blob" });
+  return apiRequest<Blob>(`/recipes/${id}/export?format=${format}`, {
+    responseType: "blob",
+  });
 }

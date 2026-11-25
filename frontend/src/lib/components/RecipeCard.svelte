@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { RecipeSummary } from '#lib/api/recipes.js';
+	import { auth } from '#lib/stores/auth.js';
 	import {
 		UtensilsCrossed,
 		Clock,
@@ -19,6 +20,10 @@
 		undefined;
 	export let onfavorite: ((recipe: RecipeSummary) => void) | undefined =
 		undefined;
+
+	// Only the member who added a recipe can edit or delete it
+	$: canEdit =
+		recipe.user_id === undefined || recipe.user_id === $auth.user?.id;
 
 	function formatTime(minutes: number | undefined): string {
 		if (!minutes) return '';
@@ -70,9 +75,9 @@
 				/>
 			{:else}
 				<div class="empty-image-placeholder">
-					<span class="placeholder-initial"
-						>{recipe.name.charAt(0).toUpperCase()}</span
-					>
+					<span class="placeholder-initial">
+						{recipe.name.charAt(0).toUpperCase()}
+					</span>
 					<UtensilsCrossed
 						size={28}
 						aria-hidden="true"
@@ -99,6 +104,11 @@
 					<span class="badge badge-secondary">{recipe.category}</span>
 				{/if}
 			</div>
+			{#if !canEdit && recipe.creator_display_name}
+				<p class="text-xs mt-2" style="color: var(--text-500);">
+					Added by {recipe.creator_display_name}
+				</p>
+			{/if}
 
 			<div class="flex items-center justify-between mt-3">
 				{#if recipe.total_time_minutes}
@@ -139,20 +149,22 @@
 			>
 				<Star size={16} aria-hidden="true" />
 			</button>
-			<button
-				on:click|stopPropagation={handleEdit}
-				class="action-btn"
-				aria-label="Edit recipe"
-			>
-				<Edit size={16} aria-hidden="true" />
-			</button>
-			<button
-				on:click|stopPropagation={handleDelete}
-				class="action-btn"
-				aria-label="Delete recipe"
-			>
-				<Trash2 size={16} aria-hidden="true" />
-			</button>
+			{#if canEdit}
+				<button
+					on:click|stopPropagation={handleEdit}
+					class="action-btn"
+					aria-label="Edit recipe"
+				>
+					<Edit size={16} aria-hidden="true" />
+				</button>
+				<button
+					on:click|stopPropagation={handleDelete}
+					class="action-btn"
+					aria-label="Delete recipe"
+				>
+					<Trash2 size={16} aria-hidden="true" />
+				</button>
+			{/if}
 		</div>
 	{/if}
 </article>

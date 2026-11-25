@@ -102,6 +102,8 @@ class RecipeSummary(BaseModel):
     """Simplified recipe schema for listings."""
 
     id: int
+    # Owner: only they may edit or delete, so clients need it to offer the right actions
+    user_id: int
     name: str
     description: str | None = None
     image_url: str | None = None
