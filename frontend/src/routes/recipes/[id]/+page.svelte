@@ -1364,23 +1364,53 @@
 	}
 
 	/* Responsive adjustments */
+	/* Phones: the bar becomes one compact row of icon buttons, so it no longer
+	   covers a third of the screen. */
 	@media (max-width: 768px) {
 		.recipe-content {
-			padding-bottom: 20rem; /* More space on mobile since action bar is taller */
+			padding-bottom: 9rem; /* room for the bar, even if it wraps to two rows */
+		}
+
+		.sticky-action-bar {
+			padding: 0.5rem 0;
 		}
 
 		.action-bar-content {
-			flex-direction: column;
-			align-items: stretch;
-		}
-
-		.action-group {
 			justify-content: center;
-			width: 100%;
+			gap: 0.5rem;
 		}
 
+		/* The groups dissolve; every button flows in the same wrapping row */
+		.action-group,
 		.action-group:first-child {
-			flex: none;
+			display: contents;
+		}
+
+		.action-bar-content :global(.btn) {
+			min-width: 2.75rem;
+			min-height: 2.75rem;
+			padding: 0.625rem;
+			justify-content: center;
+		}
+
+		/* Icons only. The labels stay in place for screen readers. */
+		.action-bar-content :global(.btn > span) {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
+		}
+
+		/* The export menu opens across the screen above the bar, not off one button */
+		.export-dropdown {
+			position: static;
+		}
+
+		.export-menu {
+			left: 1rem;
+			right: 1rem;
 		}
 	}
 

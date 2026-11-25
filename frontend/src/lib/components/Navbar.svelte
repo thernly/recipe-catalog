@@ -1,11 +1,18 @@
 <script lang="ts">
 	import { auth } from '#lib/stores/auth.js';
-	import { goto } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { getPreferences, updatePreferences } from '#lib/api/users.js';
 	import type { User, Theme } from '#lib/types/index.js';
-	import { UtensilsCrossed, Leaf, Wine, Sparkles } from '@lucide/svelte';
+	import {
+		UtensilsCrossed,
+		Leaf,
+		Wine,
+		Sparkles,
+		Menu,
+		X,
+	} from '@lucide/svelte';
 	import { logger } from '#lib/utils/logger.js';
 	import { handleError } from '#lib/utils/errors.js';
 
@@ -23,6 +30,12 @@
 
 	let user: User | null = null;
 	let currentTheme: Theme = 'garden-fresh';
+
+	// Narrow screens: the links live in a menu, closed again after each navigation
+	let menuOpen = false;
+	afterNavigate(() => {
+		menuOpen = false;
+	});
 
 	onMount(() => {
 		const unsubscribe = auth.subscribe((state) => {
@@ -62,30 +75,52 @@
 	}
 </script>
 
+<svelte:window on:keydown={(e) => e.key === 'Escape' && (menuOpen = false)} />
+
 <nav
-	class="no-print sticky top-0 z-50 h-16 flex items-center justify-between px-6"
+	class="navbar no-print sticky top-0 z-50 h-16 flex items-center justify-between"
 	style="background: var(--color-navbar-bg); color: var(--color-navbar-text);"
 >
 	<div class="flex items-center gap-6">
+		<!-- Shown only on narrow screens, where the links collapse into a menu -->
+		<button
+			type="button"
+			class="menu-toggle"
+			aria-label="Menu"
+			aria-expanded={menuOpen}
+			aria-controls="main-menu"
+			on:click={() => (menuOpen = !menuOpen)}
+		>
+			{#if menuOpen}
+				<X size={24} aria-hidden="true" />
+			{:else}
+				<Menu size={24} aria-hidden="true" />
+			{/if}
+		</button>
+
 		<a href="/dashboard" class="logo-link">
 			<UtensilsCrossed size={32} aria-hidden="true" />
-			<span class="font-semibold text-xl">Recipe Catalog</span>
+			<span class="logo-text font-semibold text-xl">Recipe Catalog</span>
 		</a>
 
-		<div class="flex items-center gap-2 ml-4">
+		<div id="main-menu" class="nav-links" class:open={menuOpen}>
 			<a
 				href="/dashboard"
 				class="nav-link"
 				class:active={isActive('/dashboard')}
-				aria-current={current('/dashboard')}>Dashboard</a
+				aria-current={current('/dashboard')}
 			>
+				Dashboard
+			</a>
 
 			<a
 				href="/recipes"
 				class="nav-link"
 				class:active={isActive('/recipes')}
-				aria-current={current('/recipes')}>Recipes</a
+				aria-current={current('/recipes')}
 			>
+				Recipes
+			</a>
 
 			<a
 				href="/ai-generate"
@@ -149,7 +184,7 @@
 			{/if}
 		</button>
 		{#if user}
-			<span class="text-base">{user.email}</span>
+			<span class="user-email text-base">{user.email}</span>
 		{/if}
 		<button on:click={handleLogout} class="nav-link logout-btn">
 			Logout
@@ -158,6 +193,75 @@
 </nav>
 
 <style>
+	.navbar {
+		padding: 0 1.5rem;
+	}
+
+	.nav-links {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-left: 1rem;
+	}
+
+	.menu-toggle {
+		display: none;
+		min-width: 2.75rem;
+		min-height: 2.75rem;
+		align-items: center;
+		justify-content: center;
+		border-radius: var(--radius-md);
+		background: transparent;
+		border: none;
+		color: inherit;
+		cursor: pointer;
+	}
+
+	.menu-toggle:hover {
+		background: rgba(255, 255, 255, 0.1);
+	}
+
+	/* The seven links plus the email need about this much room on one row */
+	@media (max-width: 1150px) {
+		.navbar {
+			padding: 0 0.75rem;
+		}
+
+		.menu-toggle {
+			display: flex;
+		}
+
+		.user-email {
+			display: none;
+		}
+
+		.nav-links {
+			display: none;
+			position: absolute;
+			top: 100%;
+			left: 0;
+			right: 0;
+			margin-left: 0;
+			padding: 0.5rem 0.75rem 1rem;
+			flex-direction: column;
+			align-items: stretch;
+			background: var(--color-navbar-bg);
+			box-shadow: var(--shadow-md);
+			max-height: calc(100vh - 4rem);
+			overflow-y: auto;
+		}
+
+		.nav-links.open {
+			display: flex;
+		}
+	}
+
+	@media (max-width: 480px) {
+		.logo-text {
+			display: none;
+		}
+	}
+
 	.logo-link {
 		display: flex;
 		align-items: center;
