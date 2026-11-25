@@ -66,7 +66,17 @@
 		'Saturday',
 		'Sunday',
 	];
-	const mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+	// "Other" only gets a column when the week has such a meal; without one,
+	// a meal moved to "Other" would disappear from the grid.
+	$: mealTypes = [
+		'breakfast',
+		'lunch',
+		'dinner',
+		'snack',
+		...(mealPlan?.planned_meals.some((meal) => meal.meal_type === 'other')
+			? ['other']
+			: []),
+	];
 
 	$: weekDates = getWeekDates(currentWeekStart);
 
@@ -257,7 +267,7 @@
 			</h2>
 		</div>
 
-		<div class="meal-grid">
+		<div class="meal-grid" style="--meal-columns: {mealTypes.length}">
 			<!-- Header row with meal types -->
 			<div class="grid-header"></div>
 			{#each mealTypes as mealType (mealType)}
@@ -288,11 +298,11 @@
 									<span class="meal-servings">{meal.servings} servings</span>
 								{/if}
 								{#if meal.notes}
-									<span class="meal-notes" title={meal.notes}
-										><span aria-hidden="true">📝</span><span class="sr-only"
-											>Has notes</span
-										></span
-									>
+									<span class="meal-notes" title={meal.notes}>
+										<span aria-hidden="true">📝</span><span class="sr-only">
+											Has notes
+										</span>
+									</span>
 								{/if}
 							</button>
 						{/each}
@@ -379,7 +389,7 @@
 
 	.meal-grid {
 		display: grid;
-		grid-template-columns: 150px repeat(4, 1fr);
+		grid-template-columns: 150px repeat(var(--meal-columns, 4), 1fr);
 		gap: var(--space-sm);
 		background-color: transparent;
 		border: 1px solid var(--neutral-200);

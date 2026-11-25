@@ -80,11 +80,12 @@
 			if (mealType !== meal.meal_type) {
 				updates.meal_type = mealType as PlannedMealUpdate['meal_type'];
 			}
-			if (servings !== meal.servings) {
-				updates.servings = servings || undefined;
+			// null (not undefined) so that emptying a field clears it on the server
+			if ((servings || null) !== (meal.servings || null)) {
+				updates.servings = servings || null;
 			}
 			if (notes !== (meal.notes || '')) {
-				updates.notes = notes || undefined;
+				updates.notes = notes || null;
 			}
 
 			if (Object.keys(updates).length > 0) {
@@ -165,8 +166,9 @@
 				class="close-btn"
 				on:click={handleClose}
 				aria-label="Close dialog"
-				><span aria-hidden="true">&times;</span></button
 			>
+				<span aria-hidden="true">&times;</span>
+			</button>
 		</div>
 
 		<div class="modal-body">
@@ -188,9 +190,9 @@
 					<label for="meal-type">Meal Type</label>
 					<select id="meal-type" bind:value={mealType} class="input">
 						{#each mealTypes as type (type)}
-							<option value={type}
-								>{type.charAt(0).toUpperCase() + type.slice(1)}</option
-							>
+							<option value={type}>
+								{type.charAt(0).toUpperCase() + type.slice(1)}
+							</option>
 						{/each}
 					</select>
 				</div>
