@@ -143,7 +143,10 @@
 	function handleBackToRecipes() {
 		// Check if we have a returnUrl query parameter first
 		const returnUrl = page.url.searchParams.get('returnUrl');
-		if (returnUrl?.startsWith('/recipes')) {
+		if (
+			returnUrl?.startsWith('/recipes') ||
+			returnUrl?.startsWith('/collections/')
+		) {
 			// Use the explicit return URL (preserves search filters)
 			goto(returnUrl).catch(() => goto('/recipes'));
 		} else {

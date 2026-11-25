@@ -43,19 +43,16 @@
 		}
 	}
 
-	function handleViewRecipe(e: CustomEvent) {
-		const recipe = e.detail as RecipeSummary;
-		goto(`/recipes/${recipe.id}`);
+	// Real links, so cmd-click opens a new tab; "Back" on the recipe returns here
+	function recipeHref(recipe: RecipeSummary) {
+		return `/recipes/${recipe.id}?returnUrl=${encodeURIComponent(`/collections/${collectionId}`)}`;
 	}
 
-	function handleEditRecipe(e: CustomEvent) {
-		const recipe = e.detail as RecipeSummary;
+	function handleEditRecipe(recipe: RecipeSummary) {
 		goto(`/recipes/${recipe.id}/edit`);
 	}
 
-	async function handleDeleteRecipe(e: CustomEvent) {
-		const recipe = e.detail as RecipeSummary;
-
+	function handleDeleteRecipe(recipe: RecipeSummary) {
 		dialog.show({
 			title: 'Delete Recipe',
 			message: `Are you sure you want to delete "${recipe.name}"? It will be moved to trash.`,
@@ -71,12 +68,6 @@
 				}
 			},
 		});
-	}
-
-	function handleFavoriteRecipe(e: CustomEvent) {
-		const recipe = e.detail as RecipeSummary;
-		// TODO: Implement favorites
-		console.log('Favorite:', recipe);
 	}
 
 	function toggleViewMode(mode: ViewMode) {
@@ -124,10 +115,9 @@
 	});
 </script>
 
-<svelte:head
-	><title>{collection?.name || 'Collection'} - Recipe Catalog</title
-	></svelte:head
->
+<svelte:head>
+	<title>{collection?.name || 'Collection'} - Recipe Catalog</title>
+</svelte:head>
 
 <div class="min-h-screen bg-neutral-50">
 	{#if loading}
@@ -148,9 +138,9 @@
 			<p class="text-sm mb-4" style="color: var(--text-600);">
 				{error || 'This collection may have been deleted.'}
 			</p>
-			<button on:click={() => goto('/recipes')} class="btn btn-primary"
-				>Back to Recipes</button
-			>
+			<button on:click={() => goto('/recipes')} class="btn btn-primary">
+				Back to Recipes
+			</button>
 		</div>
 	{:else}
 		<!-- Header -->
@@ -252,10 +242,9 @@
 					{#each recipes as recipe (recipe.id)}
 						<RecipeCard
 							{recipe}
-							on:view={handleViewRecipe}
-							on:edit={handleEditRecipe}
-							on:delete={handleDeleteRecipe}
-							on:favorite={handleFavoriteRecipe}
+							href={recipeHref(recipe)}
+							onedit={handleEditRecipe}
+							ondelete={handleDeleteRecipe}
 						/>
 					{/each}
 				</div>
@@ -264,10 +253,9 @@
 					{#each recipes as recipe (recipe.id)}
 						<RecipeListItem
 							{recipe}
-							on:view={handleViewRecipe}
-							on:edit={handleEditRecipe}
-							on:delete={handleDeleteRecipe}
-							on:favorite={handleFavoriteRecipe}
+							href={recipeHref(recipe)}
+							onedit={handleEditRecipe}
+							ondelete={handleDeleteRecipe}
 						/>
 					{/each}
 				</div>
