@@ -142,6 +142,22 @@ export async function removeMember(
 }
 
 /**
+ * Make another member the owner. The current owner stays on as a member.
+ */
+export async function transferOwnership(
+  householdId: number,
+  newOwnerUserId: number,
+): Promise<Household> {
+  return apiRequest<Household>(
+    `/households/${householdId}/transfer-ownership`,
+    {
+      method: "POST",
+      body: JSON.stringify({ new_owner_user_id: newOwnerUserId }),
+    },
+  );
+}
+
+/**
  * Get household invitations
  */
 export async function getHouseholdInvitations(

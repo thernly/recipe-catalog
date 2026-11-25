@@ -6,6 +6,7 @@
 		getHouseholdInvitations,
 		updateHousehold,
 		removeMember,
+		transferOwnership,
 		createInvitation,
 		revokeInvitation,
 		createInviteLink,
@@ -45,6 +46,7 @@
 	let joiningHousehold = false;
 
 	let removingMemberId: number | null = null;
+	let transferringToId: number | null = null;
 	let revokingInvitationId: number | null = null;
 
 	const currentUser = get(auth).user;
@@ -153,6 +155,34 @@
 					toast.error('Failed to remove member');
 				} finally {
 					removingMemberId = null;
+				}
+			},
+		});
+	}
+
+	function handleTransferOwnership(userId: number, username: string) {
+		if (!household) return;
+		const householdId = household.id;
+
+		dialog.show({
+			title: 'Transfer Ownership',
+			message: `Make ${username} the owner of this household? You will stay on as a member and lose owner controls such as inviting and removing members.`,
+			onConfirm: async () => {
+				transferringToId = userId;
+				error = '';
+
+				try {
+					await transferOwnership(householdId, userId);
+					toast.success(`${username} is now the owner`);
+					// Reload everything so all owner-only controls update
+					await loadHouseholdData();
+				} catch (err) {
+					console.error('Failed to transfer ownership:', err);
+					error =
+						err instanceof Error ? err.message : 'Failed to transfer ownership';
+					toast.error('Failed to transfer ownership');
+				} finally {
+					transferringToId = null;
 				}
 			},
 		});
@@ -399,18 +429,34 @@
 							<p class="member-meta">Joined {formatDate(member.joined_at)}</p>
 						</div>
 						{#if isOwner() && member.role !== 'owner' && member.user_id !== currentUser?.id}
-							<button
-								type="button"
-								class="btn btn-danger btn-sm"
-								on:click={() =>
-									handleRemoveMember(
-										member.user_id,
-										member.user_display_name || 'user',
-									)}
-								disabled={removingMemberId === member.user_id}
-							>
-								{removingMemberId === member.user_id ? 'Removing...' : 'Remove'}
-							</button>
+							<div class="button-group">
+								<button
+									type="button"
+									class="btn btn-outline btn-sm"
+									on:click={() =>
+										handleTransferOwnership(
+											member.user_id,
+											member.user_display_name || 'this member',
+										)}
+									disabled={transferringToId === member.user_id}
+								>
+									{transferringToId === member.user_id
+										? 'Transferring...'
+										: 'Make owner'}
+								</button>
+								<button
+									type="button"
+									class="btn btn-danger btn-sm"
+									on:click={() =>
+										handleRemoveMember(
+											member.user_id,
+											member.user_display_name || 'user',
+										)}
+									disabled={removingMemberId === member.user_id}
+								>
+									{removingMemberId === member.user_id ? 'Removing...' : 'Remove'}
+								</button>
+							</div>
 						{/if}
 					</div>
 				{/each}
