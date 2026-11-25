@@ -33,12 +33,17 @@
 		}
 	}
 
-	function handleCancel() {
+	// Leaving any other way keeps the draft; Cancel is the way to throw it away.
+	function handleCancel(event: CustomEvent<{ dirty: boolean }>) {
+		if (!event.detail.dirty) {
+			goto('/recipes');
+			return;
+		}
 		dialog.show({
-			title: 'Cancel Recipe Creation',
-			message:
-				'Are you sure you want to cancel? Any unsaved changes will be lost (except auto-saved drafts).',
+			title: 'Discard this recipe?',
+			message: 'What you have entered so far will be deleted.',
 			onConfirm: () => {
+				localStorage.removeItem('recipe-draft');
 				goto('/recipes');
 			},
 		});

@@ -1,6 +1,8 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import { browser } from '$app/env';
+	import { beforeNavigate } from '$app/navigation';
+	import { DEBOUNCE_DELAY } from '#lib/constants.js';
 	import type { Recipe, RecipeCreate, RecipeUpdate } from '#lib/api/recipes.js';
 	import IngredientsEditor from '#lib/components/recipe/IngredientsEditor.svelte';
 	import InstructionsEditor from '#lib/components/recipe/InstructionsEditor.svelte';
@@ -201,46 +203,130 @@
 	}
 
 	function handleCancel() {
-		dispatch('cancel');
+		dispatch('cancel', { dirty });
 	}
 
-	// Auto-save (TODO: implement localStorage draft saving)
-	let autoSaveTimeout: ReturnType<typeof setTimeout> | undefined;
-	function scheduleAutoSave() {
-		if (autoSaveTimeout) {
-			clearTimeout(autoSaveTimeout);
+	// Everything the user can type, as one value: used to tell whether the form
+	// has changed, and as the saved draft.
+	$: fields = {
+		name,
+		description,
+		imageUrl,
+		sourceUrl,
+		ingredients,
+		instructions,
+		equipment,
+		cuisine,
+		category,
+		prepTimeHours,
+		prepTimeMinutes,
+		cookTimeHours,
+		cookTimeMinutes,
+		recipeYield,
+		notes,
+		keywords,
+	};
+	$: snapshot = JSON.stringify(fields);
+	// The form as first shown (before any draft is restored, see onMount)
+	let pristine: string | undefined;
+	$: if (pristine === undefined) pristine = snapshot;
+	$: dirty = snapshot !== pristine;
+
+	function applyFields(saved: Partial<typeof fields>) {
+		({
+			name = name,
+			description = description,
+			imageUrl = imageUrl,
+			sourceUrl = sourceUrl,
+			ingredients = ingredients,
+			instructions = instructions,
+			equipment = equipment,
+			cuisine = cuisine,
+			category = category,
+			prepTimeHours = prepTimeHours,
+			prepTimeMinutes = prepTimeMinutes,
+			cookTimeHours = cookTimeHours,
+			cookTimeMinutes = cookTimeMinutes,
+			recipeYield = recipeYield,
+			notes = notes,
+			keywords = keywords,
+		} = saved);
+	}
+
+	// Drafts: a brand-new recipe is saved to this browser as it is typed and
+	// restored the next time the form opens. Edits of an existing recipe are
+	// not drafted; leaving them unsaved asks first (see beforeNavigate).
+	const DRAFT_KEY = 'recipe-draft';
+	const usesDraft = browser && !recipe && !initialData;
+	let draftRestored = false;
+	let draftTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function saveDraft() {
+		draftTimer = undefined;
+		try {
+			if (dirty) localStorage.setItem(DRAFT_KEY, snapshot);
+			else localStorage.removeItem(DRAFT_KEY);
+		} catch {
+			// Storage full or blocked: the form still works, just without a draft
 		}
-		autoSaveTimeout = setTimeout(() => {
-			// Save to localStorage
-			if (browser) {
-				const draft = {
-					name,
-					description,
-					imageUrl,
-					ingredients,
-					instructions,
-					equipment,
-					cuisine,
-					category,
-					prepTimeHours,
-					prepTimeMinutes,
-					cookTimeHours,
-					cookTimeMinutes,
-					recipeYield,
-					notes,
-					keywords,
-				};
-				localStorage.setItem('recipe-draft', JSON.stringify(draft));
-			}
-		}, 30000);
 	}
 
-	// Watch for changes to trigger auto-save
-	// eslint-disable-next-line @typescript-eslint/no-unused-expressions -- lists reactive dependencies
-	$: (name, description, scheduleAutoSave());
+	$: if (usesDraft && pristine !== undefined && snapshot) {
+		clearTimeout(draftTimer);
+		draftTimer = setTimeout(saveDraft, DEBOUNCE_DELAY);
+	}
+
+	function discardDraft() {
+		applyFields(JSON.parse(pristine ?? '{}'));
+		draftRestored = false;
+	}
+
+	onMount(() => {
+		if (!usesDraft) return;
+		try {
+			const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null');
+			if (saved && typeof saved === 'object') {
+				applyFields(saved);
+				draftRestored = true;
+			}
+		} catch {
+			// Unreadable draft: start with an empty form
+		}
+	});
+
+	onDestroy(() => {
+		// Keep what was typed in the last moment before leaving
+		if (draftTimer && !saving) {
+			clearTimeout(draftTimer);
+			saveDraft();
+		}
+	});
+
+	beforeNavigate((navigation) => {
+		if (!recipe || !dirty || saving) return;
+		if (navigation.willUnload) {
+			navigation.cancel(); // the browser shows its own "leave site?" prompt
+		} else if (
+			!confirm(
+				'Leave without saving? Your changes to this recipe will be lost.',
+			)
+		) {
+			navigation.cancel();
+		}
+	});
 </script>
 
 <form on:submit|preventDefault={handleSubmit} class="recipe-form">
+	{#if draftRestored}
+		<div
+			class="mb-6 p-4 rounded-md flex items-center justify-between gap-4"
+			style="background: var(--accent-50); color: var(--accent-800);"
+			role="status"
+		>
+			<span>We restored the recipe you were writing.</span>
+			<Button variant="secondary" on:click={discardDraft}>Start over</Button>
+		</div>
+	{/if}
 	<!-- Basic Info Section -->
 	<section class="form-section">
 		<h2 class="section-title">Basic Information</h2>
