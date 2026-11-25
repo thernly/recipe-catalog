@@ -2,8 +2,10 @@
 Collection management API endpoints.
 """
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -97,6 +99,17 @@ async def create_collection(
     return CollectionSchema(**collection_dict)
 
 
+def _live_recipe_count() -> Any:
+    """Recipes in a collection, not counting trashed ones (the recipe list hides those)."""
+    return (
+        select(func.count(RecipeCollection.recipe_id))
+        .join(Recipe, Recipe.id == RecipeCollection.recipe_id)
+        .where(RecipeCollection.collection_id == Collection.id, Recipe.deleted_at.is_(None))
+        .correlate(Collection)
+        .scalar_subquery()
+    )
+
+
 @router.get("/", response_model=list[CollectionWithCount])
 async def list_collections(
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of collections to return"),
@@ -120,15 +133,9 @@ async def list_collections(
     """
     # Get collections with recipe counts for the household
     stmt = (
-        select(
-            Collection,
-            func.count(RecipeCollection.recipe_id).label("recipe_count"),
-            User,
-        )
-        .outerjoin(RecipeCollection)
+        select(Collection, _live_recipe_count().label("recipe_count"), User)
         .join(User, Collection.user_id == User.id)
         .where(Collection.household_id == household.id)
-        .group_by(Collection.id, User.id)
         .order_by(Collection.is_default.desc(), Collection.created_at.asc())
         .limit(limit)
         .offset(offset)
@@ -171,15 +178,9 @@ async def get_collection(
     """
     # Get collection with recipe count and creator info
     stmt = (
-        select(
-            Collection,
-            func.count(RecipeCollection.recipe_id).label("recipe_count"),
-            User,
-        )
-        .outerjoin(RecipeCollection)
+        select(Collection, _live_recipe_count().label("recipe_count"), User)
         .join(User, Collection.user_id == User.id)
         .where(Collection.id == collection_id, Collection.household_id == household.id)
-        .group_by(Collection.id, User.id)
     )
 
     result = await db.execute(stmt)
@@ -450,14 +451,16 @@ async def remove_recipes_from_collection(
 async def get_collection_recipes(
     collection_id: int,
     current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Get all recipes in a collection.
+    Get all recipes in a collection. A read, so any household member may open it.
 
     Args:
         collection_id: Collection ID
         current_user: The authenticated user
+        household: The user's household
         db: Database session
 
     Returns:
@@ -468,10 +471,11 @@ async def get_collection_recipes(
     """
     from app.schemas.recipe import RecipeSummary
 
-    # Verify collection exists
+    # The household's collections, plus the user's own (which may predate households)
     result = await db.execute(
         select(Collection).where(
-            Collection.id == collection_id, Collection.user_id == current_user.id
+            Collection.id == collection_id,
+            or_(Collection.household_id == household.id, Collection.user_id == current_user.id),
         )
     )
     collection = result.scalar_one_or_none()
@@ -483,7 +487,11 @@ async def get_collection_recipes(
     stmt = (
         select(Recipe)
         .join(RecipeCollection)
-        .where(RecipeCollection.collection_id == collection_id, Recipe.deleted_at.is_(None))
+        .where(
+            RecipeCollection.collection_id == collection_id,
+            Recipe.household_id == household.id,
+            Recipe.deleted_at.is_(None),
+        )
         .order_by(RecipeCollection.added_at.desc())
     )
 

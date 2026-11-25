@@ -13,6 +13,7 @@
 	import { getUserStats, type UserStats } from '#lib/api/users.js';
 	import CollectionModal from './CollectionModal.svelte';
 	import type { Collection } from '#lib/api/collections.js';
+	import { auth } from '#lib/stores/auth.js';
 	import { dialog } from '#lib/stores/dialog.js';
 	import { toast } from '#lib/stores/toast.js';
 
@@ -115,6 +116,16 @@
 		});
 	}
 
+	// The household's collections are all listed, but only your own can be changed.
+	// Everyone has a "Favorites"; yours goes under Quick Access, the others below.
+	$: myId = $auth.user?.id;
+	$: quickAccess = $collections.collections.filter(
+		(c) => c.is_default && c.user_id === myId,
+	);
+	$: otherCollections = $collections.collections.filter(
+		(c) => !c.is_default || c.user_id !== myId,
+	);
+
 	function isActive(collectionId: number | null): boolean {
 		return currentCollectionId === collectionId;
 	}
@@ -169,7 +180,7 @@
 							</span>
 						</button>
 					</li>
-					{#each $collections.collections.filter((c) => c.is_default) as collection (collection.id)}
+					{#each quickAccess as collection (collection.id)}
 						<li>
 							<button
 								on:click={() => goto(`/collections/${collection.id}`)}
@@ -186,11 +197,12 @@
 			</div>
 
 			<!-- Custom Collections -->
-			{#if $collections.collections.filter((c) => !c.is_default).length > 0}
+			{#if otherCollections.length > 0}
 				<div class="nav-section">
-					<h3 class="nav-section-title">My Collections</h3>
+					<h3 class="nav-section-title">Collections</h3>
 					<ul class="nav-list">
-						{#each $collections.collections.filter((c) => !c.is_default) as collection (collection.id)}
+						{#each otherCollections as collection (collection.id)}
+							{@const mine = collection.user_id === myId}
 							<li>
 								<div class="nav-item-group">
 									<button
@@ -199,27 +211,34 @@
 										class:active={isActive(collection.id)}
 									>
 										<span class="nav-icon">{collection.icon || '📁'}</span>
-										<span class="nav-label">{collection.name}</span>
+										<span class="nav-label">
+											{collection.name}{#if !mine && collection.creator_display_name}
+												<span class="nav-owner">
+													· {collection.creator_display_name}
+												</span>{/if}
+										</span>
 										<span class="nav-count">{collection.recipe_count}</span>
 									</button>
-									<div class="nav-item-actions">
-										<button
-											on:click={() => openEditModal(collection)}
-											class="action-btn"
-											title="Edit collection"
-											aria-label="Edit collection {collection.name}"
-										>
-											✏️
-										</button>
-										<button
-											on:click={() => handleDeleteCollection(collection)}
-											class="action-btn"
-											title="Delete collection"
-											aria-label="Delete collection {collection.name}"
-										>
-											🗑️
-										</button>
-									</div>
+									{#if mine && !collection.is_default}
+										<div class="nav-item-actions">
+											<button
+												on:click={() => openEditModal(collection)}
+												class="action-btn"
+												title="Edit collection"
+												aria-label="Edit collection {collection.name}"
+											>
+												✏️
+											</button>
+											<button
+												on:click={() => handleDeleteCollection(collection)}
+												class="action-btn"
+												title="Delete collection"
+												aria-label="Delete collection {collection.name}"
+											>
+												🗑️
+											</button>
+										</div>
+									{/if}
 								</div>
 							</li>
 						{/each}
@@ -425,18 +444,17 @@
 		font-size: 0.875rem;
 	}
 
-	/* Mobile responsiveness */
+	.nav-owner {
+		color: var(--text-500);
+		font-weight: 400;
+	}
+
+	/* Below this width the recipes page stacks the sidebar above the list,
+	   so it sits in the page flow instead of sticking beside it. */
 	@media (max-width: 1024px) {
 		.collections-sidebar {
-			position: fixed;
-			left: -260px;
-			z-index: 100;
-			transition: left 0.3s ease;
+			position: static;
+			max-height: none;
 		}
-
-		/* Unused: sidebar toggle not implemented yet */
-		/* .collections-sidebar.open {
-			left: 0;
-		} */
 	}
 </style>
