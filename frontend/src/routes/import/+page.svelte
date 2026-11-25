@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import { importRecipes } from '#lib/api/recipes.js';
+	import {
+		summarizeImport,
+		type ImportOutcome,
+	} from '#lib/utils/import-summary.js';
 	import { getCollections } from '#lib/api/collections.js';
 	import type { Collection } from '#lib/api/collections.js';
 
@@ -71,8 +74,7 @@
 		importProgress = { current: 0, total: selectedFiles.length };
 
 		try {
-			const results = [];
-			const errors = [];
+			const outcomes: ImportOutcome[] = [];
 
 			// Import each file sequentially
 			for (let i = 0; i < selectedFiles.length; i++) {
@@ -85,44 +87,28 @@
 						duplicateHandling,
 						selectedCollectionId,
 					);
-					results.push({ file: file.name, result });
-
-					if (result.details?.errors && result.details.errors.length > 0) {
-						errors.push(`${file.name}: ${result.details.errors.length} errors`);
-					}
+					outcomes.push({ file: file.name, result });
 				} catch (err) {
 					const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-					errors.push(`${file.name}: ${errorMsg}`);
+					outcomes.push({ file: file.name, result: errorMsg });
 					console.error(`Failed to import ${file.name}:`, err);
 				}
 			}
 
-			// Summarize results
-			const totalFiles = selectedFiles.length;
-			const successfulFiles = results.length;
-
-			if (successfulFiles === totalFiles && errors.length === 0) {
-				success = `Successfully imported ${totalFiles} file${totalFiles > 1 ? 's' : ''}!`;
-			} else if (successfulFiles > 0) {
-				success = `Imported ${successfulFiles} of ${totalFiles} file${totalFiles > 1 ? 's' : ''}`;
-				if (errors.length > 0) {
-					error = `Some errors occurred:\n${errors.join('\n')}`;
-				}
-			} else {
-				error = `Failed to import files:\n${errors.join('\n')}`;
+			// Say what happened to the recipes. The page stays put so the
+			// details can be read; the result box links to the recipe list.
+			const { summary, problems, imported } = summarizeImport(outcomes);
+			if (problems.length > 0) {
+				error = `These could not be imported:\n${problems.join('\n')}`;
 			}
+			// A green box only when something went right
+			success = imported > 0 || problems.length === 0 ? summary : null;
 
-			// Reset form on success
-			if (successfulFiles > 0) {
+			if (imported > 0) {
 				selectedFiles = [];
 				if (fileInput) {
 					fileInput.value = '';
 				}
-
-				// Redirect to recipes page after 2 seconds
-				setTimeout(() => {
-					goto('/recipes');
-				}, 2000);
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to import recipes';
@@ -226,9 +212,9 @@
 							disabled={loading}
 						>
 							<option value="skip">Skip duplicates (keep existing)</option>
-							<option value="update"
-								>Update duplicates (overwrite existing)</option
-							>
+							<option value="update">
+								Update duplicates (overwrite existing)
+							</option>
 							<option value="create">Create all (allow duplicates)</option>
 						</select>
 						<p class="mt-1 text-sm" style="color: var(--text-500);">
@@ -277,7 +263,9 @@
 							role="status"
 						>
 							<p>{success}</p>
-							<p class="text-sm mt-1">Redirecting to recipes page...</p>
+							<p class="text-sm mt-1">
+								<a href="/recipes" class="underline">View your recipes</a>
+							</p>
 						</div>
 					{/if}
 
@@ -337,9 +325,9 @@
 					</ul>
 					<p class="text-sm mt-3" style="color: var(--text-600);">
 						You can export your existing recipes from the
-						<a href="/export" class="text-primary-600 hover:underline"
-							>Export page</a
-						>
+						<a href="/export" class="text-primary-600 hover:underline">
+							Export page
+						</a>
 						to see the expected format.
 					</p>
 				</div>
