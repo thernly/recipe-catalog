@@ -177,7 +177,7 @@ async def register(
             hashed_password=hashed_password,
             display_name=user_data.display_name,
             is_active=True,
-            is_verified=False,  # Set to True for MVP (no email verification yet)
+            is_verified=False,  # Until the emailed link below is used
         )
 
         db.add(new_user)
@@ -229,7 +229,23 @@ async def register(
             user_agent=session_user_agent(request),
         )
         db.add(refresh_token)
+
+        # Email verification link (same 24-hour token the resend endpoint issues)
+        from app.core.email import email_service
+        from app.models.token import VerificationToken
+
+        verification_token = VerificationToken.create_for_user(new_user.id, hours_valid=24)
+        db.add(verification_token)
         await db.commit()
+        try:
+            await email_service.send_verification_email(
+                to_email=new_user.email,
+                verification_token=verification_token.raw_token,
+                user_name=new_user.display_name,
+            )
+        except Exception:
+            # The account exists and is usable; the user can ask for the link again.
+            logger.exception("verification_email_failed", user_id=new_user.id)
 
         # Set httpOnly cookies
         response.set_cookie(

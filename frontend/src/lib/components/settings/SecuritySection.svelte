@@ -11,6 +11,7 @@
 	import { toast } from '#lib/stores/toast.js';
 	import { PASSWORD_HINT, passwordProblem } from '#lib/utils/password.js';
 	import SessionsSection from './SessionsSection.svelte';
+	import VerifyEmailNotice from '#lib/components/VerifyEmailNotice.svelte';
 
 	let passwordForm = {
 		current_password: '',
@@ -210,6 +211,8 @@
 <!-- Linked Identity Providers Section -->
 <div class="settings-section mt-8">
 	<h2 class="section-title">Linked Accounts</h2>
+	<!-- Linking a provider needs a verified email address -->
+	<VerifyEmailNotice />
 	<p class="section-description">
 		Manage identity providers linked to your account
 		{#if !hasPassword && linkedProviders.length > 0}

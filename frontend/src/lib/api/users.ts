@@ -10,6 +10,7 @@ export interface User {
   email: string;
   display_name: string;
   is_active: boolean;
+  is_verified?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -107,6 +108,18 @@ export async function updatePreferences(
  */
 export async function getUserStats(): Promise<UserStats> {
   return apiRequest<UserStats>("/users/me/stats");
+}
+
+/**
+ * Email the verification link again. The server answers the same way whether
+ * or not anything was sent, and allows a few requests an hour.
+ */
+export async function resendVerification(email: string): Promise<void> {
+  await apiRequest("/auth/resend-verification", {
+    method: "POST",
+    requireAuth: false,
+    body: JSON.stringify({ email }),
+  });
 }
 
 /**
