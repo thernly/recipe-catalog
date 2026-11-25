@@ -217,12 +217,6 @@
 		});
 	}
 
-	function handleFavoriteRecipe(e: CustomEvent) {
-		const recipe = e.detail as RecipeSummary;
-		// TODO: Implement favorites
-		console.log('Favorite:', recipe);
-	}
-
 	// Toggle view mode
 	function toggleViewMode(mode: ViewMode) {
 		viewMode = mode;
@@ -409,9 +403,9 @@
 							Failed to load recipes
 						</p>
 						<p class="text-sm mb-4" style="color: var(--text-600);">{error}</p>
-						<button on:click={loadRecipes} class="btn btn-primary"
-							>Try Again</button
-						>
+						<button on:click={loadRecipes} class="btn btn-primary">
+							Try Again
+						</button>
 					</div>
 				{:else if searchResult && searchResult.recipes.length === 0}
 					<!-- Empty state -->
@@ -458,8 +452,6 @@
 									onedit={(r) => handleEditRecipe({ detail: r } as CustomEvent)}
 									ondelete={(r) =>
 										handleDeleteRecipe({ detail: r } as CustomEvent)}
-									onfavorite={(r) =>
-										handleFavoriteRecipe({ detail: r } as CustomEvent)}
 								/>
 							{/each}
 						</div>
@@ -472,8 +464,6 @@
 									onedit={(r) => handleEditRecipe({ detail: r } as CustomEvent)}
 									ondelete={(r) =>
 										handleDeleteRecipe({ detail: r } as CustomEvent)}
-									onfavorite={(r) =>
-										handleFavoriteRecipe({ detail: r } as CustomEvent)}
 								/>
 							{/each}
 						</div>
