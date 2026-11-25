@@ -11,6 +11,7 @@ import bleach
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
+from fastapi import Request
 from jwt.exceptions import PyJWTError
 
 from app.core.config import settings
@@ -132,6 +133,11 @@ def generate_refresh_token() -> str:
         A URL-safe random token string
     """
     return secrets.token_urlsafe(REFRESH_TOKEN_LENGTH)
+
+
+def session_user_agent(request: Request) -> str | None:
+    """User-Agent header of a login request, clipped to the refresh_tokens column size."""
+    return request.headers.get("user-agent", "")[:255] or None
 
 
 def get_refresh_token_expiry() -> datetime:
