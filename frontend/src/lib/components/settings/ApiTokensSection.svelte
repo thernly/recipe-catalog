@@ -9,6 +9,7 @@
 	} from '#lib/api/api-tokens.js';
 	import { dialog } from '#lib/stores/dialog.js';
 	import { toast } from '#lib/stores/toast.js';
+	import { RECIPE_SIPHON_URL } from '#lib/constants.js';
 
 	let tokens: ApiToken[] = [];
 	let loading = true;
@@ -105,10 +106,13 @@
 <div class="settings-section">
 	<h2 class="section-title">API Tokens</h2>
 	<p class="section-description">
-		Personal tokens let the Recipe Siphon browser extension send recipes
-		straight to your catalog. A token can only import recipes and check that it
-		works; it cannot read or change anything else. Create one per browser and
-		revoke it when you stop using that browser.
+		Personal tokens let the
+		<a href={RECIPE_SIPHON_URL} target="_blank" rel="noopener noreferrer">
+			Recipe Siphon
+		</a>
+		browser extension send recipes straight to your catalog. A token can only import
+		recipes and check that it works; it cannot read or change anything else. Create
+		one per browser and revoke it when you stop using that browser.
 	</p>
 
 	{#if created}

@@ -85,18 +85,6 @@
 		});
 	}
 
-	function getDaysUntilPurge(deletedAt: string): number {
-		const deleted = new Date(deletedAt);
-		const purgeDate = new Date(deleted);
-		purgeDate.setDate(purgeDate.getDate() + 30);
-
-		const today = new Date();
-		const diffTime = purgeDate.getTime() - today.getTime();
-		const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-		return Math.max(0, diffDays);
-	}
-
 	onMount(() => {
 		loadTrashedRecipes();
 	});
@@ -127,7 +115,8 @@
 						🗑️ Trash
 					</h1>
 					<p class="text-sm" style="color: var(--text-600);">
-						Deleted recipes are kept for 30 days before permanent deletion
+						Deleted recipes stay here until you restore them or delete them
+						forever
 					</p>
 				</div>
 
@@ -158,9 +147,9 @@
 					Failed to load trash
 				</p>
 				<p class="text-sm mb-4" style="color: var(--text-600);">{error}</p>
-				<button on:click={loadTrashedRecipes} class="btn btn-primary"
-					>Try Again</button
-				>
+				<button on:click={loadTrashedRecipes} class="btn btn-primary">
+					Try Again
+				</button>
 			</div>
 		{:else if recipes.length === 0}
 			<!-- Empty state -->
@@ -220,36 +209,16 @@
 
 								<div class="flex items-center gap-3 mt-2 text-sm">
 									{#if recipe.cuisine}
-										<span style="color: var(--text-600);">{recipe.cuisine}</span
-										>
+										<span style="color: var(--text-600);">
+											{recipe.cuisine}
+										</span>
 									{/if}
 									{#if recipe.category}
-										<span style="color: var(--text-500);"
-											>• {recipe.category}</span
-										>
+										<span style="color: var(--text-500);">
+											• {recipe.category}
+										</span>
 									{/if}
 								</div>
-
-								<!-- Days until purge warning -->
-								{#if recipe.deleted_at}
-									{@const daysLeft = getDaysUntilPurge(recipe.deleted_at)}
-									<div class="mt-3">
-										{#if daysLeft > 7}
-											<span class="trash-warning trash-warning-normal">
-												Deletes in {daysLeft} days
-											</span>
-										{:else if daysLeft > 0}
-											<span class="trash-warning trash-warning-soon">
-												⚠️ Deletes in {daysLeft}
-												{daysLeft === 1 ? 'day' : 'days'}
-											</span>
-										{:else}
-											<span class="trash-warning trash-warning-urgent">
-												🚨 Deletes soon
-											</span>
-										{/if}
-									</div>
-								{/if}
 							</div>
 						</div>
 
@@ -278,8 +247,8 @@
 				style="background: var(--accent-50); color: var(--accent-800);"
 			>
 				<p class="text-sm">
-					<strong>ℹ️ Note:</strong> Recipes in trash will be automatically and permanently
-					deleted after 30 days. You can restore them before then.
+					<strong>ℹ️ Note:</strong> Nothing in trash is deleted automatically. A recipe
+					stays here until you restore it or choose Delete Forever.
 				</p>
 			</div>
 		{/if}
@@ -335,29 +304,6 @@
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
-	}
-
-	.trash-warning {
-		display: inline-block;
-		padding: 0.25rem 0.75rem;
-		border-radius: var(--radius-full);
-		font-size: 0.75rem;
-		font-weight: 500;
-	}
-
-	.trash-warning-normal {
-		background: var(--neutral-100);
-		color: var(--text-600);
-	}
-
-	.trash-warning-soon {
-		background: var(--color-warning-bg);
-		color: var(--color-warning-text);
-	}
-
-	.trash-warning-urgent {
-		background: var(--color-error-bg);
-		color: var(--color-error-text);
 	}
 
 	.btn-sm {

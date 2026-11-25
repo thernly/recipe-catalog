@@ -32,7 +32,7 @@ export const REQUEST_TIMEOUT = 30000;
  * Credentials mode for fetch requests
  * 'include' ensures cookies are sent for authentication
  */
-export const FETCH_CREDENTIALS = 'include' as const;
+export const FETCH_CREDENTIALS = "include" as const;
 
 // ========================================
 // UI Configuration
@@ -57,3 +57,6 @@ export const DEBOUNCE_DELAY = 300;
  * Small delay ensures DOM is ready for focus management
  */
 export const FOCUS_DELAY = 0;
+
+/** Where to get Recipe Siphon, the browser extension that sends recipes here */
+export const RECIPE_SIPHON_URL = "https://github.com/thernly/recipe-siphon";
