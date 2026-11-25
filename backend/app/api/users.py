@@ -101,6 +101,12 @@ async def update_user_profile(
             to_email=verification.pending_email,
             verification_token=verification.raw_token,
             user_name=current_user.display_name,
+            email_change=True,
+        )
+        await email_service.send_email_change_notice(
+            to_email=current_user.email,
+            new_email=verification.pending_email,
+            user_name=current_user.display_name,
         )
 
     await db.commit()
@@ -143,7 +149,18 @@ async def change_password(
 
     from app.api.auth import issue_session
     from app.models.refresh_token import RefreshToken
+    from app.models.token import VerificationToken
 
+    # Cancel any pending email change, so a stolen session can't finish moving the account.
+    await db.execute(
+        update(VerificationToken)
+        .where(
+            VerificationToken.user_id == current_user.id,
+            VerificationToken.used.is_(False),
+            VerificationToken.pending_email.isnot(None),
+        )
+        .values(used=True)
+    )
     # Sign out every session, then give this one fresh cookies so the user stays logged in.
     await db.execute(
         update(RefreshToken)

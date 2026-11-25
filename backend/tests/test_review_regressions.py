@@ -188,6 +188,77 @@ async def test_email_change_requires_password_and_new_address_verification(
     assert response.json()["email"] == "new@example.com"
 
 
+async def test_email_change_uses_change_wording_and_notifies_old_address(client, test_user_headers):
+    from unittest.mock import AsyncMock, patch
+
+    old_email = (await client.get("/api/v1/users/me", headers=test_user_headers)).json()["email"]
+    with (
+        patch(
+            "app.core.email.email_service.send_verification_email", new_callable=AsyncMock
+        ) as send,
+        patch(
+            "app.core.email.email_service.send_email_change_notice", new_callable=AsyncMock
+        ) as notice,
+    ):
+        response = await client.patch(
+            "/api/v1/users/me",
+            headers=test_user_headers,
+            json={"email": "new@example.com", "current_password": "SecurePass123!"},
+        )
+    assert response.status_code == 200
+    assert send.call_args.kwargs["to_email"] == "new@example.com"
+    assert send.call_args.kwargs["email_change"] is True
+    notice.assert_awaited_once()
+    assert notice.call_args.kwargs["to_email"] == old_email
+    assert notice.call_args.kwargs["new_email"] == "new@example.com"
+
+
+async def test_password_change_cancels_pending_email_change(client, test_user_headers):
+    from unittest.mock import AsyncMock, patch
+
+    with (
+        patch(
+            "app.core.email.email_service.send_verification_email", new_callable=AsyncMock
+        ) as send,
+        patch("app.core.email.email_service.send_email_change_notice", new_callable=AsyncMock),
+    ):
+        await client.patch(
+            "/api/v1/users/me",
+            headers=test_user_headers,
+            json={"email": "attacker@example.com", "current_password": "SecurePass123!"},
+        )
+    raw_token = send.call_args.kwargs["verification_token"]
+    response = await client.post(
+        "/api/v1/users/me/change-password",
+        headers=test_user_headers,
+        json={"current_password": "SecurePass123!", "new_password": "NewSecurePass456!"},
+    )
+    assert response.status_code == 200
+    response = await client.post(f"/api/v1/auth/verify-email/{raw_token}")
+    assert response.status_code == 400
+
+
+async def test_email_templates_match_purpose():
+    from unittest.mock import AsyncMock, patch
+
+    from app.core.email import email_service
+
+    with patch.object(email_service, "send_email", new_callable=AsyncMock) as send:
+        await email_service.send_verification_email("a@example.com", "tok", "Ann")
+        signup = send.call_args.kwargs
+        await email_service.send_verification_email(
+            "a@example.com", "tok", "Ann", email_change=True
+        )
+        change = send.call_args.kwargs
+        await email_service.send_email_change_notice("old@example.com", "new@example.com", "Ann")
+        notice = send.call_args.kwargs
+    assert "signing up" in signup["text_content"]
+    assert "signing up" not in change["text_content"]
+    assert "/auth/verify-email/tok" in change["text_content"]
+    assert notice["to_email"] == "old@example.com"
+    assert "new@example.com" in notice["text_content"]
+
+
 async def test_microsoft_callback_cannot_link_victim_account(client, test_db, test_user):
     from unittest.mock import AsyncMock, patch
 
