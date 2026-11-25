@@ -24,20 +24,14 @@
 
 		<div class="stat-card">
 			<div class="stat-icon">📥</div>
-			<div class="stat-value">{stats.recipes_imported ?? 0}</div>
+			<div class="stat-value">{stats.imported_recipes ?? 0}</div>
 			<div class="stat-label">Imported</div>
 		</div>
 
 		<div class="stat-card">
 			<div class="stat-icon">✍️</div>
-			<div class="stat-value">{stats.recipes_manual ?? 0}</div>
+			<div class="stat-value">{stats.manual_recipes ?? 0}</div>
 			<div class="stat-label">Manual Entry</div>
-		</div>
-
-		<div class="stat-card">
-			<div class="stat-icon">📅</div>
-			<div class="stat-value">{stats.recipes_this_month ?? 0}</div>
-			<div class="stat-label">This Month</div>
 		</div>
 
 		<div class="stat-card">

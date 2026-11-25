@@ -280,9 +280,7 @@
 				placeholder="https://example.com/image.jpg"
 				class="form-input"
 			/>
-			<p class="form-help">
-				Paste a URL to an image, or leave blank to upload later
-			</p>
+			<p class="form-help">Paste a URL to an image, or leave blank</p>
 		</div>
 
 		{#if !recipe}
