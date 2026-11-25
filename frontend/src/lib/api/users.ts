@@ -32,9 +32,10 @@ export interface UserPreferences {
 export interface UserStats {
   total_recipes: number;
   total_collections: number;
-  recipes_imported: number;
-  recipes_manual: number;
-  recipes_this_month: number;
+  // Names as sent by GET /users/me/stats
+  imported_recipes: number;
+  manual_recipes: number;
+  trashed_recipes: number;
 }
 
 export interface UserUpdate {

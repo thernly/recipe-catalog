@@ -231,7 +231,10 @@
 					<li>
 						All exports are generated on-demand and include only your data
 					</li>
-					<li>Exports do not include images - only image URLs are exported</li>
+					<li>
+						JSON and Markdown exports include any photo stored with a recipe,
+						which can make the file large; text exports list image links only
+					</li>
 					<li>JSON exports can be used for backups or data portability</li>
 					<li>
 						Markdown and text exports are great for printing or offline reading

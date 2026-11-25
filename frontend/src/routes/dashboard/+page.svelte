@@ -34,9 +34,9 @@
 			stats = {
 				total_recipes: 0,
 				total_collections: 0,
-				recipes_imported: 0,
-				recipes_manual: 0,
-				recipes_this_month: 0,
+				imported_recipes: 0,
+				manual_recipes: 0,
+				trashed_recipes: 0,
 			};
 		} finally {
 			loadingStats = false;
@@ -82,9 +82,9 @@
 						class="text-4xl font-bold mb-2 flex items-center gap-3"
 						style="color: var(--text-900);"
 					>
-						<span
-							>Welcome{user.display_name ? `, ${user.display_name}` : ''}!</span
-						>
+						<span>
+							Welcome{user.display_name ? `, ${user.display_name}` : ''}!
+						</span>
 						<Hand size={36} class="inline-block" aria-hidden="true" />
 					</h1>
 					<p class="text-lg" style="color: var(--text-600);">
@@ -254,20 +254,19 @@
 										class="w-4 h-4 rounded-full border-2 border-current shrink-0"
 										aria-hidden="true"
 									></span>
-									<a href="/recipes/new" class="link font-medium"
-										>Add your first recipe</a
-									>
+									<a href="/recipes/new" class="link font-medium">
+										Add your first recipe
+									</a>
 									<span class="text-sm">to get started</span>
 								</li>
 							{:else}
 								<li class="flex items-center gap-2">
 									<Check size={16} aria-hidden="true" />
-									<span
-										>Added {stats.total_recipes} recipe{stats.total_recipes !==
-										1
+									<span>
+										Added {stats.total_recipes} recipe{stats.total_recipes !== 1
 											? 's'
-											: ''}</span
-									>
+											: ''}
+									</span>
 								</li>
 							{/if}
 							<li class="flex items-center gap-2">
@@ -275,9 +274,9 @@
 									class="w-4 h-4 rounded-full border-2 border-current shrink-0"
 									aria-hidden="true"
 								></span>
-								<a href="/import" class="link font-medium"
-									>Install the browser extension</a
-								>
+								<a href="/import" class="link font-medium">
+									Install the browser extension
+								</a>
 								<span class="text-sm">to import recipes from websites</span>
 							</li>
 							<li class="flex items-center gap-2">
@@ -285,9 +284,9 @@
 									class="w-4 h-4 rounded-full border-2 border-current shrink-0"
 									aria-hidden="true"
 								></span>
-								<a href="/ai-generate" class="link font-medium"
-									>Try AI recipe generation</a
-								>
+								<a href="/ai-generate" class="link font-medium">
+									Try AI recipe generation
+								</a>
 								<span class="text-sm">to create custom recipes</span>
 							</li>
 						{/if}
