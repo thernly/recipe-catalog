@@ -165,8 +165,20 @@ async def search_recipes(
     # Calculate pagination info
     total_pages = (total + per_page - 1) // per_page
 
+    # Who added each recipe, for household attribution
+    owner_ids = {r.user_id for r in recipes}
+    names: dict[Any, str | None] = {}
+    if owner_ids:
+        rows = await db.execute(select(User.id, User.display_name).where(User.id.in_(owner_ids)))
+        names = {row.id: row.display_name for row in rows}
+    summaries = []
+    for r in recipes:
+        summary = RecipeSummary.model_validate(r)
+        summary.creator_display_name = names.get(r.user_id)
+        summaries.append(summary)
+
     return RecipeSearchResult(
-        recipes=[RecipeSummary.model_validate(r) for r in recipes],
+        recipes=summaries,
         total=total,
         page=page,
         per_page=per_page,

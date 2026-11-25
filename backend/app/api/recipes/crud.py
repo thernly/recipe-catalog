@@ -436,14 +436,17 @@ async def restore_recipe(
 async def duplicate_recipe(
     recipe_id: int,
     current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Duplicate a recipe.
+    Duplicate a recipe. Any household member may copy a household recipe; the copy
+    belongs to whoever made it, so they can edit it.
 
     Args:
         recipe_id: Recipe ID to duplicate
         current_user: The authenticated user
+        household: The user's household
         db: Database session
 
     Returns:
@@ -452,10 +455,11 @@ async def duplicate_recipe(
     Raises:
         HTTPException: If recipe not found
     """
+    # A read of the original (household scope); the write below is the user's own row.
     result = await db.execute(
         select(Recipe).where(
             Recipe.id == recipe_id,
-            Recipe.user_id == current_user.id,
+            Recipe.household_id == household.id,
             Recipe.deleted_at.is_(None),
         )
     )

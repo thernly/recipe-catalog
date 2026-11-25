@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { RecipeSummary } from '#lib/api/recipes.js';
+	import { auth } from '#lib/stores/auth.js';
 	import {
 		UtensilsCrossed,
 		Clock,
@@ -18,6 +19,10 @@
 		undefined;
 	export let onfavorite: ((recipe: RecipeSummary) => void) | undefined =
 		undefined;
+
+	// Only the member who added a recipe can edit or delete it
+	$: canEdit =
+		recipe.user_id === undefined || recipe.user_id === $auth.user?.id;
 
 	function formatTime(minutes: number | undefined): string {
 		if (!minutes) return '';
@@ -96,9 +101,9 @@
 					</span>
 				{/if}
 				{#if recipe.category}
-					<span class="text-sm" style="color: var(--text-500);"
-						>• {recipe.category}</span
-					>
+					<span class="text-sm" style="color: var(--text-500);">
+						• {recipe.category}
+					</span>
 				{/if}
 				{#if recipe.total_time_minutes}
 					<span
@@ -123,6 +128,11 @@
 						<span>Manual</span>
 					{/if}
 				</span>
+				{#if !canEdit && recipe.creator_display_name}
+					<span class="text-xs" style="color: var(--text-500);">
+						• Added by {recipe.creator_display_name}
+					</span>
+				{/if}
 			</div>
 		</svelte:element>
 
@@ -135,20 +145,22 @@
 			>
 				<Star size={16} aria-hidden="true" />
 			</button>
-			<button
-				on:click={handleEdit}
-				class="action-btn-small"
-				aria-label="Edit recipe"
-			>
-				<Edit size={16} aria-hidden="true" />
-			</button>
-			<button
-				on:click={handleDelete}
-				class="action-btn-small"
-				aria-label="Delete recipe"
-			>
-				<Trash2 size={16} aria-hidden="true" />
-			</button>
+			{#if canEdit}
+				<button
+					on:click={handleEdit}
+					class="action-btn-small"
+					aria-label="Edit recipe"
+				>
+					<Edit size={16} aria-hidden="true" />
+				</button>
+				<button
+					on:click={handleDelete}
+					class="action-btn-small"
+					aria-label="Delete recipe"
+				>
+					<Trash2 size={16} aria-hidden="true" />
+				</button>
+			{/if}
 		</div>
 	</div>
 </article>
