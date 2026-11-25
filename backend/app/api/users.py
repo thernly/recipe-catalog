@@ -4,7 +4,7 @@ User profile and preferences API endpoints.
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -112,6 +112,7 @@ async def update_user_profile(
 @router.post("/me/change-password")
 async def change_password(
     password_change: PasswordChange,
+    request: Request,
     response: Response,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -149,7 +150,7 @@ async def change_password(
         .where(RefreshToken.user_id == current_user.id, RefreshToken.revoked.is_(False))
         .values(revoked=True, revoked_at=datetime.now(UTC))
     )
-    csrf_token = await issue_session(db, current_user, response)
+    csrf_token = await issue_session(db, current_user, request, response)
 
     return {"message": "Password updated successfully", "csrf_token": csrf_token}
 

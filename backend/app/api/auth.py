@@ -28,6 +28,7 @@ from app.core.security import (
     get_password_hash,
     get_refresh_token_expiry,
     hash_token,
+    session_user_agent,
     verify_password,
 )
 from app.models._utils import is_expired
@@ -225,6 +226,7 @@ async def register(
             user_id=new_user.id,
             expires_at=get_refresh_token_expiry(),
             revoked=False,
+            user_agent=session_user_agent(request),
         )
         db.add(refresh_token)
         await db.commit()
@@ -368,11 +370,11 @@ async def login(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
 
     _login_failures.pop(email, None)
-    csrf_token = await issue_session(db, user, response)
+    csrf_token = await issue_session(db, user, request, response)
     return {"message": "Login successful", "csrf_token": csrf_token}
 
 
-async def issue_session(db: AsyncSession, user: User, response: Response) -> str:
+async def issue_session(db: AsyncSession, user: User, request: Request, response: Response) -> str:
     """Store a new refresh token and set access/refresh/CSRF cookies. Returns the CSRF token."""
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
 
@@ -383,6 +385,7 @@ async def issue_session(db: AsyncSession, user: User, response: Response) -> str
             user_id=user.id,
             expires_at=get_refresh_token_expiry(),
             revoked=False,
+            user_agent=session_user_agent(request),
         )
     )
     await db.commit()
@@ -529,6 +532,7 @@ async def refresh_token(
         user_id=user.id,
         expires_at=get_refresh_token_expiry(),
         revoked=False,
+        user_agent=refresh_token_record.user_agent,
     )
 
     # Add and commit new refresh token

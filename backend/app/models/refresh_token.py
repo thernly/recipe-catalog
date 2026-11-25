@@ -19,6 +19,9 @@ class RefreshToken(Base):
     revoked = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     revoked_at = Column(DateTime, nullable=True)
+    # Browser that started the session; copied forward on rotation so the sessions list
+    # can tell devices apart.
+    user_agent = Column(String(255), nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="refresh_tokens")

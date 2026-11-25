@@ -25,6 +25,7 @@ from app.core.security import (
     get_refresh_token_expiry,
     hash_token,
     is_safe_redirect_url,
+    session_user_agent,
 )
 from app.models.identity_provider import IdentityProvider
 from app.models.oauth_state import OAuthState
@@ -297,6 +298,7 @@ async def oauth_callback(
                 user_id=user.id,
                 expires_at=get_refresh_token_expiry(),
                 revoked=False,
+                user_agent=session_user_agent(request),
             )
             db.add(refresh_token)
             await db.commit()
@@ -376,6 +378,7 @@ async def oauth_callback(
                 user_id=existing_user.id,
                 expires_at=get_refresh_token_expiry(),
                 revoked=False,
+                user_agent=session_user_agent(request),
             )
             db.add(refresh_token)
             await db.commit()
@@ -473,6 +476,7 @@ async def oauth_callback(
             user_id=new_user.id,
             expires_at=get_refresh_token_expiry(),
             revoked=False,
+            user_agent=session_user_agent(request),
         )
         db.add(refresh_token)
         await db.commit()

@@ -9,6 +9,7 @@
 	import { onMount } from 'svelte';
 	import { dialog } from '#lib/stores/dialog.js';
 	import { toast } from '#lib/stores/toast.js';
+	import SessionsSection from './SessionsSection.svelte';
 
 	let passwordForm = {
 		current_password: '',
@@ -198,6 +199,10 @@
 			{/if}
 		</div>
 	</form>
+</div>
+
+<div class="mt-8">
+	<SessionsSection />
 </div>
 
 <!-- Linked Identity Providers Section -->

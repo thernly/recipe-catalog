@@ -17,6 +17,7 @@ from app.api import (
     meal_plans,
     oauth,
     recipes,
+    sessions,
     shopping_lists,
     users,
 )
@@ -30,6 +31,7 @@ api_v1_router.include_router(auth.router, prefix="/auth", tags=["Authentication"
 api_v1_router.include_router(oauth.router, prefix="/auth", tags=["OAuth"])
 api_v1_router.include_router(users.router, prefix="/users", tags=["Users"])
 api_v1_router.include_router(api_tokens.router, prefix="/users/me/api-tokens", tags=["API Tokens"])
+api_v1_router.include_router(sessions.router, prefix="/users/me/sessions", tags=["Sessions"])
 api_v1_router.include_router(recipes.router, prefix="/recipes", tags=["Recipes"])
 api_v1_router.include_router(collections.router, prefix="/collections", tags=["Collections"])
 api_v1_router.include_router(export.router, prefix="/export", tags=["Export"])
