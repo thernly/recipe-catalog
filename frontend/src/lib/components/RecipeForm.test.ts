@@ -1,9 +1,13 @@
 /**
  * Editing a recipe must not drop stored data the form does not show.
  */
-import { describe, it, expect, vi } from "vitest";
-import { render, fireEvent } from "@testing-library/svelte/svelte5";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, fireEvent, waitFor } from "@testing-library/svelte/svelte5";
+
+vi.mock("$app/navigation", () => ({ beforeNavigate: vi.fn() }));
+
 import RecipeForm from "./RecipeForm.svelte";
+import { beforeNavigate } from "$app/navigation";
 import type { Recipe } from "#lib/api/recipes.js";
 
 const recipe: Recipe = {
@@ -67,5 +71,70 @@ describe("RecipeForm", () => {
 
     expect(data.recipe_data.cookTime).toBe("PT90M");
     expect(data.total_time_minutes).toBe(90);
+  });
+});
+
+describe("RecipeForm drafts", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(beforeNavigate).mockReset();
+  });
+
+  const nameInput = (container: HTMLElement) =>
+    container.querySelector<HTMLInputElement>("#name")!;
+
+  it("saves a new recipe as it is typed and restores it next time", async () => {
+    const first = render(RecipeForm);
+    await fireEvent.input(nameInput(first.container), {
+      target: { value: "Half-written pie" },
+    });
+    await waitFor(() =>
+      expect(localStorage.getItem("recipe-draft")).toContain(
+        "Half-written pie",
+      ),
+    );
+    first.unmount();
+
+    const second = render(RecipeForm);
+    await waitFor(() =>
+      expect(nameInput(second.container).value).toBe("Half-written pie"),
+    );
+    second.getByText("We restored the recipe you were writing.");
+  });
+
+  it("starts over on request and forgets the draft", async () => {
+    localStorage.setItem("recipe-draft", JSON.stringify({ name: "Old pie" }));
+    const { container, findByRole } = render(RecipeForm);
+
+    await fireEvent.click(await findByRole("button", { name: "Start over" }));
+
+    expect(nameInput(container).value).toBe("");
+    await waitFor(() =>
+      expect(localStorage.getItem("recipe-draft")).toBeNull(),
+    );
+  });
+
+  it("does not draft or restore when editing an existing recipe", async () => {
+    localStorage.setItem("recipe-draft", JSON.stringify({ name: "Old pie" }));
+    const { container } = render(RecipeForm, { props: { recipe } });
+
+    expect(nameInput(container).value).toBe("Stew");
+    expect(localStorage.getItem("recipe-draft")).toContain("Old pie");
+  });
+
+  it("asks before leaving an edited recipe, but not an untouched one", async () => {
+    const { container } = render(RecipeForm, { props: { recipe } });
+    const guard = vi.mocked(beforeNavigate).mock.calls[0][0];
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const navigation = { willUnload: false, cancel: vi.fn() };
+    type Navigation = Parameters<typeof guard>[0];
+
+    guard(navigation as unknown as Navigation);
+    expect(confirm).not.toHaveBeenCalled();
+
+    await fireEvent.input(nameInput(container), { target: { value: "Soup" } });
+    guard(navigation as unknown as Navigation);
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(navigation.cancel).toHaveBeenCalledOnce();
   });
 });
