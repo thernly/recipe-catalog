@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import type { User } from '#lib/types/index.js';
 	import { getUserStats, type UserStats } from '#lib/api/users.js';
+	import VerifyEmailNotice from '#lib/components/VerifyEmailNotice.svelte';
 	import { RECIPE_SIPHON_URL } from '#lib/constants.js';
 	import {
 		BookOpen,
@@ -77,6 +78,7 @@
 		<!-- Main Content -->
 		<main class="container-custom py-12">
 			<div class="max-w-4xl mx-auto">
+				<VerifyEmailNotice />
 				<!-- Welcome Header -->
 				<div class="mb-12">
 					<h1
