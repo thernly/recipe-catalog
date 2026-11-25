@@ -2,6 +2,7 @@
 Email service for sending verification and password reset emails
 """
 
+import html
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -101,7 +102,7 @@ class EmailService:
             return False
 
     async def send_verification_email(
-        self, to_email: str, verification_token: str, user_name: str
+        self, to_email: str, verification_token: str, user_name: str, email_change: bool = False
     ) -> bool:
         """
         Send email verification link asynchronously
@@ -110,12 +111,28 @@ class EmailService:
             to_email: User's email address
             verification_token: Verification token
             user_name: User's display name
+            email_change: True when confirming a new address for an existing account
 
         Returns:
             True if email sent successfully
         """
         # Build verification URL
         verification_url = f"{settings.FRONTEND_URL}/auth/verify-email/{verification_token}"
+
+        if email_change:
+            greeting = f"Hello, {user_name}!"
+            intro = (
+                "You asked to change the email address on your Recipe Catalog account. "
+                "Please confirm this new address to finish the change."
+            )
+            ignore = "If you did not request this change, please ignore this email."
+        else:
+            greeting = f"Welcome, {user_name}!"
+            intro = (
+                "Thank you for signing up for Recipe Catalog. "
+                "Please verify your email address to activate your account."
+            )
+            ignore = "If you did not create an account, please ignore this email."
 
         # HTML content
         html_content = f"""
@@ -138,8 +155,8 @@ class EmailService:
                     <h1>Recipe Catalog</h1>
                 </div>
                 <div class="content">
-                    <h2>Welcome, {user_name}!</h2>
-                    <p>Thank you for signing up for Recipe Catalog. Please verify your email address to activate your account.</p>
+                    <h2>{greeting}</h2>
+                    <p>{intro}</p>
                     <p style="text-align: center;">
                         <a href="{verification_url}" class="button">Verify Email Address</a>
                     </p>
@@ -148,7 +165,7 @@ class EmailService:
                         {verification_url}
                     </p>
                     <p><strong>This link will expire in 24 hours.</strong></p>
-                    <p>If you did not create an account, please ignore this email.</p>
+                    <p>{ignore}</p>
                 </div>
                 <div class="footer">
                     <p>&copy; 2024 Recipe Catalog. All rights reserved.</p>
@@ -160,14 +177,14 @@ class EmailService:
 
         # Plain text content
         text_content = f"""
-        Welcome to Recipe Catalog, {user_name}!
+        {greeting}
 
-        Please verify your email address by clicking the link below:
+        {intro}
         {verification_url}
 
         This link will expire in 24 hours.
 
-        If you did not create an account, please ignore this email.
+        {ignore}
 
         ---
         Recipe Catalog
@@ -175,7 +192,48 @@ class EmailService:
 
         return await self.send_email(
             to_email=to_email,
-            subject="Verify Your Email - Recipe Catalog",
+            subject=(
+                "Confirm Your New Email - Recipe Catalog"
+                if email_change
+                else "Verify Your Email - Recipe Catalog"
+            ),
+            html_content=html_content,
+            text_content=text_content,
+        )
+
+    async def send_email_change_notice(self, to_email: str, new_email: str, user_name: str) -> bool:
+        """Tell the current address that a change to new_email was requested."""
+        safe_name = html.escape(user_name)
+        safe_new = html.escape(new_email)
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h2>Email change requested</h2>
+            <p>Hello {safe_name},</p>
+            <p>Someone asked to change the email address on your Recipe Catalog account
+               to <strong>{safe_new}</strong>. The change only happens once that address
+               is confirmed.</p>
+            <p>If this wasn't you, change your password now. That stops anyone else
+               from making the change and signs out your other sessions.</p>
+        </body>
+        </html>
+        """
+        text_content = f"""
+        Hello {user_name},
+
+        Someone asked to change the email address on your Recipe Catalog account
+        to {new_email}. The change only happens once that address is confirmed.
+
+        If this wasn't you, change your password now. That stops anyone else
+        from making the change and signs out your other sessions.
+
+        ---
+        Recipe Catalog
+        """
+        return await self.send_email(
+            to_email=to_email,
+            subject="Email Change Requested - Recipe Catalog",
             html_content=html_content,
             text_content=text_content,
         )
