@@ -164,6 +164,11 @@
 						placeholder="••••••••"
 						disabled={loading}
 					/>
+					<p class="mt-2 text-sm text-right">
+						<a href="/auth/forgot-password" style="color: var(--color-link);">
+							Forgot password?
+						</a>
+					</p>
 				</div>
 
 				<!-- Error Message -->

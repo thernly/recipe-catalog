@@ -9,6 +9,7 @@
 	import { onMount } from 'svelte';
 	import { dialog } from '#lib/stores/dialog.js';
 	import { toast } from '#lib/stores/toast.js';
+	import { PASSWORD_HINT, passwordProblem } from '#lib/utils/password.js';
 	import SessionsSection from './SessionsSection.svelte';
 
 	let passwordForm = {
@@ -36,8 +37,9 @@
 			return;
 		}
 
-		if (passwordForm.new_password.length < 8) {
-			error = 'Password must be at least 8 characters';
+		const problem = passwordProblem(passwordForm.new_password);
+		if (problem) {
+			error = problem;
 			return;
 		}
 
@@ -167,16 +169,16 @@
 				type="password"
 				bind:value={passwordForm.new_password}
 				required
-				minlength="8"
+				minlength="12"
 				class="form-input"
 			/>
-			<p class="form-hint">Minimum 8 characters</p>
+			<p class="form-hint">{PASSWORD_HINT}</p>
 		</div>
 
 		<div class="form-group">
-			<label for="confirm_password" class="form-label"
-				>Confirm New Password</label
-			>
+			<label for="confirm_password" class="form-label">
+				Confirm New Password
+			</label>
 			<input
 				id="confirm_password"
 				type="password"
