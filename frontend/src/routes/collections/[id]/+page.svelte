@@ -231,7 +231,7 @@
 						No recipes in this collection
 					</h2>
 					<p class="text-lg mb-6" style="color: var(--text-600);">
-						Add recipes from your library to this collection
+						Open a recipe and use its Collections button to add it here
 					</p>
 					<button on:click={() => goto('/recipes')} class="btn btn-primary">
 						Browse Recipes

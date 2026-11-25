@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { RecipeSummary } from '#lib/api/recipes.js';
 	import { auth } from '#lib/stores/auth.js';
+	import { favorites } from '#lib/stores/favorites.js';
 	import {
 		UtensilsCrossed,
 		Clock,
@@ -44,8 +45,11 @@
 		ondelete?.(recipe);
 	}
 
+	$: isFavorite = $favorites.ids.has(recipe.id);
+
 	function handleFavorite() {
-		onfavorite?.(recipe);
+		if (onfavorite) onfavorite(recipe);
+		else favorites.toggle(recipe.id);
 	}
 </script>
 
@@ -141,9 +145,14 @@
 			<button
 				on:click={handleFavorite}
 				class="action-btn-small"
-				aria-label="Add to favorites"
+				aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+				aria-pressed={isFavorite}
 			>
-				<Star size={16} aria-hidden="true" />
+				<Star
+					size={16}
+					aria-hidden="true"
+					fill={isFavorite ? 'currentColor' : 'none'}
+				/>
 			</button>
 			{#if canEdit}
 				<button

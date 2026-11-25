@@ -454,6 +454,7 @@ async def oauth_callback(
         default_collections = [
             Collection(
                 user_id=new_user.id,
+                household_id=household.id,  # collections are listed by household
                 name="Favorites",
                 description="Your favorite recipes",
                 is_default=True,

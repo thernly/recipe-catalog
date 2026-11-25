@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { auth } from '#lib/stores/auth.js';
+	import { favorites } from '#lib/stores/favorites.js';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import type { User } from '#lib/types/index.js';
@@ -114,7 +115,7 @@
 						{#if loadingStats}
 							<div class="stat-number-skeleton"></div>
 						{:else}
-							<h3 class="stat-number">0</h3>
+							<h3 class="stat-number">{$favorites.ids.size}</h3>
 						{/if}
 						<p class="stat-label">Favorites</p>
 					</button>

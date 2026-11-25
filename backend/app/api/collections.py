@@ -299,15 +299,18 @@ async def add_recipes_to_collection(
     collection_id: int,
     recipe_data: CollectionRecipeAdd,
     current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Add recipes to a collection.
+    Add recipes to a collection. The collection must be your own; the recipes may be
+    any in your household, so a member can favorite a recipe someone else added.
 
     Args:
         collection_id: Collection ID
         recipe_data: Recipe IDs to add
         current_user: The authenticated user
+        household: The user's household
         db: Database session
 
     Returns:
@@ -333,12 +336,13 @@ async def add_recipes_to_collection(
     not_found: list[int] = []
 
     recipe_ids = list(dict.fromkeys(recipe_data.recipe_ids))
-    owned: list[int] = list(
+    # Reading recipes is household-scoped; the collection being changed is the user's own.
+    visible: list[int] = list(
         (
             await db.execute(
                 select(Recipe.id).where(
                     Recipe.id.in_(recipe_ids),
-                    Recipe.user_id == current_user.id,
+                    Recipe.household_id == household.id,
                     Recipe.deleted_at.is_(None),
                 )
             )
@@ -346,7 +350,7 @@ async def add_recipes_to_collection(
         .scalars()
         .all()
     )
-    owned_ids = set(owned)
+    owned_ids = set(visible)
     linked_ids = set(
         (
             await db.execute(
@@ -376,6 +380,30 @@ async def add_recipes_to_collection(
         "not_found": not_found,
         "message": f"Added {len(added)} recipes, skipped {len(skipped)} already in collection, {len(not_found)} not found",
     }
+
+
+@router.get("/containing/{recipe_id}", response_model=list[int])
+async def list_collections_containing_recipe(
+    recipe_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ids of the current user's own collections that contain the recipe."""
+    ids: list[int] = list(
+        (
+            await db.execute(
+                select(RecipeCollection.collection_id)
+                .join(Collection, Collection.id == RecipeCollection.collection_id)
+                .where(
+                    RecipeCollection.recipe_id == recipe_id,
+                    Collection.user_id == current_user.id,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return ids
 
 
 @router.delete("/{collection_id}/recipes", status_code=status.HTTP_204_NO_CONTENT)

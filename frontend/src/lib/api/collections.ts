@@ -108,6 +108,15 @@ export async function removeRecipesFromCollection(
 }
 
 /**
+ * Ids of the current user's own collections that contain a recipe
+ */
+export async function getCollectionIdsContaining(
+  recipeId: number,
+): Promise<number[]> {
+  return apiRequest<number[]>(`/collections/containing/${recipeId}`);
+}
+
+/**
  * Get recipes in a collection
  */
 export async function getCollectionRecipes(
@@ -120,5 +129,7 @@ export async function getCollectionRecipes(
  * Export a collection as PDF
  */
 export async function exportCollectionPdf(collectionId: number): Promise<Blob> {
-  return apiRequest<Blob>(`/collections/${collectionId}/export/pdf`, { responseType: "blob" });
+  return apiRequest<Blob>(`/collections/${collectionId}/export/pdf`, {
+    responseType: "blob",
+  });
 }

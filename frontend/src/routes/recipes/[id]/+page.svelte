@@ -18,7 +18,9 @@
 	} from '#lib/api/shopping-lists.js';
 	import AddToShoppingListDialog from '#lib/components/AddToShoppingListDialog.svelte';
 	import RecipeNotes from '#lib/components/RecipeNotes.svelte';
+	import RecipeCollectionsMenu from '#lib/components/RecipeCollectionsMenu.svelte';
 	import { auth } from '#lib/stores/auth.js';
+	import { favorites } from '#lib/stores/favorites.js';
 	import { dialog } from '#lib/stores/dialog.js';
 	import { toast } from '#lib/stores/toast.js';
 	import {
@@ -31,12 +33,14 @@
 		Trash2,
 		Loader2,
 		FileText,
+		Star,
 	} from '@lucide/svelte';
 
 	let recipe: Recipe | null = null;
 	// Only the member who added a recipe can edit or delete it; anyone in the
 	// household can add notes or save their own copy.
 	$: isOwner = recipe?.user_id === $auth.user?.id;
+	$: isFavorite = recipe !== null && $favorites.ids.has(recipe.id);
 	let loading = true;
 	let error: string | null = null;
 	let checkedIngredients = new Set<number>();
@@ -756,6 +760,19 @@
 
 					<!-- Utility Actions -->
 					<div class="action-group">
+						<button
+							on:click={() => recipe && favorites.toggle(recipe.id)}
+							class="btn btn-secondary flex items-center gap-2"
+							aria-pressed={isFavorite}
+						>
+							<Star
+								size={16}
+								aria-hidden="true"
+								fill={isFavorite ? 'currentColor' : 'none'}
+							/>
+							<span>{isFavorite ? 'Favorited' : 'Favorite'}</span>
+						</button>
+						<RecipeCollectionsMenu recipeId={recipe.id} />
 						<button
 							on:click={handleDuplicate}
 							class="btn btn-secondary flex items-center gap-2"
