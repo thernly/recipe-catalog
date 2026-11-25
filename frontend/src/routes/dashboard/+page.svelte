@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import type { User } from '#lib/types/index.js';
 	import { getUserStats, type UserStats } from '#lib/api/users.js';
+	import { RECIPE_SIPHON_URL } from '#lib/constants.js';
 	import {
 		BookOpen,
 		Star,
@@ -148,7 +149,7 @@
 						<h2 class="empty-state-title">Your recipe collection awaits!</h2>
 						<p class="empty-state-description">
 							Start building your personal cookbook by adding your favorite
-							recipes, importing from the web, or letting AI create something
+							recipes, importing a recipe file, or letting AI create something
 							new.
 						</p>
 						<div class="empty-state-actions">
@@ -164,7 +165,7 @@
 								class="btn btn-secondary"
 							>
 								<Download size={20} aria-hidden="true" />
-								<span>Import from Web</span>
+								<span>Import a File</span>
 							</button>
 							<button
 								on:click={() => goto('/ai-generate')}
@@ -216,8 +217,8 @@
 							<div class="action-icon">
 								<Download size={28} aria-hidden="true" />
 							</div>
-							<h3 class="action-title">Import from Extension</h3>
-							<p class="action-description">Import recipes from websites</p>
+							<h3 class="action-title">Import Recipes</h3>
+							<p class="action-description">Upload a recipe file (JSON)</p>
 						</button>
 
 						<button
@@ -274,10 +275,15 @@
 									class="w-4 h-4 rounded-full border-2 border-current shrink-0"
 									aria-hidden="true"
 								></span>
-								<a href="/import" class="link font-medium">
-									Install the browser extension
+								<a
+									href={RECIPE_SIPHON_URL}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="link font-medium"
+								>
+									Install the Recipe Siphon browser extension
 								</a>
-								<span class="text-sm">to import recipes from websites</span>
+								<span class="text-sm">to save recipes from websites</span>
 							</li>
 							<li class="flex items-center gap-2">
 								<span

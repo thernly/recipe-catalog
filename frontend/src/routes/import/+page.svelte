@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { importRecipes } from '#lib/api/recipes.js';
+	import { RECIPE_SIPHON_URL } from '#lib/constants.js';
 	import {
 		summarizeImport,
 		type ImportOutcome,
@@ -321,7 +322,10 @@
 					>
 						<li>A single recipe object in Schema.org Recipe format</li>
 						<li>An array of recipe objects in Schema.org Recipe format</li>
-						<li>Exported data from this application</li>
+						<li>
+							A recipes export (JSON) from this application; the Complete Backup
+							file cannot be imported
+						</li>
 					</ul>
 					<p class="text-sm mt-3" style="color: var(--text-600);">
 						You can export your existing recipes from the
@@ -336,14 +340,24 @@
 			<!-- Extension info -->
 			<div class="card mt-6">
 				<h3 class="text-lg font-semibold mb-2" style="color: var(--text-900);">
-					Browser Extension (Coming Soon)
+					Save recipes straight from websites
 				</h3>
 				<p class="text-sm mb-3" style="color: var(--text-600);">
-					Import recipes directly from websites using our browser extension.
+					The Recipe Siphon browser extension sends the recipe on the page you
+					are reading to your catalog.
 				</p>
-				<p class="text-sm" style="color: var(--text-500);">
-					The browser extension is currently under development and will be
-					available soon.
+				<p class="text-sm" style="color: var(--text-600);">
+					<a
+						href={RECIPE_SIPHON_URL}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="text-primary-600 hover:underline"
+					>
+						Get Recipe Siphon
+					</a>, then create a token for it under
+					<a href="/settings" class="text-primary-600 hover:underline">
+						Settings → API Tokens
+					</a>.
 				</p>
 			</div>
 		</div>
