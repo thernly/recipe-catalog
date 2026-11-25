@@ -9,7 +9,6 @@
 		type HouseholdInvitation,
 	} from '#lib/api/households.js';
 	import { auth } from '#lib/stores/auth.js';
-	import { get } from 'svelte/store';
 
 	let token = '';
 	let invitation: HouseholdInvitation | null = null;
@@ -19,8 +18,8 @@
 	let accepting = false;
 	let declining = false;
 
-	const currentUser = get(auth).user;
-	const isLoggedIn = currentUser !== null;
+	// Reactive: on a direct load from the email, the session is restored after mount.
+	$: isLoggedIn = $auth.user !== null;
 
 	async function loadInvitation() {
 		loading = true;

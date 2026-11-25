@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { auth } from '#lib/stores/auth.js';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { safeRedirect } from '#lib/utils/urls.js';
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import {
@@ -55,7 +57,7 @@
 			await auth.register(email, password, displayName || undefined);
 			// Login separately for clearer error handling
 			await auth.login(email, password);
-			goto('/dashboard');
+			goto(safeRedirect(page.url.searchParams.get('redirect')));
 		} catch (err) {
 			error =
 				(err instanceof Error && err.message) ||
@@ -132,9 +134,9 @@
 							class="w-full px-4 py-3 rounded-md border border-neutral-300 hover:border-neutral-400 transition-colors flex items-center justify-center gap-3 font-medium"
 							style="background: var(--neutral-white); color: var(--text-900);"
 						>
-							<span class="text-xl" aria-hidden="true"
-								>{getProviderIcon(provider.name)}</span
-							>
+							<span class="text-xl" aria-hidden="true">
+								{getProviderIcon(provider.name)}
+							</span>
 							<span>Sign up with {provider.display_name}</span>
 						</button>
 					{/each}
@@ -271,7 +273,7 @@
 				<p style="color: var(--text-600);">
 					Already have an account?
 					<a
-						href="/auth/login"
+						href="/auth/login{page.url.search}"
 						class="font-medium"
 						style="color: var(--color-link);"
 					>
@@ -283,9 +285,9 @@
 
 		<!-- Back to Home -->
 		<div class="mt-6 text-center">
-			<a href="/" class="text-sm" style="color: var(--text-500);"
-				>← Back to home</a
-			>
+			<a href="/" class="text-sm" style="color: var(--text-500);">
+				← Back to home
+			</a>
 		</div>
 	</div>
 </div>

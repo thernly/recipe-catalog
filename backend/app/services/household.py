@@ -868,6 +868,30 @@ async def decline_invitation(db: AsyncSession, token: str, user_id: int) -> None
     await db.commit()
 
 
+async def revoke_invitation(
+    db: AsyncSession, household_id: int, invitation_id: int, user_id: int
+) -> None:
+    """Delete a household's invitation by id (owner only)."""
+    household = await get_household(db, household_id)
+    if not household or household.owner_user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the household owner can revoke invitations",
+        )
+    invitation = (
+        await db.execute(
+            select(HouseholdInvitation).where(
+                HouseholdInvitation.id == invitation_id,
+                HouseholdInvitation.household_id == household_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not invitation:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+    await db.delete(invitation)
+    await db.commit()
+
+
 async def check_user_household_access(db: AsyncSession, user_id: int, household_id: int) -> bool:
     """
     Check if a user has access to a household.
@@ -1005,7 +1029,9 @@ async def get_invite_link_by_code(db: AsyncSession, code: str) -> HouseholdInvit
     return result.scalars().first()
 
 
-async def join_via_invite_link(db: AsyncSession, code: str, user_id: int) -> HouseholdMember:
+async def join_via_invite_link(
+    db: AsyncSession, code: str, user_id: int, leave_current: bool = False
+) -> HouseholdMember:
     """
     Join a household using an invite link code.
 
@@ -1013,6 +1039,8 @@ async def join_via_invite_link(db: AsyncSession, code: str, user_id: int) -> Hou
         db: Database session
         code: Invite code
         user_id: User ID joining the household
+        leave_current: Leave the user's current shared household as part of the join.
+            Nothing changes unless the code is usable and the new household has room.
 
     Returns:
         Created household member
@@ -1043,13 +1071,24 @@ async def join_via_invite_link(db: AsyncSession, code: str, user_id: int) -> Hou
             detail="This invite code has expired",
         )
 
+    # Check household size limit before anything is changed
+    if not await check_household_size_limit(db, invite_link.household_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Household has reached its maximum size",
+        )
+
     await _release_personal_membership(db, user_id)
     # Check if user already belongs to a household
     existing_membership = await db.execute(
         select(HouseholdMember).where(HouseholdMember.user_id == user_id)
     )
     current_member = existing_membership.scalar_one_or_none()
-    if current_member:
+    if current_member and leave_current and current_member.household_id != invite_link.household_id:
+        # Same transaction as the join: a failure below rolls the leave back too.
+        await _leave_household(db, user_id)
+        await _release_personal_membership(db, user_id)
+    elif current_member:
         # Get current household info for better error message
         household_result = await db.execute(
             select(Household).where(Household.id == current_member.household_id)
@@ -1060,13 +1099,6 @@ async def join_via_invite_link(db: AsyncSession, code: str, user_id: int) -> Hou
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"You are already in '{household_name}'. Leave your current household first to join this one.",
-        )
-
-    # Check household size limit
-    if not await check_household_size_limit(db, invite_link.household_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Household has reached its maximum size",
         )
 
     # Create household member
@@ -1102,6 +1134,19 @@ async def leave_household(db: AsyncSession, user_id: int) -> dict[str, Any]:
     Raises:
         HTTPException: If user not in household or is owner with other members
     """
+    household_deleted = await _leave_household(db, user_id)
+    await db.commit()
+
+    return {
+        "message": "Successfully left household"
+        if not household_deleted
+        else "Successfully left and deleted household",
+        "household_deleted": household_deleted,
+    }
+
+
+async def _leave_household(db: AsyncSession, user_id: int) -> bool:
+    """Leave without committing. Returns whether the household was deleted."""
     # Find user's household membership
     member_result = await db.execute(
         select(HouseholdMember).where(HouseholdMember.user_id == user_id)
@@ -1154,11 +1199,5 @@ async def leave_household(db: AsyncSession, user_id: int) -> dict[str, Any]:
         await db.delete(household)
         household_deleted = True
 
-    await db.commit()
-
-    return {
-        "message": "Successfully left household"
-        if not household_deleted
-        else "Successfully left and deleted household",
-        "household_deleted": household_deleted,
-    }
+    await db.flush()
+    return household_deleted

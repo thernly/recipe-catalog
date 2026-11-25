@@ -11,7 +11,6 @@
 		revokeInvitation,
 		createInviteLink,
 		joinViaInviteLink,
-		leaveHousehold,
 		type Household,
 		type HouseholdMember,
 		type HouseholdInvitation,
@@ -319,12 +318,8 @@
 		success = '';
 
 		try {
-			// If already in a household, leave it first
-			if (household) {
-				await leaveHousehold();
-			}
-
-			await joinViaInviteLink(joiningCode.trim());
+			// The server leaves the current household only if the code is usable
+			await joinViaInviteLink(joiningCode.trim(), true);
 			success = 'Successfully joined household! Reloading...';
 			toast.success('Successfully joined household!');
 			joiningCode = '';
@@ -454,7 +449,9 @@
 										)}
 									disabled={removingMemberId === member.user_id}
 								>
-									{removingMemberId === member.user_id ? 'Removing...' : 'Remove'}
+									{removingMemberId === member.user_id
+										? 'Removing...'
+										: 'Remove'}
 								</button>
 							</div>
 						{/if}
@@ -521,7 +518,8 @@
 							</p>
 							<p class="invite-link-instructions">
 								Share this code with someone to join your household. They can
-								enter it on the join page.
+								open the full link, or enter the code under Settings →
+								Household.
 							</p>
 							<button
 								type="button"
@@ -641,7 +639,7 @@
 						required
 					/>
 					<p class="form-help">
-						Enter the invite code shared with you (three words separated by
+						Enter the invite code shared with you (five words separated by
 						hyphens)
 					</p>
 				</div>

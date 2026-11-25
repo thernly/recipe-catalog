@@ -323,6 +323,19 @@ async def get_pending_invitations(
     return invitations
 
 
+@router.delete(
+    "/{household_id}/invitations/{invitation_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def revoke_invitation(
+    household_id: int,
+    invitation_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Revoke a pending invitation (owner only)."""
+    await household_service.revoke_invitation(db, household_id, invitation_id, current_user.id)
+
+
 @router.get("/invitations/{token}", response_model=HouseholdInvitationSchema)
 async def get_invitation_by_token(
     token: str,
@@ -552,7 +565,9 @@ async def join_via_invite_code(
         400: If code already used, expired, or user already in a household
         404: If code not found
     """
-    member = await household_service.join_via_invite_link(db, request_data.code, current_user.id)
+    member = await household_service.join_via_invite_link(
+        db, request_data.code, current_user.id, request_data.leave_current
+    )
 
     # Get user details
     user_result = await db.execute(select(User).where(User.id == member.user_id))

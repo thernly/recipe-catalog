@@ -146,6 +146,7 @@ class JoinViaInviteLinkRequest(BaseModel):
     """Schema for joining a household via invite link."""
 
     code: str = Field(..., max_length=128)
+    leave_current: bool = False
 
 
 class LeaveHouseholdResponse(BaseModel):
