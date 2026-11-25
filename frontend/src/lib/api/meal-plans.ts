@@ -47,8 +47,8 @@ export interface PlannedMealUpdate {
   recipe_id?: number;
   day_of_week?: number;
   meal_type?: "breakfast" | "lunch" | "dinner" | "snack" | "other";
-  servings?: number;
-  notes?: string;
+  servings?: number | null; // null clears it
+  notes?: string | null; // null clears it
 }
 
 /**
@@ -133,7 +133,10 @@ export function getWeekStart(date: Date = new Date()): Date {
  * Format date as ISO date string (YYYY-MM-DD)
  */
 export function formatDateISO(date: Date): string {
-  return date.toISOString().split("T")[0];
+  // The local calendar date. toISOString() alone converts to UTC first, which
+  // east of UTC turns Monday morning into Sunday and loads the previous week.
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().split("T")[0];
 }
 
 /**

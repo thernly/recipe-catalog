@@ -428,10 +428,12 @@ async def update_planned_meal(
     if meal_data.meal_type is not None:
         planned_meal.meal_type = meal_data.meal_type
 
-    if meal_data.servings is not None:
+    # Unlike the fields above, these two can be cleared: an explicit null empties them,
+    # and leaving the field out keeps the stored value.
+    if "servings" in meal_data.model_fields_set:
         planned_meal.servings = meal_data.servings
 
-    if meal_data.notes is not None:
+    if "notes" in meal_data.model_fields_set:
         planned_meal.notes = meal_data.notes
 
     await db.commit()
