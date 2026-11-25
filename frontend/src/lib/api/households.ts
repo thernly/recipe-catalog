@@ -190,7 +190,7 @@ export async function createInvitation(
 export async function getInvitationByToken(
   token: string,
 ): Promise<HouseholdInvitation> {
-  return apiRequest<HouseholdInvitation>(`/invitations/${token}`, {
+  return apiRequest<HouseholdInvitation>(`/households/invitations/${token}`, {
     requireAuth: false,
   });
 }
@@ -201,7 +201,7 @@ export async function getInvitationByToken(
 export async function acceptInvitation(
   data: AcceptInvitationRequest,
 ): Promise<void> {
-  return apiRequest<void>("/invitations/accept", {
+  return apiRequest<void>("/households/invitations/accept", {
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -211,7 +211,7 @@ export async function acceptInvitation(
  * Decline invitation
  */
 export async function declineInvitation(token: string): Promise<void> {
-  return apiRequest<void>("/invitations/decline", {
+  return apiRequest<void>("/households/invitations/decline", {
     method: "POST",
     body: JSON.stringify({ token }),
   });
@@ -260,14 +260,16 @@ export async function getInviteLinkInfo(
 }
 
 /**
- * Join household via invite code
+ * Join household via invite code. With `leaveCurrent`, the server leaves the
+ * current shared household as part of the join, and only if the code is usable.
  */
 export async function joinViaInviteLink(
   code: string,
+  leaveCurrent = false,
 ): Promise<HouseholdMember> {
   return apiRequest<HouseholdMember>("/households/join", {
     method: "POST",
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, leave_current: leaveCurrent }),
   });
 }
 
