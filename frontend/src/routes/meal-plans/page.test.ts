@@ -8,6 +8,7 @@ vi.mock("$app/navigation", () => ({ goto: vi.fn() }));
 vi.mock("#lib/api/meal-plans.js", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   getCurrentWeekMealPlan: vi.fn(),
+  addPlannedMeal: vi.fn(),
 }));
 vi.mock("#lib/api/recipes.js", async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -23,7 +24,14 @@ vi.mock("#lib/utils/download.js", () => ({ downloadBlob: vi.fn() }));
 
 import Page from "./+page.svelte";
 import { downloadBlob } from "#lib/utils/download.js";
-import { getCurrentWeekMealPlan } from "#lib/api/meal-plans.js";
+import {
+  addPlannedMeal,
+  formatDateISO,
+  getCurrentWeekMealPlan,
+  getWeekStart,
+} from "#lib/api/meal-plans.js";
+import { get } from "svelte/store";
+import { dialog } from "#lib/stores/dialog.js";
 import { searchRecipes } from "#lib/api/recipes.js";
 import { generateFromMealPlan } from "#lib/api/shopping-lists.js";
 import { wasAddedToList } from "#lib/utils/added-weeks.js";
@@ -144,6 +152,51 @@ describe("meal planner page", () => {
     expect(vi.mocked(generateFromMealPlan).mock.calls[0][0]).not.toHaveProperty(
       "selected_meal_ids",
     );
+  });
+
+  describe("Copy Last Week", () => {
+    const thisWeek = formatDateISO(getWeekStart());
+    const empty = { ...plan, id: 2, planned_meals: [] };
+
+    // The week on screen is `shown`; any other week asked for is last week's
+    const weeks = (shown: typeof plan) =>
+      vi
+        .mocked(getCurrentWeekMealPlan)
+        .mockImplementation(async (week) => (week === thisWeek ? shown : plan));
+
+    it("adds last week's meals to an empty week, same day and meal", async () => {
+      weeks(empty);
+      const { findByRole } = render(Page);
+
+      await fireEvent.click(
+        await findByRole("button", { name: /Copy Last Week/ }),
+      );
+
+      await waitFor(() =>
+        expect(addPlannedMeal).toHaveBeenCalledWith(2, {
+          recipe_id: 4,
+          day_of_week: 0,
+          meal_type: "dinner",
+          servings: undefined,
+          notes: undefined,
+        }),
+      );
+      expect(get(dialog).open).toBe(false);
+    });
+
+    it("asks first when the week already has meals", async () => {
+      weeks({ ...plan, id: 2 });
+      const { findByRole } = render(Page);
+
+      await fireEvent.click(
+        await findByRole("button", { name: /Copy Last Week/ }),
+      );
+      expect(addPlannedMeal).not.toHaveBeenCalled();
+      expect(get(dialog).message).toContain("added alongside");
+
+      await get(dialog).onConfirm();
+      await waitFor(() => expect(addPlannedMeal).toHaveBeenCalledOnce());
+    });
   });
 
   it("shows the loading message while another week loads", async () => {
