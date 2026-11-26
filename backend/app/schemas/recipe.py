@@ -51,7 +51,8 @@ class RecipeUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=500)
     description: str | None = Field(None, max_length=10000)
     image_url: str | None = Field(None, max_length=2048)
-    _validate_image = field_validator("image_url")(validate_http_url)
+    source_url: str | None = Field(None, max_length=2048)  # null clears it
+    _validate_urls = field_validator("source_url", "image_url")(validate_http_url)
 
     recipe_data: dict[str, Any] | None = None
     cuisine: str | None = Field(None, max_length=100)
