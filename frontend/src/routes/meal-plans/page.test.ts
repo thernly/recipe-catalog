@@ -19,7 +19,10 @@ vi.mock("#lib/api/shopping-lists.js", async (importOriginal) => ({
   generateFromMealPlan: vi.fn(),
 }));
 
+vi.mock("#lib/utils/download.js", () => ({ downloadBlob: vi.fn() }));
+
 import Page from "./+page.svelte";
+import { downloadBlob } from "#lib/utils/download.js";
 import { getCurrentWeekMealPlan } from "#lib/api/meal-plans.js";
 import { searchRecipes } from "#lib/api/recipes.js";
 import { generateFromMealPlan } from "#lib/api/shopping-lists.js";
@@ -68,6 +71,19 @@ describe("meal planner page", () => {
 
     expect(queryByText("Loading meal plan...")).toBeNull();
     expect(getByText("Lasagne")).toBeTruthy();
+  });
+
+  it("exports the week on screen as a calendar file", async () => {
+    const { findByRole } = render(Page);
+
+    await fireEvent.click(
+      await findByRole("button", { name: /Export to Calendar/ }),
+    );
+
+    const [blob, filename] = vi.mocked(downloadBlob).mock.calls[0];
+    expect(filename).toBe("meal-plan-2026-11-23.ics");
+    expect(blob.type).toBe("text/calendar");
+    expect(await blob.text()).toContain("SUMMARY:Dinner: Lasagne");
   });
 
   it("remembers which list a week was generated into", async () => {
