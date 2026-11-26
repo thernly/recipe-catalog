@@ -335,12 +335,15 @@
 	<div class="sm:sticky sm:top-16 z-40 bg-white border-b border-neutral-200">
 		<div class="container-custom py-4">
 			<!-- Top row: Title and View toggle -->
-			<div class="flex items-center justify-between mb-4">
+			<!-- On a phone the title sits above the buttons, not squeezed beside them -->
+			<div
+				class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4"
+			>
 				<h1 class="text-3xl font-bold" style="color: var(--text-900);">
 					My Recipes
 				</h1>
 
-				<div class="flex flex-wrap items-center justify-end gap-2">
+				<div class="flex flex-wrap items-center sm:justify-end gap-2">
 					<a
 						href="/recipes/new"
 						class="add-btn flex items-center gap-2"

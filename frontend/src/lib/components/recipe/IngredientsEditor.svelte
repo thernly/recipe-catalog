@@ -240,8 +240,8 @@
 		gap: 0.25rem;
 	}
 
-	/* On a phone the row number gives its room to the arrows, and the
-	   section padding gives its room to the input box */
+	/* On a phone the input box gets the full width of the row, with the
+	   arrows and the remove button on a line beneath it */
 	@media (max-width: 480px) {
 		.item-number {
 			display: none;
@@ -251,8 +251,22 @@
 			padding: 1rem;
 		}
 
+		.dynamic-list {
+			gap: 1rem;
+		}
+
 		.dynamic-list-item {
+			flex-wrap: wrap;
 			gap: 0.5rem;
+		}
+
+		.form-input {
+			order: -1;
+			flex-basis: 100%;
+		}
+
+		.btn-remove {
+			margin-left: auto;
 		}
 	}
 
