@@ -24,15 +24,22 @@
 	import { auth } from '#lib/stores/auth.js';
 	import { SHOPPING_LIST_REFRESH_INTERVAL } from '#lib/constants.js';
 
-	// Inline quantity/unit edit (no merging: merging happens only on add)
+	// Inline quantity/unit/note edit (no merging: merging happens only on add)
 	let editingItemId: number | null = null;
 	let editQuantity = '';
 	let editUnit = '';
+	let editNotes = '';
+	let editFocus: 'quantity' | 'notes' = 'quantity';
 
-	function startEditQuantity(item: ShoppingListItem) {
+	function startEditQuantity(
+		item: ShoppingListItem,
+		focus: 'quantity' | 'notes' = 'quantity',
+	) {
 		editingItemId = item.id;
 		editQuantity = item.quantity ?? '';
 		editUnit = item.unit ?? '';
+		editNotes = item.notes ?? '';
+		editFocus = focus;
 	}
 
 	async function saveQuantity(item: ShoppingListItem) {
@@ -40,11 +47,22 @@
 		editingItemId = null;
 		const quantity = editQuantity.trim();
 		const unit = editUnit.trim();
-		if (quantity === (item.quantity ?? '') && unit === (item.unit ?? ''))
+		const notes = editNotes.trim();
+		const notesChanged = notes !== (item.notes ?? '');
+		if (
+			quantity === (item.quantity ?? '') &&
+			unit === (item.unit ?? '') &&
+			!notesChanged
+		)
 			return;
 		try {
-			// "" (not undefined) so clearing a field is saved
-			await updateShoppingListItem(item.id, { quantity, unit });
+			// "" (not undefined) so clearing a field is saved. The note is sent
+			// only when it changed, so an untouched one is never overwritten.
+			await updateShoppingListItem(item.id, {
+				quantity,
+				unit,
+				...(notesChanged ? { notes } : {}),
+			});
 			await loadShoppingList();
 		} catch (err) {
 			toast.error(err instanceof Error ? err.message : 'Failed to update item');
@@ -741,7 +759,7 @@
 								<div class="text-sm" style="color: var(--text-600);">
 									{#if editingItemId === item.id}
 										<form
-											class="inline-flex gap-2"
+											class="inline-flex flex-wrap gap-2"
 											on:submit|preventDefault={() => saveQuantity(item)}
 											on:focusout={(e) => handleQuantityFocusOut(e, item)}
 										>
@@ -750,7 +768,7 @@
 												bind:value={editQuantity}
 												aria-label="Quantity for {item.item_name}"
 												maxlength="100"
-												autofocus
+												autofocus={editFocus === 'quantity'}
 												on:keydown={(e) =>
 													e.key === 'Escape' && (editingItemId = null)}
 												class="w-20 px-2 py-0.5 border rounded"
@@ -763,6 +781,18 @@
 												on:keydown={(e) =>
 													e.key === 'Escape' && (editingItemId = null)}
 												class="w-24 px-2 py-0.5 border rounded"
+												style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900);"
+											/>
+											<!-- svelte-ignore a11y_autofocus -->
+											<input
+												bind:value={editNotes}
+												aria-label="Note for {item.item_name}"
+												placeholder="Note"
+												maxlength="10000"
+												autofocus={editFocus === 'notes'}
+												on:keydown={(e) =>
+													e.key === 'Escape' && (editingItemId = null)}
+												class="w-48 px-2 py-0.5 border rounded"
 												style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900);"
 											/>
 											<button type="submit" class="sr-only">
@@ -782,9 +812,18 @@
 											{formatQuantityUnit(item.quantity, item.unit) ||
 												'Add quantity'}
 										</button>
-									{/if}
-									{#if item.notes}
-										<span class="ml-2 italic">{item.notes}</span>
+										<!-- A row with no note gets one through the quantity
+										     editor's Note box, so rows stay short in the shop -->
+										{#if item.notes}
+											<button
+												type="button"
+												on:click={() => startEditQuantity(item, 'notes')}
+												aria-label="Note for {item.item_name}: {item.notes}. Edit"
+												class="ml-2 italic text-left"
+											>
+												{item.notes}
+											</button>
+										{/if}
 									{/if}
 									<select
 										value={item.category || 'Other'}
