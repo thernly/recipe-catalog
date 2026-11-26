@@ -234,16 +234,23 @@
 		margin-top: 0.5rem;
 	}
 
-	/* Same arrows as the steps editor */
+	/* Side by side and as tall as the row, so a finger can hit them */
 	.reorder {
 		display: flex;
-		flex-direction: column;
 		gap: 0.25rem;
 	}
 
+	/* On a phone the row number gives its room to the arrows */
+	@media (max-width: 480px) {
+		.item-number {
+			display: none;
+		}
+	}
+
 	.btn-reorder {
-		width: 1.5rem;
-		height: 1.25rem;
+		flex-shrink: 0;
+		width: 2rem;
+		height: 2.75rem;
 		display: flex;
 		align-items: center;
 		justify-content: center;

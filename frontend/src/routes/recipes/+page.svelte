@@ -142,8 +142,8 @@
 		const urlParams = url.searchParams;
 
 		searchParams.query = urlParams.get('q') || '';
-		searchParams.sort_by =
-			(urlParams.get('sort') as RecipeSortBy) || defaults.sort;
+		const urlSort = urlParams.get('sort') as RecipeSortBy;
+		searchParams.sort_by = SORTS.includes(urlSort) ? urlSort : defaults.sort;
 		searchParams.per_page = defaults.perPage;
 		searchParams.seed =
 			searchParams.sort_by === 'random'

@@ -220,9 +220,16 @@
 		color: var(--color-error-text);
 	}
 
+	/* On a phone the row number gives its room to the arrows */
+	@media (max-width: 480px) {
+		.item-number {
+			display: none;
+		}
+	}
+
 	.btn-reorder {
-		width: 1.5rem;
-		height: 1.25rem;
+		width: 2rem;
+		height: 2rem;
 		display: flex;
 		align-items: center;
 		justify-content: center;

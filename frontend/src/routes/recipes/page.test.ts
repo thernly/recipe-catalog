@@ -83,6 +83,17 @@ describe("recipe list page", () => {
     expect(lastSearch()?.sort_by).toBe("time_asc");
   });
 
+  it("falls back to the default sort when the page address names an unknown one", async () => {
+    vi.mocked(getPreferences).mockResolvedValue(
+      preferences({ default_sort: "alphabetical" }),
+    );
+    nav.url = "http://localhost/recipes?sort=nonsense";
+    render(Page);
+
+    await waitFor(() => expect(searchRecipes).toHaveBeenCalled());
+    expect(lastSearch()?.sort_by).toBe("alphabetical");
+  });
+
   it("shuffles afresh on each visit when the default sort is Random", async () => {
     vi.mocked(getPreferences).mockResolvedValue(
       preferences({ default_sort: "random" }),

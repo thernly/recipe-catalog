@@ -650,7 +650,7 @@
 
 		<!-- Add item form -->
 		<div class="rounded-lg p-4 mb-6" style="background: var(--neutral-100);">
-			<h2 class="font-semibold mb-3">Add Item</h2>
+			<h2 class="text-lg font-semibold mb-3">Add Item</h2>
 			<form
 				on:submit|preventDefault={handleAddItem}
 				class="grid gap-3 md:grid-cols-5"
@@ -718,7 +718,10 @@
 		{:else}
 			{#each groups as group (group.category)}
 				{#if group.category}
-					<h2 class="font-semibold mt-6 mb-2" style="color: var(--text-700);">
+					<h2
+						class="text-lg font-semibold mt-6 mb-2"
+						style="color: var(--text-700);"
+					>
 						{group.category}
 					</h2>
 				{/if}
@@ -767,6 +770,7 @@
 											<input
 												bind:value={editQuantity}
 												aria-label="Quantity for {item.item_name}"
+												placeholder="Qty"
 												maxlength="100"
 												autofocus={editFocus === 'quantity'}
 												on:keydown={(e) =>
@@ -777,6 +781,7 @@
 											<input
 												bind:value={editUnit}
 												aria-label="Unit for {item.item_name}"
+												placeholder="Unit"
 												maxlength="50"
 												on:keydown={(e) =>
 													e.key === 'Escape' && (editingItemId = null)}
