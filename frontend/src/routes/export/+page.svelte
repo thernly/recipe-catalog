@@ -205,13 +205,14 @@
 				<ExportCard
 					icon="💾"
 					title="Complete Backup"
-					description="Download everything: recipes, collections, and preferences"
+					description="Download your recipes and collections, plus the household's meal plans and shopping lists"
 					{exporting}
 					featured={true}
 				>
 					<p class="backup-info">
-						This export includes all your data in a single JSON file. Perfect
-						for backups or migrating to another instance.
+						One JSON file you can put back with "Restore a Complete Backup" on
+						the <a href="/import" class="underline">Import page</a>. Recipes
+						added by other household members are not included.
 					</p>
 
 					<button

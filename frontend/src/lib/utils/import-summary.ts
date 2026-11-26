@@ -1,4 +1,4 @@
-import type { ImportResult } from "#lib/api/recipes.js";
+import type { ImportResult, RestoredCounts } from "#lib/api/recipes.js";
 
 export interface ImportOutcome {
   file: string;
@@ -10,6 +10,30 @@ const MAX_PROBLEMS_SHOWN = 20;
 
 function count(n: number, noun: string): string {
   return `${n} ${noun}${n === 1 ? "" : "s"}`;
+}
+
+/** What a backup restore added beyond recipes, and what it left out; "" for nothing. */
+export function summarizeRestored(restored: RestoredCounts | null): string {
+  if (!restored) return "";
+  const added = [
+    restored.collections && count(restored.collections, "collection"),
+    restored.collection_recipes &&
+      `${count(restored.collection_recipes, "recipe")} put back in collections`,
+    restored.planned_meals && count(restored.planned_meals, "planned meal"),
+    restored.shopping_lists && count(restored.shopping_lists, "shopping list"),
+  ].filter(Boolean);
+  const notes = [added.length ? `Also restored: ${added.join(", ")}.` : ""];
+  if (restored.planned_meals_skipped) {
+    notes.push(
+      `${count(restored.planned_meals_skipped, "planned meal")} left out because the recipe is not in the backup.`,
+    );
+  }
+  if (restored.shopping_lists_skipped) {
+    notes.push(
+      `${count(restored.shopping_lists_skipped, "shopping list")} already here.`,
+    );
+  }
+  return notes.filter(Boolean).join(" ");
 }
 
 /** Turn per-file import results into what the user is told. */

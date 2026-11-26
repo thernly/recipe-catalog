@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { summarizeImport } from "./import-summary";
+import { summarizeImport, summarizeRestored } from "./import-summary";
 import type { ImportResult } from "#lib/api/recipes.js";
 
 function result(details: Partial<ImportResult["details"]>): ImportResult {
@@ -18,6 +18,40 @@ function result(details: Partial<ImportResult["details"]>): ImportResult {
     },
   };
 }
+
+describe("summarizeRestored", () => {
+  const none = {
+    collections: 0,
+    collection_recipes: 0,
+    meal_plans: 0,
+    planned_meals: 0,
+    planned_meals_skipped: 0,
+    shopping_lists: 0,
+    shopping_lists_skipped: 0,
+  };
+
+  it("says nothing for a recipes-only restore or when nothing was added", () => {
+    expect(summarizeRestored(null)).toBe("");
+    expect(summarizeRestored(none)).toBe("");
+  });
+
+  it("lists what was added and what was left out", () => {
+    const text = summarizeRestored({
+      ...none,
+      collections: 1,
+      collection_recipes: 3,
+      planned_meals: 2,
+      planned_meals_skipped: 1,
+      shopping_lists_skipped: 2,
+    });
+
+    expect(text).toBe(
+      "Also restored: 1 collection, 3 recipes put back in collections, 2 planned meals. " +
+        "1 planned meal left out because the recipe is not in the backup. " +
+        "2 shopping lists already here.",
+    );
+  });
+});
 
 describe("summarizeImport", () => {
   it("reports recipes, not files", () => {
