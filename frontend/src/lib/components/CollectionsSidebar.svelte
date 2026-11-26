@@ -25,11 +25,11 @@
 	let deleting = false;
 	let stats: UserStats | null = null;
 
-	// Load collections and stats on mount
+	// Load collections and stats on mount. Always, even when already loaded:
+	// the counts change while this sidebar is away (a recipe starred, added to a
+	// collection or deleted on its own page), and a reload keeps the list on screen.
 	onMount(() => {
-		if (!$collections.loaded) {
-			collections.load();
-		}
+		collections.load();
 		loadStats();
 	});
 

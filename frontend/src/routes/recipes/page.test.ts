@@ -34,6 +34,7 @@ vi.mock("#lib/api/collections.js", async (importOriginal) => ({
 import Page from "./+page.svelte";
 import { searchRecipes } from "#lib/api/recipes.js";
 import { getPreferences } from "#lib/api/users.js";
+import { getCollections } from "#lib/api/collections.js";
 
 const preferences = (overrides: object) =>
   ({
@@ -112,6 +113,17 @@ describe("recipe list page", () => {
 
     await waitFor(() => expect(searchRecipes).toHaveBeenCalled());
     expect(lastSearch()?.seed).toBeUndefined();
+  });
+
+  it("refetches the sidebar's collection counts on every visit", async () => {
+    const first = render(Page);
+    await waitFor(() => expect(getCollections).toHaveBeenCalledTimes(1));
+    first.unmount();
+
+    // A recipe starred on its own page changes a count while the list is away
+    render(Page);
+
+    await waitFor(() => expect(getCollections).toHaveBeenCalledTimes(2));
   });
 
   it("falls back to Recently Added and 24 when preferences cannot be loaded", async () => {

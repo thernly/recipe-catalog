@@ -86,6 +86,17 @@ describe("Collections Store", () => {
     expect(loadedState.loaded).toBe(true);
   });
 
+  it("keeps the loaded list on screen while it reloads", async () => {
+    (getCollections as any).mockResolvedValue([]);
+    await collections.load();
+    (getCollections as any).mockReturnValue(new Promise(() => {}));
+
+    void collections.load();
+
+    // "loading" swaps the sidebar for a spinner, so it is for the first load only
+    expect(get(collections).loading).toBe(false);
+  });
+
   it("should handle load error", async () => {
     const errorMessage = "Failed to fetch collections";
     (getCollections as any).mockRejectedValue(new Error(errorMessage));

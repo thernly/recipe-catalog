@@ -10,6 +10,7 @@ import {
   removeRecipesFromCollection,
 } from "#lib/api/collections.js";
 import { auth } from "#lib/stores/auth.js";
+import { collections } from "#lib/stores/collections.js";
 import { toast } from "#lib/stores/toast.js";
 
 interface FavoritesState {
@@ -75,6 +76,8 @@ function createFavoritesStore() {
       try {
         if (favorite) await addRecipesToCollection(collectionId, [recipeId]);
         else await removeRecipesFromCollection(collectionId, [recipeId]);
+        // The sidebar's Favorites count comes from the collections store
+        void collections.load();
       } catch (err) {
         mark(recipeId, !favorite);
         toast.error("Could not update favorites");
