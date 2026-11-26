@@ -40,9 +40,10 @@ async def test_from_recipe_uses_parsed_ingredients(client, test_db, test_user_he
         (i["quantity"], i["unit"], i["item_name"], i["notes"]) for i in response.json()["items"]
     ]
     assert items == [
-        ("2", "cup", "flour", None),  # prep notes stay off the list
-        ("2", None, "eggs", None),
-        ("2", "tablespoon", "oil", None),  # range: the upper bound
+        # the note says which recipe; prep notes ("sifted") stay off the list
+        ("2", "cup", "flour", "for Cake"),
+        ("2", None, "eggs", "for Cake"),
+        ("2", "tablespoon", "oil", "for Cake"),  # range: the upper bound
     ]
 
 
@@ -89,6 +90,51 @@ async def test_from_meal_plan_numeric_quantities(client, test_db, test_user_head
     assert float(egg["quantity"]) == 2 and egg["unit"] is None
     oil = items["oil"]
     assert float(oil["quantity"]) == 2
+
+
+async def test_from_meal_plan_notes_which_recipes_each_item_is_for(
+    client, test_db, test_user_headers
+):
+    user, household, cake = await _recipe(test_db, {"recipeIngredient": ["2 eggs", "1 cup flour"]})
+    omelette = Recipe(
+        user_id=user.id,
+        household_id=household.id,
+        name="Omelette",
+        recipe_data={"recipeIngredient": ["3 eggs", "1 tbsp butter"]},
+    )
+    plan = MealPlan(
+        household_id=household.id, week_start_date=date(2026, 11, 2), created_by_user_id=user.id
+    )
+    test_db.add_all([omelette, plan])
+    await test_db.flush()
+    test_db.add_all(
+        [
+            PlannedMeal(
+                meal_plan_id=plan.id,
+                recipe_id=recipe_id,
+                created_by_user_id=user.id,
+                day_of_week=day,
+                meal_type="dinner",
+            )
+            # Cake twice: its name is noted once
+            for day, recipe_id in enumerate([cake.id, omelette.id, cake.id])
+        ]
+    )
+    await test_db.commit()
+
+    response = await client.post(
+        "/api/v1/shopping-lists/from-meal-plan",
+        json={"meal_plan_id": plan.id},
+        headers=test_user_headers,
+    )
+
+    assert response.status_code == 200, response.text
+    notes = {i["item_name"]: i["notes"] for i in response.json()["items"]}
+    assert notes == {
+        "egg": "for Cake; for Omelette",
+        "flour": "for Cake",
+        "butter": "for Omelette",
+    }
 
 
 @pytest.mark.parametrize(
