@@ -13,6 +13,11 @@ DEFAULT_CATEGORIES = [
     "Bakery",
     "Frozen",
     "Pantry",
+    "Canned & Jarred",
+    "Baking",
+    "Spices & Seasonings",
+    "Oils & Condiments",
+    "Drinks",
     "Household",
     "Other",
 ]
@@ -24,9 +29,13 @@ _PHRASES = {
     "green bean, garlic clove",
     "Dairy": "half and half",
     "Frozen": "ice cream, puff pastry, filo pastry, phyllo dough",
-    "Pantry": "peanut butter, almond butter, nut butter, cocoa butter, coconut milk, "
-    "coconut cream, almond milk, oat milk, soy milk, condensed milk, evaporated milk, "
-    "cream of tartar, rice paper, tomato puree, bread crumb, bay leaf",
+    "Pantry": "almond milk, oat milk, soy milk, rice paper, bread crumb, corn flake, "
+    "sunflower seed, pumpkin seed, chia seed, flax seed",
+    "Canned & Jarred": "coconut milk, coconut cream, tomato puree, tomato sauce",
+    "Baking": "baking soda, bicarbonate of soda, baking powder, cocoa powder, milk powder, "
+    "custard powder, cocoa butter, condensed milk, evaporated milk, cream of tartar",
+    "Spices & Seasonings": "bay leaf",
+    "Oils & Condiments": "peanut butter, almond butter, nut butter",
     "Household": "plastic wrap, cling film",
 }
 
@@ -48,17 +57,27 @@ _WORDS = {
     "salmon sausage scallop shrimp sirloin steak thigh tuna turkey veal wing",
     "Bakery": "bagel baguette bread brioche bun ciabatta croissant focaccia loaf muffin "
     "naan pita pitta roll sourdough tortilla wrap",
-    "Pantry": "allspice almond barley bean bouillon breadcrumb broth cashew cayenne "
-    "cereal chickpea chili chilli chocolate cinnamon clove cocoa coconut coffee cornmeal "
-    "cornstarch couscous cracker cumin curry extract flake flour gelatin granola "
-    "hazelnut honey jam jelly juice ketchup lentil macaroni mayonnaise molasses mustard "
-    "noodle nut nutmeg oat oats oil olive oregano paprika pasta paste peanut pecan "
-    "pepper peppercorn pickle pistachio polenta powder quinoa raisin rice salsa salt "
-    "sauce seasoning seed soda spaghetti spice starch stock sugar syrup tahini tea "
-    "turmeric vanilla vinegar walnut water wine yeast",
+    "Pantry": "almond barley bean breadcrumb cashew cereal chickpea coconut cornmeal "
+    "couscous cracker granola hazelnut lentil macaroni noodle nut oat oats pasta peanut "
+    "pecan pistachio polenta quinoa raisin rice spaghetti walnut",
+    "Canned & Jarred": "bouillon broth olive passata paste stock",
+    "Baking": "chocolate cocoa cornstarch flour gelatin icing molasses starch sugar syrup "
+    "treacle yeast",
+    "Spices & Seasonings": "allspice anise cardamom cayenne chili chilli cinnamon clove "
+    "cumin curry extract fenugreek flake nutmeg oregano paprika pepper peppercorn powder "
+    "saffron salt seasoning seed spice sumac turmeric vanilla",
+    "Oils & Condiments": "chutney dressing honey jam jelly ketchup marmalade mayonnaise "
+    "mustard oil pickle salsa sauce tahini vinegar",
+    "Drinks": "ale beer cider coffee juice lager soda tea water wine",
     "Household": "battery bleach detergent foil napkin paper shampoo soap sponge tissue "
     "toothpaste towel",
 }
+
+# Fresh these are produce; "dried thyme" and "ground ginger" are jars on the spice shelf
+_SPICE_WHEN_DRIED = {
+    "basil", "chive", "cilantro", "coriander", "dill", "garlic", "ginger", "herb", "mint",
+    "onion", "parsley", "rosemary", "sage", "tarragon", "thyme",
+}  # fmt: skip
 
 _PHRASE_CATEGORY = {
     phrase: category for category, text in _PHRASES.items() for phrase in text.split(", ")
@@ -70,20 +89,22 @@ def guess_category(item_name: str) -> str | None:
     """
     The store category for an item name, or None when no word is recognised.
 
-    "frozen", "canned", "tinned" and "dried" decide first. Then a known phrase, then
-    single words from the last one back, because the last word usually names the thing:
-    "chicken stock" is stock, "cherry tomatoes" are tomatoes.
+    "frozen", "canned" and "tinned" decide first, then a dried or ground herb. Then a
+    known phrase, then single words from the last one back, because the last word
+    usually names the thing: "chicken stock" is stock, "cherry tomatoes" are tomatoes.
+    Anything else dried is a dry good: "dried apricots" are not produce.
     """
     words = [singularize_ingredient(word) for word in re.findall(r"[a-zà-ÿ]+", item_name.lower())]
     if "frozen" in words:
         return "Frozen"
-    if {"canned", "tinned", "dried"} & set(words):
-        return "Pantry"
+    if {"canned", "tinned"} & set(words):
+        return "Canned & Jarred"
+    if {"dried", "ground"} & set(words) and _SPICE_WHEN_DRIED & set(words):
+        return "Spices & Seasonings"
     text = f" {' '.join(words)} "
-    for phrase, category in _PHRASE_CATEGORY.items():
-        if f" {phrase} " in text:
-            return category
-    for word in reversed(words):
-        if word in _WORD_CATEGORY:
-            return _WORD_CATEGORY[word]
-    return None
+    category = next(
+        (c for phrase, c in _PHRASE_CATEGORY.items() if f" {phrase} " in text), None
+    ) or next((_WORD_CATEGORY[w] for w in reversed(words) if w in _WORD_CATEGORY), None)
+    if "dried" in words and category != "Spices & Seasonings":
+        return "Pantry"
+    return category
