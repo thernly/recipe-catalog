@@ -264,10 +264,24 @@ describe("apiRequest", () => {
     expect(new Headers(fetchCall[1].headers).get("Content-Type")).toBeNull();
   });
 
-  it("should handle network errors", async () => {
-    (global.fetch as any).mockRejectedValueOnce(new Error("Network error"));
+  it("says the server could not be reached, not 'Failed to fetch'", async () => {
+    (global.fetch as any).mockRejectedValueOnce(
+      new TypeError("Failed to fetch"),
+    );
 
-    await expect(apiRequest("/api/test")).rejects.toThrow("Network error");
+    await expect(apiRequest("/api/test")).rejects.toMatchObject({
+      name: "ApiError",
+      errorCode: "NETWORK_ERROR",
+      message:
+        "Could not reach the server. Check your connection and try again.",
+    });
+  });
+
+  it("passes a cancelled request through unchanged", async () => {
+    const cancelled = new DOMException("Aborted", "AbortError");
+    (global.fetch as any).mockRejectedValueOnce(cancelled);
+
+    await expect(apiRequest("/api/test")).rejects.toBe(cancelled);
   });
 
   it("should handle response without error detail", async () => {
@@ -278,7 +292,45 @@ describe("apiRequest", () => {
     });
 
     await expect(apiRequest("/api/test")).rejects.toThrow(
-      "HTTP error! status: 500",
+      "Something went wrong on the server. Please try again.",
+    );
+  });
+
+  it("replaces the rate limiter's wording", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+      json: async () => ({
+        error_code: "RATE_LIMIT_EXCEEDED",
+        message: "Rate limit exceeded: 10 per 1 minute",
+      }),
+    });
+
+    await expect(apiRequest("/api/test")).rejects.toThrow(
+      "Too many attempts. Please wait a minute and try again.",
+    );
+  });
+
+  it("says which field failed validation and why", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        error_code: "VALIDATION_ERROR",
+        message: "Request validation failed",
+        details: {
+          errors: [
+            {
+              loc: ["body", "new_password"],
+              msg: "Value error, Password must be at least 12 characters",
+            },
+          ],
+        },
+      }),
+    });
+
+    await expect(apiRequest("/api/test")).rejects.toThrow(
+      "New password: Password must be at least 12 characters",
     );
   });
 
@@ -292,7 +344,7 @@ describe("apiRequest", () => {
     });
 
     await expect(apiRequest("/api/test")).rejects.toThrow(
-      "HTTP error! status: 500",
+      "Something went wrong on the server. Please try again.",
     );
   });
 
