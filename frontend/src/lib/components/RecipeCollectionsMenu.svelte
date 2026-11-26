@@ -126,6 +126,19 @@
 		z-index: 50;
 	}
 
+	/* Phones: open across the screen above the recipe page's button bar */
+	@media (max-width: 768px) {
+		.collections-menu {
+			position: static;
+		}
+
+		.collections-panel {
+			left: 1rem;
+			right: 1rem;
+			min-width: 0;
+		}
+	}
+
 	.panel-row {
 		display: flex;
 		align-items: center;
