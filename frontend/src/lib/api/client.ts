@@ -55,6 +55,49 @@ export class ApiError extends Error {
   }
 }
 
+const OFFLINE =
+  "Could not reach the server. Check your connection and try again.";
+
+/**
+ * What to tell the person when a request fails. Server wording that only
+ * makes sense to a developer ("Rate limit exceeded: 10 per 1 minute",
+ * "Request validation failed", a bare status code) is replaced.
+ */
+function errorMessage(
+  status: number,
+  data: {
+    message?: unknown;
+    detail?: unknown;
+    error_code?: string;
+    details?: { errors?: { loc?: unknown[]; msg?: unknown }[] };
+  },
+): string {
+  if (status === 429)
+    return "Too many attempts. Please wait a minute and try again.";
+  const errors = data.details?.errors;
+  if (
+    data.error_code === "VALIDATION_ERROR" &&
+    Array.isArray(errors) &&
+    errors.length
+  ) {
+    // Say which field and why: "New password: must contain a digit"
+    return errors
+      .map((error) => {
+        const field = String(error.loc?.at(-1) ?? "").replace(/_/g, " ");
+        const reason = String(error.msg ?? "").replace(/^Value error, /, "");
+        return field && field !== "body"
+          ? `${field[0].toUpperCase()}${field.slice(1)}: ${reason}`
+          : reason;
+      })
+      .join(" ");
+  }
+  for (const text of [data.message, data.detail])
+    if (typeof text === "string" && text) return text;
+  return status >= 500
+    ? "Something went wrong on the server. Please try again."
+    : `Something went wrong (error ${status}). Please try again.`;
+}
+
 // Promise cache for refresh token to prevent concurrent refreshes
 let refreshPromise: Promise<boolean> | null = null;
 let refreshGeneration = 0;
@@ -129,6 +172,13 @@ export async function apiRequest<T>(
       ...fetchOptions,
       headers,
       credentials: FETCH_CREDENTIALS,
+    }).catch((error: unknown) => {
+      // The browser's own "Failed to fetch" means nothing to most people.
+      // A request the caller cancelled is passed through unchanged.
+      // (Checked by name: a DOMException is not always an Error.)
+      if ((error as { name?: string } | null)?.name === "AbortError")
+        throw error;
+      throw new ApiError(OFFLINE, "NETWORK_ERROR");
     });
   };
   let response = await send();
@@ -146,7 +196,7 @@ export async function apiRequest<T>(
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new ApiError(
-      data.message || data.detail || `HTTP error! status: ${response.status}`,
+      errorMessage(response.status, data),
       data.error_code,
       data.details,
       response.status,

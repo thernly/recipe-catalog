@@ -9,9 +9,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_user_household
 from app.core.security import get_password_hash, verify_password
 from app.models.collection import Collection
+from app.models.household import Household
 from app.models.recipe import Recipe
 from app.models.user import User
 from app.models.user import UserPreferences as UserPrefsModel
@@ -189,7 +190,7 @@ async def delete_account(
     from sqlalchemy import func, update
 
     from app.core.exceptions import InvalidInputError
-    from app.models.household import Household, HouseholdMember
+    from app.models.household import HouseholdMember
     from app.models.recipe_note import RecipeNote, live_author_name
 
     # A household must not lose its owner while others still use it (the same rule as
@@ -295,18 +296,34 @@ async def update_user_preferences(
 
 @router.get("/me/stats")
 async def get_user_stats(
-    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Get user statistics.
 
+    The `total_*`, `imported_*`, `manual_*` and `trashed_*` counts are what this user
+    added. `household_recipes` and `household_collections` count everything the user
+    can see, which is what the recipe list and the dashboard show.
+
     Args:
         current_user: The authenticated user
+        household: The user's household
         db: Database session
 
     Returns:
         dict: User statistics
     """
+    household_recipes = await db.scalar(
+        select(func.count(Recipe.id)).where(
+            Recipe.household_id == household.id, Recipe.deleted_at.is_(None)
+        )
+    )
+    household_collections = await db.scalar(
+        select(func.count(Collection.id)).where(Collection.household_id == household.id)
+    )
+
     # Count total recipes
     result = await db.execute(
         select(func.count(Recipe.id)).where(
@@ -348,5 +365,7 @@ async def get_user_stats(
         "manual_recipes": manual_recipes,
         "total_collections": total_collections,
         "trashed_recipes": trashed_recipes,
+        "household_recipes": household_recipes,
+        "household_collections": household_collections,
         "account_created": current_user.created_at,
     }
