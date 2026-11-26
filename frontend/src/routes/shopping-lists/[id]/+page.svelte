@@ -76,7 +76,28 @@
 
 	// Filters and sorting
 	let sortBy: 'order' | 'category' | 'checked' = 'order';
-	let hideChecked = false;
+	// Remembered in this browser, so it is still set on the next shopping trip
+	const HIDE_CHECKED_KEY = 'shopping-hide-checked';
+	let hideChecked = readHideChecked();
+
+	function readHideChecked(): boolean {
+		try {
+			return localStorage.getItem(HIDE_CHECKED_KEY) === '1';
+		} catch {
+			return false; // storage unavailable: the choice just is not remembered
+		}
+	}
+
+	function saveHideChecked(value: boolean) {
+		try {
+			if (value) localStorage.setItem(HIDE_CHECKED_KEY, '1');
+			else localStorage.removeItem(HIDE_CHECKED_KEY);
+		} catch {
+			// storage unavailable
+		}
+	}
+
+	$: saveHideChecked(hideChecked);
 
 	export let params: { id: string };
 	$: listId = parseInt(params.id);
@@ -227,19 +248,62 @@
 		}
 	}
 
-	async function handleDeleteItem(itemId: number) {
+	// No confirmation: one tap removes the item at once, and adding it back is
+	// quick. It comes back by itself if the server refuses.
+	async function handleDeleteItem(item: ShoppingListItem) {
+		if (!shoppingList) return;
+		shoppingList = {
+			...shoppingList,
+			items: shoppingList.items.filter((i) => i.id !== item.id),
+		};
+		localChanges++;
+		pendingTicks++;
+		try {
+			await deleteShoppingListItem(item.id);
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : 'Failed to delete item');
+			await loadShoppingList();
+		} finally {
+			pendingTicks--;
+		}
+	}
+
+	$: checkedItems = (shoppingList?.items ?? []).filter((i) => i.checked);
+
+	async function handleUncheckAll() {
+		const items = checkedItems;
+		localChanges++;
+		pendingTicks++;
+		for (const item of items) setChecked(item.id, false);
+		try {
+			// One at a time: there is no bulk route, and lists are short
+			for (const item of items)
+				await updateShoppingListItem(item.id, { checked: false });
+		} catch (err) {
+			toast.error(
+				err instanceof Error ? err.message : 'Failed to uncheck items',
+			);
+		} finally {
+			pendingTicks--;
+			await loadShoppingList();
+		}
+	}
+
+	function handleRemoveChecked() {
+		const items = checkedItems;
 		dialog.show({
-			title: 'Delete Item',
-			message: 'Are you sure you want to delete this item?',
+			title: 'Remove Checked Items',
+			message: `Remove ${items.length} checked ${items.length === 1 ? 'item' : 'items'} from this list?`,
 			onConfirm: async () => {
 				try {
-					await deleteShoppingListItem(itemId);
-					toast.success('Item deleted successfully');
-					await loadShoppingList();
+					for (const item of items) await deleteShoppingListItem(item.id);
+					toast.success('Checked items removed');
 				} catch (err) {
-					error = err instanceof Error ? err.message : 'Failed to delete item';
-					toast.error('Failed to delete item');
-					console.error('Failed to delete item:', err);
+					toast.error(
+						err instanceof Error ? err.message : 'Failed to remove items',
+					);
+				} finally {
+					await loadShoppingList();
 				}
 			},
 		});
@@ -476,7 +540,7 @@
 			</div>
 
 			<!-- Filters and sorting -->
-			<div class="flex gap-4 items-center text-sm">
+			<div class="flex flex-wrap gap-4 items-center text-sm">
 				<label class="flex items-center gap-2">
 					<span>Sort by:</span>
 					<select
@@ -493,6 +557,24 @@
 					<input type="checkbox" bind:checked={hideChecked} />
 					<span>Hide checked items</span>
 				</label>
+				{#if checkedItems.length > 0}
+					<button
+						type="button"
+						on:click={handleUncheckAll}
+						class="px-3 py-1 rounded"
+						style="background: var(--neutral-100); color: var(--text-900);"
+					>
+						Uncheck all
+					</button>
+					<button
+						type="button"
+						on:click={handleRemoveChecked}
+						class="px-3 py-1 rounded"
+						style="background: var(--neutral-100); color: var(--text-900);"
+					>
+						Remove checked
+					</button>
+				{/if}
 			</div>
 		</div>
 
@@ -657,7 +739,7 @@
 
 						<!-- Delete button -->
 						<button
-							on:click={() => handleDeleteItem(item.id)}
+							on:click={() => handleDeleteItem(item)}
 							class="p-1"
 							style="color: var(--error-600);"
 							aria-label="Delete {item.item_name}"
