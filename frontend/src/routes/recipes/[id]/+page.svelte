@@ -164,6 +164,10 @@
 	$: instructionsCount = recipe ? getInstructions(recipe).length : 0;
 	$: stepsProgress =
 		instructionsCount > 0 ? (completedSteps.size / instructionsCount) * 100 : 0;
+	// The step being cooked now: the first one not ticked off (-1 when all are done)
+	$: currentStep = Array.from({ length: instructionsCount }, (_, i) => i).findIndex(
+		(i) => !completedSteps.has(i),
+	);
 
 	function getIngredients(recipe: Recipe): string[] {
 		if (recipe.recipe_data?.recipeIngredient) {
@@ -669,7 +673,7 @@
 
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8" class:cook-mode={cookMode}>
 					<!-- Ingredients -->
-					<div class="card">
+					<div class="card ingredients-panel">
 						<h2
 							class="text-2xl font-semibold mb-4"
 							style="color: var(--text-900);"
@@ -772,6 +776,8 @@
 								<li
 									class="instruction-step"
 									class:completed={completedSteps.has(index)}
+									class:current={cookMode && index === currentStep}
+									aria-current={cookMode && index === currentStep ? 'step' : undefined}
 								>
 									<button
 										class="step-number"
@@ -1209,6 +1215,42 @@
 	.cook-mode .step-text {
 		font-size: 1.375rem;
 		line-height: 1.6;
+	}
+
+	/* Cook mode: the ingredients stay in view while the steps scroll past */
+	@media screen {
+		.cook-mode .ingredients-panel {
+			position: sticky;
+			top: 4.5rem; /* clear of the 4rem navbar */
+			align-self: start;
+			max-height: calc(100vh - 5.5rem);
+			overflow-y: auto;
+			z-index: 10;
+		}
+	}
+
+	.cook-mode .instruction-step.current {
+		background: var(--primary-50);
+		box-shadow: inset 4px 0 0 var(--accent-500);
+	}
+
+	@media screen and (max-width: 1023px) {
+		/* A grid item can only stick inside its own row, so stack as plain blocks */
+		.cook-mode {
+			display: block;
+		}
+
+		.cook-mode .ingredients-panel {
+			max-height: 40vh;
+			margin-bottom: 2rem;
+			padding: 0.75rem 1rem;
+			box-shadow: var(--shadow-lg);
+		}
+
+		/* Every line counts in a panel this short */
+		.cook-mode .ingredients-panel h2 {
+			display: none;
+		}
 	}
 
 	.scale-control {
