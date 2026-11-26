@@ -145,6 +145,23 @@ Response (`200`, also for partial failure):
 `POST /api/v1/import/recipes` (multipart `file`, with `duplicate_handling` and
 `collection_id` as form fields), accepts a single object or an array.
 
+### Saving a recipe from a web address
+
+`POST /api/v1/import/url` with `{"url": "https://..."}` (cookie session plus
+`X-CSRF-Token`, or a JWT bearer; 60 requests an hour). The server fetches the page
+through `safe_fetch` (public addresses only, 3 MB cap, HTML only) and imports the
+schema.org Recipe the page embeds as JSON-LD. Only the first photo is kept, and the
+page's reader comments are dropped.
+
+```json
+{ "status": "created", "id": 42, "message": "Recipe saved" }
+```
+
+`status` is `skipped` when a recipe with the same web address or name already exists
+(`id` is then the existing recipe). A 400 with a readable `message` means the address
+is not http(s), the page could not be fetched, or it has no JSON-LD recipe. Pages that
+only use Microdata or RDFa are not read; the Recipe Siphon extension handles those.
+
 ### Complete Backup and restore
 
 `GET /api/v1/export/all` downloads a Complete Backup: the recipes and collections you

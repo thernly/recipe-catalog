@@ -207,6 +207,24 @@ export async function importRecipes(
   });
 }
 
+export interface UrlImportResult {
+  status: "created" | "skipped";
+  id: number;
+  message: string;
+}
+
+/**
+ * Save the recipe on a web page. The server fetches the page and reads its recipe.
+ */
+export async function importRecipeFromUrl(
+  url: string,
+): Promise<UrlImportResult> {
+  return apiRequest<UrlImportResult>("/import/url", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+}
+
 /** Counts of what a restore added beyond recipes; null for a recipes-only restore. */
 export interface RestoredCounts {
   collections: number;

@@ -41,6 +41,7 @@ AUTH_RATE_LIMIT_TEST_MODE = "10000/hour"  # Effectively unlimited for tests
 SAFE_FETCH_TIMEOUT_SECONDS = 10.0  # Per-request timeout for outbound fetches
 SAFE_FETCH_MAX_REDIRECTS = 3  # Each redirect target is re-validated before following
 MAX_FETCHED_IMAGE_BYTES = 5 * 1024 * 1024  # Size cap for images fetched during import
+MAX_FETCHED_PAGE_BYTES = 3 * 1024 * 1024  # Size cap for a recipe web page fetched for import
 
 # Personal API tokens (app/models/api_token.py)
 API_TOKEN_PREFIX = "rcat_"  # Marks a bearer value as a personal API token, not a JWT
