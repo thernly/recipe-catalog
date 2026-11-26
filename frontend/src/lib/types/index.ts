@@ -95,12 +95,18 @@ export type RecipeSourceType = "imported" | "manual" | "ai-generated";
  * - bistro: Burgundy with champagne gold (also matches: professional)
  * - dark: Dark mode
  * - high-contrast: WCAG AAA compliant
+ * - ember: Warm dark, charcoal with terracotta
+ * - coastal: Deep teal with coral
+ * - farmhouse: Slate blue with antique mustard
  */
 export type Theme =
   | "garden-fresh"
   | "bistro"
   | "dark"
   | "high-contrast"
+  | "ember"
+  | "coastal"
+  | "farmhouse"
   | "classic"
   | "professional"
   | "light";

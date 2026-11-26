@@ -224,9 +224,12 @@
 
 /* ============================================ */
 /* Theme 3: Dark Mode */
+/* Ember (theme 5) is dark too: it takes this block's shadows and
+   success/error/warning colours, then overrides the palettes below. */
 /* ============================================ */
 
-[data-theme="dark"] {
+[data-theme="dark"],
+[data-theme="ember"] {
   /* Primary Palette (Dark Blues) */
   --primary-50: #0f1419;
   --primary-100: #1a1f29;
@@ -416,6 +419,213 @@
   --color-info: #0052cc;
   --color-info-bg: #e6f0ff;
   --color-info-text: #003d99;
+}
+
+/* ============================================ */
+/* Theme 5: Ember (Warm Dark: Charcoal + Terracotta) */
+/* The dark counterpart to Garden Fresh. Must stay below the Dark block, */
+/* which it shares and overrides.               */
+/* ============================================ */
+
+[data-theme="ember"] {
+  /* Primary Palette (Warm Greys) */
+  --primary-50: #171412;
+  --primary-100: #211d1a;
+  --primary-200: #2d2824;
+  --primary-300: #3a3430;
+  --primary-400: #4a433d;
+  --primary-500: #5c534c;
+  --primary-600: #7d736a;
+  --primary-700: #a39a90;
+  --primary-800: #cfc7bd;
+  --primary-900: #f0ebe3;
+
+  /* Accent Palette (Terracotta). 50-200 are dark surfaces; 600-900 are text. */
+  --accent-50: #2b1a12;
+  --accent-100: #3a2318;
+  --accent-200: #523223;
+  --accent-300: #f0a078;
+  --accent-400: #e88a5c;
+  --accent-500: #e07848;
+  --accent-600: #f0a078;
+  --accent-700: #f5b998;
+  --accent-800: #f8cdb4;
+  --accent-900: #fbe0d0;
+
+  /* Neutral Palette (Charcoal to Cream) */
+  --neutral-white: #2a2522;
+  --neutral-50: #1c1917;
+  --neutral-100: #2a2522;
+  --neutral-200: #3d3632;
+  --neutral-300: #524943;
+  --neutral-400: #746a62;
+  --neutral-500: #a39a90;
+  --neutral-600: #cfc7bd;
+  --neutral-700: #e4ddd3;
+  --neutral-800: #f0ebe3;
+  --neutral-900: #f7f3ec;
+
+  /* Text Colors */
+  --text-900: #f7f3ec;
+  --text-700: #e4ddd3;
+  --text-600: #cfc7bd;
+  --text-500: #b3aa9f;
+  --text-400: #b3aa9f;
+
+  /* Semantic Mappings */
+  --color-navbar-bg: #141110;
+  --color-navbar-text: #f7f3ec;
+  --color-sidebar-bg: #2a2522;
+  --color-sidebar-active-bg: #5a3220;
+  --color-sidebar-active-text: #fbe0d0;
+  --color-btn-primary-bg: #e07848;
+  --color-btn-primary-hover: #e88a5c;
+  --color-btn-primary-text: #1c1917;
+  --color-btn-secondary-bg: #3d3632;
+  --color-btn-secondary-text: #f7f3ec;
+  --color-badge-bg: #5a3220;
+  --color-badge-text: #fbe0d0;
+  --color-link: #f0a078;
+  --color-focus-ring: #e88a5c;
+
+  --shadow-warm-glow: 0 8px 16px -4px rgba(224, 120, 72, 0.3);
+}
+
+/* ============================================ */
+/* Theme 6: Coastal (Deep Teal + Coral)         */
+/* ============================================ */
+
+[data-theme="coastal"] {
+  /* Primary Palette (Deep Teal) */
+  --primary-50: #effafa;
+  --primary-100: #d5f2f2;
+  --primary-200: #aee5e6;
+  --primary-300: #79d0d3;
+  --primary-400: #45b3b8;
+  --primary-500: #0f4c5c;
+  --primary-600: #0c4150;
+  --primary-700: #0a3643;
+  --primary-800: #072a34;
+  --primary-900: #051f26;
+
+  /* Accent Palette (Coral) */
+  --accent-50: #fff5f2;
+  --accent-100: #ffe6df;
+  --accent-200: #ffcabd;
+  --accent-300: #ffa48f;
+  --accent-400: #f97b62;
+  --accent-500: #d9482b;
+  --accent-600: #c03a20;
+  --accent-700: #9f2f19;
+  --accent-800: #7f2614;
+  --accent-900: #5f1c0f;
+
+  /* Neutral Palette (Sea-Mist Off-Whites) */
+  --neutral-white: #fdfefe;
+  --neutral-50: #f7fafa;
+  --neutral-100: #eef3f4;
+  --neutral-200: #dde6e8;
+  --neutral-300: #c5d2d5;
+  --neutral-400: #9aabb0;
+  --neutral-500: #6f8187;
+  --neutral-600: #55666b;
+  --neutral-700: #3f4d52;
+  --neutral-800: #2a3438;
+  --neutral-900: #172024;
+
+  /* Text Colors */
+  --text-900: #172024;
+  --text-700: #3f4d52;
+  --text-600: #55666b;
+  --text-500: #5b6c72;
+  --text-400: #9aabb0;
+
+  /* Semantic Mappings */
+  --color-navbar-bg: var(--primary-500);
+  --color-navbar-text: var(--neutral-white);
+  --color-sidebar-bg: var(--neutral-50);
+  --color-sidebar-active-bg: var(--accent-100);
+  --color-sidebar-active-text: var(--accent-800);
+  --color-btn-primary-bg: var(--accent-600);
+  --color-btn-primary-hover: var(--accent-700);
+  --color-btn-primary-text: var(--neutral-white);
+  --color-btn-secondary-bg: var(--neutral-100);
+  --color-btn-secondary-text: var(--primary-500);
+  --color-badge-bg: var(--accent-100);
+  --color-badge-text: var(--accent-800);
+  --color-link: var(--accent-600);
+  --color-focus-ring: var(--accent-500);
+
+  --shadow-warm-glow: 0 8px 16px -4px rgba(217, 72, 43, 0.25);
+}
+
+/* ============================================ */
+/* Theme 7: Farmhouse (Slate Blue + Antique Mustard) */
+/* The mustard is deep enough to carry white text. */
+/* ============================================ */
+
+[data-theme="farmhouse"] {
+  /* Primary Palette (Slate Blue) */
+  --primary-50: #f1f5f9;
+  --primary-100: #e1e9f1;
+  --primary-200: #c5d4e3;
+  --primary-300: #9db5cd;
+  --primary-400: #7092b3;
+  --primary-500: #34495e;
+  --primary-600: #2c3e50;
+  --primary-700: #243342;
+  --primary-800: #1b2733;
+  --primary-900: #131b24;
+
+  /* Accent Palette (Antique Mustard) */
+  --accent-50: #fdf9ec;
+  --accent-100: #faf0cc;
+  --accent-200: #f4e09a;
+  --accent-300: #ecca5d;
+  --accent-400: #d9ac2b;
+  --accent-500: #b07c0a;
+  --accent-600: #946600;
+  --accent-700: #7a5400;
+  --accent-800: #5f4100;
+  --accent-900: #453000;
+
+  /* Neutral Palette (Warm Whites) */
+  --neutral-white: #fffefb;
+  --neutral-50: #fbf9f4;
+  --neutral-100: #f4f1ea;
+  --neutral-200: #e8e3d8;
+  --neutral-300: #d6cfc1;
+  --neutral-400: #aaa293;
+  --neutral-500: #7d7668;
+  --neutral-600: #5f594e;
+  --neutral-700: #47423a;
+  --neutral-800: #302d27;
+  --neutral-900: #1c1a16;
+
+  /* Text Colors */
+  --text-900: #1c1a16;
+  --text-700: #47423a;
+  --text-600: #5f594e;
+  --text-500: #6b6558;
+  --text-400: #aaa293;
+
+  /* Semantic Mappings */
+  --color-navbar-bg: var(--primary-500);
+  --color-navbar-text: var(--neutral-white);
+  --color-sidebar-bg: var(--neutral-50);
+  --color-sidebar-active-bg: var(--accent-100);
+  --color-sidebar-active-text: var(--accent-800);
+  --color-btn-primary-bg: var(--accent-600);
+  --color-btn-primary-hover: var(--accent-700);
+  --color-btn-primary-text: var(--neutral-white);
+  --color-btn-secondary-bg: var(--neutral-100);
+  --color-btn-secondary-text: var(--primary-500);
+  --color-badge-bg: var(--accent-100);
+  --color-badge-text: var(--accent-800);
+  --color-link: var(--accent-600);
+  --color-focus-ring: var(--accent-500);
+
+  --shadow-warm-glow: 0 8px 16px -4px rgba(176, 124, 10, 0.25);
 }
 
 /* ============================================ */

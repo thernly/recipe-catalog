@@ -16,7 +16,7 @@ A privacy-focused web application for organizing and managing your personal reci
 - **OAuth Sign-In** — Google, Microsoft, and GitHub
 - **Account Security** — Refresh-token sessions, plus lockout after 5 failed logins for 15 minutes
 - **Personalization** — Dietary preferences, custom cuisines, and custom categories
-- **Themes** — Garden Fresh (default), Bistro, Dark, and High Contrast, plus System to follow your device preference
+- **Themes** — Garden Fresh (default), Bistro, Coastal, Farmhouse, Ember (warm dark), Dark, and High Contrast, plus System to follow your device preference
 - **Soft Delete** — Deleted recipes are retained for recovery (collections are deleted permanently); purging is a manual operator step (see the [runbook](docs/operations/runbook.md))
 
 ## Tech Stack

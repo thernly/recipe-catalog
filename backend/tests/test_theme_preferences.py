@@ -15,6 +15,11 @@ def test_valid_theme_values():
         "system",
         "classic",
         "professional",
+        "garden-fresh",
+        "bistro",
+        "ember",
+        "coastal",
+        "farmhouse",
     ]
 
     for theme in valid_themes:

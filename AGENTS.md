@@ -6,7 +6,7 @@ See **CLAUDE.md** for commands, architecture, project structure, and tech stack.
 
 - Read relevant files before making changes — don't assume structure from filenames alone.
 - When a change touches the API, check both the backend route handler and the frontend `src/lib/api/` client module.
-- UI changes must use theme CSS variables (e.g. `var(--primary-500)`) — never hardcode colors. There are four theme blocks (`garden-fresh`, `bistro`, `dark`, `high-contrast`), so check your change against a light, a dark, and the high-contrast palette.
+- UI changes must use theme CSS variables (e.g. `var(--primary-500)`) — never hardcode colors. There are seven theme blocks (`garden-fresh`, `bistro`, `coastal`, `farmhouse`, `ember`, `dark`, `high-contrast`), so check your change against a light, a dark, and the high-contrast palette.
 - New pages automatically inherit the navbar via the root layout for authenticated users. No wiring needed unless the page is under `/auth/` or is the landing page `/`.
 - Never call `fetch` directly from a component or page — go through `apiRequest` in `src/lib/api/client.ts`. It attaches the CSRF token and handles the 401 → refresh → retry flow; a raw `fetch` silently skips both.
 - Reuse the shared UI primitives rather than rolling new ones: the `dialog` and `toast` stores drive the globally mounted `ConfirmDialog`/`Toast`, and page sizes, debounce delays, and timeouts live in `src/lib/constants.ts`.
