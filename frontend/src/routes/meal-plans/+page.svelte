@@ -13,8 +13,11 @@
 	} from '#lib/api/meal-plans.js';
 	import {
 		generateFromMealPlan,
+		previewFromMealPlan,
 		createShoppingList,
+		formatQuantityUnit,
 		setLastShoppingListId,
+		type ShoppingItemPreview,
 	} from '#lib/api/shopping-lists.js';
 	import AddToShoppingListDialog from '#lib/components/AddToShoppingListDialog.svelte';
 	import AddMealDialog from './AddMealDialog.svelte';
@@ -85,6 +88,29 @@
 		chosenMealIds.length < plannedMeals.length
 			? { selected_meal_ids: chosenMealIds }
 			: {};
+
+	// What the chosen meals would put on a list. Dropped whenever the meals or
+	// the ticks change, so it never shows a stale answer.
+	let preview: ShoppingItemPreview[] | null = null;
+	let loadingPreview = false;
+	$: if (chosenMealIds) preview = null;
+
+	async function handlePreview() {
+		if (!mealPlan) return;
+		loadingPreview = true;
+		try {
+			preview = await previewFromMealPlan({
+				meal_plan_id: mealPlan.id,
+				...chosenMeals(),
+			});
+		} catch (err) {
+			toast.error(
+				err instanceof Error ? err.message : 'Failed to load the ingredients',
+			);
+		} finally {
+			loadingPreview = false;
+		}
+	}
 
 	async function addToList(listId: number) {
 		if (!mealPlan) return;
@@ -420,6 +446,31 @@
 					{meal.meal_type}: {mealName(meal)}
 				</label>
 			{/each}
+			<button
+				type="button"
+				on:click={handlePreview}
+				class="btn-secondary"
+				disabled={loadingPreview || chosenMealIds.length === 0}
+			>
+				{loadingPreview ? '⏳ Loading...' : 'Preview ingredients'}
+			</button>
+			{#if preview}
+				{#if preview.length === 0}
+					<p>These meals have no ingredients to shop for.</p>
+				{:else}
+					<ul aria-label="Ingredients these meals need">
+						{#each preview as item, index (index)}
+							<li>
+								{item.item_name}
+								{#if formatQuantityUnit(item.quantity, item.unit)}
+									({formatQuantityUnit(item.quantity, item.unit)})
+								{/if}
+								{#if item.notes}<em>{item.notes}</em>{/if}
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			{/if}
 		</details>
 	{/if}
 
@@ -575,6 +626,22 @@
 		align-items: center;
 		padding: 0.375rem 0;
 		text-transform: capitalize;
+	}
+
+	.meals-to-shop button {
+		margin-top: 0.5rem;
+	}
+
+	.meals-to-shop ul {
+		margin: 0.5rem 0 0;
+		padding-left: 1.25rem;
+		list-style: disc;
+	}
+
+	.meals-to-shop em {
+		margin-left: 0.25rem;
+		font-size: 0.875rem;
+		color: var(--text-600);
 	}
 
 	.week-header h2 {

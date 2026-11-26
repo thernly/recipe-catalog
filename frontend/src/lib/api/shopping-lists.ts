@@ -283,6 +283,23 @@ export async function generateFromRecipe(
   });
 }
 
+export type ShoppingItemPreview = Pick<
+  ShoppingListItem,
+  "item_name" | "quantity" | "unit" | "notes"
+>;
+
+/**
+ * What generating from a meal plan would add. Nothing is saved.
+ */
+export async function previewFromMealPlan(
+  data: GenerateFromMealPlanRequest,
+): Promise<ShoppingItemPreview[]> {
+  return apiRequest<ShoppingItemPreview[]>(
+    "/shopping-lists/from-meal-plan/preview",
+    { method: "POST", body: JSON.stringify(data) },
+  );
+}
+
 /**
  * Generate a shopping list from a meal plan
  */

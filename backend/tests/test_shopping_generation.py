@@ -92,6 +92,64 @@ async def test_from_meal_plan_numeric_quantities(client, test_db, test_user_head
     assert float(oil["quantity"]) == 2
 
 
+async def test_meal_plan_preview_matches_the_generated_list_and_saves_nothing(
+    client, test_db, test_user_headers
+):
+    user, household, recipe = await _recipe(
+        test_db, clean_recipe_data({"recipeIngredient": LINES}).data
+    )
+    plan = MealPlan(
+        household_id=household.id, week_start_date=date(2026, 11, 2), created_by_user_id=user.id
+    )
+    test_db.add(plan)
+    await test_db.flush()
+    test_db.add(
+        PlannedMeal(
+            meal_plan_id=plan.id,
+            recipe_id=recipe.id,
+            created_by_user_id=user.id,
+            day_of_week=0,
+            meal_type="dinner",
+            servings=None,
+        )
+    )
+    await test_db.commit()
+    body = {"meal_plan_id": plan.id}
+
+    preview = await client.post(
+        "/api/v1/shopping-lists/from-meal-plan/preview", json=body, headers=test_user_headers
+    )
+
+    assert preview.status_code == 200, preview.text
+    assert (await client.get("/api/v1/shopping-lists/", headers=test_user_headers)).json() == []
+    made = await client.post(
+        "/api/v1/shopping-lists/from-meal-plan", json=body, headers=test_user_headers
+    )
+    fields = ("item_name", "quantity", "unit", "notes")
+    assert preview.json() == [{f: item[f] for f in fields} for item in made.json()["items"]]
+    assert [item["item_name"] for item in preview.json()] == ["flour", "egg", "oil"]
+
+
+async def test_meal_plan_preview_is_household_scoped(client, test_db, test_user_headers):
+    from tests.test_recipe_notes import _login
+
+    user, household, _ = await _recipe(test_db, {"recipeIngredient": ["2 eggs"]})
+    plan = MealPlan(
+        household_id=household.id, week_start_date=date(2026, 11, 2), created_by_user_id=user.id
+    )
+    test_db.add(plan)
+    await test_db.commit()
+    stranger = await _login(client, "stranger@example.com")
+
+    response = await client.post(
+        "/api/v1/shopping-lists/from-meal-plan/preview",
+        json={"meal_plan_id": plan.id},
+        headers=stranger,
+    )
+
+    assert response.status_code == 404
+
+
 async def test_from_meal_plan_notes_which_recipes_each_item_is_for(
     client, test_db, test_user_headers
 ):

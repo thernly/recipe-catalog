@@ -180,6 +180,15 @@ class GenerateFromMealPlanRequest(BaseModel):
     shopping_list_id: int | None = None  # add to this existing list instead of creating one
 
 
+class ShoppingItemPreview(BaseModel):
+    """One item a meal plan would add to a shopping list (nothing is saved)."""
+
+    item_name: str
+    quantity: str | None = None
+    unit: str | None = None
+    notes: str | None = None
+
+
 class CategoryList(BaseModel):
     """Schema for category list response."""
 
