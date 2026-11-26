@@ -1,8 +1,9 @@
 """Meal planning related Pydantic schemas."""
 
 from datetime import date, datetime
+from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.core.security import sanitize_html
 
@@ -12,10 +13,22 @@ from app.core.security import sanitize_html
 # ============================================
 
 
-class PlannedMealBase(BaseModel):
-    """Base planned meal schema."""
+def _sanitize(value: str | None) -> str | None:
+    """Sanitize notes to prevent XSS attacks."""
+    return sanitize_html(value) if value is not None else None
 
-    recipe_id: int
+
+def _title(value: str | None) -> str | None:
+    """Sanitized like notes; a blank title is no title."""
+    return (sanitize_html(value).strip() or None) if value is not None else None
+
+
+class PlannedMealBase(BaseModel):
+    """Base planned meal schema. A meal is a recipe, or free text in `title`
+    ("Leftovers", "Eating out")."""
+
+    recipe_id: int | None = None
+    title: str | None = Field(None, max_length=200)
     day_of_week: int = Field(..., ge=0, le=6, description="0=Monday, 6=Sunday")
     meal_type: str = Field(..., pattern="^(breakfast|lunch|dinner|snack|other)$")
     servings: int | None = Field(None, ge=1)
@@ -25,31 +38,35 @@ class PlannedMealBase(BaseModel):
 class PlannedMealCreate(PlannedMealBase):
     """Schema for creating a planned meal."""
 
-    @field_validator("notes")
-    @classmethod
-    def sanitize_notes(cls, v: str | None) -> str | None:
-        """Sanitize notes field to prevent XSS attacks."""
-        if v is None:
-            return v
-        return sanitize_html(v)
+    _sanitize_notes = field_validator("notes")(_sanitize)
+    _clean_title = field_validator("title")(_title)
+
+    @model_validator(mode="after")
+    def recipe_or_title(self) -> Self:
+        if (self.recipe_id is None) == (self.title is None):
+            raise ValueError("Give a recipe or a title, not both")
+        return self
 
 
 class PlannedMealUpdate(BaseModel):
-    """Schema for updating a planned meal."""
+    """Schema for updating a planned meal. Giving `recipe_id` makes it a recipe meal
+    and giving `title` makes it free text; the other one is cleared."""
 
     recipe_id: int | None = None
+    title: str | None = Field(None, max_length=200)
     day_of_week: int | None = Field(None, ge=0, le=6)
     meal_type: str | None = Field(None, pattern="^(breakfast|lunch|dinner|snack|other)$")
     servings: int | None = Field(None, ge=1)
     notes: str | None = Field(None, max_length=10000)
 
-    @field_validator("notes")
-    @classmethod
-    def sanitize_notes(cls, v: str | None) -> str | None:
-        """Sanitize notes field to prevent XSS attacks."""
-        if v is None:
-            return v
-        return sanitize_html(v)
+    _sanitize_notes = field_validator("notes")(_sanitize)
+    _clean_title = field_validator("title")(_title)
+
+    @model_validator(mode="after")
+    def not_both(self) -> Self:
+        if self.recipe_id is not None and self.title is not None:
+            raise ValueError("Give a recipe or a title, not both")
+        return self
 
 
 class PlannedMeal(PlannedMealBase):

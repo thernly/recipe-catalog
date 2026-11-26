@@ -42,7 +42,8 @@ export function mealPlanToIcs(
     "PRODID:-//Recipe Catalog//Meal Plan//EN",
     ...meals.flatMap((meal) => {
       const type = meal.meal_type[0].toUpperCase() + meal.meal_type.slice(1);
-      const url = `${origin}/recipes/${meal.recipe_id}`;
+      // A free-text meal ("Leftovers") has no recipe to link to
+      const url = meal.recipe_id ? `${origin}/recipes/${meal.recipe_id}` : "";
       const details = [
         meal.servings ? `Servings: ${meal.servings}` : "",
         meal.notes ?? "",
@@ -54,9 +55,9 @@ export function mealPlanToIcs(
         `DTSTAMP:${stamp}`,
         `DTSTART;VALUE=DATE:${day(plan.week_start_date, meal.day_of_week)}`,
         `DTEND;VALUE=DATE:${day(plan.week_start_date, meal.day_of_week + 1)}`,
-        `SUMMARY:${text(`${type}: ${meal.recipe_name || "Recipe"}`)}`,
+        `SUMMARY:${text(`${type}: ${meal.recipe_name || meal.title || "Recipe"}`)}`,
         `DESCRIPTION:${text(details.join("\n"))}`,
-        `URL:${url}`,
+        ...(url ? [`URL:${url}`] : []),
         "TRANSP:TRANSPARENT",
         "END:VEVENT",
       ];

@@ -5,6 +5,7 @@
 		getMealPlan,
 		getWeekStart,
 		formatDateISO,
+		mealName,
 		type PlannedMeal,
 	} from '#lib/api/meal-plans.js';
 	import {
@@ -68,9 +69,14 @@
 						{#each meals as meal (meal.id)}
 							<li>
 								<span class="meal-type">{meal.meal_type}</span>
-								<a href="/recipes/{meal.recipe_id}" class="today-link">
-									{meal.recipe_name || `Recipe #${meal.recipe_id}`}
-								</a>
+								{#if meal.recipe_id}
+									<a href="/recipes/{meal.recipe_id}" class="today-link">
+										{mealName(meal)}
+									</a>
+								{:else}
+									<!-- Free text ("Leftovers"): nothing to open -->
+									<span>{mealName(meal)}</span>
+								{/if}
 							</li>
 						{/each}
 					</ul>

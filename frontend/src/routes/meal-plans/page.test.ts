@@ -146,6 +146,53 @@ describe("meal planner page", () => {
     );
   });
 
+  describe("free-text meals", () => {
+    const leftovers = {
+      ...plan.planned_meals[0],
+      id: 12,
+      recipe_id: null,
+      recipe_name: null,
+      title: "Leftovers",
+      day_of_week: 1,
+    };
+
+    it("adds a meal that is just text, with no recipe", async () => {
+      vi.mocked(addPlannedMeal).mockResolvedValue(leftovers);
+      const { findByRole, findByLabelText } = render(Page);
+
+      await fireEvent.click(
+        await findByRole("button", { name: "Add lunch on Tuesday" }),
+      );
+      await fireEvent.input(
+        await findByLabelText("Or something without a recipe"),
+        { target: { value: " Eating out " } },
+      );
+      await fireEvent.click(await findByRole("button", { name: "Add Meal" }));
+
+      await waitFor(() =>
+        expect(addPlannedMeal).toHaveBeenCalledWith(1, {
+          title: "Eating out",
+          day_of_week: 1,
+          meal_type: "lunch",
+          servings: undefined,
+          notes: undefined,
+        }),
+      );
+    });
+
+    it("shows it by its text and leaves it out of the meals to shop for", async () => {
+      vi.mocked(getCurrentWeekMealPlan).mockResolvedValue({
+        ...plan,
+        planned_meals: [...plan.planned_meals, leftovers],
+      });
+      const { findByRole, findByText, queryByRole } = render(Page);
+
+      expect(await findByRole("button", { name: /Leftovers/ })).toBeTruthy();
+      expect(await findByText("Meals to shop for (1 of 1)")).toBeTruthy();
+      expect(queryByRole("checkbox", { name: /Leftovers/ })).toBeNull();
+    });
+  });
+
   it("shows the loading message while another week loads", async () => {
     const { findByRole, findByText } = render(Page);
     await findByRole("button", { name: /Lasagne/ });

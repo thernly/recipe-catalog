@@ -575,6 +575,7 @@ async def export_all_data(
             "meals": [
                 {
                     "recipe_id": meal.recipe_id,
+                    "title": meal.title,
                     "day_of_week": meal.day_of_week,
                     "meal_type": meal.meal_type,
                     "servings": meal.servings,

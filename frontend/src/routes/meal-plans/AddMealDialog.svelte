@@ -59,9 +59,13 @@
 		}
 	}
 
+	// A meal is a recipe, or free text ("Leftovers", "Eating out"). Typing text
+	// drops the chosen recipe, and choosing a recipe clears the text.
+	let title: string = '';
+
 	async function handleSave() {
-		if (!selectedRecipeId) {
-			error = 'Please select a recipe';
+		if (!selectedRecipeId && !title.trim()) {
+			error = "Please select a recipe, or type what's planned";
 			return;
 		}
 
@@ -70,7 +74,9 @@
 
 		try {
 			const mealData: PlannedMealCreate = {
-				recipe_id: selectedRecipeId,
+				...(selectedRecipeId
+					? { recipe_id: selectedRecipeId }
+					: { title: title.trim() }),
 				day_of_week: day,
 				meal_type: mealType as PlannedMealCreate['meal_type'],
 				servings: servings || undefined,
@@ -175,7 +181,10 @@
 								class="recipe-item"
 								class:selected={selectedRecipeId === recipe.id}
 								aria-pressed={selectedRecipeId === recipe.id}
-								on:click={() => (selectedRecipeId = recipe.id)}
+								on:click={() => {
+									selectedRecipeId = recipe.id;
+									title = '';
+								}}
 							>
 								<span class="recipe-name">{recipe.name}</span>
 								{#if recipe.cuisine || recipe.total_time_minutes}
@@ -190,6 +199,19 @@
 						{/each}
 					{/if}
 				</div>
+			</div>
+
+			<div class="form-group">
+				<label for="meal-title">Or something without a recipe</label>
+				<input
+					id="meal-title"
+					type="text"
+					bind:value={title}
+					on:input={() => (selectedRecipeId = null)}
+					maxlength="200"
+					placeholder="e.g., Leftovers, Eating out"
+					class="input"
+				/>
 			</div>
 
 			<div class="form-row">
@@ -224,7 +246,7 @@
 			<button
 				class="btn-primary"
 				on:click={handleSave}
-				disabled={saving || !selectedRecipeId}
+				disabled={saving || (!selectedRecipeId && !title.trim())}
 			>
 				{saving ? 'Adding...' : 'Add Meal'}
 			</button>
