@@ -530,6 +530,10 @@ async def export_all_data(
                 "total_time_minutes": recipe.total_time_minutes,
                 "created_at": recipe.created_at.isoformat() if recipe.created_at else None,
                 "updated_at": recipe.updated_at.isoformat() if recipe.updated_at else None,
+                "rating": recipe.rating,
+                "last_cooked_on": (
+                    recipe.last_cooked_on.isoformat() if recipe.last_cooked_on else None
+                ),
                 "comment": notes_to_schema(recipe),
             }
             for recipe in recipes

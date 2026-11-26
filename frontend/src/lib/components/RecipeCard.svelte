@@ -127,6 +127,16 @@
 					<span></span>
 				{/if}
 
+				{#if recipe.rating}
+					<span
+						class="text-sm"
+						style="color: var(--accent-500);"
+						aria-label="Rated {recipe.rating} out of 5"
+					>
+						{'★'.repeat(recipe.rating)}{'☆'.repeat(5 - recipe.rating)}
+					</span>
+				{/if}
+
 				<span
 					class="text-xs px-2 py-1 rounded flex items-center gap-1"
 					style="background: var(--neutral-100); color: var(--text-600);"

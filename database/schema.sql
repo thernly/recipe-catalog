@@ -53,6 +53,8 @@ CREATE TABLE IF NOT EXISTS recipes (
     cuisine VARCHAR(100),
     category VARCHAR(100),
     total_time_minutes INTEGER,
+    rating INTEGER,
+    last_cooked_on DATE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

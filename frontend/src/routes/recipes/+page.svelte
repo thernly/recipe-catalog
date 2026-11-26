@@ -66,6 +66,8 @@
 		'alphabetical',
 		'time_asc',
 		'time_desc',
+		'recently_cooked',
+		'rating_desc',
 		'random',
 	];
 
@@ -413,6 +415,8 @@
 					<option value="alphabetical">A-Z</option>
 					<option value="time_asc">Shortest Time</option>
 					<option value="time_desc">Longest Time</option>
+					<option value="recently_cooked">Recently Cooked</option>
+					<option value="rating_desc">Highest Rated</option>
 					<option value="random">Random</option>
 				</select>
 			</div>
