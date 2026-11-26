@@ -87,6 +87,9 @@
 
 <style>
 	.confirm-dialog {
+		/* Tailwind's reset zeroes the browser's own `margin: auto`, which is what
+		   centres a modal dialog; without this it sits in the top-left corner. */
+		margin: auto;
 		max-width: 28rem;
 		width: 100%;
 		padding: 0;
