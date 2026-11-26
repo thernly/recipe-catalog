@@ -19,6 +19,8 @@
 	import EditMealDialog from './EditMealDialog.svelte';
 	import { toast } from '#lib/stores/toast.js';
 	import { dialog } from '#lib/stores/dialog.js';
+	import { downloadBlob } from '#lib/utils/download.js';
+	import { mealPlanToIcs } from '#lib/utils/meal-plan-calendar.js';
 	import {
 		rememberAddedToList,
 		wasAddedToList,
@@ -209,6 +211,17 @@
 		}
 	}
 
+	// A calendar file of the week on screen, for Google, Apple or Outlook
+	function handleExportCalendar() {
+		if (!mealPlan) return;
+		downloadBlob(
+			new Blob([mealPlanToIcs(mealPlan, location.origin)], {
+				type: 'text/calendar',
+			}),
+			`meal-plan-${mealPlan.week_start_date}.ics`,
+		);
+	}
+
 	async function handleCreateBlankList() {
 		creatingBlankList = true;
 		try {
@@ -272,6 +285,9 @@
 				disabled={generatingShoppingList}
 			>
 				➕ Add to Existing List
+			</button>
+			<button on:click={handleExportCalendar} class="btn-secondary">
+				📅 Export to Calendar
 			</button>
 		{/if}
 		<button
