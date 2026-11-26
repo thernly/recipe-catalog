@@ -18,6 +18,7 @@ vi.mock("#lib/api/recipes.js", async (importOriginal) => ({
 vi.mock("#lib/api/shopping-lists.js", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   generateFromMealPlan: vi.fn(),
+  previewFromMealPlan: vi.fn(),
 }));
 
 vi.mock("#lib/utils/download.js", () => ({ downloadBlob: vi.fn() }));
@@ -33,7 +34,10 @@ import {
 import { get } from "svelte/store";
 import { dialog } from "#lib/stores/dialog.js";
 import { searchRecipes } from "#lib/api/recipes.js";
-import { generateFromMealPlan } from "#lib/api/shopping-lists.js";
+import {
+  generateFromMealPlan,
+  previewFromMealPlan,
+} from "#lib/api/shopping-lists.js";
 import { wasAddedToList } from "#lib/utils/added-weeks.js";
 
 const plan = {
@@ -137,6 +141,43 @@ describe("meal planner page", () => {
       meal_plan_id: 1,
       selected_meal_ids: [10],
     });
+  });
+
+  it("previews the ingredients of the ticked meals, and drops the preview when a tick changes", async () => {
+    const soup = {
+      ...plan.planned_meals[0],
+      id: 10,
+      recipe_name: "Soup",
+      day_of_week: 1,
+    };
+    vi.mocked(getCurrentWeekMealPlan).mockResolvedValue({
+      ...plan,
+      planned_meals: [...plan.planned_meals, soup],
+    });
+    vi.mocked(previewFromMealPlan).mockResolvedValue([
+      { item_name: "stock", quantity: "2", unit: "cup", notes: "for Soup" },
+    ]);
+    const { findByRole, findByText, queryByText } = render(Page);
+
+    await fireEvent.click(
+      await findByRole("checkbox", { name: /Monday dinner: Lasagne/ }),
+    );
+    await fireEvent.click(
+      await findByRole("button", { name: "Preview ingredients" }),
+    );
+
+    expect(await findByText(/stock\s+\(2 cups\)/)).toBeTruthy();
+    expect(await findByText("for Soup")).toBeTruthy();
+    expect(previewFromMealPlan).toHaveBeenCalledWith({
+      meal_plan_id: 1,
+      selected_meal_ids: [10],
+    });
+    expect(generateFromMealPlan).not.toHaveBeenCalled();
+
+    await fireEvent.click(
+      await findByRole("checkbox", { name: /Monday dinner: Lasagne/ }),
+    );
+    await waitFor(() => expect(queryByText("for Soup")).toBeNull());
   });
 
   it("sends no meal selection when every meal is ticked", async () => {

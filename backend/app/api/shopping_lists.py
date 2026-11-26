@@ -22,6 +22,7 @@ from app.schemas.shopping_list import (
     CategoryList,
     GenerateFromMealPlanRequest,
     GenerateFromRecipeRequest,
+    ShoppingItemPreview,
     ShoppingListCreate,
     ShoppingListItemCreate,
     ShoppingListItemUpdate,
@@ -881,33 +882,21 @@ async def generate_from_recipe(
     return await _load_with_items(db, shopping_list.id)
 
 
-@router.post("/from-meal-plan", response_model=ShoppingListSchema)
-async def generate_from_meal_plan(
-    request_data: GenerateFromMealPlanRequest,
-    current_user: User = Depends(get_current_user),
-    household: Household = Depends(get_user_household),
-    db: AsyncSession = Depends(get_db),
-):
+async def _meal_plan_items(
+    db: AsyncSession, request_data: GenerateFromMealPlanRequest, household_id: int
+) -> tuple[MealPlan, list[dict[str, str | None]]]:
     """
-    Generate a shopping list from a meal plan.
-
-    Args:
-        request_data: Request data with meal plan ID and optional selected meals
-        current_user: The authenticated user
-        household: The user's household
-        db: Database session
-
-    Returns:
-        ShoppingList: The created shopping list with aggregated items. A meal with
-        planned servings has its amounts scaled from the recipe's yield (see
-        `servings_factor`).
+    The plan and the items its (selected) meals need: one `item_name`, `quantity`,
+    `unit`, `notes` dict per consolidated ingredient. Nothing is saved, so the preview
+    and the generator cannot disagree. A meal with planned servings has its amounts
+    scaled from the recipe's yield (see `servings_factor`).
     """
     # Get meal plan
     result = await db.execute(
         select(MealPlan).where(
             and_(
                 MealPlan.id == request_data.meal_plan_id,
-                MealPlan.household_id == household.id,
+                MealPlan.household_id == household_id,
             )
         )
     )
@@ -928,20 +917,6 @@ async def generate_from_meal_plan(
     if not planned_meals:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No meals selected")
 
-    if request_data.shopping_list_id is not None:
-        shopping_list = await _household_list(db, request_data.shopping_list_id, household.id)
-    else:
-        week = meal_plan.week_start_date
-        shopping_list = ShoppingList(
-            household_id=household.id,
-            name=request_data.list_name or f"Shopping list for week of {week}",
-            description=f"Generated from meal plan for week of {week}",
-            status="active",
-            created_by_user_id=current_user.id,
-        )
-        db.add(shopping_list)
-        await db.flush()
-
     # Collect all ingredients from all recipes as structured data
     ingredients_data: list[dict[str, Any]] = []
     # Each ingredient's notes (its alternatives, and which recipes it is for), by the
@@ -950,7 +925,7 @@ async def generate_from_meal_plan(
     recipe_result = await db.execute(
         select(Recipe).where(
             Recipe.id.in_([meal.recipe_id for meal in planned_meals]),
-            Recipe.household_id == household.id,
+            Recipe.household_id == household_id,
             Recipe.deleted_at.is_(None),
         )
     )
@@ -976,17 +951,69 @@ async def generate_from_meal_plan(
                 )
 
     # Consolidate ingredients by name and unit, summing quantities
-    consolidated_ingredients = consolidate_ingredients(ingredients_data)
+    return meal_plan, [
+        {
+            "item_name": str(ingredient["name"])[:255],
+            "quantity": ingredient["quantity"],
+            "unit": ingredient["unit"],
+            "notes": "; ".join(used_for.get(ingredient_key(str(ingredient["name"])), [])) or None,
+        }
+        for ingredient in consolidate_ingredients(ingredients_data)
+    ]
 
-    for ingredient in consolidated_ingredients:
-        await add_or_merge_item(
-            db,
-            shopping_list.id,
-            item_name=str(ingredient["name"])[:255],
-            quantity=ingredient["quantity"],
-            unit=ingredient["unit"],
-            notes="; ".join(used_for.get(ingredient_key(str(ingredient["name"])), [])) or None,
+
+@router.post("/from-meal-plan/preview", response_model=list[ShoppingItemPreview])
+async def preview_from_meal_plan(
+    request_data: GenerateFromMealPlanRequest,
+    household: Household = Depends(get_user_household),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    What generating from this meal plan would add, without saving anything. Merging
+    into an existing list's items is not shown: `shopping_list_id` is ignored.
+    """
+    _, items = await _meal_plan_items(db, request_data, household.id)
+    return items
+
+
+@router.post("/from-meal-plan", response_model=ShoppingListSchema)
+async def generate_from_meal_plan(
+    request_data: GenerateFromMealPlanRequest,
+    current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Generate a shopping list from a meal plan.
+
+    Args:
+        request_data: Request data with meal plan ID and optional selected meals
+        current_user: The authenticated user
+        household: The user's household
+        db: Database session
+
+    Returns:
+        ShoppingList: The created shopping list with aggregated items (see
+        `_meal_plan_items`).
+    """
+    meal_plan, items = await _meal_plan_items(db, request_data, household.id)
+
+    if request_data.shopping_list_id is not None:
+        shopping_list = await _household_list(db, request_data.shopping_list_id, household.id)
+    else:
+        week = meal_plan.week_start_date
+        shopping_list = ShoppingList(
+            household_id=household.id,
+            name=request_data.list_name or f"Shopping list for week of {week}",
+            description=f"Generated from meal plan for week of {week}",
+            status="active",
+            created_by_user_id=current_user.id,
         )
+        db.add(shopping_list)
+        await db.flush()
+
+    for item in items:
+        await add_or_merge_item(db, shopping_list.id, **item)
 
     await db.commit()
     return await _load_with_items(db, shopping_list.id)
