@@ -13,6 +13,7 @@
 		getCategories,
 		createdByLabel,
 		formatQuantityUnit,
+		groupByCategory,
 		type ShoppingList,
 		type ShoppingListItem,
 		type ShoppingListItemCreate,
@@ -75,10 +76,31 @@
 	let editedDescription = '';
 
 	// Filters and sorting
-	let sortBy: 'order' | 'category' | 'checked' = 'order';
-	// Remembered in this browser, so it is still set on the next shopping trip
+	// Both remembered in this browser, so they are still set on the next shopping trip
+	const SORT_KEY = 'shopping-sort';
+	let sortBy: 'order' | 'category' | 'checked' = readSort();
 	const HIDE_CHECKED_KEY = 'shopping-hide-checked';
 	let hideChecked = readHideChecked();
+
+	// Grouped by store section unless this browser chose otherwise
+	function readSort(): 'order' | 'category' | 'checked' {
+		try {
+			const saved = localStorage.getItem(SORT_KEY);
+			return saved === 'order' || saved === 'checked' ? saved : 'category';
+		} catch {
+			return 'category';
+		}
+	}
+
+	function saveSort(value: string) {
+		try {
+			localStorage.setItem(SORT_KEY, value);
+		} catch {
+			// storage unavailable
+		}
+	}
+
+	$: saveSort(sortBy);
 
 	function readHideChecked(): boolean {
 		try {
@@ -109,18 +131,17 @@
 	$: visibleItems = hideChecked
 		? sortedItems.filter((item) => !item.checked)
 		: sortedItems;
+	// Section headings only when sorted by category; otherwise one unnamed group
+	$: groups =
+		sortBy === 'category'
+			? groupByCategory(visibleItems, categories)
+			: [{ category: '', items: visibleItems }];
 
 	function sortItems(items: ShoppingListItem[]): ShoppingListItem[] {
 		const itemsCopy = [...items];
 
-		if (sortBy === 'order') {
+		if (sortBy === 'order' || sortBy === 'category') {
 			return itemsCopy.sort((a, b) => a.display_order - b.display_order);
-		} else if (sortBy === 'category') {
-			return itemsCopy.sort((a, b) => {
-				const catA = a.category || 'Uncategorized';
-				const catB = b.category || 'Uncategorized';
-				return catA.localeCompare(catB);
-			});
 		} else if (sortBy === 'checked') {
 			return itemsCopy.sort((a, b) => Number(a.checked) - Number(b.checked));
 		}
@@ -209,14 +230,43 @@
 		}
 	}
 
-	function setChecked(itemId: number, checked: boolean) {
+	function patchLocal(itemId: number, changes: Partial<ShoppingListItem>) {
 		if (!shoppingList) return;
 		shoppingList = {
 			...shoppingList,
 			items: shoppingList.items.map((i) =>
-				i.id === itemId ? { ...i, checked } : i,
+				i.id === itemId ? { ...i, ...changes } : i,
 			),
 		};
+	}
+
+	function setChecked(itemId: number, checked: boolean) {
+		patchLocal(itemId, { checked });
+	}
+
+	// The standard categories, plus the item's own if it is not one of them
+	function categoryOptions(item: ShoppingListItem, all: string[]): string[] {
+		const current = item.category || 'Other';
+		return all.includes(current) ? all : [...all, current];
+	}
+
+	// Optimistic, like a tick: the item moves to its new section at once and
+	// moves back if the server refuses.
+	async function handleCategoryChange(
+		item: ShoppingListItem,
+		category: string,
+	) {
+		patchLocal(item.id, { category });
+		localChanges++;
+		pendingTicks++;
+		try {
+			await updateShoppingListItem(item.id, { category });
+		} catch (err) {
+			patchLocal(item.id, { category: item.category });
+			toast.error(err instanceof Error ? err.message : 'Failed to update item');
+		} finally {
+			pendingTicks--;
+		}
 	}
 
 	// Optimistic: flip locally at once (no refetch, so a tap in the shop is
@@ -358,7 +408,9 @@
 
 	// One unchecked item per line: iOS Reminders splits pasted lines into items.
 	async function handleShareList() {
-		const text = sortedItems
+		// In the order on screen, so a shared list is grouped by section too
+		const text = groups
+			.flatMap((group) => group.items)
 			.filter((item) => !item.checked)
 			.map((item) => {
 				const qty = formatQuantityUnit(item.quantity, item.unit);
@@ -646,121 +698,134 @@
 					: 'No items yet. Add your first item above.'}
 			</div>
 		{:else}
-			<div class="space-y-2">
-				{#each visibleItems as item (item.id)}
-					<div
-						class="flex items-center gap-3 p-3 border rounded-lg hover:shadow-sm transition-shadow"
-						style="background: var(--neutral-white); border-color: var(--neutral-200); color: var(--text-900);"
-					>
-						<!-- Checkbox: the label's padding fills the row's left edge, and
-						     the item name is a second label, so both are tap targets -->
-						<label
-							class="flex items-center self-stretch -my-3 -ml-3 p-3 cursor-pointer"
-						>
-							<input
-								id="item-check-{item.id}"
-								type="checkbox"
-								checked={item.checked}
-								on:change={() => handleToggleChecked(item)}
-								aria-label="Got {item.item_name}"
-								class="w-5 h-5 rounded"
-								style="accent-color: var(--primary-600);"
-							/>
-						</label>
-
-						<!-- Item details -->
+			{#each groups as group (group.category)}
+				{#if group.category}
+					<h2 class="font-semibold mt-6 mb-2" style="color: var(--text-700);">
+						{group.category}
+					</h2>
+				{/if}
+				<div class="space-y-2">
+					{#each group.items as item (item.id)}
 						<div
-							class="flex-1"
-							class:line-through={item.checked}
-							style={item.checked ? 'color: var(--text-500);' : ''}
+							class="flex items-center gap-3 p-3 border rounded-lg hover:shadow-sm transition-shadow"
+							style="background: var(--neutral-white); border-color: var(--neutral-200); color: var(--text-900);"
 						>
+							<!-- Checkbox: the label's padding fills the row's left edge, and
+						     the item name is a second label, so both are tap targets -->
 							<label
-								for="item-check-{item.id}"
-								class="block font-medium cursor-pointer py-1"
+								class="flex items-center self-stretch -my-3 -ml-3 p-3 cursor-pointer"
 							>
-								{item.item_name}
+								<input
+									id="item-check-{item.id}"
+									type="checkbox"
+									checked={item.checked}
+									on:change={() => handleToggleChecked(item)}
+									aria-label="Got {item.item_name}"
+									class="w-5 h-5 rounded"
+									style="accent-color: var(--primary-600);"
+								/>
 							</label>
-							<div class="text-sm" style="color: var(--text-600);">
-								{#if editingItemId === item.id}
-									<form
-										class="inline-flex gap-2"
-										on:submit|preventDefault={() => saveQuantity(item)}
-										on:focusout={(e) => handleQuantityFocusOut(e, item)}
-									>
-										<!-- svelte-ignore a11y_autofocus -->
-										<input
-											bind:value={editQuantity}
-											aria-label="Quantity for {item.item_name}"
-											maxlength="100"
-											autofocus
-											on:keydown={(e) =>
-												e.key === 'Escape' && (editingItemId = null)}
-											class="w-20 px-2 py-0.5 border rounded"
-											style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900);"
-										/>
-										<input
-											bind:value={editUnit}
-											aria-label="Unit for {item.item_name}"
-											maxlength="50"
-											on:keydown={(e) =>
-												e.key === 'Escape' && (editingItemId = null)}
-											class="w-24 px-2 py-0.5 border rounded"
-											style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900);"
-										/>
-										<button type="submit" class="sr-only">Save quantity</button>
-									</form>
-								{:else}
-									<button
-										type="button"
-										on:click={() => startEditQuantity(item)}
-										aria-label="Quantity for {item.item_name}: {formatQuantityUnit(
-											item.quantity,
-											item.unit,
-										) || 'none'}. Edit"
-										class="underline decoration-dotted"
-									>
-										{formatQuantityUnit(item.quantity, item.unit) ||
-											'Add quantity'}
-									</button>
-								{/if}
-								{#if item.notes}
-									<span class="ml-2 italic">{item.notes}</span>
-								{/if}
-								{#if item.category}
-									<span
-										class="ml-2 px-2 py-0.5 rounded text-xs"
-										style="background: var(--neutral-200);"
-									>
-										{item.category}
-									</span>
-								{/if}
-							</div>
-						</div>
 
-						<!-- Delete button -->
-						<button
-							on:click={() => handleDeleteItem(item)}
-							class="p-1"
-							style="color: var(--error-600);"
-							aria-label="Delete {item.item_name}"
-						>
-							<svg
-								class="w-5 h-5"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
+							<!-- Item details -->
+							<div
+								class="flex-1"
+								class:line-through={item.checked}
+								style={item.checked ? 'color: var(--text-500);' : ''}
 							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-								></path>
-							</svg>
-						</button>
-					</div>
-				{/each}
-			</div>
+								<label
+									for="item-check-{item.id}"
+									class="block font-medium cursor-pointer py-1"
+								>
+									{item.item_name}
+								</label>
+								<div class="text-sm" style="color: var(--text-600);">
+									{#if editingItemId === item.id}
+										<form
+											class="inline-flex gap-2"
+											on:submit|preventDefault={() => saveQuantity(item)}
+											on:focusout={(e) => handleQuantityFocusOut(e, item)}
+										>
+											<!-- svelte-ignore a11y_autofocus -->
+											<input
+												bind:value={editQuantity}
+												aria-label="Quantity for {item.item_name}"
+												maxlength="100"
+												autofocus
+												on:keydown={(e) =>
+													e.key === 'Escape' && (editingItemId = null)}
+												class="w-20 px-2 py-0.5 border rounded"
+												style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900);"
+											/>
+											<input
+												bind:value={editUnit}
+												aria-label="Unit for {item.item_name}"
+												maxlength="50"
+												on:keydown={(e) =>
+													e.key === 'Escape' && (editingItemId = null)}
+												class="w-24 px-2 py-0.5 border rounded"
+												style="border-color: var(--neutral-300); background: var(--neutral-white); color: var(--text-900);"
+											/>
+											<button type="submit" class="sr-only">
+												Save quantity
+											</button>
+										</form>
+									{:else}
+										<button
+											type="button"
+											on:click={() => startEditQuantity(item)}
+											aria-label="Quantity for {item.item_name}: {formatQuantityUnit(
+												item.quantity,
+												item.unit,
+											) || 'none'}. Edit"
+											class="underline decoration-dotted"
+										>
+											{formatQuantityUnit(item.quantity, item.unit) ||
+												'Add quantity'}
+										</button>
+									{/if}
+									{#if item.notes}
+										<span class="ml-2 italic">{item.notes}</span>
+									{/if}
+									<select
+										value={item.category || 'Other'}
+										on:change={(e) =>
+											handleCategoryChange(item, e.currentTarget.value)}
+										aria-label="Category for {item.item_name}"
+										class="ml-2 px-1 py-0.5 rounded text-xs"
+										style="background: var(--neutral-200); color: var(--text-900);"
+									>
+										{#each categoryOptions(item, categories) as category (category)}
+											<option value={category}>{category}</option>
+										{/each}
+									</select>
+								</div>
+							</div>
+
+							<!-- Delete button -->
+							<button
+								on:click={() => handleDeleteItem(item)}
+								class="p-1"
+								style="color: var(--error-600);"
+								aria-label="Delete {item.item_name}"
+							>
+								<svg
+									class="w-5 h-5"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+									></path>
+								</svg>
+							</button>
+						</div>
+					{/each}
+				</div>
+			{/each}
 
 			<!-- Summary -->
 			<div class="mt-6 text-sm" style="color: var(--text-600);">

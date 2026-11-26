@@ -34,6 +34,7 @@ from app.schemas.shopping_list import (
 from app.schemas.shopping_list import (
     ShoppingListItem as ShoppingListItemSchema,
 )
+from app.services.aisles import DEFAULT_CATEGORIES
 from app.services.ingredient_parser import (  # noqa: F401  (re-exported for callers and tests)
     add_amounts,
     consolidate_ingredients,
@@ -326,19 +327,6 @@ async def _load_with_items(db: AsyncSession, list_id: int) -> ShoppingList:
         .execution_options(populate_existing=True)
     )
     return result.unique().scalar_one()
-
-
-# Default store categories
-DEFAULT_CATEGORIES = [
-    "Produce",
-    "Dairy",
-    "Meat",
-    "Bakery",
-    "Frozen",
-    "Pantry",
-    "Household",
-    "Other",
-]
 
 
 @router.get("/categories", response_model=CategoryList)

@@ -1,10 +1,12 @@
 """Shopping list related Pydantic schemas."""
 
 from datetime import datetime
+from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.core.security import sanitize_html
+from app.services.aisles import guess_category
 
 
 # ============================================
@@ -71,6 +73,17 @@ class ShoppingListItem(ShoppingListItemBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def guess_missing_category(self) -> Self:
+        """
+        An item saved with no category is shown in a guessed one. Nothing is stored,
+        so lists made before the guesser existed are grouped too, and a category the
+        user picks always wins.
+        """
+        if not self.category:
+            self.category = guess_category(self.item_name)
+        return self
 
 
 # ============================================
