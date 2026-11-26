@@ -461,7 +461,7 @@ class EmailService:
                         <li>Collaborate on meal planning</li>
                     </ul>
                     <p style="text-align: center;">
-                        <a href="{settings.FRONTEND_URL}/settings?section=household" class="button">Manage Household</a>
+                        <a href="{settings.FRONTEND_URL}/settings#household" class="button">Manage Household</a>
                     </p>
                 </div>
                 <div class="footer">
@@ -485,7 +485,7 @@ class EmailService:
         - Access shared collections
         - Collaborate on meal planning
 
-        Manage your household at: {settings.FRONTEND_URL}/settings?section=household
+        Manage your household at: {settings.FRONTEND_URL}/settings#household
 
         ---
         Recipe Catalog
