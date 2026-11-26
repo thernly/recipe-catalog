@@ -27,6 +27,7 @@ import {
   deleteShoppingList,
   addShoppingListItem,
   updateShoppingListItem,
+  deleteShoppingListItem,
   getCategories,
 } from "#lib/api/shopping-lists.js";
 import { dialog } from "#lib/stores/dialog.js";
@@ -282,6 +283,72 @@ describe("shopping list detail page", () => {
     expect(queryByText("Loading shopping list...")).toBeNull();
     expect(getByText("milk")).toBeTruthy();
     expect(name.isConnected).toBe(true);
+  });
+
+  const gotEggs = { ...milk, id: 6, item_name: "eggs", checked: true };
+
+  it("deletes an item at once, without asking", async () => {
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: [milk] });
+    vi.mocked(deleteShoppingListItem).mockResolvedValue();
+    const { findByRole, queryByText } = render(Page, { params: { id: "7" } });
+
+    await fireEvent.click(await findByRole("button", { name: "Delete milk" }));
+
+    expect(deleteShoppingListItem).toHaveBeenCalledWith(5);
+    expect(get(dialog).open).toBe(false);
+    await waitFor(() => expect(queryByText("milk")).toBeNull());
+  });
+
+  it("removes only the checked items, after one confirmation", async () => {
+    vi.mocked(getShoppingList).mockResolvedValue({
+      ...list,
+      items: [milk, gotEggs],
+    });
+    vi.mocked(deleteShoppingListItem).mockResolvedValue();
+    const { findByRole } = render(Page, { params: { id: "7" } });
+
+    await fireEvent.click(
+      await findByRole("button", { name: "Remove checked" }),
+    );
+    expect(deleteShoppingListItem).not.toHaveBeenCalled();
+    await get(dialog).onConfirm();
+
+    expect(deleteShoppingListItem).toHaveBeenCalledTimes(1);
+    expect(deleteShoppingListItem).toHaveBeenCalledWith(6);
+  });
+
+  it("unchecks every checked item", async () => {
+    vi.mocked(getShoppingList).mockResolvedValue({
+      ...list,
+      items: [milk, gotEggs],
+    });
+    vi.mocked(updateShoppingListItem).mockResolvedValue(gotEggs);
+    const { findByRole } = render(Page, { params: { id: "7" } });
+
+    await fireEvent.click(await findByRole("button", { name: "Uncheck all" }));
+
+    await waitFor(() =>
+      expect(updateShoppingListItem).toHaveBeenCalledWith(6, {
+        checked: false,
+      }),
+    );
+    expect(updateShoppingListItem).toHaveBeenCalledTimes(1);
+  });
+
+  it("remembers 'Hide checked items' between visits", async () => {
+    vi.mocked(getShoppingList).mockResolvedValue({
+      ...list,
+      items: [milk, gotEggs],
+    });
+    const first = render(Page, { params: { id: "7" } });
+    await first.findByText("eggs");
+    await fireEvent.click(first.getByLabelText("Hide checked items"));
+    first.unmount();
+
+    const second = render(Page, { params: { id: "7" } });
+    await second.findByText("milk");
+    expect(second.queryByText("eggs")).toBeNull();
+    localStorage.clear();
   });
 
   it("unarchives an archived list", async () => {
