@@ -695,22 +695,27 @@ async def _restore_backup_extras(
             meal_rows = await db.execute(
                 select(PlannedMeal).where(PlannedMeal.meal_plan_id == plan.id)
             )
-            planned = {(m.day_of_week, m.meal_type, m.recipe_id) for m in meal_rows.scalars()}
+            planned = {
+                (m.day_of_week, m.meal_type, m.recipe_id or m.title) for m in meal_rows.scalars()
+            }
         for meal in _dicts(entry.get("meals")):
             day, meal_type, servings = (
                 meal.get("day_of_week"),
                 meal.get("meal_type"),
                 meal.get("servings"),
             )
+            # A free-text meal ("Leftovers") has a title and no recipe
+            title = _text(meal.get("title"), 200) if meal.get("recipe_id") is None else None
             recipe_id = new_id(meal.get("recipe_id"))
+            what = recipe_id or title
             if (
-                recipe_id is None
+                what is None
                 or not (isinstance(day, int) and 0 <= day <= 6)
                 or not (isinstance(meal_type, str) and meal_type in _MEAL_TYPES)
             ):
                 counts["planned_meals_skipped"] += 1
                 continue
-            if (day, meal_type, recipe_id) in planned:
+            if (day, meal_type, what) in planned:
                 continue
             if not plan:
                 plan = MealPlan(
@@ -723,6 +728,7 @@ async def _restore_backup_extras(
                 PlannedMeal(
                     meal_plan_id=plan.id,
                     recipe_id=recipe_id,
+                    title=title,
                     created_by_user_id=user_id,
                     day_of_week=int(day),
                     meal_type=meal_type,
@@ -730,7 +736,7 @@ async def _restore_backup_extras(
                     notes=_text(meal.get("notes")),
                 )
             )
-            planned.add((day, meal_type, recipe_id))
+            planned.add((day, meal_type, what))
             counts["planned_meals"] += 1
 
     # Shopping lists match by name; one that exists is left alone, items included

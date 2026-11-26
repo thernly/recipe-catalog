@@ -7,8 +7,10 @@ import { apiRequest } from "./client";
 export interface PlannedMeal {
   id: number;
   meal_plan_id: number;
-  recipe_id: number;
-  recipe_name?: string;
+  /** A meal is a recipe, or free text in `title` ("Leftovers", "Eating out") */
+  recipe_id?: number | null;
+  recipe_name?: string | null;
+  title?: string | null;
   day_of_week: number; // 0=Monday, 6=Sunday
   meal_type: "breakfast" | "lunch" | "dinner" | "snack" | "other";
   servings?: number;
@@ -35,8 +37,15 @@ export interface MealPlanSummary {
   meal_count: number;
 }
 
+/** What to show for a planned meal: its recipe's name, or its free text. */
+export function mealName(meal: PlannedMeal): string {
+  return meal.recipe_name || meal.title || `Recipe #${meal.recipe_id}`;
+}
+
 export interface PlannedMealCreate {
-  recipe_id: number;
+  /** Give a recipe or a title, not both */
+  recipe_id?: number;
+  title?: string;
   day_of_week: number;
   meal_type: "breakfast" | "lunch" | "dinner" | "snack" | "other";
   servings?: number;
@@ -44,7 +53,9 @@ export interface PlannedMealCreate {
 }
 
 export interface PlannedMealUpdate {
+  /** Giving one of these two clears the other */
   recipe_id?: number;
+  title?: string;
   day_of_week?: number;
   meal_type?: "breakfast" | "lunch" | "dinner" | "snack" | "other";
   servings?: number | null; // null clears it

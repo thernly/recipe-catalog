@@ -102,6 +102,7 @@ async def test_backup_contains_meal_plans_and_shopping_lists(client, test_db, te
             "meals": [
                 {
                     "recipe_id": recipe_id,
+                    "title": None,
                     "day_of_week": 2,
                     "meal_type": "dinner",
                     "servings": 6,

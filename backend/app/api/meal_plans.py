@@ -6,7 +6,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import Select, and_, func, select
+from sqlalchemy import Select, and_, case, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, with_loader_criteria
@@ -39,6 +39,16 @@ def get_week_start(input_date: date) -> date:
     return input_date - timedelta(days=input_date.weekday())
 
 
+def _shown(planned_meals: list[PlannedMeal]) -> list[PlannedMealSchema]:
+    """A plan's meals as shown: free-text meals, and recipe meals whose recipe has
+    not been trashed (the loader leaves a trashed recipe unset)."""
+    return [
+        planned_meal_to_schema(meal)
+        for meal in planned_meals
+        if meal.recipe is not None or meal.recipe_id is None
+    ]
+
+
 def planned_meal_to_schema(planned_meal: PlannedMeal) -> PlannedMealSchema:
     """Convert PlannedMeal ORM object to schema with recipe_name populated."""
     return PlannedMealSchema(
@@ -46,6 +56,7 @@ def planned_meal_to_schema(planned_meal: PlannedMeal) -> PlannedMealSchema:
         meal_plan_id=planned_meal.meal_plan_id,
         recipe_id=planned_meal.recipe_id,
         recipe_name=planned_meal.recipe.name if planned_meal.recipe else None,
+        title=planned_meal.title,
         day_of_week=planned_meal.day_of_week,
         meal_type=planned_meal.meal_type,
         servings=planned_meal.servings,
@@ -79,10 +90,13 @@ async def list_meal_plans(
             MealPlan.household_id,
             MealPlan.week_start_date,
             MealPlan.created_at,
-            func.count(Recipe.id).label("meal_count"),
+            func.count(
+                case((PlannedMeal.recipe_id.is_(None), PlannedMeal.id), else_=Recipe.id)
+            ).label("meal_count"),
         )
         .outerjoin(PlannedMeal, MealPlan.id == PlannedMeal.meal_plan_id)
-        # Count only meals whose recipe is not trashed (matches what the plan view shows).
+        # Count free-text meals, and recipe meals whose recipe is not trashed (matches
+        # what the plan view shows).
         .outerjoin(Recipe, and_(Recipe.id == PlannedMeal.recipe_id, Recipe.deleted_at.is_(None)))
         .where(MealPlan.household_id == household.id)
         .group_by(
@@ -183,9 +197,7 @@ async def get_current_week_meal_plan(
         created_by_user_id=meal_plan.created_by_user_id,
         created_at=meal_plan.created_at,
         updated_at=meal_plan.updated_at,
-        planned_meals=[
-            planned_meal_to_schema(pm) for pm in meal_plan.planned_meals if pm.recipe is not None
-        ],
+        planned_meals=_shown(meal_plan.planned_meals),
     )
 
 
@@ -239,9 +251,7 @@ async def get_meal_plan(
         created_by_user_id=meal_plan.created_by_user_id,
         created_at=meal_plan.created_at,
         updated_at=meal_plan.updated_at,
-        planned_meals=[
-            planned_meal_to_schema(pm) for pm in meal_plan.planned_meals if pm.recipe is not None
-        ],
+        planned_meals=_shown(meal_plan.planned_meals),
     )
 
 
@@ -323,29 +333,33 @@ async def add_planned_meal(
             detail="Meal plan not found",
         )
 
-    # Verify recipe exists and belongs to household
-    result = await db.execute(
-        select(Recipe).where(
-            and_(
-                Recipe.id == meal_data.recipe_id,
-                Recipe.household_id == household.id,
-                Recipe.deleted_at.is_(None),
+    # A recipe meal: verify the recipe exists and belongs to household. A free-text
+    # meal (title only; the schema requires one or the other) has none.
+    recipe = None
+    if meal_data.recipe_id is not None:
+        result = await db.execute(
+            select(Recipe).where(
+                and_(
+                    Recipe.id == meal_data.recipe_id,
+                    Recipe.household_id == household.id,
+                    Recipe.deleted_at.is_(None),
+                )
             )
         )
-    )
-    recipe = result.scalar_one_or_none()
+        recipe = result.scalar_one_or_none()
 
-    if not recipe:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Recipe not found",
-        )
+        if not recipe:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Recipe not found",
+            )
 
     # Create planned meal
     planned_meal = PlannedMeal(
         created_by_user_id=current_user.id,
         meal_plan_id=meal_plan_id,
         recipe_id=meal_data.recipe_id,
+        title=meal_data.title,
         day_of_week=meal_data.day_of_week,
         meal_type=meal_data.meal_type,
         servings=meal_data.servings,
@@ -421,6 +435,11 @@ async def update_planned_meal(
                 detail="Recipe not found",
             )
         planned_meal.recipe_id = meal_data.recipe_id
+        planned_meal.title = None
+    elif meal_data.title is not None:
+        # Becomes (or stays) a free-text meal
+        planned_meal.title = meal_data.title
+        planned_meal.recipe_id = None
 
     if meal_data.day_of_week is not None:
         planned_meal.day_of_week = meal_data.day_of_week

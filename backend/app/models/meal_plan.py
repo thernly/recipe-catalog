@@ -53,7 +53,10 @@ class PlannedMeal(Base):
     meal_plan_id = Column(
         Integer, ForeignKey("meal_plans.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    recipe_id = Column(Integer, ForeignKey("recipes.id", ondelete="CASCADE"), nullable=False)
+    # A meal is a recipe, or free text in `title` ("Leftovers", "Eating out"): the API
+    # requires exactly one of the two
+    recipe_id = Column(Integer, ForeignKey("recipes.id", ondelete="CASCADE"), nullable=True)
+    title = Column(String(200), nullable=True)
     created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     day_of_week = Column(Integer, nullable=False)  # 0-6 (Monday-Sunday)
     meal_type = Column(String(20), nullable=False)  # breakfast, lunch, dinner, snack, other

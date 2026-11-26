@@ -27,7 +27,10 @@
 	let saving = false;
 	let deleting = false;
 
-	let selectedRecipeId: number = meal.recipe_id;
+	// A meal is a recipe, or free text ("Leftovers"). Typing text drops the
+	// chosen recipe, and choosing a recipe clears the text.
+	let selectedRecipeId: number | null = meal.recipe_id ?? null;
+	let title: string = meal.title ?? '';
 	let dayOfWeek: number = meal.day_of_week;
 	let mealType: string = meal.meal_type;
 	let servings: number | null = meal.servings || null;
@@ -65,14 +68,21 @@
 	}
 
 	async function handleSave() {
+		if (!selectedRecipeId && !title.trim()) {
+			error = "Please select a recipe, or type what's planned";
+			return;
+		}
 		saving = true;
 		error = null;
 
 		try {
 			const updates: PlannedMealUpdate = {};
 
-			if (selectedRecipeId !== meal.recipe_id) {
-				updates.recipe_id = selectedRecipeId;
+			if (selectedRecipeId) {
+				if (selectedRecipeId !== meal.recipe_id)
+					updates.recipe_id = selectedRecipeId;
+			} else if (title.trim() !== (meal.title ?? '')) {
+				updates.title = title.trim();
 			}
 			if (dayOfWeek !== meal.day_of_week) {
 				updates.day_of_week = dayOfWeek;
@@ -176,14 +186,29 @@
 				<div class="error" role="alert">{error}</div>
 			{/if}
 
-			<p style="margin-bottom: 1rem;">
-				<a
-					href="/recipes/{meal.recipe_id}"
-					style="color: var(--accent-600); text-decoration: underline;"
-				>
-					View recipe{meal.recipe_name ? `: ${meal.recipe_name}` : ''}
-				</a>
-			</p>
+			{#if meal.recipe_id}
+				<p style="margin-bottom: 1rem;">
+					<a
+						href="/recipes/{meal.recipe_id}"
+						style="color: var(--accent-600); text-decoration: underline;"
+					>
+						View recipe{meal.recipe_name ? `: ${meal.recipe_name}` : ''}
+					</a>
+				</p>
+			{/if}
+
+			<div class="form-group">
+				<label for="meal-title">Something without a recipe</label>
+				<input
+					id="meal-title"
+					type="text"
+					bind:value={title}
+					on:input={() => (selectedRecipeId = null)}
+					maxlength="200"
+					placeholder="e.g., Leftovers, Eating out"
+					class="input"
+				/>
+			</div>
 
 			<div class="form-row">
 				<div class="form-group">
@@ -237,7 +262,10 @@
 								class="recipe-item"
 								class:selected={selectedRecipeId === recipe.id}
 								aria-pressed={selectedRecipeId === recipe.id}
-								on:click={() => (selectedRecipeId = recipe.id)}
+								on:click={() => {
+									selectedRecipeId = recipe.id;
+									title = '';
+								}}
 							>
 								<span class="recipe-name">{recipe.name}</span>
 								{#if recipe.cuisine || recipe.total_time_minutes}

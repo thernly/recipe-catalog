@@ -7,6 +7,7 @@
 		getWeekStart,
 		formatDateISO,
 		getWeekDates,
+		mealName,
 		type MealPlan,
 		type PlannedMeal,
 	} from '#lib/api/meal-plans.js';
@@ -60,12 +61,15 @@
 
 	// Meals unticked under "Meals to shop for" are left off the shopping list
 	// (leftovers, a night out, something already bought). Reset with the week.
+	// Free-text meals ("Leftovers") have no recipe, so nothing to shop for.
 	let skippedMealIds: number[] = [];
-	$: plannedMeals = [...(mealPlan?.planned_meals ?? [])].sort(
-		(a, b) =>
-			a.day_of_week - b.day_of_week ||
-			mealTypes.indexOf(a.meal_type) - mealTypes.indexOf(b.meal_type),
-	);
+	$: plannedMeals = (mealPlan?.planned_meals ?? [])
+		.filter((meal) => meal.recipe_id != null)
+		.sort(
+			(a, b) =>
+				a.day_of_week - b.day_of_week ||
+				mealTypes.indexOf(a.meal_type) - mealTypes.indexOf(b.meal_type),
+		);
 	$: chosenMealIds = plannedMeals
 		.map((meal) => meal.id)
 		.filter((id) => !skippedMealIds.includes(id));
@@ -193,7 +197,10 @@
 			// One at a time: there is no bulk route, and a week is at most a few dozen
 			for (const meal of meals) {
 				await addPlannedMeal(targetId, {
-					recipe_id: meal.recipe_id,
+					// A recipe meal, or a free-text one ("Leftovers")
+					...(meal.recipe_id
+						? { recipe_id: meal.recipe_id }
+						: { title: meal.title ?? '' }),
 					day_of_week: meal.day_of_week,
 					meal_type: meal.meal_type,
 					servings: meal.servings ?? undefined,
@@ -410,7 +417,7 @@
 						on:change={() => toggleMeal(meal.id)}
 					/>
 					{dayNames[meal.day_of_week]}
-					{meal.meal_type}: {meal.recipe_name || `Recipe #${meal.recipe_id}`}
+					{meal.meal_type}: {mealName(meal)}
 				</label>
 			{/each}
 		</details>
@@ -454,7 +461,7 @@
 								on:click={() => openEditDialog(meal)}
 							>
 								<span class="meal-name">
-									{meal.recipe_name || `Recipe #${meal.recipe_id}`}
+									{mealName(meal)}
 								</span>
 								{#if meal.servings}
 									<span class="meal-servings">{meal.servings} servings</span>
