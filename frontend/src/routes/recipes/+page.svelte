@@ -24,6 +24,7 @@
 		UtensilsCrossed,
 		AlertCircle,
 		Loader2,
+		Plus,
 	} from '@lucide/svelte';
 	import {
 		DEFAULT_PAGE,
@@ -237,6 +238,26 @@
 		loadRecipes();
 	}
 
+	// An empty result with any of these set means "nothing matches", not "no recipes yet"
+	$: filtersActive =
+		!!searchParams.query ||
+		selectedCuisines.length > 0 ||
+		selectedCategories.length > 0 ||
+		selectedSourceTypes.length > 0 ||
+		!!maxTime ||
+		!!minTime;
+
+	function clearSearchAndFilters() {
+		searchParams.query = '';
+		searchParams.page = DEFAULT_PAGE;
+		selectedCuisines = [];
+		selectedCategories = [];
+		selectedSourceTypes = [];
+		maxTime = undefined;
+		minTime = undefined;
+		loadRecipes();
+	}
+
 	// Watch for URL changes (e.g., browser back/forward)
 	afterNavigate(({ to }) => {
 		loadSearchParamsFromURL(to?.url ?? new URL(location.href));
@@ -272,7 +293,15 @@
 					My Recipes
 				</h1>
 
-				<div class="flex items-center gap-2">
+				<div class="flex flex-wrap items-center justify-end gap-2">
+					<a
+						href="/recipes/new"
+						class="add-btn flex items-center gap-2"
+						aria-label="Add recipe"
+					>
+						<Plus size={16} aria-hidden="true" />
+						<span>Add Recipe</span>
+					</a>
 					<button
 						on:click={() => goto('/import')}
 						class="import-btn flex items-center gap-2"
@@ -410,6 +439,28 @@
 						<p class="text-sm mb-4" style="color: var(--text-600);">{error}</p>
 						<button on:click={loadRecipes} class="btn btn-primary">
 							Try Again
+						</button>
+					</div>
+				{:else if searchResult && searchResult.recipes.length === 0 && filtersActive}
+					<!-- Nothing matches the search or filters -->
+					<div class="text-center py-16">
+						<div
+							class="flex justify-center mb-4"
+							style="color: var(--text-400);"
+						>
+							<Search size={64} aria-hidden="true" />
+						</div>
+						<h2
+							class="text-2xl font-semibold mb-2"
+							style="color: var(--text-900);"
+						>
+							No recipes match
+						</h2>
+						<p class="text-lg mb-6" style="color: var(--text-600);">
+							Try a different search, or clear the search and filters.
+						</p>
+						<button on:click={clearSearchAndFilters} class="btn btn-primary">
+							Clear search and filters
 						</button>
 					</div>
 				{:else if searchResult && searchResult.recipes.length === 0}
@@ -596,6 +647,16 @@
 	.pagination-btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	.add-btn {
+		padding: 0.5rem 1rem;
+		border-radius: var(--radius-md);
+		background: var(--color-btn-primary-bg);
+		color: var(--color-btn-primary-text);
+		font-size: 0.875rem;
+		font-weight: 600;
+		text-decoration: none;
 	}
 
 	.import-btn {
