@@ -131,7 +131,10 @@
 
 	async function loadShoppingList() {
 		localChanges++;
-		loading = true;
+		// The loading screen is only for a list not yet on screen. A reload after
+		// an add, edit or delete keeps the page, so scroll position and the
+		// phone keyboard survive.
+		loading = shoppingList?.id !== listId;
 		error = null;
 
 		try {

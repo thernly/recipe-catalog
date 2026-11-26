@@ -25,6 +25,7 @@ import {
   getShoppingList,
   updateShoppingList,
   deleteShoppingList,
+  addShoppingListItem,
   updateShoppingListItem,
   getCategories,
 } from "#lib/api/shopping-lists.js";
@@ -262,6 +263,25 @@ describe("shopping list detail page", () => {
 
     expect(getShoppingList).toHaveBeenCalledTimes(2);
     expect(box.checked).toBe(true);
+  });
+
+  it("keeps the list on screen while it reloads after adding an item", async () => {
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: [milk] });
+    vi.mocked(addShoppingListItem).mockResolvedValue({ ...milk, id: 6 });
+    const { findByLabelText, queryByText, getByText } = render(Page, {
+      params: { id: "7" },
+    });
+    const name = (await findByLabelText("Item name")) as HTMLInputElement;
+
+    // The reload after the add never finishes, so the page is caught mid-reload
+    vi.mocked(getShoppingList).mockReturnValue(new Promise(() => {}));
+    await fireEvent.input(name, { target: { value: "eggs" } });
+    await fireEvent.submit(name.closest("form") as HTMLFormElement);
+    await waitFor(() => expect(getShoppingList).toHaveBeenCalledTimes(2));
+
+    expect(queryByText("Loading shopping list...")).toBeNull();
+    expect(getByText("milk")).toBeTruthy();
+    expect(name.isConnected).toBe(true);
   });
 
   it("unarchives an archived list", async () => {
