@@ -27,6 +27,14 @@ export interface Recipe {
   category?: string;
   total_time_minutes?: number;
   creator_display_name?: string | null;
+  rating?: number | null;
+  last_cooked_on?: string | null;
+}
+
+/** Shared by the household: a 1-5 rating and the day last cooked (YYYY-MM-DD). */
+export interface RecipeCooking {
+  rating: number | null;
+  last_cooked_on: string | null;
 }
 
 export interface RecipeSummary {
@@ -44,6 +52,8 @@ export interface RecipeSummary {
   created_at: string;
   creator_display_name?: string | null;
   deleted_at?: string;
+  rating?: number | null;
+  last_cooked_on?: string | null;
 }
 
 export interface RecipeSearchResult {
@@ -163,6 +173,20 @@ export async function restoreRecipe(id: number): Promise<Recipe> {
 export async function duplicateRecipe(id: number): Promise<Recipe> {
   return apiRequest<Recipe>(`/recipes/${id}/duplicate`, {
     method: "POST",
+  });
+}
+
+/**
+ * Set or clear a recipe's rating and/or last-cooked date. Any household member
+ * may; a field left out is not changed.
+ */
+export async function updateCooking(
+  id: number,
+  data: Partial<RecipeCooking>,
+): Promise<RecipeCooking> {
+  return apiRequest<RecipeCooking>(`/recipes/${id}/cooking`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
   });
 }
 

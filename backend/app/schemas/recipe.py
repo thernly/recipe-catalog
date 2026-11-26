@@ -1,7 +1,7 @@
 """Recipe-related Pydantic schemas."""
 
 import html
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -92,10 +92,20 @@ class Recipe(RecipeBase):
     updated_at: datetime
     imported_at: datetime | None = None
     deleted_at: datetime | None = None
+    rating: int | None = None
+    last_cooked_on: date | None = None
     # Creator information for household attribution
     creator_display_name: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class RecipeCooking(BaseModel):
+    """A recipe's household rating and last-cooked date. A field left out of a
+    request is not changed; null clears it."""
+
+    rating: int | None = Field(None, ge=1, le=5)
+    last_cooked_on: date | None = None
 
 
 class RecipeSummary(BaseModel):
@@ -114,6 +124,8 @@ class RecipeSummary(BaseModel):
     source_type: str
     created_at: datetime
     is_modified: bool
+    rating: int | None = None
+    last_cooked_on: date | None = None
     # Creator information for household attribution
     creator_display_name: str | None = None
 

@@ -22,6 +22,7 @@
 	} from '#lib/api/shopping-lists.js';
 	import AddToShoppingListDialog from '#lib/components/AddToShoppingListDialog.svelte';
 	import RecipeNotes from '#lib/components/RecipeNotes.svelte';
+	import RecipeCooking from '#lib/components/recipe/RecipeCooking.svelte';
 	import RecipeCollectionsMenu from '#lib/components/RecipeCollectionsMenu.svelte';
 	import { auth } from '#lib/stores/auth.js';
 	import { favorites } from '#lib/stores/favorites.js';
@@ -528,6 +529,13 @@
 								<span>• Created by {recipe.creator_display_name}</span>
 							{/if}
 						</div>
+						{#if !recipe.deleted_at}
+							<RecipeCooking
+								recipeId={recipe.id}
+								rating={recipe.rating ?? null}
+								lastCookedOn={recipe.last_cooked_on ?? null}
+							/>
+						{/if}
 						{#if !isOwner && $auth.user}
 							<p class="text-sm mt-2 no-print" style="color: var(--text-600);">
 								Only {recipe.creator_display_name || 'the member who added it'} can

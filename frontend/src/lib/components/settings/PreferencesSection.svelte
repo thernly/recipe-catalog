@@ -95,6 +95,8 @@
 				<option value="alphabetical">A-Z</option>
 				<option value="time_asc">Shortest Time</option>
 				<option value="time_desc">Longest Time</option>
+				<option value="recently_cooked">Recently Cooked</option>
+				<option value="rating_desc">Highest Rated</option>
 				<option value="random">Random (a new shuffle each visit)</option>
 			</select>
 			<p id="default-sort-help" class="text-sm" style="color: var(--text-600);">

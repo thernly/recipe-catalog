@@ -4,6 +4,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     Column,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -53,6 +54,11 @@ class Recipe(Base):
     cuisine = Column(String(100), index=True)
     category = Column(String(100), index=True)
     total_time_minutes = Column(Integer, index=True)
+
+    # Shared by the household: any member may set them (see api/recipes/cooking.py).
+    # A date, not a time, so "today" means the cook's own day in every timezone.
+    rating = Column(Integer)  # 1-5, NULL when unrated
+    last_cooked_on = Column(Date)
 
     # Relationships
     owner = relationship("User", back_populates="recipes")

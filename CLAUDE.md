@@ -74,7 +74,7 @@ Getting this wrong either leaks other members' data or hides shared recipes.
 
 Duplicating a recipe (`POST /recipes/{id}/duplicate`) follows both rules at once: the original is read through the household, and the copy is written as the caller's own row. That is how a member gets an editable version of someone else's recipe. Recipe list items carry `user_id` and `creator_display_name` so clients can hide owner-only actions.
 
-**Recipe notes are the deliberate exception** (`app/api/recipes/notes.py`): any household member may add a note to a household recipe, only the note's author may edit it, and the author or the recipe's owner may delete it. The recipe is still loaded through the household first, so other households get 404. Mirror the existing query in `app/api/recipes/search.py` and `app/api/collections.py`.
+**Recipe notes are the deliberate exception** (`app/api/recipes/notes.py`): any household member may add a note to a household recipe, only the note's author may edit it, and the author or the recipe's owner may delete it. The recipe is still loaded through the household first, so other households get 404. A recipe's `rating` (1-5) and `last_cooked_on` date follow the same idea (`app/api/recipes/cooking.py`): they are shared by the household and any member may set them. Mirror the existing query in `app/api/recipes/search.py` and `app/api/collections.py`.
 
 ### Recipe storage model
 
