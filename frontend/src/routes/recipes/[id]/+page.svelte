@@ -8,6 +8,7 @@
 	import { scaleIngredient } from '#lib/utils/scale-ingredient.js';
 	import { loadProgress, saveProgress } from '#lib/utils/cooking-progress.js';
 	import { findDurations } from '#lib/utils/step-timers.js';
+	import { lastRecipeListUrl } from '#lib/utils/recipe-list-url.js';
 	import StepTimer from '#lib/components/recipe/StepTimer.svelte';
 	import {
 		getRecipe,
@@ -232,19 +233,8 @@
 			// Use the explicit return URL (preserves search filters)
 			goto(returnUrl).catch(() => goto('/recipes'));
 		} else {
-			// Fallback: Check if we came from the recipes page by looking at the referrer
-			const referrer = document.referrer;
-			if (
-				referrer &&
-				referrer.includes('/recipes') &&
-				!referrer.includes('/recipes/')
-			) {
-				// Go back to preserve search state
-				window.history.back();
-			} else {
-				// Navigate to recipes page
-				goto('/recipes');
-			}
+			// No returnUrl (for example after Edit and Save): the list as last seen
+			goto(lastRecipeListUrl());
 		}
 	}
 
@@ -260,7 +250,7 @@
 				try {
 					await deleteRecipe(deleteId);
 					toast.success('Recipe deleted successfully');
-					goto('/recipes');
+					goto(lastRecipeListUrl());
 				} catch (err) {
 					toast.error('Failed to delete recipe');
 					console.error('Delete failed:', err);

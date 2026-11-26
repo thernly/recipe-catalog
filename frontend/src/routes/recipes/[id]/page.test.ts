@@ -55,6 +55,18 @@ describe("recipe page", () => {
     vi.mocked(getRecipe).mockResolvedValue(recipe);
     dialog.close();
     localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  // After Edit and Save the page address no longer carries the list's address
+  it("goes back to the list as it was last seen, sort and all", async () => {
+    sessionStorage.setItem("recipes-list-url", "/recipes?sort=alphabetical");
+    const { findAllByRole } = render(Page, { params: { id: "7" } });
+
+    const [back] = await findAllByRole("button", { name: "Back to Recipes" });
+    await fireEvent.click(back);
+
+    expect(goto).toHaveBeenCalledWith("/recipes?sort=alphabetical");
   });
 
   it("shows a group heading as a heading, not a tickable ingredient", async () => {
