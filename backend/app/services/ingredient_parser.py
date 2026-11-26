@@ -288,35 +288,41 @@ def singularize_ingredient(name: str) -> str:
     Returns:
         The singularized ingredient name
     """
-    name_lower = name.lower()
+    # Only the last word is plural: "cherry tomatoes", "bay leaves"
+    last = name.rpartition(" ")[2]
+    prefix = name[: len(name) - len(last)]
+    last_lower = last.lower()
 
-    # Handle common irregular plurals
-    irregular_plurals = {
-        "tomatoes": "tomato",
-        "potatoes": "potato",
-    }
+    if last_lower in _NOT_PLURAL or not last_lower.endswith("s"):
+        return name
+    if last_lower.endswith(("ss", "us", "is")):  # swiss, asparagus, haggis
+        return name
+    if last_lower in _IRREGULAR_PLURALS:
+        return prefix + _IRREGULAR_PLURALS[last_lower]
+    if last_lower.endswith("ies") and len(last_lower) > 3:
+        return name[:-3] + "y"  # berries -> berry
+    if last_lower.endswith(("ches", "shes", "sses", "xes", "oes")):
+        return name[:-2]  # peaches, radishes, glasses, boxes, tomatoes
+    return name[:-1]  # onions, olives, purees
 
-    if name_lower in irregular_plurals:
-        return irregular_plurals[name_lower]
 
-    # Handle regular plurals ending in 's'
-    # Only singularize if it's likely a plural (ends in s but not ss, us, is)
-    if name_lower.endswith("s") and not name_lower.endswith(("ss", "us", "is")):
-        # Handle words ending in 'ies' -> 'y'
-        if name_lower.endswith("ies") and len(name_lower) > 3:
-            return name[:-3] + "y"
-        # Handle words ending in 'es' -> 'e' or just 's'
-        elif name_lower.endswith("es") and len(name_lower) > 2:
-            # For words like "olives" -> "olive", but not "cheese" -> "chees"
-            if name_lower[-3] not in "aeiou":
-                return name[:-1]
-            else:
-                return name[:-2]
-        # Regular plural: just remove 's'
-        else:
-            return name[:-1]
-
-    return name
+# Words ending in "s" that are not plurals, so they are left as written
+_NOT_PLURAL = {"molasses", "oats", "greens", "grits", "bitters", "schnapps"}
+# Plurals the rules in `singularize_ingredient` would get wrong
+_IRREGULAR_PLURALS = {
+    "leaves": "leaf",
+    "loaves": "loaf",
+    "halves": "half",
+    "cookies": "cookie",
+    "brownies": "brownie",
+    "veggies": "veggie",
+    "smoothies": "smoothie",
+    "pies": "pie",
+    "chilies": "chili",
+    "chillies": "chilli",
+    "quiches": "quiche",
+    "brioches": "brioche",
+}
 
 
 def consolidate_ingredients(
