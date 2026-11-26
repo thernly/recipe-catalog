@@ -82,7 +82,7 @@ class ShoppingListItem(ShoppingListItemBase):
         user picks always wins.
         """
         if not self.category:
-            self.category = guess_category(self.item_name)
+            self.category = guess_category(self.item_name, self.unit)
         return self
 
 
