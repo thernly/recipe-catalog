@@ -146,6 +146,7 @@ async def _import_recipes_internal(
     duplicate_handling: Literal["skip", "update", "create"],
     collection: Collection | None,
     db: AsyncSession,
+    skip_household_matches: bool = False,
 ) -> dict[str, Any]:
     """
     Internal helper function to import recipes from data.
@@ -157,6 +158,9 @@ async def _import_recipes_internal(
         duplicate_handling: How to handle duplicates ("skip", "update", or "create")
         collection: Optional collection to add recipes to
         db: Database session
+        skip_household_matches: With "skip", also treat another household member's
+            recipe as the duplicate (restore uses this, so a household backup does
+            not copy housemates' recipes). Never with "update": edits are owner-only.
 
     Returns:
         Dictionary containing import results and statistics. `items` has one entry per
@@ -190,17 +194,21 @@ async def _import_recipes_internal(
     existing_by_name: dict[Any, Recipe] = {}
     existing_by_url: dict[str, Recipe] = {}
     if duplicate_handling in ("skip", "update"):
+        match_household = skip_household_matches and duplicate_handling == "skip"
         rows = await db.execute(
             select(Recipe)
             .where(
-                Recipe.user_id == user_id,
+                Recipe.household_id == household_id
+                if match_household
+                else Recipe.user_id == user_id,
                 Recipe.deleted_at.is_(None),
                 or_(
                     Recipe.name.in_(names),
                     Recipe.source_url.in_(url_keys | {f"{key}/" for key in url_keys}),
                 ),
             )
-            .order_by(Recipe.id)
+            # The importer's own recipe wins over a housemate's with the same name
+            .order_by(Recipe.user_id != user_id, Recipe.id)
         )
         for recipe in rows.scalars():
             existing_by_name.setdefault(recipe.name, recipe)
@@ -481,6 +489,7 @@ async def _restore_backup_recipes(
             duplicate_handling="skip",
             collection=None,
             db=db,
+            skip_household_matches=True,
         )
         for key in ("created", "updated", "skipped", "failed"):
             results[key] += part[key]
