@@ -72,6 +72,46 @@ describe("Auth Store", () => {
     expect(state.isLoading).toBe(false);
   });
 
+  it("words a rate-limited login plainly", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+      json: async () => ({ message: "Rate limit exceeded: 5 per 1 minute" }),
+    });
+
+    await expect(auth.login("test@example.com", "pw")).rejects.toThrow(
+      "Too many attempts. Please wait a minute and try again.",
+    );
+  });
+
+  it("says which field a rejected registration is about", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        error_code: "VALIDATION_ERROR",
+        message: "Request validation failed",
+        details: {
+          errors: [{ loc: ["body", "email"], msg: "not a valid email" }],
+        },
+      }),
+    });
+
+    await expect(auth.register("nope", "pw")).rejects.toThrow(
+      "Email: not a valid email",
+    );
+  });
+
+  it("says the server is unreachable when login cannot connect", async () => {
+    (global.fetch as any).mockRejectedValueOnce(
+      new TypeError("Failed to fetch"),
+    );
+
+    await expect(auth.login("test@example.com", "pw")).rejects.toThrow(
+      "Could not reach the server",
+    );
+  });
+
   it("returns to the current page after a forced logout", async () => {
     (global.fetch as any).mockResolvedValueOnce({ ok: true });
     const location = { pathname: "/recipes/5/edit", search: "?x=1", href: "" };

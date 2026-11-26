@@ -44,17 +44,12 @@ function createAuthStore() {
       update((state) => ({ ...state, isLoading: true }));
 
       try {
-        const response = await fetch(`${API_V1_URL}/auth/login`, {
+        // Through apiRequest so failures get its plain-language wording.
+        await apiRequest("/auth/login", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
-          credentials: FETCH_CREDENTIALS, // Send and receive cookies
+          requireAuth: false,
         });
-
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
-          throw new Error(error.message || error.detail || "Login failed");
-        }
 
         // Login successful - cookies are set automatically
         // Fetch user profile
@@ -83,23 +78,15 @@ function createAuthStore() {
       update((state) => ({ ...state, isLoading: true }));
 
       try {
-        const response = await fetch(`${API_V1_URL}/auth/register`, {
+        await apiRequest("/auth/register", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email,
             password,
             display_name: displayName || null,
           }),
-          credentials: FETCH_CREDENTIALS,
+          requireAuth: false,
         });
-
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
-          throw new Error(
-            error.message || error.detail || "Registration failed",
-          );
-        }
 
         update((state) => ({ ...state, isLoading: false }));
       } catch (error) {
