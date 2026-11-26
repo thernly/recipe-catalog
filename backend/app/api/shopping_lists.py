@@ -230,6 +230,12 @@ def _quantity_str(value: Any) -> str | None:
     return (str(value).strip() or None) if value else None
 
 
+def _for_recipe(recipe: Recipe) -> str:
+    """The note a generated item carries, so the list says what each item is for.
+    ";" is what joins notes, so a name may not contain it."""
+    return f"for {str(recipe.name).replace(';', ',')}"
+
+
 async def add_or_merge_item(
     db: AsyncSession,
     list_id: int,
@@ -278,8 +284,11 @@ async def add_or_merge_item(
                 existing.quantity, existing.unit = format_quantity(total[0]), total[1]
             else:
                 continue
-        if notes and notes not in (existing.notes or "").split("; "):
-            existing.notes = f"{existing.notes}; {notes}" if existing.notes else notes
+        if notes:
+            # `notes` may itself be several ("for Cake; for Omelette"): add the new ones
+            kept = existing.notes.split("; ") if existing.notes else []
+            kept += [note for note in notes.split("; ") if note not in kept]
+            existing.notes = "; ".join(kept)
         existing.category = existing.category or category
         await db.flush()
         return existing
@@ -855,7 +864,7 @@ async def generate_from_recipe(
 
     # Add ingredients as items
     for fields in recipe_shopping_items(recipe.recipe_data or {}, request_data.ingredient_index):
-        await add_or_merge_item(db, shopping_list.id, **fields)
+        await add_or_merge_item(db, shopping_list.id, **fields, notes=_for_recipe(recipe))
 
     await db.commit()
     return await _load_with_items(db, shopping_list.id)
@@ -924,6 +933,8 @@ async def generate_from_meal_plan(
 
     # Collect all ingredients from all recipes as structured data
     ingredients_data: list[dict[str, Any]] = []
+    # Which recipes each ingredient is for, by the key the items are merged on
+    used_for: dict[str, list[str]] = {}
     recipe_result = await db.execute(
         select(Recipe).where(
             Recipe.id.in_([meal.recipe_id for meal in planned_meals]),
@@ -940,6 +951,9 @@ async def generate_from_meal_plan(
             for item in recipe_shopping_items(recipe.recipe_data):
                 # Amounts that are not numbers ("a pinch") cannot be scaled
                 amount = _numeric(item["quantity"])
+                recipes_using = used_for.setdefault(ingredient_key(item["item_name"]), [])
+                if _for_recipe(recipe) not in recipes_using:
+                    recipes_using.append(_for_recipe(recipe))
                 ingredients_data.append(
                     {
                         "name": item["item_name"],
@@ -958,6 +972,7 @@ async def generate_from_meal_plan(
             item_name=str(ingredient["name"])[:255],
             quantity=ingredient["quantity"],
             unit=ingredient["unit"],
+            notes="; ".join(used_for.get(ingredient_key(str(ingredient["name"])), [])) or None,
         )
 
     await db.commit()

@@ -69,7 +69,7 @@ No owner-gating was added, because the API allows household-wide edits (see reco
 - the normalized units are equal (`normalize_unit`; no unit on both sides counts as equal) or belong to one family that `add_amounts` can add: teaspoon/tablespoon/cup, milliliter/liter, gram/kilogram, ounce/pound. The sum is shown in the largest unit that leaves a tidy number (2 tablespoons + 1 teaspoon = 2 1/3 tablespoons; 200 g + 1 kg = 1200 g). Metric and US measures are never mixed, and volume is never converted to weight, and
 - both quantities are numeric (`parse_quantity`: "2", "1/2", "1 1/2", "0.5"; a range counts as its upper bound) and are summed, formatted with `format_quantity` ("6", not "6.0"; "2 1/4"), or both quantities are blank.
 
-Otherwise a separate item is added: units that cannot be added (cups and grams), one quantity blank and the other not, or a non-numeric quantity such as "a pinch". Distinct notes are joined with "; ", and the existing item's name is kept. Checked items are never merged into. Editing an item's quantity or unit (inline on the detail page, through `PATCH /items/{id}`) does not merge.
+Otherwise a separate item is added: units that cannot be added (cups and grams), one quantity blank and the other not, or a non-numeric quantity such as "a pinch". Distinct notes are joined with "; ", and the existing item's name is kept. Items generated from a recipe or a meal plan carry the note "for <recipe name>", so a merged item reads "for Lasagne; for Chili". It is an ordinary note (`PATCH /items/{id}` can change it; the list page shows notes but has no control to edit them). Checked items are never merged into. Editing an item's quantity or unit (inline on the detail page, through `PATCH /items/{id}`) does not merge.
 
 **Other changes.**
 

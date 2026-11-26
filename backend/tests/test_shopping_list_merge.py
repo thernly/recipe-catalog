@@ -186,6 +186,9 @@ async def test_distinct_notes_are_joined(db, shopping_list):
     merged = await _add(db, shopping_list, "onion", "1", notes="sliced")
     assert merged.notes == "diced; sliced"
     assert merged.quantity == "3"
+    # A note that is itself several notes adds only the new ones
+    merged = await _add(db, shopping_list, "onion", "1", notes="sliced; for Soup")
+    assert merged.notes == "diced; sliced; for Soup"
 
 
 # --- API -------------------------------------------------------------------------
@@ -212,7 +215,8 @@ async def test_from_recipe_uses_parsed_fields(client: AsyncClient, auth_headers,
     items = {i["item_name"]: i for i in res.json()["items"]}
     assert set(items) == {"flour", "eggs", "seeds from 1 pod"}
     assert (items["flour"]["quantity"], items["flour"]["unit"]) == ("2", "cup")
-    assert items["flour"]["notes"] is None  # prep notes ("sifted") stay off the list
+    # Only the recipe's name: prep notes ("sifted") stay off the list
+    assert items["flour"]["notes"] == "for Pancakes"
     assert items["eggs"]["quantity"] == "2"  # upper bound of the range
     assert items["seeds from 1 pod"]["quantity"] is None
 
