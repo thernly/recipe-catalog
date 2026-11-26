@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_HOUR: int = 1000
 
     # File Upload
-    MAX_UPLOAD_SIZE_MB: int = 10
+    MAX_UPLOAD_SIZE_MB: int = 50
     ALLOWED_IMAGE_TYPES: str | list[str] = ["image/jpeg", "image/png", "image/webp"]
 
     # PDF / Font configuration

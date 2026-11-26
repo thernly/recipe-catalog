@@ -555,7 +555,7 @@ RATE_LIMIT_PER_MINUTE=60
 RATE_LIMIT_PER_HOUR=1000
 
 # File Upload
-MAX_UPLOAD_SIZE_MB=10
+MAX_UPLOAD_SIZE_MB=50
 ALLOWED_IMAGE_TYPES=image/jpeg,image/png,image/webp
 
 # Logging
@@ -621,7 +621,7 @@ configure_nginx() {
     cat > /etc/nginx/sites-available/recipe-catalog << EOF
 server {
     listen 80;
-    client_max_body_size 10m;
+    client_max_body_size 50m;
     server_name $server_name;
 
     # Frontend static files
