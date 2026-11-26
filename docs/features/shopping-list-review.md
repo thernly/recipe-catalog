@@ -66,10 +66,10 @@ No owner-gating was added, because the API allows household-wide edits (see reco
 **Merge on add.** Every add path goes through `add_or_merge_item` in `app/api/shopping_lists.py`: manual add (`POST /{id}/items`), `from-recipe` and `from-meal-plan` (new list or an existing one via `shopping_list_id`), and the single-ingredient button on the recipe page, which uses `POST /{id}/items`. A new item merges into an existing **unchecked** item on the same list when:
 
 - the names have the same `ingredient_key` (the singular, lowercase base name that `consolidate_ingredients` groups on, so "Tomatoes" matches "tomato" and "garlic, minced" matches "garlic"), and
-- the normalized units are equal (`normalize_unit`; no unit on both sides counts as equal). Units are never converted, and
+- the normalized units are equal (`normalize_unit`; no unit on both sides counts as equal) or belong to one family that `add_amounts` can add: teaspoon/tablespoon/cup, milliliter/liter, gram/kilogram, ounce/pound. The sum is shown in the largest unit that leaves a tidy number (2 tablespoons + 1 teaspoon = 2 1/3 tablespoons; 200 g + 1 kg = 1200 g). Metric and US measures are never mixed, and volume is never converted to weight, and
 - both quantities are numeric (`parse_quantity`: "2", "1/2", "1 1/2", "0.5"; a range counts as its upper bound) and are summed, formatted with `format_quantity` ("6", not "6.0"; "2 1/4"), or both quantities are blank.
 
-Otherwise a separate item is added: different units, one quantity blank and the other not, or a non-numeric quantity such as "a pinch". Distinct notes are joined with "; ", and the existing item's name is kept. Checked items are never merged into. Editing an item's quantity or unit (inline on the detail page, through `PATCH /items/{id}`) does not merge.
+Otherwise a separate item is added: units that cannot be added (cups and grams), one quantity blank and the other not, or a non-numeric quantity such as "a pinch". Distinct notes are joined with "; ", and the existing item's name is kept. Checked items are never merged into. Editing an item's quantity or unit (inline on the detail page, through `PATCH /items/{id}`) does not merge.
 
 **Other changes.**
 

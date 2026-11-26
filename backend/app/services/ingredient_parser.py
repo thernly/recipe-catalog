@@ -395,6 +395,38 @@ def consolidate_ingredients(
     ]
 
 
+# Units that can be added together, each as a multiple of its family's smallest unit.
+# Metric and US measures are never mixed, and volume is never turned into weight.
+_UNIT_FAMILIES: list[dict[str, int]] = [
+    {"teaspoon": 1, "tablespoon": 3, "cup": 48},
+    {"milliliter": 1, "liter": 1000},
+    {"gram": 1, "kilogram": 1000},
+    {"ounce": 1, "pound": 16},
+]
+
+
+def add_amounts(
+    quantity_a: float, unit_a: str | None, quantity_b: float, unit_b: str | None
+) -> tuple[float, str] | None:
+    """
+    The sum of two amounts in units of one family (normalized names), or None when the
+    units cannot be added.
+
+    The sum is given in the largest unit that leaves a tidy number of at least 1
+    (halves, thirds, quarters, eighths): 2 tablespoons + 1 teaspoon -> 2 1/3 tablespoons,
+    200 g + 1 kg -> 1200 g.
+    """
+    for family in _UNIT_FAMILIES:
+        if unit_a in family and unit_b in family:
+            total = quantity_a * family[unit_a] + quantity_b * family[unit_b]
+            for unit, size in sorted(family.items(), key=lambda pair: -pair[1]):
+                value = total / size
+                if value >= 1 and abs(value * 24 - round(value * 24)) < 1e-6:
+                    return value, unit
+            return total, min(family, key=lambda unit: family[unit])
+    return None
+
+
 def ingredient_key(name: str) -> str:
     """The grouping key `consolidate_ingredients` uses: singular, lowercase base name."""
     return singularize_ingredient(get_base_ingredient_name(name)).lower()

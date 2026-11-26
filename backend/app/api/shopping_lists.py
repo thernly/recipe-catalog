@@ -36,6 +36,7 @@ from app.schemas.shopping_list import (
 )
 from app.services.aisles import DEFAULT_CATEGORIES
 from app.services.ingredient_parser import (  # noqa: F401  (re-exported for callers and tests)
+    add_amounts,
     consolidate_ingredients,
     format_quantity,
     get_base_ingredient_name,
@@ -244,10 +245,10 @@ async def add_or_merge_item(
 
     Every add path calls this. Items match on `ingredient_key` (the singular base name
     `consolidate_ingredients` groups on). A blank amount ("salt, to taste") folds into
-    any match; two amounts are summed when the units match and both are numeric,
-    otherwise ("a pinch", cups vs grams) a separate item is added. Units are never
-    converted. Distinct notes
-    are joined with "; ". Checked items are never merged into.
+    any match; two numeric amounts are summed when the units match or belong to one
+    family (`add_amounts`: teaspoons with cups, grams with kilograms), otherwise ("a
+    pinch", cups vs grams) a separate item is added. Distinct notes are joined with
+    "; ". Checked items are never merged into.
     """
     unit = normalize_unit(unit)
     quantity = (quantity or "").strip() or None
@@ -266,13 +267,17 @@ async def add_or_merge_item(
             # "salt, to taste" adds no amount: fold it into the same item either way
             if not old_quantity and quantity:
                 existing.quantity, existing.unit = quantity, unit
-        elif normalize_unit(existing.unit) != unit:
-            continue
         else:
             old_value, new_value = _numeric(old_quantity), _numeric(quantity)
             if old_value is None or new_value is None:
                 continue
-            existing.quantity = format_quantity(old_value + new_value)
+            old_unit = normalize_unit(existing.unit)
+            if old_unit == unit:
+                existing.quantity = format_quantity(old_value + new_value)
+            elif total := add_amounts(old_value, old_unit, new_value, unit):
+                existing.quantity, existing.unit = format_quantity(total[0]), total[1]
+            else:
+                continue
         if notes and notes not in (existing.notes or "").split("; "):
             existing.notes = f"{existing.notes}; {notes}" if existing.notes else notes
         existing.category = existing.category or category

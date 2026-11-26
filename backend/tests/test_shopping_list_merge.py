@@ -2,6 +2,7 @@
 
 from datetime import date
 
+import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,6 +89,33 @@ async def test_different_unit_adds_separate(db, shopping_list):
     await _add(db, shopping_list, "flour", "2", "cup")
     await _add(db, shopping_list, "flour", "100", "g")
     assert len(await _items(db, shopping_list)) == 2
+
+
+@pytest.mark.parametrize(
+    ("first", "second", "total"),
+    [
+        (("2", "tablespoon"), ("1", "tsp"), ("2 1/3", "tablespoon")),
+        (("1", "cup"), ("2", "tablespoons"), ("1 1/8", "cup")),
+        (("1/4", "cup"), ("1", "teaspoon"), ("4 1/3", "tablespoon")),
+        (("1", "teaspoon"), ("1", "teaspoon"), ("2", "teaspoon")),  # same unit: not regrouped
+        (("500", "g"), ("1", "kg"), ("1 1/2", "kilogram")),
+        (("200", "g"), ("1", "kg"), ("1200", "gram")),  # no tidy fraction of a kilogram
+        (("750", "ml"), ("1", "l"), ("1 3/4", "liter")),
+        (("8", "oz"), ("1", "lb"), ("1 1/2", "pound")),
+    ],
+)
+async def test_related_units_are_added_together(db, shopping_list, first, second, total):
+    await _add(db, shopping_list, "sugar", *first)
+    merged = await _add(db, shopping_list, "sugar", *second)
+    assert len(await _items(db, shopping_list)) == 1
+    assert (merged.quantity, merged.unit) == total
+
+
+async def test_metric_and_us_measures_stay_separate(db, shopping_list):
+    await _add(db, shopping_list, "milk", "1", "cup")
+    await _add(db, shopping_list, "milk", "250", "ml")
+    await _add(db, shopping_list, "milk", "8", "oz")
+    assert len(await _items(db, shopping_list)) == 3
 
 
 async def test_no_unit_on_either_side_merges(db, shopping_list):
