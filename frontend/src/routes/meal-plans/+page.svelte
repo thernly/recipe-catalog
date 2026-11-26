@@ -18,6 +18,11 @@
 	import AddMealDialog from './AddMealDialog.svelte';
 	import EditMealDialog from './EditMealDialog.svelte';
 	import { toast } from '#lib/stores/toast.js';
+	import { dialog } from '#lib/stores/dialog.js';
+	import {
+		rememberAddedToList,
+		wasAddedToList,
+	} from '#lib/utils/added-weeks.js';
 
 	let mealPlan: MealPlan | null = null;
 	let loading = true;
@@ -37,14 +42,28 @@
 	let creatingBlankList = false;
 	let showAddToListDialog = false;
 
-	async function handleAddToExistingList(listId: number | null) {
+	// Adding a week to a list it is already on doubles every amount, so ask first
+	function handleAddToExistingList(listId: number | null) {
 		if (!mealPlan || !listId) return;
+		if (!wasAddedToList(mealPlan.id, listId)) return addToList(listId);
+		showAddToListDialog = false;
+		dialog.show({
+			title: 'Add This Week Again?',
+			message:
+				'This week has already been added to that list. Adding it again will double the amounts.',
+			onConfirm: () => addToList(listId),
+		});
+	}
+
+	async function addToList(listId: number) {
+		if (!mealPlan) return;
 		generatingShoppingList = true;
 		try {
 			await generateFromMealPlan({
 				meal_plan_id: mealPlan.id,
 				shopping_list_id: listId,
 			});
+			rememberAddedToList(mealPlan.id, listId);
 			setLastShoppingListId(listId);
 			showAddToListDialog = false;
 			toast.success('Meal plan ingredients added to your shopping list');
@@ -179,6 +198,7 @@
 				meal_plan_id: mealPlan.id,
 				list_name: `Shopping list for week of ${formatDate(weekDates[0])}`,
 			});
+			rememberAddedToList(mealPlan.id, newList.id);
 			goto(`/shopping-lists/${newList.id}`);
 		} catch (err) {
 			error =

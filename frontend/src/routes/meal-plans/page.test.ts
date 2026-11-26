@@ -14,9 +14,16 @@ vi.mock("#lib/api/recipes.js", async (importOriginal) => ({
   searchRecipes: vi.fn(),
 }));
 
+vi.mock("#lib/api/shopping-lists.js", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  generateFromMealPlan: vi.fn(),
+}));
+
 import Page from "./+page.svelte";
 import { getCurrentWeekMealPlan } from "#lib/api/meal-plans.js";
 import { searchRecipes } from "#lib/api/recipes.js";
+import { generateFromMealPlan } from "#lib/api/shopping-lists.js";
+import { wasAddedToList } from "#lib/utils/added-weeks.js";
 
 const plan = {
   id: 1,
@@ -61,6 +68,20 @@ describe("meal planner page", () => {
 
     expect(queryByText("Loading meal plan...")).toBeNull();
     expect(getByText("Lasagne")).toBeTruthy();
+  });
+
+  it("remembers which list a week was generated into", async () => {
+    localStorage.clear();
+    vi.mocked(generateFromMealPlan).mockResolvedValue({
+      id: 31,
+    } as Awaited<ReturnType<typeof generateFromMealPlan>>);
+    const { findByRole } = render(Page);
+
+    await fireEvent.click(
+      await findByRole("button", { name: /Generate Shopping List/ }),
+    );
+
+    await waitFor(() => expect(wasAddedToList(plan.id, 31)).toBe(true));
   });
 
   it("shows the loading message while another week loads", async () => {
