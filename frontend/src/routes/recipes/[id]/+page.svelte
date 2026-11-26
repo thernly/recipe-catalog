@@ -6,6 +6,8 @@
 	import { safeHttpUrl } from '#lib/utils/urls.js';
 	import { scaleIngredient } from '#lib/utils/scale-ingredient.js';
 	import { loadProgress, saveProgress } from '#lib/utils/cooking-progress.js';
+	import { findDurations } from '#lib/utils/step-timers.js';
+	import StepTimer from '#lib/components/recipe/StepTimer.svelte';
 	import {
 		getRecipe,
 		deleteRecipe,
@@ -800,12 +802,19 @@
 											{index + 1}
 										{/if}
 									</button>
-									<p
-										class="step-text"
-										class:completed={completedSteps.has(index)}
-									>
-										{instruction}
-									</p>
+									<div class="step-body">
+										<p
+											class="step-text"
+											class:completed={completedSteps.has(index)}
+										>
+											{instruction}
+										</p>
+										{#each findDurations(instruction) as duration, i (i)}
+											<span class="step-timer no-print">
+												<StepTimer seconds={duration.seconds} label={duration.label} step={index + 1} />
+											</span>
+										{/each}
+									</div>
 								</li>
 							{/each}
 						</ol>
@@ -1452,8 +1461,16 @@
 		}
 	}
 
-	.step-text {
+	.step-body {
 		flex: 1;
+	}
+
+	.step-timer {
+		display: inline-block;
+		margin: 0.5rem 0.5rem 0 0;
+	}
+
+	.step-text {
 		font-size: 1.125rem;
 		line-height: 1.7;
 		color: var(--text-700);
