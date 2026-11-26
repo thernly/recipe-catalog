@@ -45,6 +45,7 @@ from app.services.ingredient_parser import (  # noqa: F401  (re-exported for cal
     parse_quantity,
     singularize_ingredient,
 )
+from app.services.recipe_cleanup import normalize_yield
 
 
 router = APIRouter()
@@ -190,6 +191,29 @@ def recipe_shopping_items(
                     {"item_name": item_name[:255], "quantity": alt_quantity, "unit": alt_unit}
                 )
     return items
+
+
+# A yield counted in servings: "4", "4 servings", "Serves 4", "4-6 servings" (the lower
+# bound, so a range never under-buys). "1 loaf" and "12 cookies" do not match.
+_SERVINGS_YIELD = re.compile(
+    r"^\s*(?:serves|servings:?)?\s*(\d+(?:\.\d+)?)(?:\s*(?:-|–|to)\s*\d+(?:\.\d+)?)?"
+    r"\s*(?:servings?|portions?|people|persons?)?\s*$",
+    re.IGNORECASE,
+)
+
+
+def servings_factor(recipe_data: dict[str, Any], servings: int | None) -> float:
+    """
+    How much to multiply a recipe's amounts by to make `servings` servings.
+
+    1 (as written) when no servings are planned or the recipe's yield is not a number
+    of servings.
+    """
+    if not servings:
+        return 1.0
+    match = _SERVINGS_YIELD.match(str(normalize_yield(recipe_data.get("recipeYield")) or ""))
+    recipe_servings = float(match.group(1)) if match else 0.0
+    return servings / recipe_servings if recipe_servings else 1.0
 
 
 def _numeric(quantity: str | None) -> float | None:
@@ -861,7 +885,9 @@ async def generate_from_meal_plan(
         db: Database session
 
     Returns:
-        ShoppingList: The created shopping list with aggregated items
+        ShoppingList: The created shopping list with aggregated items. A meal with
+        planned servings has its amounts scaled from the recipe's yield (see
+        `servings_factor`).
     """
     # Get meal plan
     result = await db.execute(
@@ -917,10 +943,17 @@ async def generate_from_meal_plan(
         recipe = recipes_by_id.get(planned_meal.recipe_id)
 
         if recipe and recipe.recipe_data:
-            ingredients_data.extend(
-                {"name": item["item_name"], "quantity": item["quantity"], "unit": item["unit"]}
-                for item in recipe_shopping_items(recipe.recipe_data)
-            )
+            factor = servings_factor(recipe.recipe_data, planned_meal.servings)
+            for item in recipe_shopping_items(recipe.recipe_data):
+                # Amounts that are not numbers ("a pinch") cannot be scaled
+                amount = _numeric(item["quantity"])
+                ingredients_data.append(
+                    {
+                        "name": item["item_name"],
+                        "quantity": amount * factor if amount else item["quantity"],
+                        "unit": item["unit"],
+                    }
+                )
 
     # Consolidate ingredients by name and unit, summing quantities
     consolidated_ingredients = consolidate_ingredients(ingredients_data)
