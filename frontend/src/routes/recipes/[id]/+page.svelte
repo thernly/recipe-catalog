@@ -621,7 +621,12 @@
 							{#each recipe.recipe_data.keywords
 								.split(',')
 								.slice(0, 5) as keyword, i (i)}
-								<span class="tag tag-outline">{keyword.trim()}</span>
+								<!-- Search matches keywords, so a tag lists the other recipes that share it -->
+								<a
+									class="tag tag-outline no-underline"
+									href="/recipes?q={encodeURIComponent(keyword.trim())}"
+									>{keyword.trim()}</a
+								>
 							{/each}
 						{/if}
 					</div>
