@@ -159,6 +159,22 @@ async def test_search_recipes_with_results(client: AsyncClient, auth_headers: di
 
 
 @pytest.mark.asyncio
+async def test_shortest_time_lists_recipes_without_a_time_last(
+    client: AsyncClient, auth_headers: dict
+):
+    for name, minutes in [("No time", None), ("Slow", 90), ("Quick", 10)]:
+        recipe = {"name": name, "recipe_data": {}, "total_time_minutes": minutes}
+        created = await client.post("/api/v1/recipes/", json=recipe, headers=auth_headers)
+        assert created.status_code == 201
+
+    response = await client.get(
+        "/api/v1/recipes/search", params={"sort_by": "time_asc"}, headers=auth_headers
+    )
+
+    assert [r["name"] for r in response.json()["recipes"]] == ["Quick", "Slow", "No time"]
+
+
+@pytest.mark.asyncio
 async def test_search_recipes_by_cuisine(client: AsyncClient, auth_headers: dict):
     """Test filtering recipes by cuisine."""
     # Create recipes with different cuisines
