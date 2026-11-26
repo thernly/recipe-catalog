@@ -62,6 +62,34 @@ def test_guess_category(name, category):
     assert guess_category(name) == category
 
 
+@pytest.mark.parametrize(
+    ("name", "unit", "category"),
+    [
+        ("tomato", "can", "Canned & Jarred"),
+        ("kidney bean", "can", "Canned & Jarred"),
+        ("sardine", "Tins", "Canned & Jarred"),  # unknown name, plural, capitalised
+        ("tomato", None, "Produce"),
+        ("tomato", "gram", "Produce"),
+        ("beer", "can", "Drinks"),
+        ("honey", "jar", "Oils & Condiments"),
+    ],
+)
+def test_an_amount_in_cans_is_canned(name, unit, category):
+    assert guess_category(name, unit) == category
+
+
+async def test_a_listed_item_counted_in_cans_is_shown_as_canned(client, test_user_headers):
+    created = await client.post(
+        "/api/v1/shopping-lists/", json={"name": "Weekly"}, headers=test_user_headers
+    )
+    added = await client.post(
+        f"/api/v1/shopping-lists/{created.json()['id']}/items",
+        json={"item_name": "tomato", "quantity": "3", "unit": "can"},
+        headers=test_user_headers,
+    )
+    assert added.json()["category"] == "Canned & Jarred"
+
+
 def test_every_guess_is_a_default_category():
     assert set(_WORD_CATEGORY.values()) | set(_PHRASE_CATEGORY.values()) <= set(DEFAULT_CATEGORIES)
 

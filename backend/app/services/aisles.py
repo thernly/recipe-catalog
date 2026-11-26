@@ -85,7 +85,7 @@ _PHRASE_CATEGORY = {
 _WORD_CATEGORY = {word: category for category, text in _WORDS.items() for word in text.split()}
 
 
-def guess_category(item_name: str) -> str | None:
+def guess_category(item_name: str, unit: str | None = None) -> str | None:
     """
     The store category for an item name, or None when no word is recognised.
 
@@ -93,7 +93,20 @@ def guess_category(item_name: str) -> str | None:
     known phrase, then single words from the last one back, because the last word
     usually names the thing: "chicken stock" is stock, "cherry tomatoes" are tomatoes.
     Anything else dried is a dry good: "dried apricots" are not produce.
+
+    An amount counted in cans or tins is canned too ("3 cans tomato"), unless it is
+    a drink. Jars are left to the name: a jar of honey is a condiment.
     """
+    category = _guess_from_name(item_name)
+    if (unit or "").strip().lower() in _CAN_UNITS and category not in ("Frozen", "Drinks"):
+        return "Canned & Jarred"
+    return category
+
+
+_CAN_UNITS = {"can", "cans", "tin", "tins"}
+
+
+def _guess_from_name(item_name: str) -> str | None:
     words = [singularize_ingredient(word) for word in re.findall(r"[a-zà-ÿ]+", item_name.lower())]
     if "frozen" in words:
         return "Frozen"
