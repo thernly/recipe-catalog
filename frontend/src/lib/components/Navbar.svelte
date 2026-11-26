@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { auth } from '#lib/stores/auth.js';
+	import { theme } from '#lib/stores/theme.js';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -9,6 +10,9 @@
 		UtensilsCrossed,
 		Leaf,
 		Wine,
+		Moon,
+		Contrast,
+		Monitor,
 		Sparkles,
 		Menu,
 		X,
@@ -29,7 +33,23 @@
 	}
 
 	let user: User | null = null;
-	let currentTheme: Theme = 'garden-fresh';
+
+	// The button steps through every theme Settings offers, so pressing it never
+	// lands on a different theme than the one it names. The store applies the
+	// theme (including "system", which is not a theme of its own).
+	const THEMES = [
+		{ id: 'garden-fresh', name: 'Garden Fresh', icon: Leaf },
+		{ id: 'bistro', name: 'Bistro', icon: Wine },
+		{ id: 'dark', name: 'Dark', icon: Moon },
+		{ id: 'high-contrast', name: 'High Contrast', icon: Contrast },
+		{ id: 'system', name: 'System', icon: Monitor },
+	];
+	$: themeIndex = Math.max(
+		0,
+		THEMES.findIndex((option) => option.id === $theme),
+	);
+	$: currentTheme = THEMES[themeIndex];
+	$: nextTheme = THEMES[(themeIndex + 1) % THEMES.length];
 
 	// Narrow screens: the links live in a menu, closed again after each navigation
 	let menuOpen = false;
@@ -44,10 +64,7 @@
 
 		// Load current theme from user preferences
 		getPreferences()
-			.then((prefs) => {
-				currentTheme = prefs.theme;
-				document.documentElement.setAttribute('data-theme', currentTheme);
-			})
+			.then((prefs) => theme.set(prefs.theme))
 			.catch((err) => {
 				logger.warn('Could not load theme preferences, using default', err);
 			});
@@ -61,14 +78,12 @@
 	}
 
 	async function toggleTheme() {
-		const newTheme =
-			currentTheme === 'garden-fresh' ? 'bistro' : 'garden-fresh';
-		currentTheme = newTheme as Theme;
-		document.documentElement.setAttribute('data-theme', newTheme);
+		const newTheme = nextTheme.id as Theme;
+		theme.set(newTheme);
 
 		// Save theme preference to backend
 		try {
-			await updatePreferences({ theme: newTheme as Theme });
+			await updatePreferences({ theme: newTheme });
 		} catch (err) {
 			handleError(err, 'Failed to save theme preference');
 		}
@@ -148,6 +163,14 @@
 				Shopping Lists
 			</a>
 			<a
+				href="/import"
+				class="nav-link"
+				class:active={isActive('/import')}
+				aria-current={current('/import')}
+			>
+				Import
+			</a>
+			<a
 				href="/export"
 				class="nav-link"
 				class:active={isActive('/export')}
@@ -170,18 +193,10 @@
 		<button
 			on:click={toggleTheme}
 			class="theme-toggle"
-			aria-label={currentTheme === 'garden-fresh'
-				? 'Switch to Bistro theme'
-				: 'Switch to Garden Fresh theme'}
-			title={currentTheme === 'garden-fresh'
-				? 'Garden Fresh theme'
-				: 'Bistro theme'}
+			aria-label="Switch to {nextTheme.name} theme"
+			title="{currentTheme.name} theme"
 		>
-			{#if currentTheme === 'garden-fresh'}
-				<Leaf size={22} aria-hidden="true" />
-			{:else}
-				<Wine size={22} aria-hidden="true" />
-			{/if}
+			<svelte:component this={currentTheme.icon} size={22} aria-hidden="true" />
 		</button>
 		{#if user}
 			<span class="user-email text-base">{user.email}</span>
@@ -228,16 +243,17 @@
 		white-space: nowrap;
 	}
 
-	/* Measured in the browser: logo and links take about 1030px and the theme and
-	   Logout buttons about 140px, so one row needs roughly 1220px without the
-	   email and 1450px with it. */
-	@media (max-width: 1500px) {
+	/* Measured in the browser before the Import link was added: logo and links
+	   took about 1030px and the theme and Logout buttons about 140px, so one row
+	   needed roughly 1220px without the email and 1450px with it. Both
+	   breakpoints were then raised by 100px for Import (not re-measured). */
+	@media (max-width: 1600px) {
 		.user-email {
 			display: none;
 		}
 	}
 
-	@media (max-width: 1280px) {
+	@media (max-width: 1380px) {
 		.navbar {
 			padding: 0 0.75rem;
 		}

@@ -561,7 +561,10 @@
 					>
 						Get Recipe Siphon
 					</a>, then create a token for it under
-					<a href="/settings" class="text-primary-600 hover:underline">
+					<a
+						href="/settings#api-tokens"
+						class="text-primary-600 hover:underline"
+					>
 						Settings → API Tokens
 					</a>.
 				</p>

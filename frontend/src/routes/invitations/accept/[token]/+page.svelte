@@ -57,7 +57,7 @@
 
 		try {
 			await acceptInvitation({ token });
-			goto('/settings?section=household&message=joined');
+			goto('/settings#household');
 		} catch (err) {
 			console.error('Failed to accept invitation:', err);
 			actionError =
