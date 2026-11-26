@@ -10,12 +10,16 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_user_household
 from app.models.collection import Collection, RecipeCollection
+from app.models.household import Household
+from app.models.meal_plan import MealPlan
 from app.models.recipe import Recipe
 from app.models.recipe_note import load_recipe_notes
+from app.models.shopping_list import ShoppingList
 from app.models.user import User, UserPreferences
 from app.services.recipe_export import cooking_note_lines
 from app.utils.recipe_format import convert_to_schema_org, notes_to_schema
@@ -445,10 +449,15 @@ async def export_collections(
 @router.get("/all")
 async def export_all_data(
     current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Export all user data (recipes, collections, preferences) as JSON.
+    Export a Complete Backup as JSON: the user's recipes, collections and preferences,
+    plus the household's meal plans and shopping lists.
+
+    `POST /import/backup` restores it. Recipe ids in `collections[].recipe_ids` and
+    `meal_plans[].meals[].recipe_id` refer to `recipes[].id` in the same file.
     """
     # Fetch recipes
     recipe_result = await db.execute(
@@ -530,10 +539,60 @@ async def export_all_data(
                 "id": collection.id,
                 "name": collection.name,
                 "description": collection.description,
+                "icon": collection.icon,
                 "created_at": collection.created_at.isoformat() if collection.created_at else None,
                 "recipe_ids": [r.id for r in coll_recipes],
             }
         )
+
+    # Meal plans and shopping lists belong to the household, not to one member
+    plans = await db.execute(
+        select(MealPlan)
+        .where(MealPlan.household_id == household.id)
+        .order_by(MealPlan.week_start_date)
+        .options(selectinload(MealPlan.planned_meals))
+    )
+    export_data["meal_plans"] = [
+        {
+            "week_start_date": plan.week_start_date.isoformat(),
+            "meals": [
+                {
+                    "recipe_id": meal.recipe_id,
+                    "day_of_week": meal.day_of_week,
+                    "meal_type": meal.meal_type,
+                    "servings": meal.servings,
+                    "notes": meal.notes,
+                }
+                for meal in sorted(plan.planned_meals, key=lambda m: (m.day_of_week, m.id))
+            ],
+        }
+        for plan in plans.scalars()
+    ]
+    lists = await db.execute(
+        select(ShoppingList)
+        .where(ShoppingList.household_id == household.id)
+        .order_by(ShoppingList.id)
+        .options(selectinload(ShoppingList.items))
+    )
+    export_data["shopping_lists"] = [
+        {
+            "name": shopping_list.name,
+            "description": shopping_list.description,
+            "status": shopping_list.status,
+            "items": [
+                {
+                    "item_name": item.item_name,
+                    "quantity": item.quantity,
+                    "unit": item.unit,
+                    "category": item.category,
+                    "notes": item.notes,
+                    "checked": item.checked,
+                }
+                for item in sorted(shopping_list.items, key=lambda i: (i.display_order, i.id))
+            ],
+        }
+        for shopping_list in lists.scalars()
+    ]
 
     return Response(
         content=json.dumps(export_data, indent=2),

@@ -145,6 +145,26 @@ Response (`200`, also for partial failure):
 `POST /api/v1/import/recipes` (multipart `file`, with `duplicate_handling` and
 `collection_id` as form fields), accepts a single object or an array.
 
+### Complete Backup and restore
+
+`GET /api/v1/export/all` downloads a Complete Backup: the recipes and collections you
+own (with notes and collection membership), plus the household's meal plans and
+shopping lists. Trashed recipes and other members' recipes are not included.
+
+`POST /api/v1/import/backup` (multipart `file`, form field `scope`) restores one.
+`scope` is `everything` (default) or `recipes`. Restore only adds:
+
+- **Recipes** go through the same import as above with `skip`, so one that matches by
+  web address or name is left as it is.
+- **Collections** match by name; missing ones are created and missing recipes added.
+- **Meal plans** match by week; a meal is added unless the same recipe is already in
+  that day and slot. A meal whose recipe is not in the file is skipped.
+- **Shopping lists** match by name; a list that exists is left alone.
+
+The response is the import response above plus `restored`, the counts for the other
+sections (`null` when `scope=recipes`). The file is subject to `MAX_UPLOAD_SIZE_MB`
+(10 MB by default), which a library with embedded photos can exceed.
+
 ---
 
 ## Recipe notes (cookie session)

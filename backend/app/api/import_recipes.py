@@ -4,7 +4,8 @@ Allows users to import recipes from JSON files in Schema.org format
 """
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from types import SimpleNamespace
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -21,12 +22,14 @@ from app.core.logging import get_logger
 from app.models._utils import ensure_utc, utc_now
 from app.models.collection import Collection, RecipeCollection
 from app.models.household import Household
+from app.models.meal_plan import MealPlan, PlannedMeal
 from app.models.recipe import Recipe
 from app.models.recipe_note import RecipeNote, note_author_name
+from app.models.shopping_list import ShoppingList, ShoppingListItem
 from app.models.user import User
 from app.services.recipe_cleanup import clean_recipe_data, derive_total_time_minutes
 from app.utils.file_validation import validate_file_size
-from app.utils.recipe_format import convert_from_schema_org, plain_text
+from app.utils.recipe_format import convert_from_schema_org, convert_to_schema_org, plain_text
 from app.utils.urls import safe_http_url
 
 
@@ -408,6 +411,326 @@ async def import_recipes(
         "success": True,
         "message": f"Imported {results['created']} new recipes, updated {results['updated']}, skipped {results['skipped']}, failed {results['failed']}",
         "details": results,
+    }
+
+
+# ============================================
+# Restoring a Complete Backup (`GET /export/all`)
+#
+# Restore only adds: whatever already exists is kept as it is, so restoring the same
+# file twice changes nothing. The file is untrusted input; entries of the wrong shape
+# are left out rather than failing the restore.
+# ============================================
+
+_BACKUP_RECIPE_FIELDS = ("name", "description", "image_url", "source_url", "cuisine", "category")
+_MEAL_TYPES = {"breakfast", "lunch", "dinner", "snack", "other"}
+_SOURCE_TYPES = {"imported", "manual", "ai-generated"}
+_IMPORT_BATCH = 500  # the importer's own limit per call
+_TEXT_LIMIT = 10_000  # for unbounded Text columns
+
+
+def _text(value: Any, limit: int = _TEXT_LIMIT) -> str | None:
+    """A backup's text field cut to its column size; None when blank or not text."""
+    return value[:limit] or None if isinstance(value, str) else None
+
+
+def _dicts(value: Any) -> list[dict[str, Any]]:
+    """The objects in a backup's list; anything else in it is dropped."""
+    return [entry for entry in value if isinstance(entry, dict)] if isinstance(value, list) else []
+
+
+async def _restore_backup_recipes(
+    entries: list[Any], user_id: int, household_id: int, db: AsyncSession
+) -> tuple[dict[str, Any], dict[int, int]]:
+    """
+    Add the backup's recipes that are not already there.
+
+    Each one goes through the ordinary importer (so `clean_recipe_data` runs and
+    duplicates are matched the same way). Returns the importer's results and a map from
+    each recipe's id in the file to its id here, for existing and new recipes alike.
+    """
+    schema_recipes: list[dict[str, Any]] = []
+    for entry in entries:
+        recipe_data = entry.get("recipe_data") or {} if isinstance(entry, dict) else None
+        if not isinstance(recipe_data, dict):
+            schema_recipes.append({})  # the importer reports it as failed
+            continue
+        stored = SimpleNamespace(
+            **{field: entry.get(field) for field in _BACKUP_RECIPE_FIELDS},
+            recipe_data=recipe_data,
+            created_at=None,
+        )
+        schema = await convert_to_schema_org(stored, fetch_images=False)
+        schema["comment"] = entry.get("comment")
+        schema_recipes.append(schema)
+
+    results: dict[str, Any] = {
+        "total": len(entries),
+        "created": 0,
+        "updated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": [],
+        "items": [],
+    }
+    for start in range(0, len(schema_recipes), _IMPORT_BATCH):
+        part = await _import_recipes_internal(
+            recipes_data=schema_recipes[start : start + _IMPORT_BATCH],
+            user_id=user_id,
+            household_id=household_id,
+            duplicate_handling="skip",
+            collection=None,
+            db=db,
+        )
+        for key in ("created", "updated", "skipped", "failed"):
+            results[key] += part[key]
+        for row in (*part["errors"], *part["items"]):
+            row["index"] += start
+        results["errors"] += part["errors"]
+        results["items"] += part["items"]
+
+    id_map: dict[int, int] = {}
+    source_types: dict[int, str] = {}
+    for item in results["items"]:
+        entry = entries[item["index"]]
+        if isinstance(entry.get("id"), int):
+            id_map[entry["id"]] = item["recipe_id"]
+        if item["status"] == "created" and entry.get("source_type") in _SOURCE_TYPES - {"imported"}:
+            source_types[item["recipe_id"]] = entry["source_type"]
+    # The importer marks everything "imported"; put back how each recipe was made
+    if source_types:
+        rows = await db.execute(select(Recipe).where(Recipe.id.in_(source_types)))
+        for recipe in rows.scalars():
+            recipe.source_type = source_types[recipe.id]
+            recipe.imported_at = None
+    return results, id_map
+
+
+async def _restore_backup_extras(
+    data: dict[str, Any], id_map: dict[int, int], user_id: int, household_id: int, db: AsyncSession
+) -> dict[str, int]:
+    """Add the backup's collections, meal plans and shopping lists that are missing."""
+    counts = dict.fromkeys(
+        (
+            "collections",
+            "collection_recipes",
+            "meal_plans",
+            "planned_meals",
+            "planned_meals_skipped",
+            "shopping_lists",
+            "shopping_lists_skipped",
+        ),
+        0,
+    )
+
+    def new_id(old_id: Any) -> int | None:
+        return id_map.get(old_id) if isinstance(old_id, int) else None
+
+    # Collections match by name; recipes missing from one are added to it
+    rows = await db.execute(
+        select(Collection).where(Collection.user_id == user_id).order_by(Collection.id)
+    )
+    collections: dict[str, Collection] = {}
+    for existing in rows.scalars():
+        collections.setdefault(existing.name, existing)
+    for entry in _dicts(data.get("collections")):
+        name = _text(entry.get("name"), 100)
+        if not name:
+            continue
+        collection = collections.get(name)
+        if not collection:
+            collection = Collection(
+                user_id=user_id,
+                household_id=household_id,
+                name=name,
+                description=_text(entry.get("description")),
+                icon=_text(entry.get("icon"), 50),
+                is_default=False,
+            )
+            db.add(collection)
+            await db.flush()
+            collections[name] = collection
+            counts["collections"] += 1
+        linked = set(
+            (
+                await db.execute(
+                    select(RecipeCollection.recipe_id).where(
+                        RecipeCollection.collection_id == collection.id
+                    )
+                )
+            ).scalars()
+        )
+        recipe_ids = entry.get("recipe_ids")
+        for old_id in recipe_ids if isinstance(recipe_ids, list) else []:
+            recipe_id = new_id(old_id)
+            if recipe_id and recipe_id not in linked:
+                db.add(RecipeCollection(recipe_id=recipe_id, collection_id=collection.id))
+                linked.add(recipe_id)
+                counts["collection_recipes"] += 1
+
+    # Meal plans match by week; a meal is added unless the same recipe is already in
+    # that day and slot. A meal whose recipe is not in the file (another member's
+    # recipe) cannot be restored.
+    for entry in _dicts(data.get("meal_plans")):
+        try:
+            week = date.fromisoformat(entry.get("week_start_date"))
+        except (TypeError, ValueError):
+            continue
+        plan = (
+            await db.execute(
+                select(MealPlan).where(
+                    MealPlan.household_id == household_id, MealPlan.week_start_date == week
+                )
+            )
+        ).scalar_one_or_none()
+        planned: set[tuple[Any, ...]] = set()
+        if plan:
+            meal_rows = await db.execute(
+                select(PlannedMeal).where(PlannedMeal.meal_plan_id == plan.id)
+            )
+            planned = {(m.day_of_week, m.meal_type, m.recipe_id) for m in meal_rows.scalars()}
+        for meal in _dicts(entry.get("meals")):
+            day, meal_type, servings = (
+                meal.get("day_of_week"),
+                meal.get("meal_type"),
+                meal.get("servings"),
+            )
+            recipe_id = new_id(meal.get("recipe_id"))
+            if (
+                recipe_id is None
+                or not (isinstance(day, int) and 0 <= day <= 6)
+                or not (isinstance(meal_type, str) and meal_type in _MEAL_TYPES)
+            ):
+                counts["planned_meals_skipped"] += 1
+                continue
+            if (day, meal_type, recipe_id) in planned:
+                continue
+            if not plan:
+                plan = MealPlan(
+                    household_id=household_id, week_start_date=week, created_by_user_id=user_id
+                )
+                db.add(plan)
+                await db.flush()
+                counts["meal_plans"] += 1
+            db.add(
+                PlannedMeal(
+                    meal_plan_id=plan.id,
+                    recipe_id=recipe_id,
+                    created_by_user_id=user_id,
+                    day_of_week=int(day),
+                    meal_type=meal_type,
+                    servings=servings if isinstance(servings, int) and servings >= 1 else None,
+                    notes=_text(meal.get("notes")),
+                )
+            )
+            planned.add((day, meal_type, recipe_id))
+            counts["planned_meals"] += 1
+
+    # Shopping lists match by name; one that exists is left alone, items included
+    names = set(
+        (
+            await db.execute(
+                select(ShoppingList.name).where(ShoppingList.household_id == household_id)
+            )
+        ).scalars()
+    )
+    for entry in _dicts(data.get("shopping_lists")):
+        name = _text(entry.get("name"), 255)
+        if not name:
+            continue
+        if name in names:
+            counts["shopping_lists_skipped"] += 1
+            continue
+        shopping_list = ShoppingList(
+            household_id=household_id,
+            name=name,
+            description=_text(entry.get("description")),
+            status="archived" if entry.get("status") == "archived" else "active",
+            created_by_user_id=user_id,
+        )
+        db.add(shopping_list)
+        await db.flush()
+        names.add(name)
+        counts["shopping_lists"] += 1
+        order = 0
+        for item in _dicts(entry.get("items")):
+            item_name = _text(item.get("item_name"), 255)
+            if not item_name:
+                continue
+            order += 1
+            db.add(
+                ShoppingListItem(
+                    list_id=shopping_list.id,
+                    item_name=item_name,
+                    quantity=_text(item.get("quantity"), 100),
+                    unit=_text(item.get("unit"), 50),
+                    category=_text(item.get("category"), 100),
+                    notes=_text(item.get("notes")),
+                    checked=item.get("checked") is True,
+                    display_order=order,
+                )
+            )
+    return counts
+
+
+@router.post("/backup")
+@limiter.limit("100/hour")
+async def restore_backup(
+    request: Request,
+    file: UploadFile = File(...),
+    scope: Literal["recipes", "everything"] = Form("everything"),
+    current_user: User = Depends(get_current_user),
+    household: "Household" = Depends(get_user_household),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Restore a Complete Backup file made by `GET /export/all`.
+
+    Adds what is missing and skips what matches; nothing existing is changed or
+    removed. `scope=recipes` restores only the recipes (with their notes);
+    `scope=everything` also restores collections, meal plans and shopping lists.
+
+    Returns the recipe results in the same shape as `POST /import/recipes`, plus
+    `restored`: counts for the other sections (null for `scope=recipes`).
+    """
+    await validate_file_size(file)
+    try:
+        data = json.loads(await file.read())
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise InvalidInputError("Invalid JSON file") from e
+    if not (
+        isinstance(data, dict)
+        and data.get("export_type") == "complete_backup"
+        and isinstance(data.get("recipes"), list)
+    ):
+        raise InvalidInputError("This file is not a Complete Backup from this application")
+
+    # Read before any flush can expire the loaded objects
+    user_id, household_id = current_user.id, household.id
+    results, id_map = await _restore_backup_recipes(data["recipes"], user_id, household_id, db)
+    restored = (
+        await _restore_backup_extras(data, id_map, user_id, household_id, db)
+        if scope == "everything"
+        else None
+    )
+    await _commit_import_results(db)
+    logger.info(
+        "backup_restored",
+        user_id=user_id,
+        scope=scope,
+        created=results["created"],
+        skipped=results["skipped"],
+        failed=results["failed"],
+    )
+
+    return {
+        "success": True,
+        "message": (
+            f"Restored {results['created']} recipes, skipped {results['skipped']} "
+            f"already here, failed {results['failed']}"
+        ),
+        "details": results,
+        "restored": restored,
     }
 
 
