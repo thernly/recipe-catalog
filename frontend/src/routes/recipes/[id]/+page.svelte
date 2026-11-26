@@ -5,6 +5,7 @@
 	import { goto, afterNavigate } from '$app/navigation';
 	import { safeHttpUrl } from '#lib/utils/urls.js';
 	import { scaleIngredient } from '#lib/utils/scale-ingredient.js';
+	import { loadProgress, saveProgress } from '#lib/utils/cooking-progress.js';
 	import {
 		getRecipe,
 		deleteRecipe,
@@ -35,6 +36,7 @@
 		Loader2,
 		FileText,
 		Star,
+		ChefHat,
 	} from '@lucide/svelte';
 
 	let recipe: Recipe | null = null;
@@ -46,7 +48,7 @@
 	let error: string | null = null;
 	let checkedIngredients = new Set<number>();
 	let completedSteps = new Set<number>();
-	// Ingredient amounts are shown multiplied by this; nothing is saved
+	// Ingredient amounts are shown multiplied by this; the recipe is not changed
 	const SCALES = [
 		{ value: 0.5, label: '½×' },
 		{ value: 1, label: '1×' },
@@ -54,6 +56,51 @@
 		{ value: 3, label: '3×' },
 	];
 	let scale = 1;
+
+	// Cook mode: bigger text, no button bar, and the screen is kept awake
+	let cookMode = false;
+	let wakeLock: WakeLockSentinel | null = null;
+	let canKeepAwake = true;
+
+	// The lock is dropped by the browser whenever the tab is hidden, so this
+	// also runs when the tab comes back.
+	async function syncWakeLock(wanted: boolean) {
+		if (typeof document === 'undefined') return;
+		canKeepAwake = 'wakeLock' in navigator;
+		if (!wanted) {
+			void wakeLock?.release();
+			wakeLock = null;
+			return;
+		}
+		if (wakeLock || document.hidden || !canKeepAwake) return;
+		try {
+			const lock = await navigator.wakeLock.request('screen');
+			lock.addEventListener('release', () => {
+				if (wakeLock === lock) wakeLock = null;
+			});
+			if (cookMode) wakeLock = lock;
+			else void lock.release();
+		} catch {
+			// Refused (for example by battery saver): cook mode still works
+			canKeepAwake = false;
+		}
+	}
+	$: void syncWakeLock(cookMode);
+
+	// Ticks, scale and cook mode survive a reload (see cooking-progress.ts)
+	$: if (recipe)
+		saveProgress(recipe.id, {
+			ingredients: [...checkedIngredients],
+			steps: [...completedSteps],
+			scale,
+			cookMode,
+		});
+
+	function clearTicks() {
+		checkedIngredients = new Set();
+		completedSteps = new Set();
+	}
+
 	let showExportMenu = false;
 	let exportButton: HTMLButtonElement | undefined;
 	let exporting = false;
@@ -73,6 +120,7 @@
 		checkedIngredients = new Set();
 		completedSteps = new Set();
 		scale = 1;
+		cookMode = false;
 		showExportMenu = false;
 		loading = true;
 		error = null;
@@ -80,6 +128,11 @@
 		try {
 			const loaded = await getRecipe(recipeId);
 			if (version !== loadVersion) return;
+			const saved = loadProgress(loaded.id);
+			checkedIngredients = new Set(saved.ingredients);
+			completedSteps = new Set(saved.steps);
+			scale = SCALES.some((s) => s.value === saved.scale) ? saved.scale : 1;
+			cookMode = saved.cookMode;
 			recipe = loaded;
 		} catch (err) {
 			if (version !== loadVersion) return;
@@ -363,9 +416,12 @@
 		document.addEventListener('click', handleClickOutside);
 		return () => {
 			document.removeEventListener('click', handleClickOutside);
+			void wakeLock?.release();
 		};
 	});
 </script>
+
+<svelte:document on:visibilitychange={() => syncWakeLock(cookMode)} />
 
 <svelte:window
 	on:keydown={(e) => {
@@ -585,7 +641,33 @@
 				{/if}
 
 				<!-- Ingredients and Instructions -->
-				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+				<div class="cook-toolbar no-print">
+					<button
+						type="button"
+						class="btn flex items-center gap-2"
+						class:btn-primary={cookMode}
+						class:btn-secondary={!cookMode}
+						aria-pressed={cookMode}
+						on:click={() => (cookMode = !cookMode)}
+					>
+						<ChefHat size={18} aria-hidden="true" />
+						<span>{cookMode ? 'Exit cook mode' : 'Cook mode'}</span>
+					</button>
+					{#if checkedIngredients.size + completedSteps.size > 0}
+						<button type="button" class="btn btn-secondary" on:click={clearTicks}>
+							Clear ticks
+						</button>
+					{/if}
+					{#if cookMode}
+						<span class="text-sm" style="color: var(--text-600);" role="status">
+							{canKeepAwake
+								? 'The screen stays on while this page is showing.'
+								: 'This browser cannot keep the screen on.'}
+						</span>
+					{/if}
+				</div>
+
+				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8" class:cook-mode={cookMode}>
 					<!-- Ingredients -->
 					<div class="card">
 						<h2
@@ -768,7 +850,8 @@
 			</div>
 		</div>
 
-		<!-- Sticky Action Bar -->
+		<!-- Sticky Action Bar (out of the way while cooking) -->
+		{#if !cookMode}
 		<div class="sticky-action-bar no-print">
 			<div class="container-custom">
 				<div class="action-bar-content">
@@ -906,6 +989,7 @@
 				</div>
 			</div>
 		</div>
+		{/if}
 	{/if}
 </div>
 
@@ -1110,6 +1194,21 @@
 	.tag-outline:hover {
 		border-color: var(--accent-500);
 		color: var(--accent-700);
+	}
+
+	.cook-toolbar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.75rem;
+		margin-bottom: 1.5rem;
+	}
+
+	/* Readable from a step back from the counter */
+	.cook-mode label,
+	.cook-mode .step-text {
+		font-size: 1.375rem;
+		line-height: 1.6;
 	}
 
 	.scale-control {
