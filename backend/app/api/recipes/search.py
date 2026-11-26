@@ -2,6 +2,7 @@
 Recipe search and filtering operations.
 """
 
+import random
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
@@ -20,6 +21,8 @@ from app.schemas.recipe import RecipeSearchResult, RecipeSummary
 
 router = APIRouter()
 OTHER = "other"
+# For sort_by=random: seeds run from 1 up to (not including) this prime
+SHUFFLE_PRIME = 1_000_003
 
 
 def _option_filter(column: Any, selected: list[str], known: list[str]) -> Any:
@@ -70,6 +73,7 @@ async def search_recipes(
     max_time_minutes: int | None = Query(None),
     min_time_minutes: int | None = Query(None),
     sort_by: str = Query("recently_added"),
+    seed: int | None = Query(None, ge=1, lt=SHUFFLE_PRIME),
     page: int = Query(1, ge=1),
     per_page: int = Query(24, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -88,6 +92,8 @@ async def search_recipes(
         max_time_minutes: Maximum cooking time
         min_time_minutes: Minimum cooking time
         sort_by: Sort order
+        seed: For sort_by=random, which shuffle to use; the same seed gives the same
+            order, so a client keeps one seed while paging
         page: Page number
         per_page: Results per page
         current_user: The authenticated user
@@ -151,6 +157,13 @@ async def search_recipes(
     elif sort_by == "time_asc":
         # Recipes with no time go last (SQLite would sort them first)
         stmt = stmt.order_by(Recipe.total_time_minutes.is_(None), Recipe.total_time_minutes.asc())
+    elif sort_by == "random":
+        # A shuffle that stays put across pages: multiplying the id by the seed,
+        # modulo a prime, gives each recipe a different position per seed. SQLite's
+        # own random() cannot be seeded, so it would reshuffle on every page.
+        # ponytail: an even spread rather than true randomness; fine for browsing.
+        shuffle_seed = seed or random.randrange(1, SHUFFLE_PRIME)
+        stmt = stmt.order_by((Recipe.id * shuffle_seed) % SHUFFLE_PRIME, Recipe.id)
     elif sort_by == "time_desc":
         stmt = stmt.order_by(Recipe.total_time_minutes.desc())
     else:  # recently_added (default)

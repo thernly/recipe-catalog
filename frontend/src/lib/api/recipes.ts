@@ -65,6 +65,8 @@ export interface RecipeSearchParams {
   max_time_minutes?: number;
   min_time_minutes?: number;
   sort_by?: RecipeSortBy;
+  /** With sort_by "random": which shuffle. Keep one seed while paging. */
+  seed?: number;
   page?: number;
   per_page?: number;
 }

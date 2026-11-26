@@ -76,7 +76,7 @@ export interface RecipeData {
  * Sort options for recipe searches
  */
 export type RecipeSortBy =
-  "recently_added" | "alphabetical" | "time_asc" | "time_desc";
+  "recently_added" | "alphabetical" | "time_asc" | "time_desc" | "random";
 
 /**
  * Recipe source types

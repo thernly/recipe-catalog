@@ -213,6 +213,34 @@ async def test_shortest_time_lists_recipes_without_a_time_last(
 
 
 @pytest.mark.asyncio
+async def test_random_sort_is_a_stable_shuffle_per_seed(client: AsyncClient, auth_headers: dict):
+    for number in range(12):
+        recipe = {"name": f"Recipe {number:02}", "recipe_data": {}}
+        created = await client.post("/api/v1/recipes/", json=recipe, headers=auth_headers)
+        assert created.status_code == 201
+
+    async def names(seed: int | None, page: int = 1, per_page: int = 12) -> list[str]:
+        params = {"sort_by": "random", "page": page, "per_page": per_page}
+        if seed is not None:
+            params["seed"] = seed
+        response = await client.get("/api/v1/recipes/search", params=params, headers=auth_headers)
+        assert response.status_code == 200
+        return [r["name"] for r in response.json()["recipes"]]
+
+    everything = sorted(await names(None))
+    first = await names(424242)
+
+    assert sorted(first) == everything  # a shuffle: nothing lost or repeated
+    assert first != everything  # and not simply the order they were added in
+    assert await names(424242) == first  # the same seed gives the same order
+    assert await names(777777) != first  # another seed gives another order
+    # Paging through one seed shows every recipe exactly once
+    assert (
+        await names(424242, 1, 5) + await names(424242, 2, 5) + await names(424242, 3, 5) == first
+    )
+
+
+@pytest.mark.asyncio
 async def test_search_recipes_by_cuisine(client: AsyncClient, auth_headers: dict):
     """Test filtering recipes by cuisine."""
     # Create recipes with different cuisines

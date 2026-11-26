@@ -66,7 +66,13 @@
 		'alphabetical',
 		'time_asc',
 		'time_desc',
+		'random',
 	];
+
+	// Random sort: one seed is one shuffle. It is kept in the page address, so
+	// paging and "Back to Recipes" keep the order, while opening the list afresh
+	// (no seed in the address) shuffles again. The range matches the server's.
+	const newSeed = () => 1 + Math.floor(Math.random() * 1_000_002);
 	let defaults = {
 		sort: 'recently_added' as RecipeSortBy,
 		perPage: DEFAULT_PAGE_SIZE,
@@ -97,6 +103,8 @@
 		if (sp.query) params.set('q', sp.query);
 		if (sp.sort_by && sp.sort_by !== defaults.sort)
 			params.set('sort', sp.sort_by);
+		if (sp.sort_by === 'random' && sp.seed)
+			params.set('seed', sp.seed.toString());
 		if (sp.page && sp.page > 1) params.set('page', sp.page.toString());
 		if (cuisines.length > 0) params.set('cuisine', cuisines.join(','));
 		if (categories.length > 0) params.set('category', categories.join(','));
@@ -135,6 +143,10 @@
 		searchParams.sort_by =
 			(urlParams.get('sort') as RecipeSortBy) || defaults.sort;
 		searchParams.per_page = defaults.perPage;
+		searchParams.seed =
+			searchParams.sort_by === 'random'
+				? parseInt(urlParams.get('seed') || '') || newSeed()
+				: undefined;
 		searchParams.page = parseInt(urlParams.get('page') || '1');
 
 		const cuisineParam = urlParams.get('cuisine');
@@ -203,6 +215,8 @@
 	function handleSortChange(e: Event) {
 		const target = e.target as HTMLSelectElement;
 		searchParams.sort_by = target.value as RecipeSortBy;
+		searchParams.seed =
+			searchParams.sort_by === 'random' ? newSeed() : undefined;
 		searchParams.page = DEFAULT_PAGE;
 		loadRecipes();
 	}
@@ -399,6 +413,7 @@
 					<option value="alphabetical">A-Z</option>
 					<option value="time_asc">Shortest Time</option>
 					<option value="time_desc">Longest Time</option>
+					<option value="random">Random</option>
 				</select>
 			</div>
 
