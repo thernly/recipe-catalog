@@ -16,6 +16,7 @@ vi.mock("#lib/api/collections.js", () => ({
 }));
 
 import { favorites } from "./favorites";
+import { collections } from "./collections";
 import { auth } from "#lib/stores/auth.js";
 import {
   addRecipesToCollection,
@@ -66,6 +67,27 @@ describe("favorites store", () => {
     await favorites.toggle(30);
     expect(removeRecipesFromCollection).toHaveBeenCalledWith(8, [30]);
     expect(get(favorites).ids.has(30)).toBe(false);
+  });
+
+  it("refreshes the collection counts after a change", async () => {
+    setUser({ id: 1 });
+    await loaded();
+    vi.mocked(getCollections).mockResolvedValue([
+      {
+        id: 8,
+        user_id: 1,
+        is_default: true,
+        name: "Favorites",
+        recipe_count: 2,
+      },
+    ] as Awaited<ReturnType<typeof getCollections>>);
+
+    await favorites.toggle(31);
+
+    // The sidebar's Favorites count is read from the collections store
+    await vi.waitFor(() =>
+      expect(get(collections).collections[0]?.recipe_count).toBe(2),
+    );
   });
 
   it("puts the star back when the server refuses", async () => {

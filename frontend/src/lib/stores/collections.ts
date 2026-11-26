@@ -28,7 +28,9 @@ function createCollectionsStore() {
      * Load all collections from the API
      */
     async load() {
-      update((state) => ({ ...state, loading: true, error: null }));
+      // "loading" swaps the sidebar for a spinner, so it is only for the first
+      // load. A reload (to refresh the counts) keeps the list on screen.
+      update((state) => ({ ...state, loading: !state.loaded, error: null }));
 
       try {
         const collections = await getCollections();
