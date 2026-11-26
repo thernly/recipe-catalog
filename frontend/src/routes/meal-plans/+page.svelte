@@ -57,6 +57,30 @@
 		});
 	}
 
+	// Meals unticked under "Meals to shop for" are left off the shopping list
+	// (leftovers, a night out, something already bought). Reset with the week.
+	let skippedMealIds: number[] = [];
+	$: plannedMeals = [...(mealPlan?.planned_meals ?? [])].sort(
+		(a, b) =>
+			a.day_of_week - b.day_of_week ||
+			mealTypes.indexOf(a.meal_type) - mealTypes.indexOf(b.meal_type),
+	);
+	$: chosenMealIds = plannedMeals
+		.map((meal) => meal.id)
+		.filter((id) => !skippedMealIds.includes(id));
+
+	function toggleMeal(id: number) {
+		skippedMealIds = skippedMealIds.includes(id)
+			? skippedMealIds.filter((skipped) => skipped !== id)
+			: [...skippedMealIds, id];
+	}
+
+	// Only sent when some meal is left out; without it the server takes them all
+	const chosenMeals = () =>
+		chosenMealIds.length < plannedMeals.length
+			? { selected_meal_ids: chosenMealIds }
+			: {};
+
 	async function addToList(listId: number) {
 		if (!mealPlan) return;
 		generatingShoppingList = true;
@@ -64,6 +88,7 @@
 			await generateFromMealPlan({
 				meal_plan_id: mealPlan.id,
 				shopping_list_id: listId,
+				...chosenMeals(),
 			});
 			rememberAddedToList(mealPlan.id, listId);
 			setLastShoppingListId(listId);
@@ -106,6 +131,7 @@
 	// scroll position survives. Changing week still shows the message.
 	async function loadMealPlan(keepPage = false) {
 		loading = !keepPage || !mealPlan;
+		if (!keepPage) skippedMealIds = [];
 		error = null;
 
 		try {
@@ -199,6 +225,7 @@
 			const newList = await generateFromMealPlan({
 				meal_plan_id: mealPlan.id,
 				list_name: `Shopping list for week of ${formatDate(weekDates[0])}`,
+				...chosenMeals(),
 			});
 			rememberAddedToList(mealPlan.id, newList.id);
 			goto(`/shopping-lists/${newList.id}`);
@@ -273,7 +300,7 @@
 			<button
 				on:click={handleGenerateShoppingList}
 				class="btn-primary"
-				disabled={generatingShoppingList}
+				disabled={generatingShoppingList || chosenMealIds.length === 0}
 			>
 				{generatingShoppingList
 					? '⏳ Generating...'
@@ -282,7 +309,7 @@
 			<button
 				on:click={() => (showAddToListDialog = true)}
 				class="btn-secondary"
-				disabled={generatingShoppingList}
+				disabled={generatingShoppingList || chosenMealIds.length === 0}
 			>
 				➕ Add to Existing List
 			</button>
@@ -298,6 +325,26 @@
 			{creatingBlankList ? '⏳ Creating...' : '📝 Create Blank Shopping List'}
 		</button>
 	</div>
+
+	{#if plannedMeals.length > 0}
+		<details class="meals-to-shop">
+			<summary>
+				Meals to shop for ({chosenMealIds.length} of {plannedMeals.length})
+			</summary>
+			<p>Untick a meal to leave its ingredients off the shopping list.</p>
+			{#each plannedMeals as meal (meal.id)}
+				<label>
+					<input
+						type="checkbox"
+						checked={!skippedMealIds.includes(meal.id)}
+						on:change={() => toggleMeal(meal.id)}
+					/>
+					{dayNames[meal.day_of_week]}
+					{meal.meal_type}: {meal.recipe_name || `Recipe #${meal.recipe_id}`}
+				</label>
+			{/each}
+		</details>
+	{/if}
 
 	{#if loading}
 		<div class="loading">Loading meal plan...</div>
@@ -425,6 +472,32 @@
 
 	.week-header {
 		margin-bottom: 1.5rem;
+	}
+
+	.meals-to-shop {
+		max-width: 32rem;
+		margin: 0 auto 1rem;
+		color: var(--text-700);
+	}
+
+	.meals-to-shop summary {
+		cursor: pointer;
+		text-align: center;
+		color: var(--primary-600);
+	}
+
+	.meals-to-shop p {
+		margin: 0.5rem 0;
+		font-size: 0.875rem;
+		color: var(--text-600);
+	}
+
+	.meals-to-shop label {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+		padding: 0.375rem 0;
+		text-transform: capitalize;
 	}
 
 	.week-header h2 {

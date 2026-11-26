@@ -100,6 +100,52 @@ describe("meal planner page", () => {
     await waitFor(() => expect(wasAddedToList(plan.id, 31)).toBe(true));
   });
 
+  it("leaves an unticked meal off the shopping list", async () => {
+    const soup = {
+      ...plan.planned_meals[0],
+      id: 10,
+      recipe_name: "Soup",
+      day_of_week: 1,
+    };
+    vi.mocked(getCurrentWeekMealPlan).mockResolvedValue({
+      ...plan,
+      planned_meals: [...plan.planned_meals, soup],
+    });
+    vi.mocked(generateFromMealPlan).mockResolvedValue({
+      id: 31,
+    } as Awaited<ReturnType<typeof generateFromMealPlan>>);
+    const { findByRole, findByText } = render(Page);
+
+    await findByText("Meals to shop for (2 of 2)");
+    await fireEvent.click(
+      await findByRole("checkbox", { name: /Monday dinner: Lasagne/ }),
+    );
+    await findByText("Meals to shop for (1 of 2)");
+    await fireEvent.click(
+      await findByRole("button", { name: /Generate Shopping List/ }),
+    );
+
+    expect(vi.mocked(generateFromMealPlan).mock.calls[0][0]).toMatchObject({
+      meal_plan_id: 1,
+      selected_meal_ids: [10],
+    });
+  });
+
+  it("sends no meal selection when every meal is ticked", async () => {
+    vi.mocked(generateFromMealPlan).mockResolvedValue({
+      id: 31,
+    } as Awaited<ReturnType<typeof generateFromMealPlan>>);
+    const { findByRole } = render(Page);
+
+    await fireEvent.click(
+      await findByRole("button", { name: /Generate Shopping List/ }),
+    );
+
+    expect(vi.mocked(generateFromMealPlan).mock.calls[0][0]).not.toHaveProperty(
+      "selected_meal_ids",
+    );
+  });
+
   it("shows the loading message while another week loads", async () => {
     const { findByRole, findByText } = render(Page);
     await findByRole("button", { name: /Lasagne/ });
