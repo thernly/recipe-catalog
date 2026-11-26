@@ -82,6 +82,38 @@ describe("recipe list page", () => {
     expect(lastSearch()?.sort_by).toBe("time_asc");
   });
 
+  it("shuffles afresh on each visit when the default sort is Random", async () => {
+    vi.mocked(getPreferences).mockResolvedValue(
+      preferences({ default_sort: "random" }),
+    );
+    const first = render(Page);
+    await waitFor(() => expect(searchRecipes).toHaveBeenCalled());
+    const firstSeed = lastSearch()?.seed;
+    first.unmount();
+    vi.mocked(searchRecipes).mockClear();
+    render(Page);
+    await waitFor(() => expect(searchRecipes).toHaveBeenCalled());
+
+    expect(lastSearch()?.sort_by).toBe("random");
+    expect(firstSeed).toBeGreaterThan(0);
+    expect(lastSearch()?.seed).not.toBe(firstSeed);
+  });
+
+  it("keeps the shuffle that is in the page address", async () => {
+    nav.url = "http://localhost/recipes?sort=random&seed=4242";
+    render(Page);
+
+    await waitFor(() => expect(searchRecipes).toHaveBeenCalled());
+    expect(lastSearch()?.seed).toBe(4242);
+  });
+
+  it("sends no seed for the other sorts", async () => {
+    render(Page);
+
+    await waitFor(() => expect(searchRecipes).toHaveBeenCalled());
+    expect(lastSearch()?.seed).toBeUndefined();
+  });
+
   it("falls back to Recently Added and 24 when preferences cannot be loaded", async () => {
     vi.mocked(getPreferences).mockRejectedValue(new Error("offline"));
     render(Page);
