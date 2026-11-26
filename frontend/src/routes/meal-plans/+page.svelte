@@ -258,9 +258,16 @@
 		});
 	}
 
-	function getMealsForCell(day: number, mealType: string): PlannedMeal[] {
-		if (!mealPlan) return [];
-		return mealPlan.planned_meals.filter(
+	// The plan is a parameter, not read from the outer variable: the template
+	// only re-runs this for a cell when something it is passed changes, so a
+	// reload that keeps the grid on screen would otherwise leave cells stale.
+	function getMealsForCell(
+		plan: MealPlan | null,
+		day: number,
+		mealType: string,
+	): PlannedMeal[] {
+		if (!plan) return [];
+		return plan.planned_meals.filter(
 			(meal) => meal.day_of_week === day && meal.meal_type === mealType,
 		);
 	}
@@ -505,7 +512,7 @@
 					<div class="meal-cell">
 						<!-- Shown on narrow screens, where the header row is hidden -->
 						<div class="cell-label">{mealType}</div>
-						{#each getMealsForCell(dayIndex, mealType) as meal (meal.id)}
+						{#each getMealsForCell(mealPlan, dayIndex, mealType) as meal (meal.id)}
 							<button
 								type="button"
 								class="meal-item"
