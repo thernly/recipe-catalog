@@ -696,9 +696,9 @@
 						</div>
 						{#if scale !== 1}
 							<p class="text-sm mb-3" style="color: var(--text-600);">
-								Amounts at the start of each line are multiplied by {scale}.
-								Amounts inside a line or in the steps, and cooking times, are
-								not changed.
+								The amount at the start of each line is multiplied by {scale}.
+								Other amounts in a line, amounts in the steps and cooking
+								times are not changed.
 							</p>
 						{/if}
 
