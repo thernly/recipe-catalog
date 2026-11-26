@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { downloadBlob } from '#lib/utils/download.js';
+	import { ApiError } from '#lib/api/client.js';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto, afterNavigate } from '$app/navigation';
@@ -117,6 +118,7 @@
 	let recipeId = Number(params.id);
 
 	let loadVersion = 0;
+	let notFound = false;
 	async function loadRecipe() {
 		const version = ++loadVersion;
 		recipe = null;
@@ -139,6 +141,9 @@
 			recipe = loaded;
 		} catch (err) {
 			if (version !== loadVersion) return;
+			// Only a 404 means the recipe is gone; anything else (offline, a
+			// server error) is worth trying again
+			notFound = err instanceof ApiError && err.status === 404;
 			error = err instanceof Error ? err.message : 'Failed to load recipe';
 			console.error('Failed to load recipe:', err);
 		} finally {
@@ -264,17 +269,26 @@
 		});
 	}
 
-	async function handleDuplicate() {
+	// The copy is saved as soon as it is made, so say so first: cancelling the
+	// editor afterwards does not remove it.
+	function handleDuplicate() {
 		if (!recipe) return;
+		const { id, name } = recipe;
 
-		try {
-			const duplicated = await duplicateRecipe(recipe.id);
-			toast.success('Recipe duplicated successfully');
-			goto(`/recipes/${duplicated.id}/edit`);
-		} catch (err) {
-			toast.error('Failed to duplicate recipe');
-			console.error('Duplicate failed:', err);
-		}
+		dialog.show({
+			title: isOwner ? 'Duplicate Recipe' : 'Save a Copy',
+			message: `This adds "${name} (Copy)" to your recipes and opens it for editing.`,
+			onConfirm: async () => {
+				try {
+					const duplicated = await duplicateRecipe(id);
+					toast.success('Recipe duplicated successfully');
+					goto(`/recipes/${duplicated.id}/edit`);
+				} catch (err) {
+					toast.error('Failed to duplicate recipe');
+					console.error('Duplicate failed:', err);
+				}
+			},
+		});
 	}
 
 	function handlePrint() {
@@ -456,15 +470,28 @@
 		<!-- Error state -->
 		<div class="container-custom py-16 text-center" role="alert">
 			<div class="text-4xl mb-4" aria-hidden="true">⚠️</div>
-			<p class="text-lg mb-2" style="color: var(--text-900);">
-				Recipe not found
-			</p>
-			<p class="text-sm mb-4" style="color: var(--text-600);">
-				{error || 'This recipe may have been deleted.'}
-			</p>
-			<button on:click={handleBackToRecipes} class="btn btn-primary"
-				>Back to Recipes</button
-			>
+			{#if error && !notFound}
+				<p class="text-lg mb-2" style="color: var(--text-900);">
+					Could not load this recipe
+				</p>
+				<p class="text-sm mb-4" style="color: var(--text-600);">
+					Check your connection and try again.
+				</p>
+				<button on:click={loadRecipe} class="btn btn-primary">Try again</button>
+				<button on:click={handleBackToRecipes} class="btn btn-secondary"
+					>Back to Recipes</button
+				>
+			{:else}
+				<p class="text-lg mb-2" style="color: var(--text-900);">
+					Recipe not found
+				</p>
+				<p class="text-sm mb-4" style="color: var(--text-600);">
+					This recipe may have been deleted.
+				</p>
+				<button on:click={handleBackToRecipes} class="btn btn-primary"
+					>Back to Recipes</button
+				>
+			{/if}
 		</div>
 	{:else}
 		<!-- Recipe content -->
@@ -723,6 +750,12 @@
 
 						<ul class="space-y-3">
 							{#each getIngredients(recipe) as ingredient, index (index)}
+								{#if recipe.recipe_data.parsedIngredients?.[index]?.header}
+									<!-- "For the sauce:" is a heading, not something to tick off -->
+									<li class="ingredient-heading">{ingredient}</li>
+								{:else}
+								{@const label =
+									recipe.recipe_data.parsedIngredients?.[index]?.item || ingredient}
 								<li class="flex items-start gap-3">
 									<input
 										type="checkbox"
@@ -744,22 +777,18 @@
 											recipe.recipe_data.parsedIngredients?.[index],
 										)}
 									</label>
-									{#if !recipe.recipe_data.parsedIngredients?.[index]?.header}
-										{@const label =
-											recipe.recipe_data.parsedIngredients?.[index]?.item ||
-											ingredient}
-										<button
-											type="button"
-											on:click={() => addIngredient({ index, label })}
-											aria-label="Add {label} to shopping list"
-											title="Add to shopping list"
-											class="p-1 rounded"
-											style="color: var(--text-600);"
-										>
-											<ShoppingCart size={16} aria-hidden="true" />
-										</button>
-									{/if}
+									<button
+										type="button"
+										on:click={() => addIngredient({ index, label })}
+										aria-label="Add {label} to shopping list"
+										title="Add to shopping list"
+										class="p-1 rounded"
+										style="color: var(--text-600);"
+									>
+										<ShoppingCart size={16} aria-hidden="true" />
+									</button>
 								</li>
+								{/if}
 							{/each}
 						</ul>
 					</div>
@@ -1471,6 +1500,12 @@
 
 	.step-body {
 		flex: 1;
+	}
+
+	.ingredient-heading {
+		font-weight: 600;
+		color: var(--text-900);
+		padding-top: 0.5rem;
 	}
 
 	.step-timer {
