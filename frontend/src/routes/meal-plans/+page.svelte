@@ -833,6 +833,16 @@
 		border-color: var(--neutral-400);
 	}
 
+	/* Colours come from the global .btn-primary; the shape matches the
+	   buttons beside it */
+	.btn-primary {
+		padding: var(--space-sm) var(--space-md);
+		border: none;
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		font-size: 1rem;
+	}
+
 	.btn-ai-menu {
 		background: linear-gradient(
 			135deg,

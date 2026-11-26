@@ -745,6 +745,19 @@
 		border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 	}
 
+	/* On a phone the padding goes to the input boxes, and the button bar
+	   stops reaching past the edges of the screen */
+	@media (max-width: 480px) {
+		.form-section {
+			padding: 1rem;
+		}
+
+		.form-actions {
+			padding: 1rem;
+			margin: 2rem 0 0;
+		}
+	}
+
 	.btn-sm {
 		padding: 0.5rem 1rem;
 		font-size: 0.875rem;
