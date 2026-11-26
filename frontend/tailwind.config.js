@@ -5,6 +5,14 @@ export default {
     extend: {
       colors: {
         // Theme-aware colors using CSS variables
+        // `bg-neutral-50` etc. must follow the theme: Tailwind's own neutral
+        // palette is near-white in every theme, which left pages white in dark.
+        neutral: Object.fromEntries(
+          [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map((n) => [
+            n,
+            `var(--neutral-${n})`,
+          ]),
+        ),
         "brand-primary": {
           DEFAULT: "var(--primary-500)",
           50: "var(--primary-50)",
