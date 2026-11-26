@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { goto, afterNavigate } from '$app/navigation';
 	import { safeHttpUrl } from '#lib/utils/urls.js';
+	import { scaleIngredient } from '#lib/utils/scale-ingredient.js';
 	import {
 		getRecipe,
 		deleteRecipe,
@@ -45,6 +46,14 @@
 	let error: string | null = null;
 	let checkedIngredients = new Set<number>();
 	let completedSteps = new Set<number>();
+	// Ingredient amounts are shown multiplied by this; nothing is saved
+	const SCALES = [
+		{ value: 0.5, label: '½×' },
+		{ value: 1, label: '1×' },
+		{ value: 2, label: '2×' },
+		{ value: 3, label: '3×' },
+	];
+	let scale = 1;
 	let showExportMenu = false;
 	let exportButton: HTMLButtonElement | undefined;
 	let exporting = false;
@@ -63,6 +72,7 @@
 		recipe = null;
 		checkedIngredients = new Set();
 		completedSteps = new Set();
+		scale = 1;
 		showExportMenu = false;
 		loading = true;
 		error = null;
@@ -585,6 +595,31 @@
 							Ingredients
 						</h2>
 
+						<div
+							class="scale-control"
+							role="group"
+							aria-label="Scale ingredient amounts"
+						>
+							{#each SCALES as option (option.value)}
+								<button
+									type="button"
+									class="scale-button"
+									class:active={scale === option.value}
+									aria-pressed={scale === option.value}
+									on:click={() => (scale = option.value)}
+								>
+									{option.label}
+								</button>
+							{/each}
+						</div>
+						{#if scale !== 1}
+							<p class="text-sm mb-3" style="color: var(--text-600);">
+								Amounts at the start of each line are multiplied by {scale}.
+								Amounts inside a line or in the steps, and cooking times, are
+								not changed.
+							</p>
+						{/if}
+
 						<ul class="space-y-3">
 							{#each getIngredients(recipe) as ingredient, index (index)}
 								<li class="flex items-start gap-3">
@@ -602,7 +637,11 @@
 										class:opacity-50={checkedIngredients.has(index)}
 										style="color: var(--text-700);"
 									>
-										{ingredient}
+										{scaleIngredient(
+											ingredient,
+											scale,
+											recipe.recipe_data.parsedIngredients?.[index],
+										)}
 									</label>
 									{#if !recipe.recipe_data.parsedIngredients?.[index]?.header}
 										{@const label =
@@ -1071,6 +1110,30 @@
 	.tag-outline:hover {
 		border-color: var(--accent-500);
 		color: var(--accent-700);
+	}
+
+	.scale-control {
+		display: flex;
+		gap: 0.5rem;
+		margin-bottom: 1rem;
+	}
+
+	.scale-button {
+		min-width: 3rem;
+		min-height: 2.5rem;
+		padding: 0.25rem 0.75rem;
+		border: 1px solid var(--neutral-300);
+		border-radius: var(--radius-md);
+		background: var(--neutral-white);
+		color: var(--text-700);
+		cursor: pointer;
+	}
+
+	.scale-button.active {
+		background: var(--accent-500);
+		border-color: var(--accent-500);
+		color: var(--neutral-white);
+		font-weight: 600;
 	}
 
 	.ingredient-checkbox {
