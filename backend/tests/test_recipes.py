@@ -159,6 +159,44 @@ async def test_search_recipes_with_results(client: AsyncClient, auth_headers: di
 
 
 @pytest.mark.asyncio
+async def test_search_finds_recipes_by_ingredient_and_keyword(
+    client: AsyncClient, auth_headers: dict
+):
+    recipes = [
+        {
+            "name": "Sunday Roast",
+            "recipe_data": {"recipeIngredient": ["1 whole Chicken", "2 lemons"]},
+        },
+        {
+            "name": "Green Soup",
+            "recipe_data": {"recipeIngredient": ["500g peas"], "keywords": "quick, Weeknight"},
+        },
+        {
+            # "chicken" only in the steps: not an ingredient or keyword match
+            "name": "Plain Rice",
+            "recipe_data": {
+                "recipeIngredient": ["1 cup rice"],
+                "recipeInstructions": ["Serve with chicken."],
+            },
+        },
+    ]
+    for recipe in recipes:
+        created = await client.post("/api/v1/recipes/", json=recipe, headers=auth_headers)
+        assert created.status_code == 201
+
+    async def names(query: str) -> list[str]:
+        response = await client.get(
+            "/api/v1/recipes/search", params={"query": query}, headers=auth_headers
+        )
+        return [r["name"] for r in response.json()["recipes"]]
+
+    assert await names("chicken") == ["Sunday Roast"]
+    assert await names("weeknight") == ["Green Soup"]
+    assert await names("soup") == ["Green Soup"]  # the name still matches
+    assert await names("recipeIngredient") == []  # the storage key is not searchable
+
+
+@pytest.mark.asyncio
 async def test_shortest_time_lists_recipes_without_a_time_last(
     client: AsyncClient, auth_headers: dict
 ):

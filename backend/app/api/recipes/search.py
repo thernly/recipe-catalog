@@ -109,6 +109,12 @@ async def search_recipes(
                 Recipe.description.ilike(search_term),
                 Recipe.cuisine.ilike(search_term),
                 Recipe.category.ilike(search_term),
+                # Ingredients and keywords live inside the recipe JSON ("chicken"
+                # finds a recipe that merely contains chicken).
+                # ponytail: a text scan of each recipe's JSON, fine for one
+                # household's library; an FTS5 index is the upgrade if it gets slow.
+                func.json_extract(Recipe.recipe_data, "$.recipeIngredient").ilike(search_term),
+                func.json_extract(Recipe.recipe_data, "$.keywords").ilike(search_term),
             )
         )
 
