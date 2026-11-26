@@ -118,4 +118,72 @@ describe("recipe page", () => {
     await get(dialog).onConfirm();
     await waitFor(() => expect(goto).toHaveBeenCalledWith("/recipes/8/edit"));
   });
+
+  it("multiplies ingredient amounts when a scale button is pressed", async () => {
+    const { findByRole, findByText } = render(Page, { params: { id: "7" } });
+
+    await fireEvent.click(await findByRole("button", { name: "2×" }));
+
+    expect(await findByText(/4 cups flour/)).toBeTruthy();
+  });
+
+  it("links each keyword to a search for it", async () => {
+    vi.mocked(getRecipe).mockResolvedValue({
+      ...recipe,
+      recipe_data: { ...recipe.recipe_data, keywords: "brunch, date night" },
+    } as unknown as Recipe);
+    const { findByRole } = render(Page, { params: { id: "7" } });
+
+    const tag = await findByRole("link", { name: "date night" });
+    expect(tag.getAttribute("href")).toBe("/recipes?q=date%20night");
+  });
+
+  describe("cook mode", () => {
+    const twoSteps = {
+      ...recipe,
+      recipe_data: {
+        ...recipe.recipe_data,
+        recipeInstructions: ["Mix.", "Bake."],
+      },
+    } as unknown as Recipe;
+    const currentStep = (container: HTMLElement) =>
+      container.querySelector('[aria-current="step"]')?.textContent;
+
+    beforeEach(() => vi.mocked(getRecipe).mockResolvedValue(twoSteps));
+
+    it("hides the button bar and highlights the first unticked step", async () => {
+      const { container, findByRole, queryByRole } = render(Page, {
+        params: { id: "7" },
+      });
+      expect(currentStep(container)).toBeUndefined();
+
+      await fireEvent.click(await findByRole("button", { name: "Cook mode" }));
+
+      expect(queryByRole("button", { name: /Duplicate/ })).toBeNull();
+      expect(currentStep(container)).toContain("Mix.");
+
+      await fireEvent.click(
+        await findByRole("button", { name: "Mark step 1 as complete" }),
+      );
+      expect(currentStep(container)).toContain("Bake.");
+    });
+
+    it("is still on, with its ticks, after the page is reopened", async () => {
+      const first = render(Page, { params: { id: "7" } });
+      await fireEvent.click(
+        await first.findByRole("button", { name: "Cook mode" }),
+      );
+      await fireEvent.click(
+        await first.findByRole("button", { name: "Mark step 1 as complete" }),
+      );
+      first.unmount();
+
+      const { container, findByRole } = render(Page, { params: { id: "7" } });
+
+      expect(
+        await findByRole("button", { name: "Exit cook mode" }),
+      ).toBeTruthy();
+      expect(currentStep(container)).toContain("Bake.");
+    });
+  });
 });
