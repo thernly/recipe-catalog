@@ -753,8 +753,17 @@
 		}
 
 		.form-actions {
-			padding: 1rem;
+			padding: 0.75rem 1rem;
 			margin: 2rem 0 0;
+			gap: 0.5rem;
+		}
+
+		/* Narrower buttons that keep "Update Recipe" on one line, so the
+		   pinned bar is one row tall */
+		.form-actions :global(.btn) {
+			flex: 1 1 auto;
+			padding: 0.75rem 0.5rem;
+			white-space: nowrap;
 		}
 	}
 
