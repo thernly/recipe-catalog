@@ -769,8 +769,8 @@ def detect_group_header(line: str) -> str | None:
     Return the group name if `line` is a group header ("For the dressing:"), else None.
 
     Headers carry no digits and are short, and either end with a colon, are wrapped in
-    decoration ("--- Sauce ---", "**Sauce**"), are all capitals ("FILLING"), or start
-    with "For" ("For the topping").
+    decoration ("--- Sauce ---", "**Sauce**"), are all capitals ("FILLING"), start
+    with "For" ("For the topping"), or are exactly "To finish" / "To serve" and the like.
     """
     # Keep leading "---"/"**" here: they are header decoration, not bullets
     text = _normalize_line(line, strip_bullets=False)
@@ -790,6 +790,9 @@ def detect_group_header(line: str) -> str | None:
     if len(letters) >= 3 and all(c.isupper() for c in letters) and len(words) <= 5:
         return name
     if re.match(r"^for\s+\w", text, re.IGNORECASE) and len(words) <= 6 and "," not in text:
+        return name
+    # "To finish" / "To serve" with nothing after: a heading even without a colon
+    if re.fullmatch(r"to\s+(finish|serve|garnish|assemble|decorate)", text, re.IGNORECASE):
         return name
     return None
 

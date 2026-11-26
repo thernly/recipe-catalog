@@ -216,6 +216,8 @@ def test_whole_numbers_are_ints():
         ("** Topping **", "Topping"),
         ("For the crust", "For the crust"),
         ("For the glaze :", "For the glaze"),
+        ("To finish", "To finish"),
+        ("to serve", "to serve"),
     ],
 )
 def test_group_headers(line, group):
@@ -230,6 +232,7 @@ def test_group_headers(line, group):
         "For the sauce: 2 tbsp soy sauce",
         "1/2 cup sugar:",
         "Olive oil, for frying",
+        "To serve lemon wedges",
         "",
     ],
 )
