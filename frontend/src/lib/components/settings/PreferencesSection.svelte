@@ -81,45 +81,8 @@
 
 	<!-- Other Preferences -->
 	<form on:submit|preventDefault={savePreferences} class="settings-form">
-		<div class="form-group">
-			<label for="default_view" class="form-label">Default View</label>
-			<select
-				id="default_view"
-				bind:value={form.default_view}
-				class="form-input"
-			>
-				<option value="grid">Grid</option>
-				<option value="list">List</option>
-			</select>
-		</div>
-
-		<div class="form-group">
-			<label for="default_sort" class="form-label">Default Sort</label>
-			<select
-				id="default_sort"
-				bind:value={form.default_sort}
-				class="form-input"
-			>
-				<option value="recently_added">Recently Added</option>
-				<option value="alphabetical">A-Z</option>
-				<option value="time_asc">Shortest Time</option>
-				<option value="time_desc">Longest Time</option>
-			</select>
-		</div>
-
-		<div class="form-group">
-			<label for="recipes_per_page" class="form-label">Recipes Per Page</label>
-			<input
-				id="recipes_per_page"
-				type="number"
-				min="12"
-				max="100"
-				step="12"
-				bind:value={form.recipes_per_page}
-				class="form-input"
-			/>
-		</div>
-
+		<!-- Default view, default sort, recipes per page and email notifications are
+		     stored by the server but used nowhere, so they are not offered here. -->
 		<div class="form-group">
 			<label for="timezone" class="form-label">Timezone</label>
 			<input
@@ -129,17 +92,6 @@
 				class="form-input"
 				placeholder="UTC"
 			/>
-		</div>
-
-		<div class="form-group">
-			<label class="checkbox-label">
-				<input
-					type="checkbox"
-					bind:checked={form.email_notifications}
-					class="form-checkbox"
-				/>
-				<span>Enable email notifications</span>
-			</label>
 		</div>
 
 		<fieldset class="form-group" aria-describedby="dietary-preferences-help">
@@ -241,21 +193,6 @@
 		outline: none;
 		border-color: var(--accent-500);
 		box-shadow: 0 0 0 3px var(--accent-100);
-	}
-
-	.checkbox-label {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		cursor: pointer;
-		color: var(--text-700);
-	}
-
-	.form-checkbox {
-		width: 1.25rem;
-		height: 1.25rem;
-		cursor: pointer;
-		accent-color: var(--accent-500);
 	}
 
 	.form-actions {

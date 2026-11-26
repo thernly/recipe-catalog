@@ -208,6 +208,10 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Meal Plans - Recipe Catalog</title>
+</svelte:head>
+
 <div class="meal-planning-container">
 	<div class="header">
 		<h1>Meal Planning</h1>
