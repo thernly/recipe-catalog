@@ -81,8 +81,39 @@
 
 	<!-- Other Preferences -->
 	<form on:submit|preventDefault={savePreferences} class="settings-form">
-		<!-- Default view, default sort, recipes per page and email notifications are
-		     stored by the server but used nowhere, so they are not offered here. -->
+		<!-- Default view and email notifications are stored by the server but used
+		     nowhere, so they are not offered here. -->
+		<div class="form-group">
+			<label for="default_sort" class="form-label">Default Sort</label>
+			<select
+				id="default_sort"
+				bind:value={form.default_sort}
+				class="form-input"
+				aria-describedby="default-sort-help"
+			>
+				<option value="recently_added">Recently Added</option>
+				<option value="alphabetical">A-Z</option>
+				<option value="time_asc">Shortest Time</option>
+				<option value="time_desc">Longest Time</option>
+			</select>
+			<p id="default-sort-help" class="text-sm" style="color: var(--text-600);">
+				The order the recipe list opens in.
+			</p>
+		</div>
+
+		<div class="form-group">
+			<label for="recipes_per_page" class="form-label">Recipes Per Page</label>
+			<input
+				id="recipes_per_page"
+				type="number"
+				min="12"
+				max="100"
+				step="12"
+				bind:value={form.recipes_per_page}
+				class="form-input"
+			/>
+		</div>
+
 		<div class="form-group">
 			<label for="timezone" class="form-label">Timezone</label>
 			<input

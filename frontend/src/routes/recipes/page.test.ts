@@ -33,6 +33,14 @@ vi.mock("#lib/api/collections.js", async (importOriginal) => ({
 
 import Page from "./+page.svelte";
 import { searchRecipes } from "#lib/api/recipes.js";
+import { getPreferences } from "#lib/api/users.js";
+
+const preferences = (overrides: object) =>
+  ({
+    default_cuisines: [],
+    default_categories: [],
+    ...overrides,
+  }) as unknown as Awaited<ReturnType<typeof getPreferences>>;
 
 const none = {
   recipes: [],
@@ -47,6 +55,40 @@ describe("recipe list page", () => {
     vi.clearAllMocks();
     vi.mocked(searchRecipes).mockResolvedValue(none);
     nav.url = "http://localhost/recipes";
+    vi.mocked(getPreferences).mockResolvedValue(preferences({}));
+  });
+
+  const lastSearch = () => vi.mocked(searchRecipes).mock.lastCall?.[0];
+
+  it("opens in the saved default sort and page size", async () => {
+    vi.mocked(getPreferences).mockResolvedValue(
+      preferences({ default_sort: "alphabetical", recipes_per_page: 48 }),
+    );
+    render(Page);
+
+    await waitFor(() => expect(searchRecipes).toHaveBeenCalled());
+    expect(lastSearch()?.sort_by).toBe("alphabetical");
+    expect(lastSearch()?.per_page).toBe(48);
+  });
+
+  it("lets a sort in the page address win over the saved default", async () => {
+    vi.mocked(getPreferences).mockResolvedValue(
+      preferences({ default_sort: "alphabetical" }),
+    );
+    nav.url = "http://localhost/recipes?sort=time_asc";
+    render(Page);
+
+    await waitFor(() => expect(searchRecipes).toHaveBeenCalled());
+    expect(lastSearch()?.sort_by).toBe("time_asc");
+  });
+
+  it("falls back to Recently Added and 24 when preferences cannot be loaded", async () => {
+    vi.mocked(getPreferences).mockRejectedValue(new Error("offline"));
+    render(Page);
+
+    await waitFor(() => expect(searchRecipes).toHaveBeenCalled());
+    expect(lastSearch()?.sort_by).toBe("recently_added");
+    expect(lastSearch()?.per_page).toBe(24);
   });
 
   it("offers to clear the search when nothing matches", async () => {
