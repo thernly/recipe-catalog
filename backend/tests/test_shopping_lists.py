@@ -470,6 +470,38 @@ def test_section_headers_filtered_out():
     assert any("egg" in item["name"].lower() for item in consolidated)
 
 
+@pytest.mark.parametrize(
+    ("plural", "singular"),
+    [
+        # Each of these used to come out damaged: radishe, peache, molasse, leave
+        ("radishes", "radish"),
+        ("peaches", "peach"),
+        ("molasses", "molasses"),
+        ("bay leaves", "bay leaf"),
+        ("boxes", "box"),
+        ("glasses", "glass"),
+        ("cookies", "cookie"),
+        ("rolled oats", "rolled oats"),
+        ("collard greens", "collard greens"),
+        ("tomato purees", "tomato puree"),
+        # And these must keep working
+        ("cherry tomatoes", "cherry tomato"),
+        ("sweet potatoes", "sweet potato"),
+        ("mangoes", "mango"),
+        ("limes", "lime"),
+        ("cheeses", "cheese"),
+        ("chives", "chive"),
+        ("anchovies", "anchovy"),
+        ("asparagus", "asparagus"),
+        ("couscous", "couscous"),
+    ],
+)
+def test_singular_names_are_real_words(plural, singular):
+    from app.services.ingredient_parser import singularize_ingredient
+
+    assert singularize_ingredient(plural) == singular
+
+
 def test_plural_consolidation():
     """Test that plural and singular forms are consolidated."""
     from app.api.shopping_lists import (
