@@ -4,6 +4,7 @@
 	import { beforeNavigate } from '$app/navigation';
 	import { DEBOUNCE_DELAY } from '#lib/constants.js';
 	import type { Recipe, RecipeCreate, RecipeUpdate } from '#lib/api/recipes.js';
+	import { getPreferences } from '#lib/api/users.js';
 	import IngredientsEditor from '#lib/components/recipe/IngredientsEditor.svelte';
 	import InstructionsEditor from '#lib/components/recipe/InstructionsEditor.svelte';
 	import Button from '#lib/components/Button.svelte';
@@ -193,8 +194,10 @@
 			recipe_data: recipeData,
 		};
 
-		// Add source URL only for new recipes
-		if (!recipe && sourceUrl.trim()) {
+		if (recipe) {
+			// null (not left out) so that clearing the address is saved
+			(formData as RecipeUpdate).source_url = sourceUrl.trim() || null;
+		} else if (sourceUrl.trim()) {
 			(formData as RecipeCreate).source_url = sourceUrl.trim();
 			(formData as RecipeCreate).source_type = 'manual';
 		}
@@ -281,7 +284,27 @@
 		draftRestored = false;
 	}
 
+	// The same choices the recipe list filters on, offered as suggestions so a
+	// recipe lands under one of them rather than under "Other" for a spelling
+	// difference. Free text still works; without them the boxes are plain.
+	let cuisineOptions: string[] = [];
+	let categoryOptions: string[] = [];
+	const unique = (options: string[]) =>
+		options.filter((option, i) => options.indexOf(option) === i).sort();
+
 	onMount(() => {
+		getPreferences()
+			.then((prefs) => {
+				cuisineOptions = unique([
+					...prefs.default_cuisines,
+					...(prefs.custom_cuisines || []),
+				]);
+				categoryOptions = unique([
+					...prefs.default_categories,
+					...(prefs.custom_categories || []),
+				]);
+			})
+			.catch(() => {});
 		if (!usesDraft) return;
 		try {
 			const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null');
@@ -369,21 +392,19 @@
 			<p class="form-help">Paste a URL to an image, or leave blank</p>
 		</div>
 
-		{#if !recipe}
-			<div class="form-group">
-				<label for="sourceUrl" class="form-label">Source URL (Optional)</label>
-				<input
-					type="url"
-					id="sourceUrl"
-					bind:value={sourceUrl}
-					placeholder="https://example.com/original-recipe"
-					class="form-input"
-				/>
-				<p class="form-help">
-					Link to the original recipe if this is adapted from one
-				</p>
-			</div>
-		{/if}
+		<div class="form-group">
+			<label for="sourceUrl" class="form-label">Source URL (Optional)</label>
+			<input
+				type="url"
+				id="sourceUrl"
+				bind:value={sourceUrl}
+				placeholder="https://example.com/original-recipe"
+				class="form-input"
+			/>
+			<p class="form-help">
+				Link to the original recipe if this is adapted from one
+			</p>
+		</div>
 	</section>
 
 	<!-- Ingredients Section -->
@@ -499,9 +520,15 @@
 					type="text"
 					id="cuisine"
 					bind:value={cuisine}
+					list="cuisine-options"
 					placeholder="e.g., Italian, Mexican, Thai"
 					class="form-input"
 				/>
+				<datalist id="cuisine-options">
+					{#each cuisineOptions as option (option)}
+						<option value={option}></option>
+					{/each}
+				</datalist>
 			</div>
 
 			<div class="form-group">
@@ -510,9 +537,15 @@
 					type="text"
 					id="category"
 					bind:value={category}
+					list="category-options"
 					placeholder="e.g., Dessert, Main Course, Appetizer"
 					class="form-input"
 				/>
+				<datalist id="category-options">
+					{#each categoryOptions as option (option)}
+						<option value={option}></option>
+					{/each}
+				</datalist>
 			</div>
 		</div>
 

@@ -20,6 +20,32 @@
 		dispatch('change', ingredients);
 	}
 
+	function moveIngredient(index: number, by: -1 | 1) {
+		const moved = [...ingredients];
+		[moved[index], moved[index + by]] = [moved[index + by], moved[index]];
+		ingredients = moved;
+		dispatch('change', ingredients);
+	}
+
+	// A pasted list becomes one ingredient per line, starting at this box (which
+	// is filled if empty, otherwise the lines go in after it). Pasting a single
+	// line is left to the browser.
+	function handlePaste(event: ClipboardEvent, index: number) {
+		const lines = (event.clipboardData?.getData('text') ?? '')
+			.split(/\r?\n/)
+			.map((line) => line.trim())
+			.filter(Boolean);
+		if (lines.length < 2) return;
+		event.preventDefault();
+		const keep = ingredients[index].trim() ? 1 : 0;
+		ingredients = [
+			...ingredients.slice(0, index + keep),
+			...lines,
+			...ingredients.slice(index + 1),
+		];
+		dispatch('change', ingredients);
+	}
+
 	let listEl: HTMLDivElement;
 
 	// Enter moves to the next line (adding one after the last) rather than
@@ -44,11 +70,34 @@
 		{#each ingredients as _ingredient, index (index)}
 			<div class="dynamic-list-item">
 				<span class="item-number">{index + 1}</span>
+				<div class="reorder">
+					<button
+						type="button"
+						on:click={() => moveIngredient(index, -1)}
+						disabled={index === 0}
+						class="btn-reorder"
+						title="Move up"
+						aria-label="Move ingredient {index + 1} up"
+					>
+						↑
+					</button>
+					<button
+						type="button"
+						on:click={() => moveIngredient(index, 1)}
+						disabled={index === ingredients.length - 1}
+						class="btn-reorder"
+						title="Move down"
+						aria-label="Move ingredient {index + 1} down"
+					>
+						↓
+					</button>
+				</div>
 				<input
 					type="text"
 					bind:value={ingredients[index]}
 					on:input={handleInput}
 					on:keydown={(e) => handleKeydown(e, index)}
+					on:paste={(e) => handlePaste(e, index)}
 					placeholder="e.g., 2 cups all-purpose flour"
 					class="form-input flex-1"
 					aria-label="Ingredient {index + 1}"
@@ -73,6 +122,9 @@
 	>
 		+ Add Ingredient
 	</button>
+	<p class="paste-help">
+		Tip: paste a whole list into any box to get one ingredient per line.
+	</p>
 </section>
 
 <style>
@@ -174,6 +226,45 @@
 		background: var(--color-error-bg);
 		border-color: var(--color-error);
 		color: var(--color-error-text);
+	}
+
+	.paste-help {
+		font-size: 0.875rem;
+		color: var(--text-500);
+		margin-top: 0.5rem;
+	}
+
+	/* Same arrows as the steps editor */
+	.reorder {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.btn-reorder {
+		width: 1.5rem;
+		height: 1.25rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--neutral-100);
+		border: 1px solid var(--neutral-200);
+		border-radius: 0.25rem;
+		color: var(--text-600);
+		font-size: 0.875rem;
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+
+	.btn-reorder:hover:not(:disabled) {
+		background: var(--accent-50);
+		border-color: var(--accent-300);
+		color: var(--accent-700);
+	}
+
+	.btn-reorder:disabled {
+		opacity: 0.3;
+		cursor: not-allowed;
 	}
 
 	.btn-sm {
