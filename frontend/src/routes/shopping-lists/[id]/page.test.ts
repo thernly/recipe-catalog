@@ -29,6 +29,7 @@ import {
   getCategories,
 } from "#lib/api/shopping-lists.js";
 import { dialog } from "#lib/stores/dialog.js";
+import { SHOPPING_LIST_REFRESH_INTERVAL } from "#lib/constants.js";
 
 const list = {
   id: 7,
@@ -200,6 +201,67 @@ describe("shopping list detail page", () => {
     await fireEvent.click(box);
 
     await waitFor(() => expect(box.checked).toBe(false));
+  });
+
+  it("shows another shopper's tick on return to the tab", async () => {
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: [milk] });
+    const { findByRole } = render(Page, { params: { id: "7" } });
+    const box = (await findByRole("checkbox", {
+      name: "Got milk",
+    })) as HTMLInputElement;
+
+    vi.mocked(getShoppingList).mockResolvedValue({
+      ...list,
+      items: [{ ...milk, checked: true }],
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+
+    await waitFor(() => expect(box.checked).toBe(true));
+  });
+
+  it("refreshes the list on a timer", async () => {
+    const setIntervalSpy = vi.spyOn(window, "setInterval");
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: [milk] });
+    const { findByRole } = render(Page, { params: { id: "7" } });
+    const box = (await findByRole("checkbox", {
+      name: "Got milk",
+    })) as HTMLInputElement;
+
+    vi.mocked(getShoppingList).mockResolvedValue({
+      ...list,
+      items: [{ ...milk, checked: true }],
+    });
+    const tick = setIntervalSpy.mock.calls.find(
+      ([, delay]) => delay === SHOPPING_LIST_REFRESH_INTERVAL,
+    )?.[0] as () => void;
+    setIntervalSpy.mockRestore();
+    tick();
+
+    await waitFor(() => expect(box.checked).toBe(true));
+  });
+
+  it("keeps a tick made while a refresh was on its way", async () => {
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: [milk] });
+    vi.mocked(updateShoppingListItem).mockResolvedValue({
+      ...milk,
+      checked: true,
+    });
+    const { findByRole } = render(Page, { params: { id: "7" } });
+    const box = (await findByRole("checkbox", {
+      name: "Got milk",
+    })) as HTMLInputElement;
+
+    let finishRefresh: (value: typeof list) => void = () => {};
+    vi.mocked(getShoppingList).mockReturnValue(
+      new Promise((resolve) => (finishRefresh = resolve)),
+    );
+    document.dispatchEvent(new Event("visibilitychange"));
+    await fireEvent.click(box);
+    finishRefresh({ ...list, items: [milk] } as typeof list);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(getShoppingList).toHaveBeenCalledTimes(2);
+    expect(box.checked).toBe(true);
   });
 
   it("unarchives an archived list", async () => {

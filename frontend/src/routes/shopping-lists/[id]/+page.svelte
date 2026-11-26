@@ -21,6 +21,7 @@
 	import { dialog } from '#lib/stores/dialog.js';
 	import { toast } from '#lib/stores/toast.js';
 	import { auth } from '#lib/stores/auth.js';
+	import { SHOPPING_LIST_REFRESH_INTERVAL } from '#lib/constants.js';
 
 	// Inline quantity/unit edit (no merging: merging happens only on add)
 	let editingItemId: number | null = null;
@@ -106,7 +107,30 @@
 		return itemsCopy;
 	}
 
+	// Bumped by every local change, so a background refresh that was already
+	// on its way (and so may predate the change) is dropped.
+	let localChanges = 0;
+	let pendingTicks = 0;
+
+	// Another shopper's ticks and additions: refetch without the loading
+	// screen, on a timer and on return to the tab. Never while this person is
+	// typing, and failures are ignored (poor signal in a shop is normal).
+	async function refreshQuietly() {
+		const busy = () =>
+			loading || editingListName || editingItemId !== null || pendingTicks > 0;
+		if (document.hidden || !shoppingList || busy()) return;
+		const seen = localChanges;
+		try {
+			const fresh = await getShoppingList(listId);
+			if (seen === localChanges && fresh.id === listId && !busy())
+				shoppingList = fresh;
+		} catch {
+			// keep what is on screen
+		}
+	}
+
 	async function loadShoppingList() {
+		localChanges++;
 		loading = true;
 		error = null;
 
@@ -176,11 +200,15 @@
 	async function handleToggleChecked(item: ShoppingListItem) {
 		const checked = !item.checked;
 		setChecked(item.id, checked);
+		localChanges++;
+		pendingTicks++;
 		try {
 			await updateShoppingListItem(item.id, { checked });
 		} catch (err) {
 			setChecked(item.id, !checked);
 			toast.error(err instanceof Error ? err.message : 'Failed to update item');
+		} finally {
+			pendingTicks--;
 		}
 	}
 
@@ -306,8 +334,14 @@
 		});
 	}
 
-	onMount(loadCategories);
+	onMount(() => {
+		void loadCategories();
+		const timer = setInterval(refreshQuietly, SHOPPING_LIST_REFRESH_INTERVAL);
+		return () => clearInterval(timer);
+	});
 </script>
+
+<svelte:document on:visibilitychange={refreshQuietly} />
 
 <svelte:head>
 	<title>{shoppingList?.name || 'Shopping List'} - Recipe Catalog</title>

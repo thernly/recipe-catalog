@@ -58,5 +58,11 @@ export const DEBOUNCE_DELAY = 300;
  */
 export const FOCUS_DELAY = 0;
 
+/**
+ * How often an open shopping list refetches itself, in milliseconds,
+ * so two people shopping together see each other's ticks
+ */
+export const SHOPPING_LIST_REFRESH_INTERVAL = 15000;
+
 /** Where to get Recipe Siphon, the browser extension that sends recipes here */
 export const RECIPE_SIPHON_URL = "https://github.com/thernly/recipe-siphon";
