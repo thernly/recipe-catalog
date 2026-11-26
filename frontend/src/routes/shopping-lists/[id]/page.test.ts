@@ -176,6 +176,19 @@ describe("shopping list detail page", () => {
     expect(getShoppingList).toHaveBeenCalledTimes(1);
   });
 
+  it("checks an item off when its name is tapped", async () => {
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: [milk] });
+    vi.mocked(updateShoppingListItem).mockResolvedValue({
+      ...milk,
+      checked: true,
+    });
+    const { findByText } = render(Page, { params: { id: "7" } });
+
+    await fireEvent.click(await findByText("milk"));
+
+    expect(updateShoppingListItem).toHaveBeenCalledWith(5, { checked: true });
+  });
+
   it("unchecks the item again when the update fails", async () => {
     vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: [milk] });
     vi.mocked(updateShoppingListItem).mockRejectedValue(new Error("offline"));

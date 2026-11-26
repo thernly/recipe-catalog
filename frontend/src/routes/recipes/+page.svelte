@@ -251,6 +251,11 @@
 			if (savedViewMode === 'grid' || savedViewMode === 'list') {
 				viewMode = savedViewMode;
 			}
+			// Below this width the sidebar stacks above the recipes (see the media query
+			// in the styles), so start with the filters closed
+			if (window.matchMedia?.('(max-width: 1024px)').matches) {
+				showFilters = false;
+			}
 		}
 	});
 </script>

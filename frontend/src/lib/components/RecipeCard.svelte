@@ -240,6 +240,13 @@
 		opacity: 1;
 	}
 
+	/* Touch screens cannot hover: keep the buttons visible */
+	@media (hover: none) {
+		.recipe-card-actions {
+			opacity: 1;
+		}
+	}
+
 	.action-btn {
 		width: 2.75rem;
 		height: 2.75rem;

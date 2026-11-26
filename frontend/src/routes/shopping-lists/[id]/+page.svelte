@@ -309,10 +309,9 @@
 	onMount(loadCategories);
 </script>
 
-<svelte:head
-	><title>{shoppingList?.name || 'Shopping List'} - Recipe Catalog</title
-	></svelte:head
->
+<svelte:head>
+	<title>{shoppingList?.name || 'Shopping List'} - Recipe Catalog</title>
+</svelte:head>
 
 <div class="container mx-auto px-4 py-8 max-w-4xl">
 	{#if error}
@@ -534,15 +533,21 @@
 						class="flex items-center gap-3 p-3 border rounded-lg hover:shadow-sm transition-shadow"
 						style="background: var(--neutral-white); border-color: var(--neutral-200); color: var(--text-900);"
 					>
-						<!-- Checkbox -->
-						<input
-							type="checkbox"
-							checked={item.checked}
-							on:change={() => handleToggleChecked(item)}
-							aria-label="Got {item.item_name}"
-							class="w-5 h-5 rounded"
-							style="accent-color: var(--primary-600);"
-						/>
+						<!-- Checkbox: the label's padding fills the row's left edge, and
+						     the item name is a second label, so both are tap targets -->
+						<label
+							class="flex items-center self-stretch -my-3 -ml-3 p-3 cursor-pointer"
+						>
+							<input
+								id="item-check-{item.id}"
+								type="checkbox"
+								checked={item.checked}
+								on:change={() => handleToggleChecked(item)}
+								aria-label="Got {item.item_name}"
+								class="w-5 h-5 rounded"
+								style="accent-color: var(--primary-600);"
+							/>
+						</label>
 
 						<!-- Item details -->
 						<div
@@ -550,7 +555,12 @@
 							class:line-through={item.checked}
 							style={item.checked ? 'color: var(--text-500);' : ''}
 						>
-							<div class="font-medium">{item.item_name}</div>
+							<label
+								for="item-check-{item.id}"
+								class="block font-medium cursor-pointer py-1"
+							>
+								{item.item_name}
+							</label>
 							<div class="text-sm" style="color: var(--text-600);">
 								{#if editingItemId === item.id}
 									<form
