@@ -135,6 +135,27 @@ export function formatQuantityUnit(
 }
 
 /**
+ * One group per store category, in the order of `categories` (the shop's
+ * sections); an item with no category goes under "Other". Items keep their
+ * order inside a group.
+ */
+export function groupByCategory(
+  items: ShoppingListItem[],
+  categories: string[],
+): { category: string; items: ShoppingListItem[] }[] {
+  const groups: Record<string, ShoppingListItem[]> = {};
+  for (const item of items)
+    (groups[item.category || "Other"] ??= []).push(item);
+  const rank = (category: string) => {
+    const index = categories.indexOf(category);
+    return index === -1 ? categories.length : index;
+  };
+  return Object.entries(groups)
+    .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
+    .map(([category, items]) => ({ category, items }));
+}
+
+/**
  * Get default shopping list categories
  */
 export async function getCategories(): Promise<string[]> {

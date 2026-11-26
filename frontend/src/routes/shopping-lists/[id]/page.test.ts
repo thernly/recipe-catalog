@@ -351,6 +351,62 @@ describe("shopping list detail page", () => {
     localStorage.clear();
   });
 
+  const sections = ["Produce", "Dairy", "Other"];
+  const sectioned = [
+    { ...milk, category: "Dairy" },
+    { ...milk, id: 8, item_name: "gochujang", display_order: 2 },
+    { ...milk, id: 9, item_name: "carrots", category: "Produce" },
+  ];
+
+  it("groups items under section headings, in the shop's order", async () => {
+    vi.mocked(getCategories).mockResolvedValue(sections);
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: sectioned });
+    const { findByRole, getAllByRole } = render(Page, { params: { id: "7" } });
+
+    await findByRole("heading", { name: "Produce" });
+    const text = getAllByRole("heading", { level: 2 })
+      .map((heading) => heading.textContent?.trim())
+      .filter((name) => name !== "Add Item");
+    expect(text).toEqual(["Produce", "Dairy", "Other"]);
+  });
+
+  it("moves an item to the section picked for it", async () => {
+    vi.mocked(getCategories).mockResolvedValue(sections);
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: sectioned });
+    vi.mocked(updateShoppingListItem).mockResolvedValue(sectioned[1]);
+    const { findByLabelText, queryByRole } = render(Page, {
+      params: { id: "7" },
+    });
+
+    await fireEvent.change(await findByLabelText("Category for gochujang"), {
+      target: { value: "Dairy" },
+    });
+
+    expect(updateShoppingListItem).toHaveBeenCalledWith(8, {
+      category: "Dairy",
+    });
+    await waitFor(() =>
+      expect(queryByRole("heading", { name: "Other" })).toBeNull(),
+    );
+  });
+
+  it("shows no section headings when sorted by order, and remembers it", async () => {
+    vi.mocked(getCategories).mockResolvedValue(sections);
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: sectioned });
+    const first = render(Page, { params: { id: "7" } });
+    await first.findByRole("heading", { name: "Produce" });
+    await fireEvent.change(first.getByLabelText("Sort by:"), {
+      target: { value: "order" },
+    });
+    expect(first.queryByRole("heading", { name: "Produce" })).toBeNull();
+    first.unmount();
+
+    const second = render(Page, { params: { id: "7" } });
+    await second.findByText("carrots");
+    expect(second.queryByRole("heading", { name: "Produce" })).toBeNull();
+    localStorage.clear();
+  });
+
   it("unarchives an archived list", async () => {
     vi.mocked(getShoppingList).mockResolvedValue({
       ...list,
