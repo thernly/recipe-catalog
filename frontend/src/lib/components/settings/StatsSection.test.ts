@@ -16,6 +16,8 @@ describe("StatsSection", () => {
         manual_recipes: 3,
         total_collections: 2,
         trashed_recipes: 1,
+        household_recipes: 20,
+        household_collections: 4,
       },
       user: { display_name: "Sam", created_at: "2026-01-01T00:00:00Z" } as User,
     });

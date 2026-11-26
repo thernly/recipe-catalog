@@ -31,12 +31,17 @@ export interface UserPreferences {
 }
 
 export interface UserStats {
+  // What this person added
   total_recipes: number;
   total_collections: number;
   // Names as sent by GET /users/me/stats
   imported_recipes: number;
   manual_recipes: number;
   trashed_recipes: number;
+  // Everything they can see, including other household members' recipes:
+  // the numbers that match the recipe list
+  household_recipes: number;
+  household_collections: number;
 }
 
 export interface UserUpdate {

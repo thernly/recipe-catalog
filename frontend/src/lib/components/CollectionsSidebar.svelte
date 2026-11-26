@@ -176,7 +176,7 @@
 							<span class="nav-icon">📚</span>
 							<span class="nav-label">All Recipes</span>
 							<span class="nav-count">
-								{stats?.total_recipes ?? 0}
+								{stats?.household_recipes ?? 0}
 							</span>
 						</button>
 					</li>

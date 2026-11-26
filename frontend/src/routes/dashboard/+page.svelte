@@ -41,6 +41,8 @@
 				imported_recipes: 0,
 				manual_recipes: 0,
 				trashed_recipes: 0,
+				household_recipes: 0,
+				household_collections: 0,
 			};
 		} finally {
 			loadingStats = false;
@@ -106,7 +108,8 @@
 						{#if loadingStats}
 							<div class="stat-number-skeleton"></div>
 						{:else}
-							<h3 class="stat-number">{stats?.total_recipes ?? 0}</h3>
+							<!-- The household's recipes: what the recipe list shows -->
+							<h3 class="stat-number">{stats?.household_recipes ?? 0}</h3>
 						{/if}
 						<p class="stat-label">Total Recipes</p>
 					</button>
@@ -130,7 +133,7 @@
 						{#if loadingStats}
 							<div class="stat-number-skeleton"></div>
 						{:else}
-							<h3 class="stat-number">{stats?.total_collections ?? 0}</h3>
+							<h3 class="stat-number">{stats?.household_collections ?? 0}</h3>
 						{/if}
 						<p class="stat-label">Collections</p>
 					</button>
@@ -140,7 +143,7 @@
 				<TodayCard />
 
 				<!-- Empty State Hero (shown when no recipes) -->
-				{#if !loadingStats && stats?.total_recipes === 0}
+				{#if !loadingStats && stats?.household_recipes === 0}
 					<div class="empty-state-hero">
 						<div class="empty-state-graphic">
 							<div class="empty-icon-bg">
