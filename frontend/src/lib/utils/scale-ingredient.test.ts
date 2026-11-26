@@ -46,6 +46,44 @@ describe("scaleIngredient", () => {
     );
   });
 
+  it("scales the same amount given again in brackets after the unit", () => {
+    const cup = { raw: "", unit: "cup" };
+    expect(scaleIngredient("2/3 cup (142g) light brown sugar", 2, cup)).toBe(
+      "1 1/3 cups (284g) light brown sugar",
+    );
+    expect(scaleIngredient("1 cup (4 1/4 ounces) flour", 2, cup)).toBe(
+      "2 cups (8 1/2 ounces) flour",
+    );
+    expect(
+      scaleIngredient("1 tbsp (15 ml) oil", 3, { raw: "", unit: "tablespoon" }),
+    ).toBe("3 tbsp (45 ml) oil");
+    expect(
+      scaleIngredient("100g (3.5oz) butter", 2, { raw: "", unit: "gram" }),
+    ).toBe("200g (7oz) butter");
+  });
+
+  it("leaves other brackets alone", () => {
+    // A size, not a second way of writing the amount
+    expect(
+      scaleIngredient("2 (14-ounce) cans tomatoes", 2, {
+        raw: "",
+        unit: "can",
+      }),
+    ).toBe("4 (14-ounce) cans tomatoes");
+    expect(scaleIngredient("1 large (150g) onion", 2, { raw: "" })).toBe(
+      "2 large (150g) onion",
+    );
+    expect(
+      scaleIngredient("3/4 teaspoon salt, (use 1/2 teaspoon if salted)", 2, {
+        raw: "",
+        unit: "teaspoon",
+      }),
+    ).toBe("1 1/2 teaspoons salt, (use 1/2 teaspoon if salted)");
+    expect(
+      scaleIngredient("1 cup (see note) stock", 2, { raw: "", unit: "cup" }),
+    ).toBe("2 cups (see note) stock");
+  });
+
   it("leaves an abbreviated unit as written", () => {
     const tbsp = { raw: "", unit: "tablespoon" };
     expect(scaleIngredient("1 tbsp oil", 2, tbsp)).toBe("2 tbsp oil");
