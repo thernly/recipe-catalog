@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, tick } from 'svelte';
 
 	export let ingredients: string[] = [''];
 	export let error: string = '';
@@ -19,6 +19,18 @@
 	function handleInput() {
 		dispatch('change', ingredients);
 	}
+
+	let listEl: HTMLDivElement;
+
+	// Enter moves to the next line (adding one after the last) rather than
+	// submitting the whole recipe form.
+	async function handleKeydown(event: KeyboardEvent, index: number) {
+		if (event.key !== 'Enter' || event.isComposing) return;
+		event.preventDefault();
+		if (index === ingredients.length - 1) addIngredient();
+		await tick();
+		listEl.querySelectorAll('input')[index + 1]?.focus();
+	}
 </script>
 
 <section class="form-section">
@@ -28,7 +40,7 @@
 		<p class="error-message mb-4">{error}</p>
 	{/if}
 
-	<div class="dynamic-list">
+	<div class="dynamic-list" bind:this={listEl}>
 		{#each ingredients as _ingredient, index (index)}
 			<div class="dynamic-list-item">
 				<span class="item-number">{index + 1}</span>
@@ -36,6 +48,7 @@
 					type="text"
 					bind:value={ingredients[index]}
 					on:input={handleInput}
+					on:keydown={(e) => handleKeydown(e, index)}
 					placeholder="e.g., 2 cups all-purpose flour"
 					class="form-input flex-1"
 					aria-label="Ingredient {index + 1}"

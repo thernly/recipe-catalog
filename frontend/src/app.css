@@ -700,6 +700,19 @@
   .instruction-step {
     margin-bottom: 0.25rem;
     page-break-inside: avoid;
+    counter-increment: print-step;
+  }
+
+  /* On screen the step numbers are buttons, which are hidden above, so number
+     the steps here instead */
+  .instructions-list {
+    counter-reset: print-step;
+  }
+
+  .instruction-step::before {
+    content: counter(print-step) ".";
+    font-weight: 700;
+    min-width: 1.5rem;
   }
 
   /* Keep ingredient items together but allow list to break */
