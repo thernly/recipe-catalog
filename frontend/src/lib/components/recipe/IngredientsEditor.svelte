@@ -240,10 +240,19 @@
 		gap: 0.25rem;
 	}
 
-	/* On a phone the row number gives its room to the arrows */
+	/* On a phone the row number gives its room to the arrows, and the
+	   section padding gives its room to the input box */
 	@media (max-width: 480px) {
 		.item-number {
 			display: none;
+		}
+
+		.form-section {
+			padding: 1rem;
+		}
+
+		.dynamic-list-item {
+			gap: 0.5rem;
 		}
 	}
 

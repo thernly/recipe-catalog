@@ -331,7 +331,8 @@
 
 <div class="min-h-screen bg-neutral-50">
 	<!-- Header -->
-	<div class="sticky top-16 z-40 bg-white border-b border-neutral-200">
+	<!-- Pinned from 640px up only: on a phone it is about half the screen tall -->
+	<div class="sm:sticky sm:top-16 z-40 bg-white border-b border-neutral-200">
 		<div class="container-custom py-4">
 			<!-- Top row: Title and View toggle -->
 			<div class="flex items-center justify-between mb-4">
