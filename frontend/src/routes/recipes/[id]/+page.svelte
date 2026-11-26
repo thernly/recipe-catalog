@@ -1102,7 +1102,7 @@
 	}
 
 	.back-button:hover {
-		background: var(--accent-600);
+		background: var(--color-btn-primary-hover);
 		transform: translateY(-1px);
 		box-shadow: var(--shadow-md);
 	}

@@ -138,6 +138,7 @@
   --color-sidebar-active-bg: var(--accent-100);
   --color-sidebar-active-text: var(--accent-800);
   --color-btn-primary-bg: var(--accent-600);
+  --color-btn-primary-hover: var(--accent-600);
   --color-btn-primary-text: var(--neutral-white);
   --color-btn-secondary-bg: var(--neutral-100);
   --color-btn-secondary-text: var(--primary-500);
@@ -208,6 +209,7 @@
   --color-sidebar-active-bg: var(--accent-100);
   --color-sidebar-active-text: var(--accent-800);
   --color-btn-primary-bg: var(--accent-500);
+  --color-btn-primary-hover: var(--accent-600);
   --color-btn-primary-text: #1a1816;
   --color-btn-secondary-bg: var(--neutral-100);
   --color-btn-secondary-text: var(--primary-500);
@@ -244,8 +246,10 @@
   --accent-300: #60a5fa;
   --accent-400: #3b82f6;
   --accent-500: #2563eb;
-  --accent-600: #1d4ed8;
-  --accent-700: #1e40af;
+  /* 600/700 are text colours on dark surfaces, so they are light here.
+     Button hovers use --color-btn-primary-hover instead. */
+  --accent-600: #60a5fa;
+  --accent-700: #93c5fd;
   --accent-800: #7dd3fc;
   --accent-900: #bae6fd;
 
@@ -276,6 +280,7 @@
   --color-sidebar-active-bg: #1e40af;
   --color-sidebar-active-text: #bae6fd;
   --color-btn-primary-bg: #2563eb;
+  --color-btn-primary-hover: #1d4ed8;
   --color-btn-primary-text: #ffffff;
   --color-btn-secondary-bg: #374151;
   --color-btn-secondary-text: #f9fafb;
@@ -380,6 +385,7 @@
   --color-sidebar-active-bg: #0052cc;
   --color-sidebar-active-text: #ffffff;
   --color-btn-primary-bg: #0052cc;
+  --color-btn-primary-hover: var(--accent-600);
   --color-btn-primary-text: #ffffff;
   --color-btn-secondary-bg: #ffffff;
   --color-btn-secondary-text: #000000;
@@ -553,7 +559,7 @@
   }
 
   .btn-primary:hover {
-    background: var(--accent-600);
+    background: var(--color-btn-primary-hover);
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
   }
