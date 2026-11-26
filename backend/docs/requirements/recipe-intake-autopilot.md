@@ -309,7 +309,7 @@ Model parsing of leftover lines in old recipes waits until shopping lists use pa
 
 **Deferred, designed when reached**
 - **Photos and YouTube.** Known constraints: photo storage must work on Cloudflare too; iPhone photos arrive as HEIC; recipes span several images; these may need background processing; transcript fetching is unofficial and fragile; neither can be grounded against source text, so both are always reviewed.
-- **Phone import and server-side page fetch.** Would reuse the safe-fetch helper.
+- **Phone import and server-side page fetch.** Would reuse the safe-fetch helper. (2026-11-26: a simple form now exists outside this project: `POST /api/v1/import/url` fetches a page with safe-fetch and imports its JSON-LD recipe, with no model and no review inbox. See `docs/features/API_GUIDE.md`.)
 - **Shopping lists reading `parsedIngredients`** (problem d): the one planned follow-on.
 - **Exposure beyond the LAN.** Revisit rate limits and token handling first.
 

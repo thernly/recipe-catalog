@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { importRecipes, restoreBackup } from '#lib/api/recipes.js';
+	import {
+		importRecipes,
+		restoreBackup,
+		importRecipeFromUrl,
+		type UrlImportResult,
+	} from '#lib/api/recipes.js';
 	import { RECIPE_SIPHON_URL } from '#lib/constants.js';
 	import {
 		summarizeImport,
@@ -121,6 +126,28 @@
 		}
 	}
 
+	// Saving a recipe from a web address
+	let pageUrl = '';
+	let fetchingUrl = false;
+	let urlError: string | null = null;
+	let urlResult: UrlImportResult | null = null;
+
+	async function handleUrlImport() {
+		if (!pageUrl.trim() || fetchingUrl) return;
+		fetchingUrl = true;
+		urlError = null;
+		urlResult = null;
+		try {
+			urlResult = await importRecipeFromUrl(pageUrl.trim());
+			pageUrl = '';
+		} catch (err) {
+			urlError =
+				err instanceof Error ? err.message : 'Failed to save the recipe';
+		} finally {
+			fetchingUrl = false;
+		}
+	}
+
 	// Restoring a Complete Backup
 	let restoreFile: File | null = null;
 	let restoreScope: 'everything' | 'recipes' = 'everything';
@@ -170,9 +197,72 @@
 					Import Recipes
 				</h1>
 				<p class="text-lg" style="color: var(--text-600);">
-					Upload a JSON file containing recipes in Schema.org format
+					Save a recipe from a website, or upload a file of recipes
 				</p>
 			</div>
+
+			<!-- From a web address -->
+			<form class="card mb-6" on:submit|preventDefault={handleUrlImport}>
+				<h2 class="text-xl font-semibold mb-2" style="color: var(--text-900);">
+					From a Web Address
+				</h2>
+				<p class="text-sm mb-4" style="color: var(--text-600);">
+					Paste the address of a recipe page. This works with sites that publish
+					their recipes in the standard format, which most recipe sites do.
+				</p>
+
+				<label
+					for="recipe-page-url"
+					class="block mb-2 font-medium"
+					style="color: var(--text-700);"
+				>
+					Web address
+				</label>
+				<input
+					id="recipe-page-url"
+					type="url"
+					inputmode="url"
+					autocomplete="off"
+					placeholder="https://"
+					bind:value={pageUrl}
+					class="w-full px-4 py-2 border rounded-md mb-4"
+					style="border-color: var(--neutral-300);"
+					disabled={fetchingUrl}
+				/>
+
+				{#if urlError}
+					<div
+						class="mb-4 p-4 border rounded-md"
+						style="background: var(--color-error-bg); border-color: var(--color-error); color: var(--color-error-text);"
+						role="alert"
+					>
+						<p>{urlError}</p>
+					</div>
+				{/if}
+
+				{#if urlResult}
+					<div
+						class="mb-4 p-4 border rounded-md"
+						style="background: var(--color-success-bg); border-color: var(--color-success); color: var(--color-success-text);"
+						role="status"
+					>
+						<p>{urlResult.message}</p>
+						<p class="text-sm mt-1">
+							<a href="/recipes/{urlResult.id}" class="underline">
+								Open the recipe
+							</a>
+						</p>
+					</div>
+				{/if}
+
+				<button
+					type="submit"
+					disabled={!pageUrl.trim() || fetchingUrl}
+					class="btn btn-primary w-full"
+				>
+					{fetchingUrl ? 'Fetching the page...' : 'Save Recipe'}
+				</button>
+			</form>
 
 			<!-- Import Form -->
 			<div class="card">
