@@ -122,6 +122,66 @@ describe("shopping list detail page", () => {
     );
   });
 
+  const noted = {
+    id: 10,
+    list_id: 7,
+    item_name: "butter",
+    quantity: "1",
+    notes: "for Cake",
+    checked: false,
+    display_order: 1,
+    created_at: "2026-11-01T00:00:00Z",
+    updated_at: "2026-11-01T00:00:00Z",
+  };
+
+  it("clears an item's note", async () => {
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: [noted] });
+    vi.mocked(updateShoppingListItem).mockResolvedValue(noted);
+    const { findByRole, getByLabelText } = render(Page, {
+      params: { id: "7" },
+    });
+
+    await fireEvent.click(
+      await findByRole("button", { name: /Note for butter: for Cake/ }),
+    );
+    const note = getByLabelText("Note for butter") as HTMLInputElement;
+    expect(note.value).toBe("for Cake");
+    await fireEvent.input(note, { target: { value: "" } });
+    await fireEvent.submit(note.closest("form") as HTMLFormElement);
+
+    await waitFor(() =>
+      expect(updateShoppingListItem).toHaveBeenCalledWith(10, {
+        quantity: "1",
+        unit: "",
+        notes: "",
+      }),
+    );
+  });
+
+  it("adds a note to an item that has none", async () => {
+    const plain = { ...noted, notes: undefined };
+    vi.mocked(getShoppingList).mockResolvedValue({ ...list, items: [plain] });
+    vi.mocked(updateShoppingListItem).mockResolvedValue(plain);
+    const { findByRole, getByLabelText } = render(Page, {
+      params: { id: "7" },
+    });
+
+    await fireEvent.click(
+      await findByRole("button", { name: /Quantity for butter/ }),
+    );
+    const note = getByLabelText("Note for butter");
+    await fireEvent.input(note, { target: { value: "unsalted" } });
+    await fireEvent.submit(note.closest("form") as HTMLFormElement);
+
+    await waitFor(() =>
+      expect(updateShoppingListItem).toHaveBeenCalledWith(10, {
+        quantity: "1",
+        unit: "",
+        notes: "unsalted",
+      }),
+    );
+  });
+
   it("cancels a quantity edit on Escape", async () => {
     const egg = {
       id: 4,
