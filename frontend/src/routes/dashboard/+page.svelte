@@ -6,6 +6,7 @@
 	import type { User } from '#lib/types/index.js';
 	import { getUserStats, type UserStats } from '#lib/api/users.js';
 	import VerifyEmailNotice from '#lib/components/VerifyEmailNotice.svelte';
+	import TodayCard from '#lib/components/TodayCard.svelte';
 	import { RECIPE_SIPHON_URL } from '#lib/constants.js';
 	import {
 		BookOpen,
@@ -134,6 +135,9 @@
 						<p class="stat-label">Collections</p>
 					</button>
 				</div>
+
+				<!-- Today's planned meals and the shopping list in use -->
+				<TodayCard />
 
 				<!-- Empty State Hero (shown when no recipes) -->
 				{#if !loadingStats && stats?.total_recipes === 0}
