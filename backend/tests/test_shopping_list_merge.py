@@ -158,9 +158,13 @@ def test_leading_prep_words_dropped():
 def test_alternatives_with_their_own_amounts():
     line = "1 teaspoon kosher salt (such as Diamond Crystal) or 1/2 teaspoon coarse kosher salt"
     items = recipe_shopping_items({"recipeIngredient": [line]})
-    assert [(i["item_name"], i["quantity"], i["unit"]) for i in items] == [
-        ("kosher salt", "1", "teaspoon"),
-        ("coarse kosher salt", "1/2", "teaspoon"),
+    assert items == [
+        {
+            "item_name": "kosher salt",
+            "quantity": "1",
+            "unit": "teaspoon",
+            "notes": "or 1/2 teaspoon coarse kosher salt",
+        }
     ]
 
 
@@ -241,11 +245,20 @@ def test_recipe_items_drop_prep_and_metric_notes_for_unparsed_recipes():
     assert all("notes" not in i for i in items)
 
 
-def test_recipe_items_split_alternatives():
+def _name_and_note(lines: list[str]) -> list[tuple[str, str | None]]:
+    items = recipe_shopping_items({"recipeIngredient": lines})
+    return [(i["item_name"], i.get("notes")) for i in items]
+
+
+def test_alternatives_buy_the_first_and_note_the_rest():
     data = {"recipeIngredient": ["2 tablespoons unsalted butter or olive oil"]}
-    assert [(i["item_name"], i["quantity"]) for i in recipe_shopping_items(data)] == [
-        ("unsalted butter", "2"),
-        ("olive oil", "2"),
+    assert recipe_shopping_items(data) == [
+        {
+            "item_name": "unsalted butter",
+            "quantity": "2",
+            "unit": "tablespoon",
+            "notes": "or olive oil",
+        }
     ]
 
 
@@ -267,17 +280,12 @@ def test_one_word_alternatives_share_the_noun():
         "1 tablespoon sesame or poppy seeds or a combination (optional)",
         "1 cup pecans or walnuts",
     ]
-    names = [i["item_name"] for i in recipe_shopping_items({"recipeIngredient": lines})]
-    assert names == [
-        "chicken stock",
-        "vegetable stock",
-        "light brown sugar",
-        "dark brown sugar",
-        "grapeseed oil",
-        "sesame seeds",
-        "poppy seeds",
-        "pecans",
-        "walnuts",
+    assert _name_and_note(lines) == [
+        ("chicken stock", "or vegetable stock"),
+        ("light brown sugar", "or dark brown sugar"),
+        ("grapeseed oil", None),
+        ("sesame seeds", "or poppy seeds"),
+        ("pecans", "or walnuts"),
     ]
 
 
@@ -294,24 +302,20 @@ def test_name_heuristic_misses():
         "For serving: chopped walnuts and extra honey",
         "Salt and pepper to season",
     ]
-    names = [i["item_name"] for i in recipe_shopping_items({"recipeIngredient": lines})]
-    assert names == [
-        "ghee",
-        "clarified butter",
-        "cornmeal",
-        "Kosher salt",
-        "black pepper",
-        "half and half",
-        "sweet and sour sauce",
-        "milk chocolate",
-        "dark chocolate",
-        "Kosher salt",
-        "black pepper",
-        "white pepper",
-        "potatoes peeled and cut into cubes",
-        "For serving: chopped walnuts and extra honey",
-        "Salt",
-        "pepper",
+    assert _name_and_note(lines) == [
+        ("ghee", "or clarified butter"),
+        ("cornmeal", None),
+        ("Kosher salt", None),
+        ("black pepper", None),
+        ("half and half", None),
+        ("sweet and sour sauce", None),
+        ("milk chocolate", "or dark chocolate"),
+        ("Kosher salt", None),
+        ("black pepper", "or white pepper"),
+        ("potatoes peeled and cut into cubes", None),
+        ("For serving: chopped walnuts and extra honey", None),
+        ("Salt", None),
+        ("pepper", None),
     ]
 
 
@@ -347,8 +351,8 @@ async def test_alternative_merges_with_existing_item(
         json={"recipe_id": r.id, "shopping_list_id": shopping_list.id, "ingredient_index": 0},
         headers=auth_headers,
     )
-    items = {i["item_name"]: i["quantity"] for i in res.json()["items"]}
-    assert items == {"unsalted butter": "4", "olive oil": "2"}
+    items = {i["item_name"]: (i["quantity"], i["notes"]) for i in res.json()["items"]}
+    assert items == {"unsalted butter": ("4", "or olive oil; for Saute")}
 
 
 async def test_from_recipe_into_existing_list_merges(

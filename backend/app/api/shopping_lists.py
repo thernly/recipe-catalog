@@ -82,8 +82,9 @@ _AND = re.compile(r"\s+and\s+", re.IGNORECASE)
 _TO_TASTE = re.compile(r"\s+to (taste|season)\b.*$", re.IGNORECASE)
 
 
-def _split_items(name: str, has_quantity: bool) -> list[str]:
-    """Split "A and B" into separate items (see `_AND`), then each "A or B"."""
+def _split_items(name: str, has_quantity: bool) -> list[list[str]]:
+    """Split "A and B" into separate items (see `_AND`); each item is its list of
+    "A or B" alternatives, the one to buy first."""
     if not has_quantity:
         name = _TO_TASTE.sub("", name)
     parts = [p.strip() for p in _AND.split(name)]
@@ -94,7 +95,7 @@ def _split_items(name: str, has_quantity: bool) -> list[str]:
         or any(" " not in p and p.lower() not in _WHOLE_INGREDIENTS for p in parts)
     ):
         parts = [name]
-    return [alt for part in parts for alt in _split_alternatives(part)]
+    return [_split_alternatives(part) for part in parts]
 
 
 # Alternatives that name nothing to buy: "or a combination", "or both", "or any ..."
@@ -151,8 +152,9 @@ def recipe_shopping_items(
     Uses the stored `parsedIngredients`, parsing the raw lines for recipes saved before
     the parser existed. Recipe notes ("divided", "235ml") and trailing prep words
     ("finely chopped") are left off: they describe cooking, not shopping. A name with
-    alternatives ("butter or olive oil") becomes one item per alternative, each with the
-    line's amount. Ranges buy the upper bound.
+    alternatives ("butter or olive oil") becomes one item, the first alternative, with
+    the others in its `notes` ("or olive oil"); `notes` is only present then. Ranges buy
+    the upper bound.
     """
     entries = recipe_data.get("parsedIngredients")
     if not entries:
@@ -176,22 +178,30 @@ def recipe_shopping_items(
         )
         quantity = _quantity_str(entry.get("quantityMax") or entry.get("quantity"))
         unit = entry.get("unit")
-        for alternative in _split_items(name, quantity is not None):
-            alt_quantity, alt_unit = quantity, unit
-            if alternative[:1].isdigit() or alternative[:1] in "½¼¾⅓⅔⅛":
-                # "1 tsp kosher salt or 1/2 tsp coarse salt": each side has its own amount
-                parsed = parse_ingredient_lines([alternative])[0]
+        for alternatives in _split_items(name, quantity is not None):
+            # Buy the first alternative; the others ("or olive oil", or "or 1/2
+            # teaspoon coarse salt" when a side has its own amount) go in the note
+            first, first_quantity, first_unit = (
+                alternatives[0] if alternatives else "",
+                quantity,
+                unit,
+            )
+            if first[:1].isdigit() or first[:1] in "½¼¾⅓⅔⅛":
+                # The line's own amount was not parsed off: take it from the alternative
+                parsed = parse_ingredient_lines([first])[0]
                 if parsed.get("item"):
-                    alternative = parsed["item"]
-                    alt_quantity = _quantity_str(
+                    first = parsed["item"]
+                    first_quantity = _quantity_str(
                         parsed.get("quantityMax") or parsed.get("quantity")
                     )
-                    alt_unit = parsed.get("unit")
-            item_name = get_base_ingredient_name(alternative)
-            if item_name:
-                items.append(
-                    {"item_name": item_name[:255], "quantity": alt_quantity, "unit": alt_unit}
-                )
+                    first_unit = parsed.get("unit")
+            names = [n for n in map(get_base_ingredient_name, [first, *alternatives[1:]]) if n]
+            if not names:
+                continue
+            item = {"item_name": names[0][:255], "quantity": first_quantity, "unit": first_unit}
+            if len(names) > 1:
+                item["notes"] = f"or {' or '.join(names[1:])}".replace(";", ",")
+            items.append(item)
     return items
 
 
@@ -864,7 +874,8 @@ async def generate_from_recipe(
 
     # Add ingredients as items
     for fields in recipe_shopping_items(recipe.recipe_data or {}, request_data.ingredient_index):
-        await add_or_merge_item(db, shopping_list.id, **fields, notes=_for_recipe(recipe))
+        notes = [*filter(None, [fields.pop("notes", None)]), _for_recipe(recipe)]
+        await add_or_merge_item(db, shopping_list.id, **fields, notes="; ".join(notes))
 
     await db.commit()
     return await _load_with_items(db, shopping_list.id)
@@ -933,7 +944,8 @@ async def generate_from_meal_plan(
 
     # Collect all ingredients from all recipes as structured data
     ingredients_data: list[dict[str, Any]] = []
-    # Which recipes each ingredient is for, by the key the items are merged on
+    # Each ingredient's notes (its alternatives, and which recipes it is for), by the
+    # key the items are merged on
     used_for: dict[str, list[str]] = {}
     recipe_result = await db.execute(
         select(Recipe).where(
@@ -951,9 +963,10 @@ async def generate_from_meal_plan(
             for item in recipe_shopping_items(recipe.recipe_data):
                 # Amounts that are not numbers ("a pinch") cannot be scaled
                 amount = _numeric(item["quantity"])
-                recipes_using = used_for.setdefault(ingredient_key(item["item_name"]), [])
-                if _for_recipe(recipe) not in recipes_using:
-                    recipes_using.append(_for_recipe(recipe))
+                item_notes = used_for.setdefault(ingredient_key(item["item_name"]), [])
+                for note in filter(None, [item.get("notes"), _for_recipe(recipe)]):
+                    if note not in item_notes:
+                        item_notes.append(note)
                 ingredients_data.append(
                     {
                         "name": item["item_name"],
