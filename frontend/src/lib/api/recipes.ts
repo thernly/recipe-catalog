@@ -207,6 +207,39 @@ export async function importRecipes(
   });
 }
 
+/** Counts of what a restore added beyond recipes; null for a recipes-only restore. */
+export interface RestoredCounts {
+  collections: number;
+  collection_recipes: number;
+  meal_plans: number;
+  planned_meals: number;
+  planned_meals_skipped: number;
+  shopping_lists: number;
+  shopping_lists_skipped: number;
+}
+
+export interface RestoreResult extends ImportResult {
+  restored: RestoredCounts | null;
+}
+
+/**
+ * Restore a Complete Backup file. Only adds what is missing.
+ */
+export async function restoreBackup(
+  file: File,
+  scope: "everything" | "recipes",
+): Promise<RestoreResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("scope", scope);
+
+  return apiRequest<RestoreResult>("/import/backup", {
+    method: "POST",
+    body: formData,
+    headers: {}, // Let browser set Content-Type for FormData
+  });
+}
+
 /**
  * Export a single recipe
  */

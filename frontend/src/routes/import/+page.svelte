@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { importRecipes } from '#lib/api/recipes.js';
+	import { importRecipes, restoreBackup } from '#lib/api/recipes.js';
 	import { RECIPE_SIPHON_URL } from '#lib/constants.js';
 	import {
 		summarizeImport,
+		summarizeRestored,
 		type ImportOutcome,
 	} from '#lib/utils/import-summary.js';
 	import { getCollections } from '#lib/api/collections.js';
@@ -117,6 +118,37 @@
 		} finally {
 			loading = false;
 			importProgress = { current: 0, total: 0 };
+		}
+	}
+
+	// Restoring a Complete Backup
+	let restoreFile: File | null = null;
+	let restoreScope: 'everything' | 'recipes' = 'everything';
+	let restoring = false;
+	let restoreError: string | null = null;
+	let restoreSuccess: string | null = null;
+
+	async function handleRestore() {
+		if (!restoreFile) return;
+		restoring = true;
+		restoreError = null;
+		restoreSuccess = null;
+		try {
+			const result = await restoreBackup(restoreFile, restoreScope);
+			const { summary, problems } = summarizeImport([
+				{ file: restoreFile.name, result },
+			]);
+			if (problems.length > 0) {
+				restoreError = `These could not be restored:\n${problems.join('\n')}`;
+			}
+			restoreSuccess = [summary, summarizeRestored(result.restored)]
+				.filter(Boolean)
+				.join('. ');
+		} catch (err) {
+			restoreError =
+				err instanceof Error ? err.message : 'Failed to restore the backup';
+		} finally {
+			restoring = false;
 		}
 	}
 
@@ -323,8 +355,8 @@
 						<li>A single recipe object in Schema.org Recipe format</li>
 						<li>An array of recipe objects in Schema.org Recipe format</li>
 						<li>
-							A recipes export (JSON) from this application; the Complete Backup
-							file cannot be imported
+							A recipes export (JSON) from this application. A Complete Backup
+							file goes in the Restore box below instead
 						</li>
 					</ul>
 					<p class="text-sm mt-3" style="color: var(--text-600);">
@@ -335,6 +367,90 @@
 						to see the expected format.
 					</p>
 				</div>
+			</div>
+
+			<!-- Restore a Complete Backup -->
+			<div class="card mt-6">
+				<h2 class="text-xl font-semibold mb-2" style="color: var(--text-900);">
+					Restore a Complete Backup
+				</h2>
+				<p class="text-sm mb-4" style="color: var(--text-600);">
+					Choose a Complete Backup file from the
+					<a href="/export" class="text-primary-600 hover:underline">
+						Export page
+					</a>. Restoring only adds what is missing: anything already here is
+					left as it is, so it is safe to run twice.
+				</p>
+
+				<div class="mb-4">
+					<label
+						for="restore-file"
+						class="block mb-2 font-medium"
+						style="color: var(--text-700);"
+					>
+						Backup file
+					</label>
+					<input
+						id="restore-file"
+						type="file"
+						accept="application/json,.json"
+						on:change={(e) =>
+							(restoreFile = e.currentTarget.files?.[0] ?? null)}
+						class="w-full px-4 py-2 border rounded-md"
+						style="border-color: var(--neutral-300);"
+						disabled={restoring}
+					/>
+				</div>
+
+				<div class="mb-6">
+					<label
+						for="restore-scope"
+						class="block mb-2 font-medium"
+						style="color: var(--text-700);"
+					>
+						What to restore
+					</label>
+					<select
+						id="restore-scope"
+						bind:value={restoreScope}
+						class="w-full px-4 py-2 border rounded-md"
+						style="border-color: var(--neutral-300);"
+						disabled={restoring}
+					>
+						<option value="everything">
+							Everything (recipes, collections, meal plans, shopping lists)
+						</option>
+						<option value="recipes">Recipes only</option>
+					</select>
+				</div>
+
+				{#if restoreError}
+					<div
+						class="mb-4 p-4 border rounded-md"
+						style="background: var(--color-error-bg); border-color: var(--color-error); color: var(--color-error-text);"
+						role="alert"
+					>
+						<p class="whitespace-pre-line">{restoreError}</p>
+					</div>
+				{/if}
+
+				{#if restoreSuccess}
+					<div
+						class="mb-4 p-4 border rounded-md"
+						style="background: var(--color-success-bg); border-color: var(--color-success); color: var(--color-success-text);"
+						role="status"
+					>
+						<p>{restoreSuccess}</p>
+					</div>
+				{/if}
+
+				<button
+					on:click={handleRestore}
+					disabled={!restoreFile || restoring}
+					class="btn btn-primary w-full"
+				>
+					{restoring ? 'Restoring...' : 'Restore Backup'}
+				</button>
 			</div>
 
 			<!-- Extension info -->
