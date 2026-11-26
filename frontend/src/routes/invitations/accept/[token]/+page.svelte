@@ -162,7 +162,7 @@
 							family members. You'll be able to:
 						</p>
 						<ul class="details-list">
-							<li>View and edit shared recipes</li>
+							<li>View shared recipes, add notes and save your own copies</li>
 							<li>Access shared collections</li>
 							<li>Collaborate on meal planning</li>
 						</ul>
