@@ -229,6 +229,27 @@ describe("meal planner page", () => {
       );
     });
 
+    it("shows a newly added meal in the grid without leaving the page", async () => {
+      vi.mocked(addPlannedMeal).mockResolvedValue(leftovers);
+      const { findByRole, findByLabelText } = render(Page);
+
+      await fireEvent.click(
+        await findByRole("button", { name: "Add dinner on Tuesday" }),
+      );
+      await fireEvent.input(
+        await findByLabelText("Or something without a recipe"),
+        { target: { value: "Leftovers" } },
+      );
+      // The reload after the add returns the week with the new meal in it
+      vi.mocked(getCurrentWeekMealPlan).mockResolvedValue({
+        ...plan,
+        planned_meals: [...plan.planned_meals, leftovers],
+      });
+      await fireEvent.click(await findByRole("button", { name: "Add Meal" }));
+
+      expect(await findByRole("button", { name: /Leftovers/ })).toBeTruthy();
+    });
+
     it("shows it by its text and leaves it out of the meals to shop for", async () => {
       vi.mocked(getCurrentWeekMealPlan).mockResolvedValue({
         ...plan,
