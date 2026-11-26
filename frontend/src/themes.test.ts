@@ -88,15 +88,15 @@ function shortfalls(id: string): string[] {
 
 const CHECKED = [
   "garden-fresh",
+  "bistro",
   "high-contrast",
   "ember",
   "coastal",
   "farmhouse",
 ];
-// Known shortfalls, 2026-11-26. Bistro: gold accent 600/700 as text on its
-// creams (2.6 to 3.9) and cream text on gold (2.1, 2.7). Dark: the dark
-// --neutral-white text on accent-500 (2.8). Move a theme up once it passes.
-const NOT_YET = ["bistro", "dark"];
+// Known shortfall, 2026-11-26. Dark: the dark --neutral-white text on
+// accent-500 (2.8). Move it up once it passes.
+const NOT_YET = ["dark"];
 
 describe("theme contrast", () => {
   it("calculates the standard ratios", () => {

@@ -176,11 +176,13 @@
   --accent-200: #faefc3;
   --accent-300: #f5e29a;
   --accent-400: #efd06a;
-  --accent-500: #c9b037;
-  --accent-600: #b09a2f;
-  --accent-700: #917e26;
-  --accent-800: #73631e;
-  --accent-900: #544915;
+  /* 500 and up are deep enough to read as text on the creams and to sit under
+     cream text. The bright champagne gold lives on the primary button below. */
+  --accent-500: #a68a1c;
+  --accent-600: #7f6a14;
+  --accent-700: #6a580f;
+  --accent-800: #55460b;
+  --accent-900: #3f3408;
 
   /* Neutral Palette (Warm Ivory & Charcoal) */
   --neutral-white: #fdfcfa;
@@ -208,8 +210,8 @@
   --color-sidebar-bg: var(--neutral-50);
   --color-sidebar-active-bg: var(--accent-100);
   --color-sidebar-active-text: var(--accent-800);
-  --color-btn-primary-bg: var(--accent-500);
-  --color-btn-primary-hover: var(--accent-600);
+  --color-btn-primary-bg: #c9b037;
+  --color-btn-primary-hover: #b09a2f;
   --color-btn-primary-text: #1a1816;
   --color-btn-secondary-bg: var(--neutral-100);
   --color-btn-secondary-text: var(--primary-500);
