@@ -80,8 +80,11 @@
 
 	$: weekDates = getWeekDates(currentWeekStart);
 
-	async function loadMealPlan() {
-		loading = true;
+	// keepPage: reload the week already on screen (after a meal is added, edited
+	// or removed) without swapping the grid for the loading message, so the
+	// scroll position survives. Changing week still shows the message.
+	async function loadMealPlan(keepPage = false) {
+		loading = !keepPage || !mealPlan;
 		error = null;
 
 		try {
@@ -134,19 +137,19 @@
 
 	async function handleMealAdded() {
 		showAddDialog = false;
-		await loadMealPlan();
+		await loadMealPlan(true);
 	}
 
 	async function handleMealUpdated() {
 		showEditDialog = false;
 		selectedMeal = null;
-		await loadMealPlan();
+		await loadMealPlan(true);
 	}
 
 	async function handleMealDeleted() {
 		showEditDialog = false;
 		selectedMeal = null;
-		await loadMealPlan();
+		await loadMealPlan(true);
 	}
 
 	function formatDate(date: Date): string {
