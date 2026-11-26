@@ -5,7 +5,7 @@
 
 	function handleDeleteAccount() {
 		const confirmation = prompt(
-			'Are you absolutely sure? Type "DELETE" to confirm account deletion:',
+			'This deletes your account and every recipe and collection you added, including ones your household uses. It cannot be undone. Type "DELETE" to confirm:',
 		);
 
 		if (confirmation !== 'DELETE') {
@@ -24,8 +24,10 @@
 		<div class="danger-info">
 			<h3 class="danger-card-title">Delete Account</h3>
 			<p class="danger-card-description">
-				Permanently delete your account and all associated data. This action
-				cannot be undone.
+				Permanently delete your account and what you added: your recipes and
+				collections, including the ones your household uses. Notes you left on
+				other members' recipes stay. If you own a household with other members,
+				make someone else the owner first. This action cannot be undone.
 			</p>
 		</div>
 		<button on:click={handleDeleteAccount} class="btn btn-danger">

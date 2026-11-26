@@ -188,7 +188,26 @@ async def delete_account(
     """
     from sqlalchemy import func, update
 
+    from app.core.exceptions import InvalidInputError
+    from app.models.household import Household, HouseholdMember
     from app.models.recipe_note import RecipeNote, live_author_name
+
+    # A household must not lose its owner while others still use it (the same rule as
+    # leaving a household): it would be left with nobody able to invite or remove
+    # members, or deleted outright where the database enforces the owner foreign key.
+    others = await db.scalar(
+        select(func.count(HouseholdMember.id))
+        .join(Household, Household.id == HouseholdMember.household_id)
+        .where(
+            Household.owner_user_id == current_user.id,
+            HouseholdMember.user_id != current_user.id,
+        )
+    )
+    if others:
+        raise InvalidInputError(
+            "You own a household that has other members. Transfer ownership or remove "
+            "the other members before deleting your account."
+        )
 
     # Keep the user's recipe notes, under the name they had. Notes on their own
     # recipes still go, with those recipes.
