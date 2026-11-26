@@ -3,6 +3,7 @@ Import API endpoints
 Allows users to import recipes from JSON files in Schema.org format
 """
 
+import contextlib
 import json
 from datetime import UTC, date, datetime
 from types import SimpleNamespace
@@ -585,19 +586,30 @@ async def _restore_backup_recipes(
         results["items"] += part["items"]
 
     id_map: dict[int, int] = {}
-    source_types: dict[int, str] = {}
+    # What the importer does not carry, for each recipe it created
+    restored: dict[int, dict[str, Any]] = {}
     for item in results["items"]:
         entry = entries[item["index"]]
         if isinstance(entry.get("id"), int):
             id_map[entry["id"]] = item["recipe_id"]
-        if item["status"] == "created" and entry.get("source_type") in _SOURCE_TYPES - {"imported"}:
-            source_types[item["recipe_id"]] = entry["source_type"]
-    # The importer marks everything "imported"; put back how each recipe was made
-    if source_types:
-        rows = await db.execute(select(Recipe).where(Recipe.id.in_(source_types)))
+        if item["status"] != "created":
+            continue
+        fields: dict[str, Any] = {}
+        # The importer marks everything "imported"; put back how each recipe was made
+        if entry.get("source_type") in _SOURCE_TYPES - {"imported"}:
+            fields.update(source_type=entry["source_type"], imported_at=None)
+        rating = entry.get("rating")
+        if type(rating) is int and 1 <= rating <= 5:
+            fields["rating"] = rating
+        with contextlib.suppress(TypeError, ValueError):  # never cooked, or not a date
+            fields["last_cooked_on"] = date.fromisoformat(entry.get("last_cooked_on"))
+        if fields:
+            restored[item["recipe_id"]] = fields
+    if restored:
+        rows = await db.execute(select(Recipe).where(Recipe.id.in_(restored)))
         for recipe in rows.scalars():
-            recipe.source_type = source_types[recipe.id]
-            recipe.imported_at = None
+            for field, value in restored[recipe.id].items():
+                setattr(recipe, field, value)
     return results, id_map
 
 

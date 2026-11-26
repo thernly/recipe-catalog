@@ -164,6 +164,15 @@ async def search_recipes(
         # ponytail: an even spread rather than true randomness; fine for browsing.
         shuffle_seed = seed or random.randrange(1, SHUFFLE_PRIME)
         stmt = stmt.order_by((Recipe.id * shuffle_seed) % SHUFFLE_PRIME, Recipe.id)
+    elif sort_by == "recently_cooked":
+        # Never-cooked and unrated recipes go last, newest first among themselves
+        stmt = stmt.order_by(
+            Recipe.last_cooked_on.is_(None), Recipe.last_cooked_on.desc(), Recipe.created_at.desc()
+        )
+    elif sort_by == "rating_desc":
+        stmt = stmt.order_by(
+            Recipe.rating.is_(None), Recipe.rating.desc(), Recipe.created_at.desc()
+        )
     elif sort_by == "time_desc":
         stmt = stmt.order_by(Recipe.total_time_minutes.desc())
     else:  # recently_added (default)
