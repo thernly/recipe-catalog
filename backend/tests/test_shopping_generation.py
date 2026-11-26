@@ -130,6 +130,52 @@ async def test_meal_plan_preview_matches_the_generated_list_and_saves_nothing(
     assert [item["item_name"] for item in preview.json()] == ["flour", "egg", "oil"]
 
 
+async def test_meal_plan_preview_adds_related_units_like_the_generated_list(
+    client, test_db, test_user_headers
+):
+    """Two meals with the same ingredient in grams and in kilograms: one line, not two."""
+    user, household, cake = await _recipe(
+        test_db, clean_recipe_data({"recipeIngredient": ["250 g butter", "1 tbsp salt"]}).data
+    )
+    pie = Recipe(
+        user_id=user.id,
+        household_id=household.id,
+        name="Pie",
+        recipe_data=clean_recipe_data({"recipeIngredient": ["1 kg butter", "3 tsp salt"]}).data,
+    )
+    plan = MealPlan(
+        household_id=household.id, week_start_date=date(2026, 11, 2), created_by_user_id=user.id
+    )
+    test_db.add_all([pie, plan])
+    await test_db.flush()
+    for day, recipe in enumerate([cake, pie]):
+        test_db.add(
+            PlannedMeal(
+                meal_plan_id=plan.id,
+                recipe_id=recipe.id,
+                created_by_user_id=user.id,
+                day_of_week=day,
+                meal_type="dinner",
+            )
+        )
+    await test_db.commit()
+    body = {"meal_plan_id": plan.id}
+
+    preview = await client.post(
+        "/api/v1/shopping-lists/from-meal-plan/preview", json=body, headers=test_user_headers
+    )
+    made = await client.post(
+        "/api/v1/shopping-lists/from-meal-plan", json=body, headers=test_user_headers
+    )
+
+    fields = ("item_name", "quantity", "unit", "notes")
+    assert preview.json() == [{f: item[f] for f in fields} for item in made.json()["items"]]
+    assert [(i["item_name"], i["quantity"], i["unit"]) for i in preview.json()] == [
+        ("butter", "1 1/4", "kilogram"),
+        ("salt", "2", "tablespoon"),
+    ]
+
+
 async def test_meal_plan_preview_is_household_scoped(client, test_db, test_user_headers):
     from tests.test_recipe_notes import _login
 

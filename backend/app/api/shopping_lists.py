@@ -3,6 +3,7 @@ Shopping List API endpoints.
 """
 
 import re
+from types import SimpleNamespace
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -247,6 +248,40 @@ def _for_recipe(recipe: Recipe) -> str:
     return f"for {str(recipe.name).replace(';', ',')}"
 
 
+def _merge_into(
+    existing: Any, quantity: str | None, unit: str | None, notes: str | None, category: str | None
+) -> bool:
+    """
+    Fold an amount of the same ingredient into `existing` (a list row, or a preview
+    item: anything with quantity, unit, notes and category). `quantity` and `unit` are
+    already normalized. False, with nothing changed, when the two amounts cannot be
+    added. See `add_or_merge_item` for the rules.
+    """
+    old_quantity = (existing.quantity or "").strip() or None
+    if not old_quantity or not quantity:
+        # "salt, to taste" adds no amount: fold it into the same item either way
+        if not old_quantity and quantity:
+            existing.quantity, existing.unit = quantity, unit
+    else:
+        old_value, new_value = _numeric(old_quantity), _numeric(quantity)
+        if old_value is None or new_value is None:
+            return False
+        old_unit = normalize_unit(existing.unit)
+        if old_unit == unit:
+            existing.quantity = format_quantity(old_value + new_value)
+        elif total := add_amounts(old_value, old_unit, new_value, unit):
+            existing.quantity, existing.unit = format_quantity(total[0]), total[1]
+        else:
+            return False
+    if notes:
+        # `notes` may itself be several ("for Cake; for Omelette"): add the new ones
+        kept = existing.notes.split("; ") if existing.notes else []
+        kept += [note for note in notes.split("; ") if note not in kept]
+        existing.notes = "; ".join(kept)
+    existing.category = existing.category or category
+    return True
+
+
 async def add_or_merge_item(
     db: AsyncSession,
     list_id: int,
@@ -277,32 +312,11 @@ async def add_or_merge_item(
         .order_by(ShoppingListItem.id)
     )
     for existing in candidates.scalars():
-        if ingredient_key(existing.item_name) != key:
-            continue
-        old_quantity = (existing.quantity or "").strip() or None
-        if not old_quantity or not quantity:
-            # "salt, to taste" adds no amount: fold it into the same item either way
-            if not old_quantity and quantity:
-                existing.quantity, existing.unit = quantity, unit
-        else:
-            old_value, new_value = _numeric(old_quantity), _numeric(quantity)
-            if old_value is None or new_value is None:
-                continue
-            old_unit = normalize_unit(existing.unit)
-            if old_unit == unit:
-                existing.quantity = format_quantity(old_value + new_value)
-            elif total := add_amounts(old_value, old_unit, new_value, unit):
-                existing.quantity, existing.unit = format_quantity(total[0]), total[1]
-            else:
-                continue
-        if notes:
-            # `notes` may itself be several ("for Cake; for Omelette"): add the new ones
-            kept = existing.notes.split("; ") if existing.notes else []
-            kept += [note for note in notes.split("; ") if note not in kept]
-            existing.notes = "; ".join(kept)
-        existing.category = existing.category or category
-        await db.flush()
-        return existing
+        if ingredient_key(existing.item_name) == key and _merge_into(
+            existing, quantity, unit, notes, category
+        ):
+            await db.flush()
+            return existing
 
     max_order = (
         await db.execute(
@@ -950,15 +964,27 @@ async def _meal_plan_items(
                     }
                 )
 
-    # Consolidate ingredients by name and unit, summing quantities
+    # Consolidate ingredients by name and unit, summing quantities; then fold related
+    # units together (grams into kilograms) exactly as saving the items would
+    items: list[SimpleNamespace] = []
+    for ingredient in consolidate_ingredients(ingredients_data):
+        name = str(ingredient["name"])[:255]
+        key = ingredient_key(name)
+        quantity = (ingredient["quantity"] or "").strip() or None
+        unit = normalize_unit(ingredient["unit"])
+        notes = "; ".join(used_for.get(key, [])) or None
+        if not any(
+            ingredient_key(seen.item_name) == key and _merge_into(seen, quantity, unit, notes, None)
+            for seen in items
+        ):
+            items.append(
+                SimpleNamespace(
+                    item_name=name, quantity=quantity, unit=unit, notes=notes, category=None
+                )
+            )
     return meal_plan, [
-        {
-            "item_name": str(ingredient["name"])[:255],
-            "quantity": ingredient["quantity"],
-            "unit": ingredient["unit"],
-            "notes": "; ".join(used_for.get(ingredient_key(str(ingredient["name"])), [])) or None,
-        }
-        for ingredient in consolidate_ingredients(ingredients_data)
+        {"item_name": i.item_name, "quantity": i.quantity, "unit": i.unit, "notes": i.notes}
+        for i in items
     ]
 
 
