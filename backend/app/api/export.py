@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -27,30 +27,49 @@ from app.utils.recipe_format import convert_to_schema_org, notes_to_schema
 
 router = APIRouter()
 
+ExportScope = Literal["mine", "household"]
+
+
+async def _recipes_to_export(
+    db: AsyncSession, current_user: User, household: Household, scope: ExportScope
+) -> list[Recipe]:
+    """The caller's own recipes, or (a read, so household-scoped) everyone's in the household."""
+    owner_or_household: ColumnElement[bool] = (
+        Recipe.household_id == household.id
+        if scope == "household"
+        else Recipe.user_id == current_user.id
+    )
+    result = await db.execute(
+        select(Recipe)
+        .where(owner_or_household)
+        .where(Recipe.deleted_at.is_(None))
+        .order_by(Recipe.created_at.desc())
+        .options(load_recipe_notes())
+    )
+    return list(result.scalars().all())
+
 
 @router.get("/recipes")
 async def export_recipes(
     format: Literal["json", "markdown", "text"] = "json",
+    scope: ExportScope = "mine",
     current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Export all user recipes in the specified format.
+    Export recipes in the specified format.
+
+    Scope:
+    - mine (default): recipes the caller added
+    - household: every recipe in the caller's household
 
     Formats:
     - json: Complete recipe data in JSON format
     - markdown: Human-readable markdown format
     - text: Plain text format
     """
-    # Fetch all user recipes (not deleted)
-    result = await db.execute(
-        select(Recipe)
-        .where(Recipe.user_id == current_user.id)
-        .where(Recipe.deleted_at.is_(None))
-        .order_by(Recipe.created_at.desc())
-        .options(load_recipe_notes())
-    )
-    recipes = result.scalars().all()
+    recipes = await _recipes_to_export(db, current_user, household, scope)
 
     if format == "json":
         # Export as JSON in Schema.org Recipe format
@@ -448,26 +467,20 @@ async def export_collections(
 
 @router.get("/all")
 async def export_all_data(
+    scope: ExportScope = "mine",
     current_user: User = Depends(get_current_user),
     household: Household = Depends(get_user_household),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Export a Complete Backup as JSON: the user's recipes, collections and preferences,
-    plus the household's meal plans and shopping lists.
+    plus the household's meal plans and shopping lists. `scope=household` includes
+    every household member's recipes instead of only the caller's.
 
     `POST /import/backup` restores it. Recipe ids in `collections[].recipe_ids` and
     `meal_plans[].meals[].recipe_id` refer to `recipes[].id` in the same file.
     """
-    # Fetch recipes
-    recipe_result = await db.execute(
-        select(Recipe)
-        .where(Recipe.user_id == current_user.id)
-        .where(Recipe.deleted_at.is_(None))
-        .order_by(Recipe.created_at.desc())
-        .options(load_recipe_notes())
-    )
-    recipes = recipe_result.scalars().all()
+    recipes = await _recipes_to_export(db, current_user, household, scope)
 
     # Fetch collections
     collection_result = await db.execute(

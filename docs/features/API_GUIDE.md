@@ -150,12 +150,16 @@ Response (`200`, also for partial failure):
 `GET /api/v1/export/all` downloads a Complete Backup: the recipes and collections you
 own (with notes and collection membership), plus the household's meal plans and
 shopping lists. Trashed recipes and other members' recipes are not included.
+Add `?scope=household` to include every household member's recipes; the default is
+`scope=mine`. `GET /api/v1/export/recipes` takes the same `scope` parameter.
 
 `POST /api/v1/import/backup` (multipart `file`, form field `scope`) restores one.
 `scope` is `everything` (default) or `recipes`. Restore only adds:
 
 - **Recipes** go through the same import as above with `skip`, so one that matches by
-  web address or name is left as it is.
+  web address or name is left as it is. Unlike ordinary import, restore also matches
+  other household members' recipes, so a household backup does not copy them; a
+  recipe nobody in the household has is added as the caller's own.
 - **Collections** match by name; missing ones are created and missing recipes added.
 - **Meal plans** match by week; a meal is added unless the same recipe is already in
   that day and slot. A meal whose recipe is not in the file is skipped.

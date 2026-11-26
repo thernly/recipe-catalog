@@ -30,6 +30,9 @@
 		}
 	}
 
+	// Whose recipes go into "Export Recipes" and "Complete Backup"
+	let scope: 'mine' | 'household' = 'mine';
+
 	// Export function
 	async function exportData(
 		endpoint: string,
@@ -40,8 +43,11 @@
 		exportStatus = '';
 
 		try {
-			const query = format ? `?format=${encodeURIComponent(format)}` : '';
-			const blob = await apiRequest<Blob>(`/export/${endpoint}${query}`, {
+			const params = new URLSearchParams();
+			if (format) params.set('format', format);
+			// Collections are always your own
+			if (endpoint !== 'collections') params.set('scope', scope);
+			const blob = await apiRequest<Blob>(`/export/${endpoint}?${params}`, {
 				responseType: 'blob',
 			});
 
@@ -147,6 +153,14 @@
 				</div>
 			</div>
 
+			<label class="scope-choice">
+				<span>Recipes to include</span>
+				<select bind:value={scope} disabled={exporting}>
+					<option value="mine">Only recipes I added</option>
+					<option value="household">Everyone's recipes in my household</option>
+				</select>
+			</label>
+
 			<!-- Export Options -->
 			<div class="export-grid">
 				<!-- Export Recipes -->
@@ -211,8 +225,14 @@
 				>
 					<p class="backup-info">
 						One JSON file you can put back with "Restore a Complete Backup" on
-						the <a href="/import" class="underline">Import page</a>. Recipes
-						added by other household members are not included.
+						the <a href="/import" class="underline">Import page</a>.
+						{#if scope === 'household'}
+							Includes recipes added by other household members. On restore, a
+							recipe the household no longer has is added as the restoring
+							person's own.
+						{:else}
+							Recipes added by other household members are not included.
+						{/if}
 					</p>
 
 					<button
@@ -230,7 +250,8 @@
 				<h3 class="info-title">ℹ️ About Data Exports</h3>
 				<ul class="info-list">
 					<li>
-						All exports are generated on-demand and include only your data
+						All exports are generated on-demand. They include only what you
+						added, unless you choose everyone's recipes above
 					</li>
 					<li>
 						JSON and Markdown exports include any photo stored with a recipe,
@@ -314,6 +335,25 @@
 		font-size: 0.875rem;
 		color: var(--text-600);
 		margin-top: 0.25rem;
+	}
+
+	.scope-choice {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.75rem;
+		margin-bottom: 1.5rem;
+		font-weight: 600;
+		color: var(--text-900);
+	}
+
+	.scope-choice select {
+		padding: 0.5rem 0.75rem;
+		border: 1px solid var(--neutral-300);
+		border-radius: var(--radius-md);
+		background: var(--neutral-white);
+		color: var(--text-900);
+		font-weight: 400;
 	}
 
 	.export-grid {
