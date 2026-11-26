@@ -38,16 +38,31 @@
 	let loading = true;
 	let error: string | null = null;
 
-	// Active section
-	let activeSection:
-		| 'profile'
-		| 'preferences'
-		| 'security'
-		| 'api-tokens'
-		| 'household'
-		| 'stats'
-		| 'filters'
-		| 'danger' = 'profile';
+	// The open section is kept in the page address (/settings#household), so a
+	// refresh stays put, Back returns to the previous section, and other pages
+	// can link straight to one.
+	const SECTIONS = [
+		'profile',
+		'preferences',
+		'security',
+		'api-tokens',
+		'household',
+		'stats',
+		'filters',
+		'danger',
+	] as const;
+	type Section = (typeof SECTIONS)[number];
+	let activeSection: Section = 'profile';
+
+	function sectionFromAddress(): Section {
+		const named = location.hash.slice(1) as Section;
+		return SECTIONS.includes(named) ? named : 'profile';
+	}
+
+	function select(section: Section) {
+		activeSection = section;
+		location.hash = section;
+	}
 
 	// Load user data
 	async function loadUserData() {
@@ -101,9 +116,12 @@
 	}
 
 	onMount(() => {
+		activeSection = sectionFromAddress();
 		loadUserData();
 	});
 </script>
+
+<svelte:window on:hashchange={() => (activeSection = sectionFromAddress())} />
 
 <svelte:head>
 	<title>Settings - Recipe Catalog</title>
@@ -131,9 +149,9 @@
 					Failed to load settings
 				</p>
 				<p class="text-sm mb-4" style="color: var(--text-600);">{error}</p>
-				<button on:click={loadUserData} class="btn btn-primary"
-					>Try Again</button
-				>
+				<button on:click={loadUserData} class="btn btn-primary">
+					Try Again
+				</button>
 			</div>
 		{:else if user && preferences && stats}
 			<!-- Settings layout -->
@@ -144,7 +162,7 @@
 						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'profile'}
 						aria-current={activeSection === 'profile' || undefined}
-						on:click={() => (activeSection = 'profile')}
+						on:click={() => select('profile')}
 					>
 						<UserIcon size={18} aria-hidden="true" />
 						<span>Profile</span>
@@ -153,7 +171,7 @@
 						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'preferences'}
 						aria-current={activeSection === 'preferences' || undefined}
-						on:click={() => (activeSection = 'preferences')}
+						on:click={() => select('preferences')}
 					>
 						<Palette size={18} aria-hidden="true" />
 						<span>Preferences</span>
@@ -162,7 +180,7 @@
 						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'security'}
 						aria-current={activeSection === 'security' || undefined}
-						on:click={() => (activeSection = 'security')}
+						on:click={() => select('security')}
 					>
 						<Lock size={18} aria-hidden="true" />
 						<span>Security</span>
@@ -171,7 +189,7 @@
 						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'api-tokens'}
 						aria-current={activeSection === 'api-tokens' || undefined}
-						on:click={() => (activeSection = 'api-tokens')}
+						on:click={() => select('api-tokens')}
 					>
 						<KeyRound size={18} aria-hidden="true" />
 						<span>API Tokens</span>
@@ -180,7 +198,7 @@
 						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'household'}
 						aria-current={activeSection === 'household' || undefined}
-						on:click={() => (activeSection = 'household')}
+						on:click={() => select('household')}
 					>
 						<Home size={18} aria-hidden="true" />
 						<span>Household</span>
@@ -189,7 +207,7 @@
 						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'stats'}
 						aria-current={activeSection === 'stats' || undefined}
-						on:click={() => (activeSection = 'stats')}
+						on:click={() => select('stats')}
 					>
 						<BarChart3 size={18} aria-hidden="true" />
 						<span>Statistics</span>
@@ -198,7 +216,7 @@
 						class="sidebar-link flex items-center gap-2"
 						class:active={activeSection === 'filters'}
 						aria-current={activeSection === 'filters' || undefined}
-						on:click={() => (activeSection = 'filters')}
+						on:click={() => select('filters')}
 					>
 						<Search size={18} aria-hidden="true" />
 						<span>Filters</span>
@@ -207,7 +225,7 @@
 						class="sidebar-link danger flex items-center gap-2"
 						class:active={activeSection === 'danger'}
 						aria-current={activeSection === 'danger' || undefined}
-						on:click={() => (activeSection = 'danger')}
+						on:click={() => select('danger')}
 					>
 						<AlertTriangle size={18} aria-hidden="true" />
 						<span>Danger Zone</span>

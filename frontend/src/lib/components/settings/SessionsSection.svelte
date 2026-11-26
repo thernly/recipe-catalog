@@ -31,6 +31,7 @@
 		const label = describeUserAgent(session.user_agent);
 		dialog.show({
 			title: 'Sign Out Session',
+			confirmLabel: 'Sign out',
 			message: `Sign out ${label}? It will be asked to log in again shortly.`,
 			onConfirm: async () => {
 				revokingId = session.id;

@@ -46,6 +46,7 @@
 	async function handlePermanentDelete(recipe: RecipeSummary) {
 		dialog.show({
 			title: 'Permanently Delete Recipe',
+			confirmLabel: 'Delete forever',
 			message: `Are you sure you want to permanently delete "${recipe.name}"? This action cannot be undone.`,
 			onConfirm: async () => {
 				try {

@@ -24,7 +24,10 @@
 		// Initialize auth
 		auth.init();
 
-		return () => { unsubscribe(); stopTheme(); };
+		return () => {
+			unsubscribe();
+			stopTheme();
+		};
 	});
 </script>
 
@@ -40,6 +43,8 @@
 	open={$dialog.open}
 	title={$dialog.title}
 	message={$dialog.message}
+	confirmLabel={$dialog.confirmLabel}
+	danger={$dialog.danger}
 	onConfirm={$dialog.onConfirm}
 	onCancel={() => dialog.close()}
 />
