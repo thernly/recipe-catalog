@@ -174,9 +174,10 @@
 	$: stepsProgress =
 		instructionsCount > 0 ? (completedSteps.size / instructionsCount) * 100 : 0;
 	// The step being cooked now: the first one not ticked off (-1 when all are done)
-	$: currentStep = Array.from({ length: instructionsCount }, (_, i) => i).findIndex(
-		(i) => !completedSteps.has(i),
-	);
+	$: currentStep = Array.from(
+		{ length: instructionsCount },
+		(_, i) => i,
+	).findIndex((i) => !completedSteps.has(i));
 
 	function getIngredients(recipe: Recipe): string[] {
 		if (recipe.recipe_data?.recipeIngredient) {
@@ -443,9 +444,9 @@
 	}}
 />
 
-<svelte:head
-	><title>{recipe?.name || 'Loading...'} - Recipe Catalog</title></svelte:head
->
+<svelte:head>
+	<title>{recipe?.name || 'Loading...'} - Recipe Catalog</title>
+</svelte:head>
 
 <div class="min-h-screen bg-neutral-50">
 	{#if loading}
@@ -468,9 +469,9 @@
 					Check your connection and try again.
 				</p>
 				<button on:click={loadRecipe} class="btn btn-primary">Try again</button>
-				<button on:click={handleBackToRecipes} class="btn btn-secondary"
-					>Back to Recipes</button
-				>
+				<button on:click={handleBackToRecipes} class="btn btn-secondary">
+					Back to Recipes
+				</button>
 			{:else}
 				<p class="text-lg mb-2" style="color: var(--text-900);">
 					Recipe not found
@@ -478,9 +479,9 @@
 				<p class="text-sm mb-4" style="color: var(--text-600);">
 					This recipe may have been deleted.
 				</p>
-				<button on:click={handleBackToRecipes} class="btn btn-primary"
-					>Back to Recipes</button
-				>
+				<button on:click={handleBackToRecipes} class="btn btn-primary">
+					Back to Recipes
+				</button>
 			{/if}
 		</div>
 	{:else}
@@ -537,11 +538,9 @@
 							{#if recipe.is_modified && recipe.source_type === 'imported'}
 								<span>• Modified</span>
 							{/if}
-							<span
-								>• Added {new Date(
-									recipe.created_at,
-								).toLocaleDateString()}</span
-							>
+							<span>
+								• Added {new Date(recipe.created_at).toLocaleDateString()}
+							</span>
 							{#if recipe.creator_display_name}
 								<span>• Created by {recipe.creator_display_name}</span>
 							{/if}
@@ -597,18 +596,18 @@
 							{#if recipe.recipe_data?.prepTime}
 								<div class="metadata-item">
 									<span class="metadata-label-inline">Prep:</span>
-									<span class="metadata-value-inline"
-										>{formatTime(recipe.recipe_data.prepTime)}</span
-									>
+									<span class="metadata-value-inline">
+										{formatTime(recipe.recipe_data.prepTime)}
+									</span>
 								</div>
 							{/if}
 
 							{#if recipe.recipe_data?.cookTime}
 								<div class="metadata-item">
 									<span class="metadata-label-inline">Cook:</span>
-									<span class="metadata-value-inline"
-										>{formatTime(recipe.recipe_data.cookTime)}</span
-									>
+									<span class="metadata-value-inline">
+										{formatTime(recipe.recipe_data.cookTime)}
+									</span>
 								</div>
 							{/if}
 
@@ -626,9 +625,9 @@
 							{#if recipe.recipe_data?.recipeYield}
 								<div class="metadata-item">
 									<span class="metadata-label-inline">Yield:</span>
-									<span class="metadata-value-inline"
-										>{recipe.recipe_data.recipeYield}</span
-									>
+									<span class="metadata-value-inline">
+										{recipe.recipe_data.recipeYield}
+									</span>
 								</div>
 							{/if}
 						</div>
@@ -652,8 +651,9 @@
 								<a
 									class="tag tag-outline no-underline"
 									href="/recipes?q={encodeURIComponent(keyword.trim())}"
-									>{keyword.trim()}</a
 								>
+									{keyword.trim()}
+								</a>
 							{/each}
 						{/if}
 					</div>
@@ -690,7 +690,11 @@
 						<span>{cookMode ? 'Exit cook mode' : 'Cook mode'}</span>
 					</button>
 					{#if checkedIngredients.size + completedSteps.size > 0}
-						<button type="button" class="btn btn-secondary" on:click={clearTicks}>
+						<button
+							type="button"
+							class="btn btn-secondary"
+							on:click={clearTicks}
+						>
 							Clear ticks
 						</button>
 					{/if}
@@ -703,7 +707,10 @@
 					{/if}
 				</div>
 
-				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8" class:cook-mode={cookMode}>
+				<div
+					class="grid grid-cols-1 lg:grid-cols-2 gap-8"
+					class:cook-mode={cookMode}
+				>
 					<!-- Ingredients -->
 					<div class="card ingredients-panel">
 						<h2
@@ -733,8 +740,8 @@
 						{#if scale !== 1}
 							<p class="text-sm mb-3" style="color: var(--text-600);">
 								The amount at the start of each line is multiplied by {scale}.
-								Other amounts in a line, amounts in the steps and cooking
-								times are not changed.
+								Other amounts in a line, amounts in the steps and cooking times
+								are not changed.
 							</p>
 						{/if}
 
@@ -744,40 +751,41 @@
 									<!-- "For the sauce:" is a heading, not something to tick off -->
 									<li class="ingredient-heading">{ingredient}</li>
 								{:else}
-								{@const label =
-									recipe.recipe_data.parsedIngredients?.[index]?.item || ingredient}
-								<li class="flex items-start gap-3">
-									<input
-										type="checkbox"
-										id="ingredient-{index}"
-										checked={checkedIngredients.has(index)}
-										on:change={() => toggleIngredient(index)}
-										class="ingredient-checkbox"
-									/>
-									<label
-										for="ingredient-{index}"
-										class="flex-1 cursor-pointer"
-										class:line-through={checkedIngredients.has(index)}
-										class:opacity-50={checkedIngredients.has(index)}
-										style="color: var(--text-700);"
-									>
-										{scaleIngredient(
-											ingredient,
-											scale,
-											recipe.recipe_data.parsedIngredients?.[index],
-										)}
-									</label>
-									<button
-										type="button"
-										on:click={() => addIngredient({ index, label })}
-										aria-label="Add {label} to shopping list"
-										title="Add to shopping list"
-										class="p-1 rounded"
-										style="color: var(--text-600);"
-									>
-										<ShoppingCart size={16} aria-hidden="true" />
-									</button>
-								</li>
+									{@const label =
+										recipe.recipe_data.parsedIngredients?.[index]?.item ||
+										ingredient}
+									<li class="flex items-start gap-3">
+										<input
+											type="checkbox"
+											id="ingredient-{index}"
+											checked={checkedIngredients.has(index)}
+											on:change={() => toggleIngredient(index)}
+											class="ingredient-checkbox"
+										/>
+										<label
+											for="ingredient-{index}"
+											class="flex-1 cursor-pointer"
+											class:line-through={checkedIngredients.has(index)}
+											class:opacity-50={checkedIngredients.has(index)}
+											style="color: var(--text-700);"
+										>
+											{scaleIngredient(
+												ingredient,
+												scale,
+												recipe.recipe_data.parsedIngredients?.[index],
+											)}
+										</label>
+										<button
+											type="button"
+											on:click={() => addIngredient({ index, label })}
+											aria-label="Add {label} to shopping list"
+											title="Add to shopping list"
+											class="p-1 rounded"
+											style="color: var(--text-600);"
+										>
+											<ShoppingCart size={16} aria-hidden="true" />
+										</button>
+									</li>
 								{/if}
 							{/each}
 						</ul>
@@ -811,7 +819,9 @@
 									class="instruction-step"
 									class:completed={completedSteps.has(index)}
 									class:current={cookMode && index === currentStep}
-									aria-current={cookMode && index === currentStep ? 'step' : undefined}
+									aria-current={cookMode && index === currentStep
+										? 'step'
+										: undefined}
 								>
 									<button
 										class="step-number"
@@ -838,7 +848,11 @@
 										</p>
 										{#each findDurations(instruction) as duration, i (i)}
 											<span class="step-timer no-print">
-												<StepTimer seconds={duration.seconds} label={duration.label} step={index + 1} />
+												<StepTimer
+													seconds={duration.seconds}
+													label={duration.label}
+													step={index + 1}
+												/>
 											</span>
 										{/each}
 									</div>
@@ -899,143 +913,147 @@
 
 		<!-- Sticky Action Bar (out of the way while cooking) -->
 		{#if !cookMode}
-		<div class="sticky-action-bar no-print">
-			<div class="container-custom">
-				<div class="action-bar-content">
-					<!-- Primary Actions -->
-					<div class="action-group">
-						{#if isOwner}
-							<button
-								on:click={() => goto(`/recipes/${recipe?.id}/edit`)}
-								class="btn btn-primary flex items-center gap-2"
-							>
-								<Edit size={18} aria-hidden="true" />
-								<span>Edit Recipe</span>
-							</button>
-						{/if}
-						<button
-							on:click={() => openShoppingListDialog()}
-							class="btn btn-primary flex items-center gap-2"
-							disabled={addingToList}
-						>
-							{#if addingToList}
-								<Loader2 size={18} class="animate-spin" aria-hidden="true" />
-							{:else}
-								<ShoppingCart size={18} aria-hidden="true" />
-							{/if}
-							<span>Shopping List</span>
-						</button>
-					</div>
-
-					<!-- Utility Actions -->
-					<div class="action-group">
-						<button
-							on:click={() => recipe && favorites.toggle(recipe.id)}
-							class="btn btn-secondary flex items-center gap-2"
-							aria-pressed={isFavorite}
-						>
-							<Star
-								size={16}
-								aria-hidden="true"
-								fill={isFavorite ? 'currentColor' : 'none'}
-							/>
-							<span>{isFavorite ? 'Favorited' : 'Favorite'}</span>
-						</button>
-						<RecipeCollectionsMenu recipeId={recipe.id} />
-						<button
-							on:click={handleDuplicate}
-							class="btn btn-secondary flex items-center gap-2"
-						>
-							<Copy size={16} aria-hidden="true" />
-							<span>{isOwner ? 'Duplicate' : 'Save a copy'}</span>
-						</button>
-						<button
-							on:click={handlePrint}
-							data-print-hide
-							class="btn btn-secondary flex items-center gap-2"
-						>
-							<Printer size={16} aria-hidden="true" />
-							<span>Print</span>
-						</button>
-
-						<!-- Export dropdown -->
-						<div class="export-dropdown">
-							<button
-								bind:this={exportButton}
-								on:click={() => (showExportMenu = !showExportMenu)}
-								class="btn btn-secondary flex items-center gap-2"
-								disabled={exporting}
-								aria-haspopup="menu"
-								aria-expanded={showExportMenu}
-							>
-								{#if exporting}
-									<Loader2 size={16} class="animate-spin" aria-hidden="true" />
-								{:else}
-									<Download size={16} aria-hidden="true" />
-								{/if}
-								<span>Export</span>
-							</button>
-							{#if showExportMenu}
-								<div
-									class="export-menu export-menu-up"
-									role="menu"
-									tabindex="-1"
-									aria-label="Export format"
-									use:focusFirst
-									on:keydown={handleMenuKeydown}
+			<div class="sticky-action-bar no-print">
+				<div class="container-custom">
+					<div class="action-bar-content">
+						<!-- Primary Actions -->
+						<div class="action-group">
+							{#if isOwner}
+								<button
+									on:click={() => goto(`/recipes/${recipe?.id}/edit`)}
+									class="btn btn-primary flex items-center gap-2"
 								>
-									<button
-										on:click={() => handleExport('pdf')}
-										class="export-menu-item"
-										role="menuitem"
-									>
-										<FileText size={14} aria-hidden="true" />
-										<span>PDF</span>
-									</button>
-									<button
-										on:click={() => handleExport('json')}
-										class="export-menu-item"
-										role="menuitem"
-									>
-										<FileText size={14} aria-hidden="true" />
-										<span>JSON</span>
-									</button>
-									<button
-										on:click={() => handleExport('markdown')}
-										class="export-menu-item"
-										role="menuitem"
-									>
-										<FileText size={14} aria-hidden="true" />
-										<span>Markdown</span>
-									</button>
-									<button
-										on:click={() => handleExport('text')}
-										class="export-menu-item"
-										role="menuitem"
-									>
-										<FileText size={14} aria-hidden="true" />
-										<span>Plain Text</span>
-									</button>
-								</div>
+									<Edit size={18} aria-hidden="true" />
+									<span>Edit Recipe</span>
+								</button>
 							{/if}
+							<button
+								on:click={() => openShoppingListDialog()}
+								class="btn btn-primary flex items-center gap-2"
+								disabled={addingToList}
+							>
+								{#if addingToList}
+									<Loader2 size={18} class="animate-spin" aria-hidden="true" />
+								{:else}
+									<ShoppingCart size={18} aria-hidden="true" />
+								{/if}
+								<span>Shopping List</span>
+							</button>
 						</div>
-					</div>
 
-					<!-- Danger Actions -->
-					{#if isOwner}
+						<!-- Utility Actions -->
 						<div class="action-group">
 							<button
-								on:click={handleDelete}
-								class="btn btn-danger flex items-center gap-2"
+								on:click={() => recipe && favorites.toggle(recipe.id)}
+								class="btn btn-secondary flex items-center gap-2"
+								aria-pressed={isFavorite}
 							>
-								<Trash2 size={16} aria-hidden="true" />
-								<span>Delete</span>
+								<Star
+									size={16}
+									aria-hidden="true"
+									fill={isFavorite ? 'currentColor' : 'none'}
+								/>
+								<span>{isFavorite ? 'Favorited' : 'Favorite'}</span>
 							</button>
+							<RecipeCollectionsMenu recipeId={recipe.id} />
+							<button
+								on:click={handleDuplicate}
+								class="btn btn-secondary flex items-center gap-2"
+							>
+								<Copy size={16} aria-hidden="true" />
+								<span>{isOwner ? 'Duplicate' : 'Save a copy'}</span>
+							</button>
+							<button
+								on:click={handlePrint}
+								data-print-hide
+								class="btn btn-secondary flex items-center gap-2"
+							>
+								<Printer size={16} aria-hidden="true" />
+								<span>Print</span>
+							</button>
+
+							<!-- Export dropdown -->
+							<div class="export-dropdown">
+								<button
+									bind:this={exportButton}
+									on:click={() => (showExportMenu = !showExportMenu)}
+									class="btn btn-secondary flex items-center gap-2"
+									disabled={exporting}
+									aria-haspopup="menu"
+									aria-expanded={showExportMenu}
+								>
+									{#if exporting}
+										<Loader2
+											size={16}
+											class="animate-spin"
+											aria-hidden="true"
+										/>
+									{:else}
+										<Download size={16} aria-hidden="true" />
+									{/if}
+									<span>Export</span>
+								</button>
+								{#if showExportMenu}
+									<div
+										class="export-menu export-menu-up"
+										role="menu"
+										tabindex="-1"
+										aria-label="Export format"
+										use:focusFirst
+										on:keydown={handleMenuKeydown}
+									>
+										<button
+											on:click={() => handleExport('pdf')}
+											class="export-menu-item"
+											role="menuitem"
+										>
+											<FileText size={14} aria-hidden="true" />
+											<span>PDF</span>
+										</button>
+										<button
+											on:click={() => handleExport('json')}
+											class="export-menu-item"
+											role="menuitem"
+										>
+											<FileText size={14} aria-hidden="true" />
+											<span>JSON</span>
+										</button>
+										<button
+											on:click={() => handleExport('markdown')}
+											class="export-menu-item"
+											role="menuitem"
+										>
+											<FileText size={14} aria-hidden="true" />
+											<span>Markdown</span>
+										</button>
+										<button
+											on:click={() => handleExport('text')}
+											class="export-menu-item"
+											role="menuitem"
+										>
+											<FileText size={14} aria-hidden="true" />
+											<span>Plain Text</span>
+										</button>
+									</div>
+								{/if}
+							</div>
 						</div>
-					{/if}
+
+						<!-- Danger Actions -->
+						{#if isOwner}
+							<div class="action-group">
+								<button
+									on:click={handleDelete}
+									class="btn btn-danger flex items-center gap-2"
+								>
+									<Trash2 size={16} aria-hidden="true" />
+									<span>Delete</span>
+								</button>
+							</div>
+						{/if}
+					</div>
 				</div>
 			</div>
-		</div>
 		{/if}
 	{/if}
 </div>
