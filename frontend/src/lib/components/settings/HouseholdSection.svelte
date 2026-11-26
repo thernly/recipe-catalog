@@ -10,7 +10,9 @@
 		createInvitation,
 		revokeInvitation,
 		createInviteLink,
+		getInviteLinkInfo,
 		joinViaInviteLink,
+		leaveHousehold,
 		type Household,
 		type HouseholdMember,
 		type HouseholdInvitation,
@@ -66,20 +68,52 @@
 				getHouseholdMembers(household.id),
 				getHouseholdInvitations(household.id),
 			]);
+			void restoreInviteLink(household.id);
 		} catch (err) {
 			console.error('Failed to load household data:', err);
-			// Don't set error if user just isn't in a household yet
-			const errorMessage = err instanceof Error ? err.message : '';
-			if (
-				!errorMessage.includes('not found') &&
-				!errorMessage.includes('No household')
-			) {
-				error = errorMessage || 'Failed to load household data';
-			}
-			// household stays null, which will show the join form
+			// Members and invitations belong to the household: without them the
+			// panel would be half-true, so show the failure instead
+			household = null;
+			error = 'Could not load your household.';
 		} finally {
 			loading = false;
 		}
+	}
+
+	// The invite code is only returned when it is made, so its code is kept in
+	// this browser and looked up again on the next visit. The lookup says
+	// whether it has been used since.
+	const inviteCodeKey = (householdId: number) =>
+		`household-invite-code-${householdId}`;
+
+	async function restoreInviteLink(householdId: number) {
+		try {
+			const code = localStorage.getItem(inviteCodeKey(householdId));
+			if (!code) return;
+			const link = await getInviteLinkInfo(code);
+			if (link.household_id === householdId) inviteLink = link;
+		} catch {
+			// Storage unavailable or the code is gone: offer to make a new one
+		}
+	}
+
+	function handleLeaveHousehold() {
+		if (!household) return;
+		dialog.show({
+			title: 'Leave Household',
+			message: `Leave "${household.name}"? Your recipes, collections and shopping lists go with you into a household of your own, and the meals you planned are removed from this household's meal plans. You will no longer see the other members' recipes.`,
+			onConfirm: async () => {
+				try {
+					await leaveHousehold();
+					toast.success('You left the household');
+					await loadHouseholdData();
+				} catch (err) {
+					toast.error(
+						err instanceof Error ? err.message : 'Failed to leave household',
+					);
+				}
+			},
+		});
 	}
 
 	async function handleUpdateName() {
@@ -134,7 +168,7 @@
 
 		dialog.show({
 			title: 'Remove Member',
-			message: `Remove ${username} from your household?`,
+			message: `Remove ${username} from your household? Their recipes, collections and shopping lists leave with them, and the meals they planned are removed from your meal plans.`,
 			onConfirm: async () => {
 				removingMemberId = userId;
 				error = '';
@@ -247,6 +281,11 @@
 			inviteLink = await createInviteLink(household.id, {
 				expires_in_days: inviteLinkExpiryDays,
 			});
+			try {
+				localStorage.setItem(inviteCodeKey(household.id), inviteLink.code);
+			} catch {
+				// Storage unavailable: the code is shown until the page is left
+			}
 			success =
 				'Invite link created! Share the code or link with someone to join your household.';
 			setTimeout(() => (success = ''), 5000);
@@ -299,7 +338,7 @@
 
 		// Warn if already in a household
 		if (household) {
-			const confirmMsg = `You are currently in "${household.name}". Joining a new household will automatically remove you from your current household. Continue?`;
+			const confirmMsg = `You are currently in "${household.name}". Joining a new household removes you from it. Your recipes, collections, shopping lists and the meals you planned move with you: the new household will see them and "${household.name}" will not. Continue?`;
 			dialog.show({
 				title: 'Join New Household',
 				message: confirmMsg,
@@ -621,7 +660,8 @@
 			<p class="subsection-description">
 				{#if household}
 					Enter an invite code to switch to a different household. You will
-					automatically leave your current household.
+					leave your current household, and your recipes, collections and
+					shopping lists move with you.
 				{:else}
 					Enter an invite code to join an existing household.
 				{/if}
@@ -657,6 +697,25 @@
 			</form>
 		</div>
 
+		<!-- Leave: owners hand over first (the server refuses otherwise), and a
+		     household of one has nothing to leave -->
+		{#if !isOwner() && members.length > 1}
+			<div class="subsection">
+				<h3 class="subsection-title">Leave Household</h3>
+				<p class="subsection-description">
+					Your recipes, collections and shopping lists go with you into a
+					household of your own.
+				</p>
+				<button
+					type="button"
+					class="btn btn-danger"
+					on:click={handleLeaveHousehold}
+				>
+					Leave Household
+				</button>
+			</div>
+		{/if}
+
 		{#if error}
 			<div class="error-message">{error}</div>
 		{/if}
@@ -664,6 +723,18 @@
 		{#if success}
 			<div class="success-message">✓ {success}</div>
 		{/if}
+	{:else}
+		<div class="error-message" role="alert">
+			{error || 'Could not load your household.'}
+		</div>
+		<button
+			type="button"
+			class="btn btn-primary btn-sm"
+			style="margin-top: 1rem;"
+			on:click={loadHouseholdData}
+		>
+			Try again
+		</button>
 	{/if}
 </div>
 

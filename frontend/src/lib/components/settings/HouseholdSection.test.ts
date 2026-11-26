@@ -19,6 +19,7 @@ vi.mock("#lib/api/households.js", () => ({
   createInvitation: vi.fn(),
   revokeInvitation: vi.fn(),
   createInviteLink: vi.fn(),
+  getInviteLinkInfo: vi.fn(),
   joinViaInviteLink: vi.fn(),
   leaveHousehold: vi.fn(),
 }));
@@ -29,6 +30,9 @@ import {
   getHouseholdMembers,
   getHouseholdInvitations,
   transferOwnership,
+  getInviteLinkInfo,
+  leaveHousehold,
+  removeMember,
 } from "#lib/api/households.js";
 import { dialog } from "#lib/stores/dialog.js";
 
@@ -97,5 +101,89 @@ describe("HouseholdSection ownership transfer", () => {
       expect(queryByRole("button", { name: "Make owner" })).toBeNull(),
     );
     expect(queryByRole("button", { name: "Remove" })).toBeNull();
+  });
+});
+
+describe("HouseholdSection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getCurrentHousehold).mockReset().mockResolvedValue(household);
+    vi.mocked(getHouseholdMembers).mockReset().mockResolvedValue([me, sam]);
+    vi.mocked(getHouseholdInvitations).mockReset().mockResolvedValue([]);
+    vi.mocked(getInviteLinkInfo).mockReset();
+    dialog.close();
+    localStorage.clear();
+  });
+
+  it("shows a failure with a way to try again instead of a blank panel", async () => {
+    vi.mocked(getCurrentHousehold).mockRejectedValueOnce(new Error("offline"));
+    const { findByRole, findByText } = render(HouseholdSection);
+
+    expect(await findByText("Could not load your household.")).toBeTruthy();
+    await fireEvent.click(await findByRole("button", { name: "Try again" }));
+
+    expect(await findByText("Home")).toBeTruthy();
+  });
+
+  it("says what leaves with a member who is removed", async () => {
+    const { findByRole } = render(HouseholdSection);
+
+    await fireEvent.click(await findByRole("button", { name: "Remove" }));
+
+    expect(get(dialog).message).toContain(
+      "Their recipes, collections and shopping lists leave with them",
+    );
+    expect(removeMember).not.toHaveBeenCalled();
+  });
+
+  it("lets a member leave, after saying what goes with them", async () => {
+    // Sam owns the household; the signed-in user (id 1) is a member
+    vi.mocked(getCurrentHousehold).mockResolvedValue({
+      ...household,
+      owner_user_id: 2,
+    });
+    vi.mocked(getHouseholdMembers).mockResolvedValue([
+      { ...me, role: "member" },
+      { ...sam, role: "owner" },
+    ]);
+    vi.mocked(leaveHousehold).mockResolvedValue({
+      message: "",
+      household_deleted: false,
+    });
+    const { findByRole } = render(HouseholdSection);
+
+    await fireEvent.click(
+      await findByRole("button", { name: "Leave Household" }),
+    );
+    expect(leaveHousehold).not.toHaveBeenCalled();
+    expect(get(dialog).message).toContain("go with you");
+
+    await get(dialog).onConfirm();
+    expect(leaveHousehold).toHaveBeenCalledOnce();
+  });
+
+  it("offers no Leave button to the owner", async () => {
+    const { findByText, queryByRole } = render(HouseholdSection);
+
+    await findByText("Home");
+    expect(queryByRole("button", { name: "Leave Household" })).toBeNull();
+  });
+
+  it("shows the invite code again on the next visit", async () => {
+    localStorage.setItem("household-invite-code-3", "one-two-three-four-five");
+    vi.mocked(getInviteLinkInfo).mockResolvedValue({
+      id: 1,
+      household_id: 3,
+      code: "one-two-three-four-five",
+      created_by_user_id: 1,
+      expires_at: "2999-01-01T00:00:00Z",
+      used_at: null,
+      used_by_user_id: null,
+      created_at: "2026-11-01T00:00:00Z",
+    });
+    const { findByText } = render(HouseholdSection);
+
+    expect(await findByText("one-two-three-four-five")).toBeTruthy();
+    expect(getInviteLinkInfo).toHaveBeenCalledWith("one-two-three-four-five");
   });
 });
