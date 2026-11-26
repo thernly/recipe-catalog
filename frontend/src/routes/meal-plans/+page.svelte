@@ -285,6 +285,8 @@
 
 				{#each mealTypes as mealType (mealType)}
 					<div class="meal-cell">
+						<!-- Shown on narrow screens, where the header row is hidden -->
+						<div class="cell-label">{mealType}</div>
 						{#each getMealsForCell(dayIndex, mealType) as meal (meal.id)}
 							<button
 								type="button"
@@ -464,6 +466,15 @@
 		border-color: var(--neutral-200);
 	}
 
+	.cell-label {
+		display: none;
+		text-transform: capitalize;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: var(--text-700);
+		margin-bottom: var(--space-xs);
+	}
+
 	.meal-item {
 		display: block;
 		width: 100%;
@@ -599,6 +610,10 @@
 
 		.grid-header {
 			display: none;
+		}
+
+		.cell-label {
+			display: block;
 		}
 
 		.day-header {

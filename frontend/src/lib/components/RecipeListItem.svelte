@@ -246,6 +246,13 @@
 		opacity: 1;
 	}
 
+	/* Touch screens cannot hover: keep the buttons visible */
+	@media (hover: none) {
+		.action-btn-small {
+			opacity: 1;
+		}
+	}
+
 	.action-btn-small:hover {
 		background: var(--accent-50);
 		border-color: var(--accent-300);
