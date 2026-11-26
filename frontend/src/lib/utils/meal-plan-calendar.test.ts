@@ -61,6 +61,18 @@ describe("mealPlanToIcs", () => {
     ]);
   });
 
+  it("names a free-text meal by its text and gives it no recipe link", () => {
+    const ics = mealPlanToIcs(
+      plan([meal({ recipe_id: null, recipe_name: null, title: "Eating out" })]),
+      "https://recipes.example",
+      now,
+    );
+
+    expect(ics).toContain("SUMMARY:Dinner: Eating out\r\n");
+    expect(ics).not.toContain("URL:");
+    expect(ics).not.toContain("/recipes/");
+  });
+
   it("lists meals by day, then breakfast before dinner", () => {
     const ics = mealPlanToIcs(
       plan([

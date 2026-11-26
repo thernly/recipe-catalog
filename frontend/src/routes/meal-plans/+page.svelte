@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import {
+		addPlannedMeal,
 		getCurrentWeekMealPlan,
 		getWeekStart,
 		formatDateISO,
@@ -65,10 +66,10 @@
 	$: plannedMeals = (mealPlan?.planned_meals ?? [])
 		.filter((meal) => meal.recipe_id != null)
 		.sort(
-		(a, b) =>
-			a.day_of_week - b.day_of_week ||
-			mealTypes.indexOf(a.meal_type) - mealTypes.indexOf(b.meal_type),
-	);
+			(a, b) =>
+				a.day_of_week - b.day_of_week ||
+				mealTypes.indexOf(a.meal_type) - mealTypes.indexOf(b.meal_type),
+		);
 	$: chosenMealIds = plannedMeals
 		.map((meal) => meal.id)
 		.filter((id) => !skippedMealIds.includes(id));
@@ -163,9 +164,72 @@
 		loadMealPlan();
 	}
 
-	function currentWeek() {
-		currentWeekStart = getWeekStart();
-		loadMealPlan();
+	// "Today": this week, with today's row brought into view (on a phone the
+	// week is a long list and today may be far down it)
+	async function goToToday() {
+		if (formatDateISO(currentWeekStart) !== formatDateISO(getWeekStart())) {
+			currentWeekStart = getWeekStart();
+			await loadMealPlan();
+		}
+		await tick();
+		document
+			.querySelector('.day-header.today')
+			?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+	}
+
+	// Copy last week: each of its meals is added to the week on screen, same
+	// day and meal. Meals already here are kept.
+	let copyingLastWeek = false;
+
+	async function copyLastWeek() {
+		if (!mealPlan) return;
+		const targetId = mealPlan.id;
+		copyingLastWeek = true;
+		try {
+			const previous = new Date(currentWeekStart);
+			previous.setDate(previous.getDate() - 7);
+			const lastWeek = await getCurrentWeekMealPlan(formatDateISO(previous));
+			const meals = lastWeek.planned_meals;
+			if (meals.length === 0) {
+				toast.info('Last week has no meals to copy');
+				return;
+			}
+			// One at a time: there is no bulk route, and a week is at most a few dozen
+			for (const meal of meals) {
+				await addPlannedMeal(targetId, {
+					// A recipe meal, or a free-text one ("Leftovers")
+					...(meal.recipe_id
+						? { recipe_id: meal.recipe_id }
+						: { title: meal.title ?? '' }),
+					day_of_week: meal.day_of_week,
+					meal_type: meal.meal_type,
+					servings: meal.servings ?? undefined,
+					notes: meal.notes ?? undefined,
+				});
+			}
+			toast.success(
+				`Copied ${meals.length} ${meals.length === 1 ? 'meal' : 'meals'} from last week`,
+			);
+		} catch (err) {
+			toast.error(
+				err instanceof Error ? err.message : 'Failed to copy last week',
+			);
+		} finally {
+			copyingLastWeek = false;
+			await loadMealPlan(true);
+		}
+	}
+
+	function handleCopyLastWeek() {
+		if (!mealPlan || mealPlan.planned_meals.length === 0) return copyLastWeek();
+		dialog.show({
+			title: 'Copy Last Week',
+			message:
+				"This week already has meals. Last week's meals will be added alongside them.",
+			confirmLabel: 'Copy',
+			danger: false,
+			onConfirm: copyLastWeek,
+		});
 	}
 
 	function getMealsForCell(day: number, mealType: string): PlannedMeal[] {
@@ -286,7 +350,7 @@
 			<button on:click={previousWeek} class="btn-secondary">
 				<span>&larr;</span> Previous Week
 			</button>
-			<button on:click={currentWeek} class="btn-secondary">This Week</button>
+			<button on:click={goToToday} class="btn-secondary">Today</button>
 			<button on:click={nextWeek} class="btn-secondary">
 				Next Week <span>&rarr;</span>
 			</button>
@@ -319,6 +383,15 @@
 			</button>
 			<button on:click={handleExportCalendar} class="btn-secondary">
 				📅 Export to Calendar
+			</button>
+		{/if}
+		{#if mealPlan}
+			<button
+				on:click={handleCopyLastWeek}
+				class="btn-secondary"
+				disabled={copyingLastWeek}
+			>
+				{copyingLastWeek ? '⏳ Copying...' : '📋 Copy Last Week'}
 			</button>
 		{/if}
 		<button

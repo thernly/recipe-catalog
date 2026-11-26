@@ -135,8 +135,9 @@
 				class="close-btn"
 				on:click={handleClose}
 				aria-label="Close dialog"
-				><span aria-hidden="true">&times;</span></button
 			>
+				<span aria-hidden="true">&times;</span>
+			</button>
 		</div>
 
 		<div class="modal-body">
@@ -240,9 +241,9 @@
 		</div>
 
 		<div class="modal-footer">
-			<button class="btn-secondary" on:click={handleClose} disabled={saving}
-				>Cancel</button
-			>
+			<button class="btn-secondary" on:click={handleClose} disabled={saving}>
+				Cancel
+			</button>
 			<button
 				class="btn-primary"
 				on:click={handleSave}
