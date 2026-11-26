@@ -17,6 +17,9 @@ vi.mock("#lib/api/users.js", () => ({
 
 import Navbar from "./Navbar.svelte";
 import { afterNavigate } from "$app/navigation";
+import { get } from "svelte/store";
+import { getPreferences, updatePreferences } from "#lib/api/users.js";
+import { theme } from "#lib/stores/theme.js";
 
 describe("Navbar menu", () => {
   it("opens and closes, and closes after navigating", async () => {
@@ -51,8 +54,32 @@ describe("Navbar menu", () => {
       "/ai-generate",
       "/meal-plans",
       "/shopping-lists",
+      "/import",
       "/export",
       "/settings",
     ]);
+  });
+});
+
+describe("Navbar theme button", () => {
+  it("steps to the theme it names, from any saved theme", async () => {
+    vi.mocked(getPreferences).mockResolvedValue({
+      theme: "dark",
+    } as Awaited<ReturnType<typeof getPreferences>>);
+    vi.mocked(updatePreferences).mockResolvedValue(
+      {} as Awaited<ReturnType<typeof updatePreferences>>,
+    );
+    const { findByRole } = render(Navbar);
+
+    // Dark is recognised (it used to be treated as "not Garden Fresh")
+    const button = await findByRole("button", {
+      name: "Switch to High Contrast theme",
+    });
+    expect(get(theme)).toBe("dark");
+
+    await fireEvent.click(button);
+    expect(updatePreferences).toHaveBeenCalledWith({ theme: "high-contrast" });
+    expect(get(theme)).toBe("high-contrast");
+    await findByRole("button", { name: "Switch to System theme" });
   });
 });

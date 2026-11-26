@@ -4,6 +4,9 @@
 	export let open = false;
 	export let title = '';
 	export let message = '';
+	export let confirmLabel = 'Confirm';
+	/** Red confirm button: the action removes something */
+	export let danger = true;
 	export let onConfirm: () => void = () => {};
 	export let onCancel: () => void = () => {};
 
@@ -74,9 +77,9 @@
 				type="button"
 				on:click={handleConfirm}
 				class="btn-confirm"
-				aria-label="Confirm action"
+				class:danger
 			>
-				Confirm
+				{confirmLabel}
 			</button>
 		</div>
 	</div>
@@ -139,7 +142,7 @@
 	.btn-confirm {
 		padding: 0.5rem 1rem;
 		border-radius: var(--radius-md);
-		background: var(--error-600);
+		background: var(--primary-600);
 		color: #ffffff;
 		font-weight: 500;
 		border: none;
@@ -147,8 +150,11 @@
 		transition: all var(--transition-fast);
 	}
 
-	.btn-confirm:hover {
+	.btn-confirm.danger {
 		background: var(--error-600);
+	}
+
+	.btn-confirm:hover {
 		filter: brightness(0.9);
 	}
 </style>
