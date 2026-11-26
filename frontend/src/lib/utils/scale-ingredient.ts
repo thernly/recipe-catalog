@@ -44,8 +44,9 @@ function formatAmount(value: number, asDecimal: boolean): string {
  * An ingredient line with its leading amount multiplied by `factor`; the rest of the
  * line is kept as written.
  *
- * ponytail: only the amount the line starts with is scaled. Amounts later in the line
- * ("2/3 cup (142g) sugar", "juice of 2 lemons") stay as written; the page says so.
+ * ponytail: only the amount the line starts with is scaled, plus the same amount given
+ * again in brackets after the unit ("2/3 cup (142g) sugar"). Other amounts in the line
+ * ("juice of 2 lemons", "use 1/2 teaspoon if salted") stay as written; the page says so.
  */
 export function scaleIngredient(
   raw: string,
@@ -77,6 +78,16 @@ export function scaleIngredient(
       const agreed = formatQuantityUnit(last, unit).slice(last.length + 1);
       rest = word[1] + agreed + rest.slice(word[0].length);
     }
+  }
+
+  // "2/3 cup (142g) sugar": the same amount again, in brackets right after the unit.
+  // A bracket straight after the amount is a size ("2 (14-ounce) cans"), and one after
+  // a word that is not a unit ("1 large (150g) onion") may be per item: both stay.
+  if (unit) {
+    rest = rest.replace(
+      new RegExp(String.raw`^(\s*[A-Za-z.]+\s*\()(${NUM})`),
+      (_, before: string, again: string) => before + scaled(again),
+    );
   }
 
   const amount = high ? `${scaled(low)}${separator}${last}` : last;
