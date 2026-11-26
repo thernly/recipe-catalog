@@ -31,6 +31,29 @@ describe("cooking progress", () => {
     expect(loadProgress(7, now + PROGRESS_MAX_AGE_MS + 1)).toEqual(NOTHING);
   });
 
+  it("does not restart the clock when the same progress is saved again", () => {
+    const now = Date.now();
+    const progress = { ...NOTHING, steps: [0] };
+    saveProgress(7, progress, now);
+    saveProgress(7, progress, now + PROGRESS_MAX_AGE_MS - 1);
+
+    expect(loadProgress(7, now + PROGRESS_MAX_AGE_MS + 1)).toEqual(NOTHING);
+  });
+
+  it("restarts the clock when the progress changes", () => {
+    const now = Date.now();
+    saveProgress(7, { ...NOTHING, steps: [0] }, now);
+    saveProgress(
+      7,
+      { ...NOTHING, steps: [0, 1] },
+      now + PROGRESS_MAX_AGE_MS - 1,
+    );
+
+    expect(loadProgress(7, now + PROGRESS_MAX_AGE_MS + 1).steps).toEqual([
+      0, 1,
+    ]);
+  });
+
   it("stores nothing when there is nothing to remember", () => {
     saveProgress(7, { ...NOTHING, steps: [0] });
     saveProgress(7, NOTHING);

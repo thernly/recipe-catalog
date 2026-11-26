@@ -49,6 +49,12 @@ export function saveProgress(
     progress.steps.length === 0 &&
     progress.scale === 1 &&
     !progress.cookMode;
+  // Opening the recipe saves what was just loaded; that must not restart the clock
+  if (
+    !nothing &&
+    JSON.stringify(loadProgress(recipeId, now)) === JSON.stringify(progress)
+  )
+    return;
   try {
     if (nothing) localStorage.removeItem(key(recipeId));
     else
