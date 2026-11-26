@@ -176,6 +176,15 @@
 				<div class="error" role="alert">{error}</div>
 			{/if}
 
+			<p style="margin-bottom: 1rem;">
+				<a
+					href="/recipes/{meal.recipe_id}"
+					style="color: var(--accent-600); text-decoration: underline;"
+				>
+					View recipe{meal.recipe_name ? `: ${meal.recipe_name}` : ''}
+				</a>
+			</p>
+
 			<div class="form-row">
 				<div class="form-group">
 					<label for="day-of-week">Day</label>
