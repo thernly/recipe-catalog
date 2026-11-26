@@ -174,6 +174,51 @@ async def test_intake_skips_duplicate_name(client: AsyncClient, token_headers: d
     assert body["url"].endswith(f"/recipes/{first['id']}")
 
 
+@pytest.mark.parametrize(
+    "url", ["https://example.com/dal", "https://example.com/dal/", "https://example.com/dal#recipe"]
+)
+async def test_intake_skips_duplicate_url_with_new_name(
+    client: AsyncClient, token_headers: dict, url: str
+):
+    """The same page saved again after the site renamed the recipe is still a duplicate."""
+    client.cookies.clear()
+    first = (await client.post(INTAKE_URL, json=SIPHON_RECIPE, headers=token_headers)).json()
+    renamed = {**SIPHON_RECIPE, "name": "Easy Weeknight Dal", "url": url}
+    second = await client.post(INTAKE_URL, json=renamed, headers=token_headers)
+
+    assert second.status_code == 200, second.text
+    body = second.json()
+    assert body["status"] == "skipped"
+    assert body["id"] == first["id"]
+
+
+async def test_intake_update_by_url_renames_the_recipe(
+    client: AsyncClient, token_headers: dict, db: AsyncSession
+):
+    client.cookies.clear()
+    first = (await client.post(INTAKE_URL, json=SIPHON_RECIPE, headers=token_headers)).json()
+    renamed = {**SIPHON_RECIPE, "name": "Easy Weeknight Dal"}
+    second = await client.post(
+        INTAKE_URL, params={"on_duplicate": "update"}, json=renamed, headers=token_headers
+    )
+
+    assert second.json()["status"] == "updated"
+    assert second.json()["id"] == first["id"]
+    db.expire_all()
+    recipes = (await db.execute(select(Recipe))).scalars().all()
+    assert [r.name for r in recipes] == ["Easy Weeknight Dal"]
+
+
+async def test_intake_different_url_and_name_is_not_a_duplicate(
+    client: AsyncClient, token_headers: dict
+):
+    client.cookies.clear()
+    await client.post(INTAKE_URL, json=SIPHON_RECIPE, headers=token_headers)
+    other = {**SIPHON_RECIPE, "name": "Chana Masala", "url": "https://example.com/chana"}
+    response = await client.post(INTAKE_URL, json=other, headers=token_headers)
+    assert response.json()["status"] == "created"
+
+
 async def test_intake_updates_duplicate_when_requested(
     client: AsyncClient, token_headers: dict, db: AsyncSession
 ):
