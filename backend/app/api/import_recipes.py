@@ -9,12 +9,14 @@ from types import SimpleNamespace
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.constants import MAX_FETCHED_PAGE_BYTES
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
 from app.core.exceptions import AppException, ErrorCode, InvalidInputError
@@ -28,8 +30,10 @@ from app.models.recipe_note import RecipeNote, note_author_name
 from app.models.shopping_list import ShoppingList, ShoppingListItem
 from app.models.user import User
 from app.services.recipe_cleanup import clean_recipe_data, derive_total_time_minutes
+from app.services.recipe_page import extract_recipe
 from app.utils.file_validation import validate_file_size
 from app.utils.recipe_format import convert_from_schema_org, convert_to_schema_org, plain_text
+from app.utils.safe_fetch import SafeFetchError, safe_fetch
 from app.utils.urls import safe_http_url
 
 
@@ -419,6 +423,88 @@ async def import_recipes(
         "success": True,
         "message": f"Imported {results['created']} new recipes, updated {results['updated']}, skipped {results['skipped']}, failed {results['failed']}",
         "details": results,
+    }
+
+
+class UrlImportRequest(BaseModel):
+    url: str = Field(..., min_length=1, max_length=2000)
+
+
+@router.post("/url")
+@limiter.limit("60/hour")
+async def import_recipe_from_url(
+    request: Request,
+    body: UrlImportRequest,
+    current_user: User = Depends(get_current_user),
+    household: "Household" = Depends(get_user_household),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Save the recipe on a web page, given its address.
+
+    The server fetches the page through `safe_fetch` and imports the schema.org Recipe
+    the page embeds (JSON-LD). A recipe already saved from the same address, or with the
+    same name, is skipped. Returns `status` (`created` or `skipped`), the recipe `id` and
+    a `message`.
+    """
+    # Read before any rollback/commit can expire the loaded objects
+    user_id = current_user.id
+
+    url = safe_http_url(body.url.strip())
+    if not url:
+        raise InvalidInputError("Enter a web address that starts with http:// or https://")
+
+    try:
+        page = await safe_fetch(
+            url,
+            max_bytes=MAX_FETCHED_PAGE_BYTES,
+            allowed_content_types=("text/html", "application/xhtml+xml"),
+        )
+    except SafeFetchError as e:
+        logger.info("url_import_fetch_failed", user_id=user_id, reason=str(e))
+        raise InvalidInputError(
+            "That page could not be opened. Check the address; some sites also block "
+            "automated visits."
+        ) from e
+
+    # ponytail: assumes UTF-8 (nearly every recipe site); other encodings import with
+    # odd characters. Read the charset from the response if that turns up.
+    recipe = extract_recipe(page.content.decode("utf-8", errors="replace"))
+    if recipe is None:
+        logger.info("url_import_no_recipe", user_id=user_id)
+        raise InvalidInputError(
+            "No recipe was found on that page. It may not publish its recipe in the "
+            "standard format; the Recipe Siphon browser extension can often still save it."
+        )
+    # The address the page was finally served from, so the same page is one duplicate
+    recipe["url"] = page.url
+
+    results = await _import_recipes_internal(
+        recipes_data=[recipe],
+        user_id=user_id,
+        household_id=household.id,
+        duplicate_handling="skip",
+        collection=None,
+        db=db,
+    )
+    if results["failed"]:
+        await db.rollback()
+        error = results["errors"][0]["error"]
+        logger.info("url_import_rejected", user_id=user_id, error=error)
+        raise InvalidInputError(f"The recipe on that page could not be imported: {error}")
+
+    await _commit_import_results(db)
+
+    item = results["items"][0]
+    logger.info(
+        "url_import_saved", user_id=user_id, recipe_id=item["recipe_id"], status=item["status"]
+    )
+    return {
+        "status": item["status"],
+        "id": item["recipe_id"],
+        "message": "Recipe saved"
+        if item["status"] == "created"
+        else "You already have this recipe (same web address or name); nothing was added",
     }
 
 
