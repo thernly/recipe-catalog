@@ -187,11 +187,12 @@ async def delete_account(
     Returns:
         dict: Success message
     """
-    from sqlalchemy import func, update
+    from sqlalchemy import delete, func, update
 
     from app.core.exceptions import InvalidInputError
-    from app.models.household import HouseholdMember
+    from app.models.household import HouseholdInviteLink, HouseholdMember
     from app.models.recipe_note import RecipeNote, live_author_name
+    from app.models.shopping_list import ShoppingList, ShoppingListItem
 
     # A household must not lose its owner while others still use it (the same rule as
     # leaving a household): it would be left with nobody able to invite or remove
@@ -221,7 +222,28 @@ async def delete_account(
         )
     )
 
-    # Delete user (cascade will delete all related data)
+    # A household this user owns has no other members now (checked above), so it goes
+    # with the account. SQLite does not enforce the foreign keys' ON DELETE CASCADE, so
+    # the household and its shopping lists would otherwise be left behind, unreachable.
+    # Lists and plans this user made in someone else's household stay with it.
+    owned = (
+        await db.scalars(select(Household).where(Household.owner_user_id == current_user.id))
+    ).all()
+    for household in owned:
+        await db.execute(
+            delete(ShoppingListItem).where(
+                ShoppingListItem.list_id.in_(
+                    select(ShoppingList.id).where(ShoppingList.household_id == household.id)
+                )
+            )
+        )
+        await db.execute(delete(ShoppingList).where(ShoppingList.household_id == household.id))
+        await db.execute(
+            delete(HouseholdInviteLink).where(HouseholdInviteLink.household_id == household.id)
+        )
+        await db.delete(household)  # takes its members, invitations and meal plans
+
+    # Delete user (the ORM cascades on User delete the rest)
     await db.delete(current_user)
     await db.commit()
 
