@@ -317,7 +317,7 @@
 	}
 
 	.btn-icon:hover {
-		background: var(--accent-600);
+		background: var(--color-btn-primary-hover);
 		transform: scale(1.05);
 	}
 
