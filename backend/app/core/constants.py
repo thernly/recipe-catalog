@@ -35,7 +35,8 @@ AUTH_RATE_LIMIT_TEST_MODE = "10000/hour"  # Effectively unlimited for tests
 # REFRESH_TOKEN_EXPIRE_DAYS: 30 days (long-lived for UX)
 
 # File Upload Constraints (defined in settings, documented here for reference)
-# MAX_UPLOAD_SIZE_MB: 10 MB maximum upload size
+# MAX_UPLOAD_SIZE_MB: 50 MB maximum upload size (a Complete Backup embeds photos).
+# The reverse proxy must allow as much: docker/nginx.conf, scripts/proxmox/deploy-lxc.sh
 
 # Outbound fetching (app/utils/safe_fetch.py)
 SAFE_FETCH_TIMEOUT_SECONDS = 10.0  # Per-request timeout for outbound fetches

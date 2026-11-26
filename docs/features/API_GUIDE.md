@@ -184,7 +184,7 @@ Add `?scope=household` to include every household member's recipes; the default 
 
 The response is the import response above plus `restored`, the counts for the other
 sections (`null` when `scope=recipes`). The file is subject to `MAX_UPLOAD_SIZE_MB`
-(10 MB by default), which a library with embedded photos can exceed.
+(50 MB by default; the reverse proxy's `client_max_body_size` must allow as much).
 
 ---
 
