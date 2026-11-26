@@ -189,13 +189,18 @@ def coerce_timezone(value: str | None) -> str:
     return safe_zone(value).key
 
 
+# Every theme name the frontend may save: its `[data-theme]` blocks in app.css, plus
+# "system". A new theme must be added here or saving it is rejected with a 422.
+THEME_PATTERN = (
+    "^(light|dark|high-contrast|system|classic|professional|garden-fresh|bistro"
+    "|ember|coastal|farmhouse)$"
+)
+
+
 class UserPreferencesBase(BaseModel):
     """Base user preferences schema."""
 
-    theme: str = Field(
-        "light",
-        pattern="^(light|dark|high-contrast|system|classic|professional|garden-fresh|bistro)$",
-    )
+    theme: str = Field("light", pattern=THEME_PATTERN)
     default_view: str = Field("grid", pattern="^(grid|list)$")
     default_sort: str = "recently_added"
     recipes_per_page: int = Field(24, ge=12, le=100)
@@ -224,9 +229,7 @@ class UserPreferences(UserPreferencesBase):
 class UserPreferencesUpdate(BaseModel):
     """Schema for updating user preferences."""
 
-    theme: str | None = Field(
-        None, pattern="^(light|dark|high-contrast|system|classic|professional|garden-fresh|bistro)$"
-    )
+    theme: str | None = Field(None, pattern=THEME_PATTERN)
     default_view: str | None = Field(None, pattern="^(grid|list)$")
     default_sort: str | None = None
     recipes_per_page: int | None = Field(None, ge=12, le=100)
