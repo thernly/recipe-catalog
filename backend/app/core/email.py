@@ -456,7 +456,7 @@ class EmailService:
                     </div>
                     <p>They can now:</p>
                     <ul>
-                        <li>View and edit shared recipes</li>
+                        <li>View shared recipes, add notes and save their own copies</li>
                         <li>Access shared collections</li>
                         <li>Collaborate on meal planning</li>
                     </ul>
@@ -481,7 +481,7 @@ class EmailService:
         {invitee_name} has joined your household "{household_name}".
 
         They can now:
-        - View and edit shared recipes
+        - View shared recipes, add notes and save their own copies
         - Access shared collections
         - Collaborate on meal planning
 
