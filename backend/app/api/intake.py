@@ -5,8 +5,9 @@ Requests authenticate with a personal API token (`Authorization: Bearer rcat_...
 or with a normal session. Token-authenticated requests skip the CSRF check (see
 `app/middleware/csrf.py`); cookie-authenticated ones do not.
 
-Intake saves through the same import logic as the file upload. An exact name match
-is skipped by default; `?on_duplicate=update` overwrites the existing recipe instead.
+Intake saves through the same import logic as the file upload. A recipe with the same
+source web address, or the same exact name, is skipped by default;
+`?on_duplicate=update` overwrites the existing recipe instead.
 """
 
 from typing import Any, Literal
@@ -72,8 +73,9 @@ async def intake_recipe(
     """
     Import one recipe, sent as a schema.org Recipe JSON object.
 
-    Returns `created` with the new recipe's id, or, when a recipe of the same name
-    exists, `skipped` (default) or `updated` (`on_duplicate=update`) with its id.
+    Returns `created` with the new recipe's id, or, when a recipe with the same web
+    address or name exists, `skipped` (default) or `updated` (`on_duplicate=update`)
+    with its id.
     """
     # Read before any rollback/commit can expire the loaded objects
     user_id = current_user.id
@@ -109,7 +111,7 @@ async def intake_recipe(
     elif status == "updated":
         message = "Existing recipe updated"
     else:
-        message = "A recipe with this name already exists; nothing was imported"
+        message = "This recipe already exists (same web address or name); nothing was imported"
 
     return IntakeResponse(
         success=True,

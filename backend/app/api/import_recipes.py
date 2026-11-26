@@ -10,7 +10,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -27,6 +27,7 @@ from app.models.user import User
 from app.services.recipe_cleanup import clean_recipe_data, derive_total_time_minutes
 from app.utils.file_validation import validate_file_size
 from app.utils.recipe_format import convert_from_schema_org, plain_text
+from app.utils.urls import safe_http_url
 
 
 router = APIRouter()
@@ -125,6 +126,16 @@ async def _restore_notes(
         )
 
 
+def _url_key(url: str | None) -> str | None:
+    """
+    A source web address reduced to what identifies the page, for duplicate matching.
+
+    ponytail: drops only the #fragment and a trailing slash; addresses that differ in
+    tracking parameters (?utm_source=...) or http/https still count as different pages.
+    """
+    return url.split("#")[0].rstrip("/") or None if url else None
+
+
 async def _import_recipes_internal(
     recipes_data: list[dict[str, Any]],
     user_id: int,
@@ -167,15 +178,31 @@ async def _import_recipes_internal(
         for entry in recipes_data
         if isinstance(entry, dict) and isinstance(entry.get("name"), str)
     }
+    url_keys = {
+        key
+        for entry in recipes_data
+        if isinstance(entry, dict) and (key := _url_key(safe_http_url(entry.get("url"))))
+    }
+    # A duplicate is a recipe with the same source web address, else the same name
     existing_by_name: dict[Any, Recipe] = {}
+    existing_by_url: dict[str, Recipe] = {}
     if duplicate_handling in ("skip", "update"):
         rows = await db.execute(
             select(Recipe)
-            .where(Recipe.user_id == user_id, Recipe.name.in_(names), Recipe.deleted_at.is_(None))
+            .where(
+                Recipe.user_id == user_id,
+                Recipe.deleted_at.is_(None),
+                or_(
+                    Recipe.name.in_(names),
+                    Recipe.source_url.in_(url_keys | {f"{key}/" for key in url_keys}),
+                ),
+            )
             .order_by(Recipe.id)
         )
         for recipe in rows.scalars():
             existing_by_name.setdefault(recipe.name, recipe)
+            if key := _url_key(recipe.source_url):
+                existing_by_url.setdefault(key, recipe)
     linked_ids: set[Any] = set()
     if collection:
         linked_ids = set(
@@ -196,7 +223,10 @@ async def _import_recipes_internal(
             # Convert from Schema.org format to internal format
             recipe_dict = await convert_from_schema_org(recipe_data)
 
-            existing_recipe = existing_by_name.get(recipe_dict["name"])
+            url_key = _url_key(recipe_dict["source_url"])
+            existing_recipe = (existing_by_url.get(url_key) if url_key else None) or (
+                existing_by_name.get(recipe_dict["name"])
+            )
 
             if not (existing_recipe and duplicate_handling == "skip"):
                 # Shared cleanup: yield, times, parsedIngredients. On update, keep the
@@ -219,7 +249,8 @@ async def _import_recipes_internal(
                     )
                     continue
                 elif duplicate_handling == "update":
-                    # Update existing recipe
+                    # Update existing recipe (a match by web address may bring a new name)
+                    existing_recipe.name = recipe_dict["name"]
                     existing_recipe.description = recipe_dict["description"]
                     existing_recipe.image_url = recipe_dict["image_url"]
                     existing_recipe.recipe_data = recipe_dict["recipe_data"]
@@ -256,6 +287,8 @@ async def _import_recipes_internal(
                 await db.flush()
                 if duplicate_handling in ("skip", "update"):
                     existing_by_name[new_recipe.name] = new_recipe
+                    if url_key:
+                        existing_by_url[url_key] = new_recipe
                 results["created"] += 1
                 recipe_to_add = new_recipe
                 results["items"].append(
@@ -317,9 +350,10 @@ async def import_recipes(
 
     Args:
         file: JSON file containing recipes (can be single recipe object or array of recipes)
-        duplicate_handling: How to handle duplicate recipes (by name)
-            - skip: Skip recipes with matching names
-            - update: Update existing recipes with matching names
+        duplicate_handling: How to handle duplicate recipes (same source web
+            address, or same name)
+            - skip: Skip recipes that match an existing one
+            - update: Update the existing recipe that matches
             - create: Always create new recipes (allow duplicates)
         collection_id: Optional collection ID to add imported recipes to
         current_user: Current authenticated user

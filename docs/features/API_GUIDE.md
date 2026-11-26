@@ -39,7 +39,8 @@ or `401` for an invalid or revoked token.
 
 **`POST /api/v1/intake`** — body is a single schema.org Recipe object. Query param
 `on_duplicate` is `skip` (default) or `update`; a duplicate is an existing,
-non-deleted recipe you own with the same name.
+non-deleted recipe you own with the same source web address (`url`, ignoring a
+`#fragment` and a trailing slash) or, failing that, the same name.
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/intake?on_duplicate=skip" \
@@ -88,8 +89,8 @@ token in `X-CSRF-Token` on POST/PUT/PATCH/DELETE; omitting it returns
 
 - **Body**: a bare JSON **array** of schema.org Recipe objects (max 500).
 - **Query params**:
-  - `duplicate_handling`: `skip` (default) skips a recipe whose name matches one you
-    own; `update` overwrites it; `create` always inserts.
+  - `duplicate_handling`: `skip` (default) skips a recipe whose source web address or
+    name matches one you own; `update` overwrites it; `create` always inserts.
   - `collection_id` (optional): add imported recipes to this collection. It must be a
     collection you own, otherwise `404`.
 - **Rate limit**: 20,000/hour per IP.

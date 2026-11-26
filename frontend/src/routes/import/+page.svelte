@@ -219,7 +219,7 @@
 							<option value="create">Create all (allow duplicates)</option>
 						</select>
 						<p class="mt-1 text-sm" style="color: var(--text-500);">
-							Duplicates are detected by recipe name
+							Duplicates are detected by source web address or recipe name
 						</p>
 					</div>
 
