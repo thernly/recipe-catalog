@@ -8,6 +8,7 @@
 		type RecipeSearchParams,
 	} from '#lib/api/recipes.js';
 	import type { RecipeSearchResult, RecipeSummary } from '#lib/api/recipes.js';
+	import { getPreferences } from '#lib/api/users.js';
 	import type { RecipeSortBy, ViewMode } from '#lib/types/index.js';
 	import RecipeCard from '#lib/components/RecipeCard.svelte';
 	import RecipeListItem from '#lib/components/RecipeListItem.svelte';
@@ -58,6 +59,30 @@
 	let maxTime: number | undefined;
 	let minTime: number | undefined;
 
+	// The person's Default Sort and Recipes Per Page (Settings → Preferences).
+	// The built-in values stand if the preferences cannot be loaded.
+	const SORTS: RecipeSortBy[] = [
+		'recently_added',
+		'alphabetical',
+		'time_asc',
+		'time_desc',
+	];
+	let defaults = {
+		sort: 'recently_added' as RecipeSortBy,
+		perPage: DEFAULT_PAGE_SIZE,
+	};
+	const defaultsLoaded: Promise<void> = browser
+		? getPreferences()
+				.then((prefs) => {
+					const sort = prefs.default_sort as RecipeSortBy;
+					defaults = {
+						sort: SORTS.includes(sort) ? sort : defaults.sort,
+						perPage: prefs.recipes_per_page || defaults.perPage,
+					};
+				})
+				.catch(() => {})
+		: Promise.resolve();
+
 	// Build the list URL from the current search state
 	function buildListUrl(
 		sp: RecipeSearchParams,
@@ -70,7 +95,7 @@
 		const params = new URLSearchParams();
 
 		if (sp.query) params.set('q', sp.query);
-		if (sp.sort_by && sp.sort_by !== 'recently_added')
+		if (sp.sort_by && sp.sort_by !== defaults.sort)
 			params.set('sort', sp.sort_by);
 		if (sp.page && sp.page > 1) params.set('page', sp.page.toString());
 		if (cuisines.length > 0) params.set('cuisine', cuisines.join(','));
@@ -108,7 +133,8 @@
 
 		searchParams.query = urlParams.get('q') || '';
 		searchParams.sort_by =
-			(urlParams.get('sort') as RecipeSortBy) || 'recently_added';
+			(urlParams.get('sort') as RecipeSortBy) || defaults.sort;
+		searchParams.per_page = defaults.perPage;
 		searchParams.page = parseInt(urlParams.get('page') || '1');
 
 		const cuisineParam = urlParams.get('cuisine');
@@ -259,7 +285,8 @@
 	}
 
 	// Watch for URL changes (e.g., browser back/forward)
-	afterNavigate(({ to }) => {
+	afterNavigate(async ({ to }) => {
+		await defaultsLoaded;
 		loadSearchParamsFromURL(to?.url ?? new URL(location.href));
 		loadRecipes();
 	});
