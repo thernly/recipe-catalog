@@ -143,7 +143,8 @@ async def search_recipes(
     if sort_by == "alphabetical":
         stmt = stmt.order_by(Recipe.name.asc())
     elif sort_by == "time_asc":
-        stmt = stmt.order_by(Recipe.total_time_minutes.asc())
+        # Recipes with no time go last (SQLite would sort them first)
+        stmt = stmt.order_by(Recipe.total_time_minutes.is_(None), Recipe.total_time_minutes.asc())
     elif sort_by == "time_desc":
         stmt = stmt.order_by(Recipe.total_time_minutes.desc())
     else:  # recently_added (default)
