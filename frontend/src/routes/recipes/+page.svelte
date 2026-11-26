@@ -32,6 +32,7 @@
 		DEFAULT_PAGE_SIZE,
 		DEBOUNCE_DELAY,
 	} from '#lib/constants.js';
+	import { rememberRecipeListUrl } from '#lib/utils/recipe-list-url.js';
 
 	let searchResult: RecipeSearchResult | null = null;
 	let loading = true;
@@ -128,6 +129,8 @@
 		maxTime,
 		minTime,
 	);
+
+	$: if (browser) rememberRecipeListUrl(listUrl);
 
 	// Update URL with current search params
 	function updateURL() {

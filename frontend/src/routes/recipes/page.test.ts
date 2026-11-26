@@ -83,6 +83,17 @@ describe("recipe list page", () => {
     expect(lastSearch()?.sort_by).toBe("time_asc");
   });
 
+  it("remembers its address so a recipe page can come back to the same sort", async () => {
+    nav.url = "http://localhost/recipes?sort=time_asc";
+    render(Page);
+
+    await waitFor(() =>
+      expect(sessionStorage.getItem("recipes-list-url")).toBe(
+        "/recipes?sort=time_asc",
+      ),
+    );
+  });
+
   it("falls back to the default sort when the page address names an unknown one", async () => {
     vi.mocked(getPreferences).mockResolvedValue(
       preferences({ default_sort: "alphabetical" }),
