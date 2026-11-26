@@ -215,7 +215,7 @@
 	.nav-links {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.25rem;
 		margin-left: 1rem;
 	}
 
@@ -243,17 +243,16 @@
 		white-space: nowrap;
 	}
 
-	/* Measured in the browser before the Import link was added: logo and links
-	   took about 1030px and the theme and Logout buttons about 140px, so one row
-	   needed roughly 1220px without the email and 1450px with it. Both
-	   breakpoints were then raised by 100px for Import (not re-measured). */
-	@media (max-width: 1600px) {
+	/* Measured in the browser with all eight links: one row needs about 1200px
+	   without the email and 1440px with it. The breakpoints add room for a
+	   scrollbar, and keep the row on a 1280px-wide laptop. */
+	@media (max-width: 1500px) {
 		.user-email {
 			display: none;
 		}
 	}
 
-	@media (max-width: 1380px) {
+	@media (max-width: 1250px) {
 		.navbar {
 			padding: 0 0.75rem;
 		}
@@ -309,7 +308,7 @@
 		align-items: center;
 		gap: var(--space-sm);
 		white-space: nowrap;
-		padding: var(--space-sm) var(--space-md);
+		padding: var(--space-sm) 0.75rem;
 		min-height: 2.75rem;
 		border-radius: var(--radius-md);
 		transition: all var(--transition-fast);
