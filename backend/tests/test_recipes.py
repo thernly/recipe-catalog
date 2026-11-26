@@ -422,6 +422,31 @@ async def test_update_partial_recipe(client: AsyncClient, auth_headers: dict):
 
 
 @pytest.mark.asyncio
+async def test_update_sets_and_clears_the_source_url(client: AsyncClient, auth_headers: dict):
+    created = await client.post(
+        "/api/v1/recipes/",
+        json={"name": "Stew", "recipe_data": {"recipeIngredient": ["1 onion"]}},
+        headers=auth_headers,
+    )
+    url = f"/api/v1/recipes/{created.json()['id']}"
+
+    added = await client.patch(
+        url, json={"source_url": "https://example.com/stew"}, headers=auth_headers
+    )
+    assert added.json()["source_url"] == "https://example.com/stew"
+
+    # Left out: unchanged
+    renamed = await client.patch(url, json={"name": "Beef stew"}, headers=auth_headers)
+    assert renamed.json()["source_url"] == "https://example.com/stew"
+
+    cleared = await client.patch(url, json={"source_url": None}, headers=auth_headers)
+    assert cleared.json()["source_url"] is None
+
+    bad = await client.patch(url, json={"source_url": "javascript:alert(1)"}, headers=auth_headers)
+    assert bad.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_delete_recipe_soft_delete(client: AsyncClient, auth_headers: dict):
     """Test soft deleting a recipe."""
     # Create a recipe

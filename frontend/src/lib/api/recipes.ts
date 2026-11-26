@@ -98,6 +98,8 @@ export interface RecipeUpdate {
   name?: string;
   description?: string;
   image_url?: string;
+  /** null clears it */
+  source_url?: string | null;
   recipe_data?: RecipeData;
   cuisine?: string;
   category?: string;

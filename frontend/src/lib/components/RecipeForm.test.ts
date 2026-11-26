@@ -5,6 +5,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/svelte/svelte5";
 
 vi.mock("$app/navigation", () => ({ beforeNavigate: vi.fn() }));
+vi.mock("#lib/api/users.js", () => ({
+  getPreferences: vi.fn().mockResolvedValue({
+    default_cuisines: ["Thai"],
+    custom_cuisines: ["Italian", "Thai"],
+    default_categories: ["Dessert"],
+    custom_categories: [],
+  }),
+}));
 
 import RecipeForm from "./RecipeForm.svelte";
 import { beforeNavigate } from "$app/navigation";
@@ -71,6 +79,34 @@ describe("RecipeForm", () => {
 
     expect(data.recipe_data.cookTime).toBe("PT90M");
     expect(data.total_time_minutes).toBe(90);
+  });
+
+  it("lets the source address of an existing recipe be added and cleared", async () => {
+    const added = await submitted(async (container) => {
+      await fireEvent.input(container.querySelector("#sourceUrl")!, {
+        target: { value: "https://example.com/stew" },
+      });
+    });
+    expect(added.source_url).toBe("https://example.com/stew");
+
+    // The recipe has no address: saving sends null, which clears it
+    expect((await submitted()).source_url).toBeNull();
+  });
+
+  it("suggests the cuisines and categories the recipe list filters on", async () => {
+    const { container } = render(RecipeForm, { props: { recipe } });
+    const options = (id: string) =>
+      [...container.querySelectorAll(`#${id} option`)].map((option) =>
+        option.getAttribute("value"),
+      );
+
+    await waitFor(() =>
+      expect(options("cuisine-options")).toEqual(["Italian", "Thai"]),
+    );
+    expect(options("category-options")).toEqual(["Dessert"]);
+    expect(container.querySelector("#cuisine")?.getAttribute("list")).toBe(
+      "cuisine-options",
+    );
   });
 });
 
