@@ -45,14 +45,15 @@ sqlite3 recipes.db "DELETE FROM recipes WHERE deleted_at < datetime('now', '-30 
 
 Imports before 2026-11-28 kept one picture several times at different sizes or crops (up to 5), so the recipe page's photo viewer paged through the same picture. `backend/scripts/dedupe_recipe_images.py` keeps each picture once, at its largest size. It is a dry run unless given `--apply`; `--apply` backs the database up next to it (`recipes.db.bak-<timestamp>`) first. Running it again changes nothing.
 
-On the Proxmox server, after deploying the version that includes the script:
+On the Proxmox server, as root in the container, after deploying the version that includes the script:
 
 ```bash
-cd /opt/recipe-catalog/backend
-sudo -u recipe-app /home/recipe-app/.local/bin/uv run python scripts/dedupe_recipe_images.py           # dry run: lists what would change
-sudo systemctl stop recipe-catalog-backend
-sudo -u recipe-app /home/recipe-app/.local/bin/uv run python scripts/dedupe_recipe_images.py --apply   # back up, then write
-sudo systemctl start recipe-catalog-backend
+# dry run: lists what would change
+su -s /bin/bash recipe-app -c "cd /opt/recipe-catalog/backend && /home/recipe-app/.local/bin/uv run python scripts/dedupe_recipe_images.py"
+systemctl stop recipe-catalog-backend
+# back up, then write
+su -s /bin/bash recipe-app -c "cd /opt/recipe-catalog/backend && /home/recipe-app/.local/bin/uv run python scripts/dedupe_recipe_images.py --apply"
+systemctl start recipe-catalog-backend
 ```
 
 Locally: `cd backend`, then `uv run python scripts/dedupe_recipe_images.py` (add `--apply` to write).
