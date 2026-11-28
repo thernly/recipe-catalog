@@ -25,9 +25,9 @@ A privacy-focused web application for organizing and managing your personal reci
 |---|---|
 | Frontend | SvelteKit, Svelte 5, TypeScript, Tailwind CSS v4 |
 | Backend | FastAPI, Python 3.14, SQLAlchemy (async), Alembic |
-| Database | SQLite locally, Cloudflare D1 in production |
+| Database | SQLite |
 | Auth | JWT + Argon2, OAuth via Authlib |
-| Deployment | Cloudflare Pages + Workers, or self-hosted Docker |
+| Deployment | Proxmox LXC (production) or Docker Compose; see [deployment](docs/operations/deployment.md) |
 
 ## Quick Start
 
