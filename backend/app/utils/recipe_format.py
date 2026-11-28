@@ -4,8 +4,13 @@ Utilities for converting between internal recipe format and Schema.org Recipe JS
 
 import base64
 import html
+import io
+import re
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlsplit
+
+from PIL import Image
 
 from app.core.config import settings
 from app.core.constants import MAX_FETCHED_IMAGE_BYTES
@@ -150,6 +155,92 @@ def comment_byline(comment: dict[str, Any]) -> str:
     return f"{comment['author']['name']}, {when:%Y-%m-%d %H:%M} UTC"
 
 
+# Recipe pages list one picture several times, at other sizes or crops. Seen in real
+# imports: WordPress "photo-500x375.jpg" / "photo-scaled.jpg", and the New York Times
+# "photo-videoSixteenByNineJumbo1600.jpg" / "photo-facebookJumbo-v2.jpg".
+# ponytail: a hand-picked list of suffixes; add a site's pattern when one turns up.
+_RENDITION_SUFFIX = re.compile(
+    r"(?:-\d+x\d+|-scaled"
+    r"|-(?:videoSixteenByNine|googleFourByThree|mediumSquare|facebookJumbo|threeByTwo"
+    r"|superJumbo|articleLarge)\w*(?:-v\d+)?)+$",
+    re.IGNORECASE,
+)
+# Addresses looked at per import, so a page listing hundreds cannot cause hundreds of fetches
+MAX_IMAGE_CANDIDATES = 20
+
+
+def picture_key(url: str) -> str | None:
+    """The same key for one picture at any size or crop; None without an address."""
+    if not url:
+        return None
+    parts = urlsplit(url)
+    folder, _, name = parts.path.rpartition("/")
+    stem = name.rsplit(".", 1)[0]
+    return f"{parts.netloc}{folder}/{_RENDITION_SUFFIX.sub('', stem)}".lower()
+
+
+def group_pictures(images: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    """Images grouped by picture, in the order each picture first appears."""
+    groups: dict[str | int, list[dict[str, Any]]] = {}
+    for position, image in enumerate(images):
+        # An image with no address is a group of its own
+        key = picture_key(image.get("url") or "") or position
+        groups.setdefault(key, []).append(image)
+    return list(groups.values())
+
+
+def _pixels(data: str) -> int:
+    """Width x height of base64 picture data (header only), 0 when it can't be read."""
+    try:
+        with Image.open(io.BytesIO(base64.b64decode(data))) as picture:
+            width, height = picture.size
+            return int(width * height)
+    except Exception:
+        return 0
+
+
+def largest_image(group: list[dict[str, Any]]) -> dict[str, Any]:
+    """The copy with the most pixels, then the most data (the first one on a tie)."""
+    if len(group) == 1:
+        return group[0]
+    return max(
+        group,
+        key=lambda image: (_pixels(image.get("data") or ""), len(image.get("data") or "")),
+    )
+
+
+def dedupe_images(images: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Stored images with each picture kept once, at its largest size."""
+    return [largest_image(group) for group in group_pictures(images)]
+
+
+def dedupe_recipe_images(recipe: Any) -> list[dict[str, Any]]:
+    """Drop a stored recipe's extra copies of the same picture. Returns the copies dropped.
+
+    For scripts/dedupe_recipe_images.py. The main picture's address (`image_url`) follows
+    the kept copy when it pointed at another size of the same picture.
+    """
+    images = (recipe.recipe_data or {}).get("images") or []
+    kept = dedupe_images(images)
+    if len(kept) == len(images):
+        return []
+    # A new dict, so SQLAlchemy sees the JSON column change
+    recipe.recipe_data = {**recipe.recipe_data, "images": kept}
+    main_url = kept[0].get("url") or ""
+    if recipe.image_url and main_url and picture_key(recipe.image_url) == picture_key(main_url):
+        recipe.image_url = main_url
+    return [image for image in images if not any(image is k for k in kept)]
+
+
+async def _with_data(image: dict[str, str]) -> dict[str, str]:
+    """The image with its picture data, fetched when only the address is known."""
+    if image["data"] or not image["url"]:
+        return image
+    fetched = await _fetch_and_encode_image(image["url"])
+    # Stored without data if the fetch fails
+    return fetched or image
+
+
 async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, Any]:
     """
     Convert Schema.org Recipe JSON-LD format to internal recipe format.
@@ -165,22 +256,16 @@ async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, An
     # Bad optional fields are dropped, never fatal: one odd link or image must not
     # reject the whole recipe. Only http(s) links are kept (no javascript:/data:).
     source_url = safe_http_url(schema_recipe.get("url"))
-    # Process images - extract and fetch base64 data if needed
-    image_url = None
-    images_data: list[dict[str, Any]] = []
+    # Images: an address, or an object with an address and/or base64 data
     images = schema_recipe.get("image", [])
-
-    # Normalize images to list format
     if isinstance(images, str):
         images = [images]
     elif not isinstance(images, list):
         images = []
 
+    candidates: list[dict[str, str]] = []
     for img in images:
-        if len(images_data) >= MAX_IMAGES:
-            break
         if isinstance(img, dict):
-            # Image object with potential base64 data
             url = safe_http_url(img.get("url")) or ""
             data = img.get("data") or ""
             mime_type = img.get("mimeType", "image/jpeg")
@@ -194,36 +279,15 @@ async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, An
                 continue
             if mime_type not in settings.ALLOWED_IMAGE_TYPES:
                 mime_type = "image/jpeg"  # the fetch reports the real type
+            candidates.append({"url": url, "data": data, "mimeType": mime_type})
+        elif isinstance(img, str) and safe_http_url(img):
+            candidates.append({"url": img, "data": "", "mimeType": "image/jpeg"})
 
-            # If no base64 data but URL exists, fetch it
-            if url and not data:
-                fetched_image = await _fetch_and_encode_image(url)
-                if fetched_image:
-                    images_data.append(fetched_image)
-                else:
-                    # Store without data if fetch fails
-                    images_data.append({"url": url, "data": "", "mimeType": mime_type})
-            else:
-                # Store as-is
-                images_data.append({"url": url, "data": data, "mimeType": mime_type})
-
-            # Use first URL for image_url field
-            if not image_url and url:
-                image_url = url
-        elif isinstance(img, str):
-            if not safe_http_url(img):
-                continue
-            # Just a URL string - fetch and encode it
-            fetched_image = await _fetch_and_encode_image(img)
-            if fetched_image:
-                images_data.append(fetched_image)
-            else:
-                # Store without data if fetch fails
-                images_data.append({"url": img, "data": "", "mimeType": "image/jpeg"})
-
-            # Use first URL for image_url field
-            if not image_url:
-                image_url = img
+    # Each picture once, at its largest size: fetch every size listed, keep the biggest
+    images_data: list[dict[str, Any]] = []
+    for group in group_pictures(candidates[:MAX_IMAGE_CANDIDATES])[:MAX_IMAGES]:
+        images_data.append(largest_image([await _with_data(image) for image in group]))
+    image_url = next((image["url"] for image in images_data if image["url"]), None)
 
     # Extract category and cuisine (take first if array)
     category = schema_recipe.get("recipeCategory")
