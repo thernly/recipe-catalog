@@ -4,6 +4,7 @@
 	import { beforeNavigate } from '$app/navigation';
 	import { DEBOUNCE_DELAY } from '#lib/constants.js';
 	import type { Recipe, RecipeCreate, RecipeUpdate } from '#lib/api/recipes.js';
+	import type { RecipeData } from '#lib/types/index.js';
 	import { getPreferences } from '#lib/api/users.js';
 	import IngredientsEditor from '#lib/components/recipe/IngredientsEditor.svelte';
 	import InstructionsEditor from '#lib/components/recipe/InstructionsEditor.svelte';
@@ -61,6 +62,33 @@
 		: [];
 	let notes = baseRecipeData?.notes || '';
 	let keywords = baseRecipeData?.keywords || '';
+
+	// Photos can be removed or reordered here; the change is saved with the recipe
+	type Photo = NonNullable<RecipeData['images']>[number];
+	const hadPhotos = Boolean(baseRecipeData?.images?.length);
+	let photos: Photo[] = [...(baseRecipeData?.images ?? [])];
+	let photosChanged = false;
+
+	const photoSrc = (photo: Photo) =>
+		photo.data?.trim()
+			? `data:${photo.mimeType};base64,${photo.data}`
+			: (photo.url ?? '');
+
+	function setPhotos(next: Photo[]) {
+		// The image address follows the main photo when it pointed at it
+		const main = photos[0]?.url ?? '';
+		if (main && imageUrl.trim() === main) imageUrl = next[0]?.url ?? '';
+		photos = next;
+		photosChanged = true;
+	}
+
+	function removePhoto(index: number) {
+		setPhotos(photos.filter((_, i) => i !== index));
+	}
+
+	function makeMainPhoto(index: number) {
+		setPhotos([photos[index], ...photos.filter((_, i) => i !== index)]);
+	}
 
 	// Validation errors
 	let errors: Record<string, string> = {};
@@ -182,6 +210,7 @@
 					: undefined,
 			notes: notes.trim() || undefined,
 			keywords: keywords.trim() || undefined,
+			images: photos,
 		};
 
 		const formData: RecipeCreate | RecipeUpdate = {
@@ -233,7 +262,7 @@
 	// The form as first shown (before any draft is restored, see onMount)
 	let pristine: string | undefined;
 	$: if (pristine === undefined) pristine = snapshot;
-	$: dirty = snapshot !== pristine;
+	$: dirty = snapshot !== pristine || photosChanged;
 
 	function applyFields(saved: Partial<typeof fields>) {
 		({
@@ -406,6 +435,49 @@
 			</p>
 		</div>
 	</section>
+
+	{#if hadPhotos}
+		<section class="form-section">
+			<h2 class="section-title">Photos</h2>
+			<p class="form-help photos-help">
+				The first photo is the main one, shown on recipe cards. Removed photos
+				are deleted when you save.
+			</p>
+			{#if photos.length}
+				<ul class="photo-grid">
+					{#each photos as photo, i (photo)}
+						<li class="photo-tile">
+							<img src={photoSrc(photo)} alt="Photo {i + 1}" />
+							<div class="photo-actions">
+								{#if i === 0}
+									<span class="main-badge">Main photo</span>
+								{:else}
+									<button
+										type="button"
+										class="photo-button"
+										aria-label="Make photo {i + 1} the main photo"
+										on:click={() => makeMainPhoto(i)}
+									>
+										Make main
+									</button>
+								{/if}
+								<button
+									type="button"
+									class="photo-button remove"
+									aria-label="Remove photo {i + 1}"
+									on:click={() => removePhoto(i)}
+								>
+									Remove
+								</button>
+							</div>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="form-help">No photos. Cancel to keep the ones you removed.</p>
+			{/if}
+		</section>
+	{/if}
 
 	<!-- Ingredients Section -->
 	<IngredientsEditor
@@ -723,6 +795,62 @@
 		font-size: 0.875rem;
 		color: var(--text-500);
 		margin-top: 0.5rem;
+	}
+
+	.photos-help {
+		margin: -1rem 0 1rem;
+	}
+
+	.photo-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+		gap: 1rem;
+	}
+
+	.photo-tile {
+		border: 1px solid var(--neutral-200);
+		border-radius: var(--radius-md);
+		overflow: hidden;
+		background: var(--neutral-50);
+	}
+
+	.photo-tile img {
+		width: 100%;
+		aspect-ratio: 4 / 3;
+		object-fit: cover;
+		display: block;
+	}
+
+	.photo-actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.5rem;
+	}
+
+	.main-badge {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--text-700);
+	}
+
+	.photo-button {
+		min-height: 44px;
+		padding: 0 0.5rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: var(--accent-700);
+		border-radius: var(--radius-md);
+	}
+
+	.photo-button:hover {
+		background: var(--accent-50);
+	}
+
+	.photo-button.remove {
+		color: var(--color-error-text);
 	}
 
 	.error-message {

@@ -93,6 +93,78 @@ describe("RecipeForm", () => {
     expect((await submitted()).source_url).toBeNull();
   });
 
+  describe("photos", () => {
+    const first = {
+      url: "https://example.com/a.jpg",
+      data: "QQ==",
+      mimeType: "image/jpeg",
+    };
+    const second = {
+      url: "https://example.com/b.jpg",
+      data: "Qg==",
+      mimeType: "image/jpeg",
+    };
+    const withPhotos: Recipe = {
+      ...recipe,
+      image_url: first.url,
+      recipe_data: { ...recipe.recipe_data, images: [first, second] },
+    };
+
+    async function saved(click: string[]) {
+      const onSubmit = vi.fn();
+      const { container, getByRole } = render(RecipeForm, {
+        props: { recipe: withPhotos },
+        events: { submit: onSubmit },
+      });
+      for (const name of click)
+        await fireEvent.click(getByRole("button", { name }));
+      await fireEvent.submit(container.querySelector("form")!);
+      return onSubmit.mock.calls[0][0].detail;
+    }
+
+    it("removes a photo on save, and the image address follows the main photo", async () => {
+      const data = await saved(["Remove photo 1"]);
+
+      expect(data.recipe_data.images).toEqual([second]);
+      expect(data.image_url).toBe(second.url);
+    });
+
+    it("makes another photo the main one", async () => {
+      const data = await saved(["Make photo 2 the main photo"]);
+
+      expect(data.recipe_data.images).toEqual([second, first]);
+      expect(data.image_url).toBe(second.url);
+    });
+
+    it("can remove every photo", async () => {
+      const data = await saved(["Remove photo 2", "Remove photo 1"]);
+
+      expect(data.recipe_data.images).toEqual([]);
+      expect(data.image_url).toBeUndefined();
+    });
+
+    it("asks before leaving after a photo is removed", async () => {
+      vi.mocked(beforeNavigate).mockReset();
+      const { getByRole } = render(RecipeForm, {
+        props: { recipe: withPhotos },
+      });
+      const guard = vi.mocked(beforeNavigate).mock.calls[0][0];
+      const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+      const navigation = { willUnload: false, cancel: vi.fn() };
+
+      await fireEvent.click(getByRole("button", { name: "Remove photo 2" }));
+      guard(navigation as unknown as Parameters<typeof guard>[0]);
+
+      expect(confirm).toHaveBeenCalledOnce();
+      confirm.mockRestore();
+    });
+
+    it("has no photos section for a recipe without photos", () => {
+      const { queryByRole } = render(RecipeForm);
+      expect(queryByRole("heading", { name: "Photos" })).toBeNull();
+    });
+  });
+
   it("suggests the cuisines and categories the recipe list filters on", async () => {
     const { container } = render(RecipeForm, { props: { recipe } });
     const options = (id: string) =>
