@@ -30,6 +30,7 @@ from app.models.recipe import Recipe
 from app.models.recipe_note import RecipeNote, note_author_name
 from app.models.shopping_list import ShoppingList, ShoppingListItem
 from app.models.user import User
+from app.services.categories import known_categories, normalize_categories, set_categories
 from app.services.recipe_cleanup import clean_recipe_data, derive_total_time_minutes
 from app.services.recipe_page import extract_recipe
 from app.utils.file_validation import validate_file_size
@@ -219,6 +220,7 @@ async def _import_recipes_internal(
             existing_by_name.setdefault(recipe.name, recipe)
             if key := _url_key(recipe.source_url):
                 existing_by_url.setdefault(key, recipe)
+    known = await known_categories(user_id, db)
     linked_ids: set[Any] = set()
     if collection:
         linked_ids = set(
@@ -272,7 +274,9 @@ async def _import_recipes_internal(
                     existing_recipe.recipe_data = recipe_dict["recipe_data"]
                     existing_recipe.source_url = recipe_dict["source_url"]
                     existing_recipe.cuisine = recipe_dict["cuisine"]
-                    existing_recipe.category = recipe_dict["category"]
+                    set_categories(
+                        existing_recipe, normalize_categories(recipe_dict["categories"], known)
+                    )
                     existing_recipe.total_time_minutes = recipe_dict["total_time_minutes"]
                     existing_recipe.is_modified = True
                     existing_recipe.updated_at = datetime.now(UTC)
@@ -294,10 +298,10 @@ async def _import_recipes_internal(
                     source_url=recipe_dict["source_url"],
                     source_type=recipe_dict["source_type"],
                     cuisine=recipe_dict["cuisine"],
-                    category=recipe_dict["category"],
                     total_time_minutes=recipe_dict["total_time_minutes"],
                     imported_at=datetime.now(UTC),
                 )
+                set_categories(new_recipe, normalize_categories(recipe_dict["categories"], known))
                 db.add(new_recipe)
                 # Flush to assign the id reported in items
                 await db.flush()
@@ -517,7 +521,7 @@ async def import_recipe_from_url(
 # are left out rather than failing the restore.
 # ============================================
 
-_BACKUP_RECIPE_FIELDS = ("name", "description", "image_url", "source_url", "cuisine", "category")
+_BACKUP_RECIPE_FIELDS = ("name", "description", "image_url", "source_url", "cuisine")
 _MEAL_TYPES = {"breakfast", "lunch", "dinner", "snack", "other"}
 _SOURCE_TYPES = {"imported", "manual", "ai-generated"}
 _IMPORT_BATCH = 500  # the importer's own limit per call
@@ -550,9 +554,14 @@ async def _restore_backup_recipes(
         if not isinstance(recipe_data, dict):
             schema_recipes.append({})  # the importer reports it as failed
             continue
+        # A backup made before categories were a list has one `category` string
+        categories = entry.get("categories")
+        if not isinstance(categories, list):
+            categories = [entry.get("category")]
         stored = SimpleNamespace(
             **{field: entry.get(field) for field in _BACKUP_RECIPE_FIELDS},
             recipe_data=recipe_data,
+            category_names=[name for name in categories if isinstance(name, str)],
             created_at=None,
         )
         schema = await convert_to_schema_org(stored, fetch_images=False)

@@ -137,11 +137,12 @@
 			}
 		}
 
-		// Extract category and cuisine
-		const category =
-			Array.isArray(recipe.recipeCategory) && recipe.recipeCategory.length > 0
-				? recipe.recipeCategory[0]
-				: recipe.recipeCategory || undefined;
+		// Every category; one cuisine
+		const categories = Array.isArray(recipe.recipeCategory)
+			? recipe.recipeCategory
+			: recipe.recipeCategory
+				? [recipe.recipeCategory]
+				: [];
 
 		const recipeCuisine =
 			Array.isArray(recipe.recipeCuisine) && recipe.recipeCuisine.length > 0
@@ -154,7 +155,7 @@
 			recipe_data: recipe,
 			source_type: 'ai-generated',
 			cuisine: recipeCuisine,
-			category: category,
+			categories,
 			total_time_minutes: totalTimeMinutes,
 		};
 	}
@@ -356,9 +357,9 @@
 							Generate Recipe
 						{/if}
 					</button>
-					<button type="button" on:click={handleCancel} class="btn-secondary"
-						>Cancel</button
-					>
+					<button type="button" on:click={handleCancel} class="btn-secondary">
+						Cancel
+					</button>
 				</div>
 			</div>
 		{:else if step === 'preview' && generatedRecipe}

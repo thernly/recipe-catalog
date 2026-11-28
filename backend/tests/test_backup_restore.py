@@ -217,6 +217,27 @@ async def test_restore_tolerates_malformed_sections(client, test_db, test_user_h
     assert item.item_name == "eggs"
 
 
+async def test_backup_restore_accepts_old_single_category(client, test_db, test_user_headers):
+    """Backups made before categories were a list have one `category` string."""
+    backup = {
+        "export_type": "complete_backup",
+        "recipes": [
+            {"name": "Soup", "recipe_data": {}, "category": "dinner, soup"},
+            {"name": "Cake", "recipe_data": {}, "categories": ["Dessert", "Baking"]},
+        ],
+    }
+
+    response = await _restore(client, test_user_headers, json.dumps(backup).encode())
+
+    assert response.status_code == 200, response.text
+    rows = (await test_db.execute(select(Recipe).order_by(Recipe.name))).scalars().all()
+    assert [(r.name, r.category_names) for r in rows] == [
+        ("Cake", ["Dessert", "Baking"]),
+        ("Soup", ["Dinner", "Soup"]),
+    ]
+    assert rows[1].recipe_data["recipeCategory"] == ["Dinner", "Soup"]
+
+
 async def test_restore_rejects_a_file_that_is_not_a_backup(client, test_user_headers):
     response = await _restore(client, test_user_headers, json.dumps([{"name": "Soup"}]).encode())
 

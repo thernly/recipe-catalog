@@ -140,9 +140,7 @@ async def generate_menu(
         # If catalog-first mode, fetch household recipes
         household_recipes: list[dict[str, Any]] | None = None
         if generation_request.mode == "catalog-first":
-            catalog_query: Select[Any, Any, Any] = select(
-                Recipe.id, Recipe.name, Recipe.category
-            ).where(
+            catalog_query: Select[Any] = select(Recipe).where(
                 and_(
                     Recipe.household_id == household.id,
                     Recipe.deleted_at.is_(None),
@@ -155,14 +153,14 @@ async def generate_menu(
             result: Result[Any] = await db.execute(
                 catalog_query.order_by(Recipe.id).limit(MAX_RECIPES_IN_PROMPT)
             )
-            recipes = result.all()
+            recipes = result.scalars().all()
 
-            # Convert to dict format for AI service
+            # Convert to dict format for AI service (the categories joined as one text)
             household_recipes = [
                 {
                     "id": recipe.id,
                     "name": recipe.name,
-                    "category": recipe.category,
+                    "category": ", ".join(recipe.category_names) or None,
                 }
                 for recipe in recipes
             ]

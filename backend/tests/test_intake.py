@@ -154,7 +154,7 @@ async def test_intake_creates_recipe(
     assert recipe.household_id == member.household_id
     assert recipe.name == "Weeknight Dal"
     assert recipe.cuisine == "Indian"
-    assert recipe.category == "Dinner"
+    assert recipe.category_names == ["Dinner"]
     assert recipe.total_time_minutes == 35
     assert recipe.source_url == "https://example.com/dal"
     assert recipe.source_type == "imported"

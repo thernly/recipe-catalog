@@ -2,7 +2,7 @@
 
 import html
 from datetime import date, datetime
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -13,6 +13,15 @@ from app.utils.urls import safe_http_url, validate_http_url
 # ============================================
 # Recipe Schemas
 # ============================================
+
+Category = Annotated[str, Field(max_length=100)]
+
+
+def category_names(value: Any) -> Any:
+    """Responses read ORM rows: a list of RecipeCategory rows becomes their names."""
+    if isinstance(value, list):
+        return [getattr(item, "name", item) for item in value]
+    return value
 
 
 class RecipeBase(BaseModel):
@@ -26,7 +35,9 @@ class RecipeBase(BaseModel):
 
     _validate_urls = field_validator("source_url", "image_url")(validate_http_url)
     cuisine: str | None = Field(None, max_length=100)
-    category: str | None = Field(None, max_length=100)
+    # A recipe may have several ("Soup" and "Dinner"); the filter matches any of them
+    categories: list[Category] = Field(default_factory=list, max_length=20)
+    _category_names = field_validator("categories", mode="before")(category_names)
     total_time_minutes: int | None = Field(None, ge=0)
 
 
@@ -56,7 +67,8 @@ class RecipeUpdate(BaseModel):
 
     recipe_data: dict[str, Any] | None = None
     cuisine: str | None = Field(None, max_length=100)
-    category: str | None = Field(None, max_length=100)
+    # None = unchanged, [] = clear
+    categories: list[Category] | None = Field(None, max_length=20)
     total_time_minutes: int | None = Field(None, ge=0)
     collection_ids: list[int] | None = Field(None, max_length=500)
 
@@ -81,7 +93,7 @@ class Recipe(RecipeBase):
     image_url: str | None = None
     source_url: str | None = None
     cuisine: str | None = None
-    category: str | None = None
+    categories: list[str] = Field(default_factory=list)
     total_time_minutes: int | None = None
     _validate_urls = field_validator("source_url", "image_url", mode="before")(safe_http_url)
 
@@ -124,7 +136,8 @@ class RecipeSummary(BaseModel):
     # Stored photo served by GET /recipes/{id}/photo; image_url is only the fallback
     has_photo: bool = False
     cuisine: str | None = None
-    category: str | None = None
+    categories: list[str] = Field(default_factory=list)
+    _category_names = field_validator("categories", mode="before")(category_names)
     total_time_minutes: int | None = None
     source_type: str
     created_at: datetime

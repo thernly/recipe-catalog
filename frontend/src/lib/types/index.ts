@@ -40,7 +40,8 @@ export interface RecipeData {
   totalTime?: string;
   recipeYield?: string;
   recipeCuisine?: string;
-  recipeCategory?: string;
+  /** schema.org allows a string or a list; the server stores a list */
+  recipeCategory?: string | string[];
   keywords?: string;
   image?: string | string[];
   images?: Array<{

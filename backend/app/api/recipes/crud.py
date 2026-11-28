@@ -25,6 +25,7 @@ from app.models.recipe import Recipe
 from app.models.user import User
 from app.schemas.recipe import Recipe as RecipeSchema
 from app.schemas.recipe import RecipeCreate, RecipeUpdate
+from app.services.categories import known_categories, normalize_categories, set_categories
 from app.services.recipe_cleanup import clean_recipe_data, derive_total_time_minutes
 from app.utils.recipe_format import MAX_IMAGES
 
@@ -259,10 +260,11 @@ async def create_recipe(
         source_url=recipe_data.source_url,
         source_type=recipe_data.source_type,
         cuisine=recipe_data.cuisine,
-        category=recipe_data.category,
         total_time_minutes=total_time_minutes,
         imported_at=datetime.now(UTC) if recipe_data.source_type == "imported" else None,
     )
+    known = await known_categories(current_user.id, db)
+    set_categories(new_recipe, normalize_categories(recipe_data.categories, known))
 
     db.add(new_recipe)
     await db.flush()
@@ -409,7 +411,9 @@ async def update_recipe(
         raise RecipeNotFoundError(recipe_id=recipe_id)
 
     # Update fields with sanitization
-    update_data = recipe_update.model_dump(exclude_unset=True, exclude={"collection_ids"})
+    update_data = recipe_update.model_dump(
+        exclude_unset=True, exclude={"collection_ids", "categories"}
+    )
 
     # name/description are already stripped to plain text by the RecipeUpdate validator
     if "recipe_data" in update_data and update_data["recipe_data"]:
@@ -428,6 +432,14 @@ async def update_recipe(
 
     for field, value in update_data.items():
         setattr(recipe, field, value)
+
+    # New categories when sent ([] clears them); otherwise the stored ones are written
+    # back into recipe_data, so a new recipe_data cannot leave the two out of step
+    if recipe_update.categories is not None:
+        known = await known_categories(current_user.id, db)
+        set_categories(recipe, normalize_categories(recipe_update.categories, known))
+    else:
+        set_categories(recipe, recipe.category_names)
 
     # Mark as modified if it was imported
     if recipe.source_type == "imported":
@@ -585,9 +597,9 @@ async def duplicate_recipe(
         source_url=original_recipe.source_url,
         source_type="manual",  # Duplicates are always manual
         cuisine=original_recipe.cuisine,
-        category=original_recipe.category,
         total_time_minutes=original_recipe.total_time_minutes,
     )
+    set_categories(duplicate, original_recipe.category_names)
 
     db.add(duplicate)
     await db.commit()

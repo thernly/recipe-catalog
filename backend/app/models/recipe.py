@@ -52,9 +52,9 @@ class Recipe(Base):
     # Soft delete
     deleted_at = Column(DateTime, index=True)
 
-    # Denormalized fields for search/filter performance
+    # Denormalized fields for search/filter performance. Categories are rows in
+    # recipe_categories (see `categories` below); a recipe may have several.
     cuisine = Column(String(100), index=True)
-    category = Column(String(100), index=True)
     total_time_minutes = Column(Integer, index=True)
 
     # Shared by the household: any member may set them (see api/recipes/cooking.py).
@@ -74,6 +74,19 @@ class Recipe(Base):
         cascade="all, delete-orphan",
         order_by="RecipeNote.created_at",
     )
+    # Loaded with every recipe (selectin), so responses can list the names without a
+    # lazy load, which an async session cannot do. Written only by set_categories.
+    categories = relationship(
+        "RecipeCategory",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="RecipeCategory.id",
+    )
+
+    @property
+    def category_names(self) -> list[str]:
+        """The recipe's categories, in the order they were set."""
+        return [str(row.name) for row in self.categories]
 
     @property
     def main_photo(self) -> dict[str, Any] | None:

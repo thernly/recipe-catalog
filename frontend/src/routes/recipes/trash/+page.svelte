@@ -207,11 +207,11 @@
 											{recipe.cuisine}
 										</span>
 									{/if}
-									{#if recipe.category}
+									{#each recipe.categories ?? [] as category (category)}
 										<span style="color: var(--text-500);">
-											• {recipe.category}
+											• {category}
 										</span>
-									{/if}
+									{/each}
 								</div>
 							</div>
 						</div>

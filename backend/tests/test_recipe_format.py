@@ -35,7 +35,7 @@ class MockRecipe:
         self.source_url = kwargs.get("source_url")
         self.source_type = kwargs.get("source_type", "manual")
         self.cuisine = kwargs.get("cuisine")
-        self.category = kwargs.get("category")
+        self.category_names = kwargs.get("category_names", [])
         self.total_time_minutes = kwargs.get("total_time_minutes")
         self.created_at = kwargs.get("created_at", datetime.now(UTC))
 
@@ -83,14 +83,14 @@ async def test_convert_to_schema_org_with_category_cuisine():
     """Test conversion with category and cuisine"""
     recipe = MockRecipe(
         name="Pizza",
-        category="Dinner",
+        category_names=["Dinner", "Main Course"],
         cuisine="Italian",
         recipe_data={},
     )
 
     result = await convert_to_schema_org(recipe)
 
-    assert "Dinner" in result["recipeCategory"]
+    assert result["recipeCategory"] == ["Dinner", "Main Course"]
     assert "Italian" in result["recipeCuisine"]
 
 
@@ -181,8 +181,8 @@ async def test_convert_from_schema_org_category_array():
 
     result = await convert_from_schema_org(schema_recipe)
 
-    # Should take first category
-    assert result["category"] == "Dinner"
+    # Every category is kept
+    assert result["categories"] == ["Dinner", "Main Course"]
     # Should preserve full array in recipe_data
     assert result["recipe_data"]["recipeCategory"] == ["Dinner", "Main Course"]
 

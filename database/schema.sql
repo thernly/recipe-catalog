@@ -51,7 +51,6 @@ CREATE TABLE IF NOT EXISTS recipes (
     imported_at DATETIME,
     deleted_at DATETIME,
     cuisine VARCHAR(100),
-    category VARCHAR(100),
     total_time_minutes INTEGER,
     rating INTEGER,
     last_cooked_on DATE,
@@ -64,8 +63,18 @@ CREATE INDEX IF NOT EXISTS idx_recipes_source_url ON recipes(source_url);
 CREATE INDEX IF NOT EXISTS idx_recipes_created_at ON recipes(created_at);
 CREATE INDEX IF NOT EXISTS idx_recipes_deleted_at ON recipes(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_recipes_cuisine ON recipes(cuisine);
-CREATE INDEX IF NOT EXISTS idx_recipes_category ON recipes(category);
 CREATE INDEX IF NOT EXISTS idx_recipes_total_time_minutes ON recipes(total_time_minutes);
+
+-- A recipe's categories, one row each (kept equal to recipe_data.recipeCategory)
+CREATE TABLE IF NOT EXISTS recipe_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recipe_id INTEGER NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE,
+    UNIQUE (recipe_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_recipe_categories_recipe_id ON recipe_categories(recipe_id);
 
 -- Collections table
 CREATE TABLE IF NOT EXISTS collections (

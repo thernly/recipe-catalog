@@ -26,8 +26,29 @@
 	let description = initialData?.description ?? recipe?.description ?? '';
 	let imageUrl = recipe?.image_url ?? initialData?.image_url ?? '';
 	let cuisine = initialData?.cuisine ?? recipe?.cuisine ?? '';
-	let category = initialData?.category ?? recipe?.category ?? '';
+	// Several per recipe; ticked from the list below, or typed as "other"
+	let categories: string[] = [
+		...(recipe?.categories ?? initialData?.categories ?? []),
+	];
+	let otherCategory = '';
 	let sourceUrl = recipe?.source_url ?? '';
+
+	function toggleCategory(option: string) {
+		categories = categories.includes(option)
+			? categories.filter((c) => c !== option)
+			: [...categories, option];
+	}
+
+	function addOtherCategory() {
+		const name = otherCategory.trim();
+		otherCategory = '';
+		if (!name) return;
+		const same = (c: string) => c.toLowerCase() === name.toLowerCase();
+		if (!categories.some(same)) {
+			// Take the list's spelling when it is one of the options
+			categories = [...categories, categoryOptions.find(same) ?? name];
+		}
+	}
 
 	// Times (in minutes)
 	let prepTimeHours = 0;
@@ -256,7 +277,7 @@
 			description: description.trim() || undefined,
 			image_url: imageUrl.trim() || undefined,
 			cuisine: cuisine.trim() || undefined,
-			category: category.trim() || undefined,
+			categories,
 			total_time_minutes: totalTimeMinutes > 0 ? totalTimeMinutes : undefined,
 			recipe_data: recipeData,
 		};
@@ -287,7 +308,7 @@
 		instructions,
 		equipment,
 		cuisine,
-		category,
+		categories,
 		prepTimeHours,
 		prepTimeMinutes,
 		cookTimeHours,
@@ -312,7 +333,7 @@
 			instructions = instructions,
 			equipment = equipment,
 			cuisine = cuisine,
-			category = category,
+			categories = categories,
 			prepTimeHours = prepTimeHours,
 			prepTimeMinutes = prepTimeMinutes,
 			cookTimeHours = cookTimeHours,
@@ -664,22 +685,45 @@
 				</datalist>
 			</div>
 
-			<div class="form-group">
-				<label for="category" class="form-label">Category</label>
-				<input
-					type="text"
-					id="category"
-					bind:value={category}
-					list="category-options"
-					placeholder="e.g., Dessert, Main Course, Appetizer"
-					class="form-input"
-				/>
-				<datalist id="category-options">
-					{#each categoryOptions as option (option)}
-						<option value={option}></option>
+			<fieldset class="form-group category-group">
+				<legend class="form-label">Categories</legend>
+				<!-- The list's options, plus any category this recipe has that is not in it -->
+				<div class="category-options">
+					{#each unique([...categoryOptions, ...categories]) as option (option)}
+						<label class="category-checkbox">
+							<input
+								type="checkbox"
+								checked={categories.includes(option)}
+								on:change={() => toggleCategory(option)}
+							/>
+							<span>{option}</span>
+						</label>
 					{/each}
-				</datalist>
-			</div>
+				</div>
+				<div class="flex gap-2 mt-2">
+					<input
+						type="text"
+						id="other-category"
+						bind:value={otherCategory}
+						placeholder="Other category"
+						aria-label="Other category"
+						class="form-input"
+						on:keydown={(e) => {
+							if (e.key === 'Enter') {
+								e.preventDefault();
+								addOtherCategory();
+							}
+						}}
+					/>
+					<button
+						type="button"
+						on:click={addOtherCategory}
+						class="btn btn-secondary btn-sm"
+					>
+						Add
+					</button>
+				</div>
+			</fieldset>
 		</div>
 
 		<div class="form-group">
@@ -856,6 +900,34 @@
 		font-size: 0.875rem;
 		color: var(--text-500);
 		margin-top: 0.5rem;
+	}
+
+	.category-group {
+		border: 0;
+		padding: 0;
+		margin-inline: 0;
+	}
+
+	.category-options {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+		gap: 0.25rem 1rem;
+	}
+
+	.category-checkbox {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+		color: var(--text-700);
+		cursor: pointer;
+		padding: 0.25rem 0;
+	}
+
+	.category-checkbox input {
+		width: 1rem;
+		height: 1rem;
+		accent-color: var(--accent-500);
 	}
 
 	.photos-help {

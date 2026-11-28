@@ -24,7 +24,8 @@ export interface Recipe {
   imported_at?: string;
   deleted_at?: string;
   cuisine?: string;
-  category?: string;
+  /** A recipe may have several ("Soup", "Dinner"); the filter matches any of them */
+  categories?: string[];
   total_time_minutes?: number;
   creator_display_name?: string | null;
   rating?: number | null;
@@ -48,7 +49,7 @@ export interface RecipeSummary {
   has_photo?: boolean;
   source_url?: string;
   cuisine?: string;
-  category?: string;
+  categories?: string[];
   total_time_minutes?: number;
   source_type: RecipeSourceType;
   created_at: string;
@@ -91,7 +92,7 @@ export interface RecipeCreate {
   source_url?: string;
   source_type?: RecipeSourceType;
   cuisine?: string;
-  category?: string;
+  categories?: string[];
   total_time_minutes?: number;
   collection_ids?: number[];
 }
@@ -104,7 +105,8 @@ export interface RecipeUpdate {
   source_url?: string | null;
   recipe_data?: RecipeData;
   cuisine?: string;
-  category?: string;
+  /** Left out: unchanged; [] clears them */
+  categories?: string[];
   total_time_minutes?: number;
   collection_ids?: number[];
 }

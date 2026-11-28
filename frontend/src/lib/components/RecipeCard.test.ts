@@ -13,7 +13,7 @@ describe("RecipeCard", () => {
     description: "A delicious test recipe",
     image_url: "https://example.com/image.jpg",
     cuisine: "Italian",
-    category: "Dinner",
+    categories: ["Dinner"],
     total_time_minutes: 45,
     source_type: "manual",
     created_at: "2024-01-01T00:00:00Z",
@@ -73,13 +73,30 @@ describe("RecipeCard", () => {
   });
 
   it("should render without category badge when not provided", () => {
-    const recipeNoCategory = { ...mockRecipe, category: undefined };
+    const recipeNoCategory = { ...mockRecipe, categories: undefined };
 
     const { queryByText } = render(RecipeCard, {
       props: { recipe: recipeNoCategory },
     });
 
     expect(queryByText("Dinner")).toBeNull();
+  });
+
+  it("shows two categories and counts the rest", () => {
+    const { getByText, queryByText, getByTitle } = render(RecipeCard, {
+      props: {
+        recipe: {
+          ...mockRecipe,
+          categories: ["Soup", "Dinner", "Weeknight", "Quick"],
+        },
+      },
+    });
+
+    expect(getByText("Soup")).toBeTruthy();
+    expect(getByText("Dinner")).toBeTruthy();
+    expect(queryByText("Weeknight")).toBeNull();
+    expect(getByText("+2")).toBeTruthy();
+    expect(getByTitle("Weeknight, Quick")).toBeTruthy();
   });
 
   it("should format time correctly for minutes only", () => {
