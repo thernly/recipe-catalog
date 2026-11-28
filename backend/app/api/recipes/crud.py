@@ -20,9 +20,36 @@ from app.models.user import User
 from app.schemas.recipe import Recipe as RecipeSchema
 from app.schemas.recipe import RecipeCreate, RecipeUpdate
 from app.services.recipe_cleanup import clean_recipe_data, derive_total_time_minutes
+from app.utils.recipe_format import MAX_IMAGES
 
 
 router = APIRouter()
+
+
+def keep_stored_images(incoming: dict[str, Any], stored: dict[str, Any]) -> dict[str, Any]:
+    """The recipe's photos after an edit: stored ones, removed or reordered, never new ones.
+
+    Pictures arrive through imports, which fetch and check them. A request may drop or
+    reorder the stored photos (matched by address and data) but not add one. Without an
+    `images` list the stored photos are kept.
+    """
+    stored_images = [image for image in stored.get("images") or [] if isinstance(image, dict)]
+    if "images" not in incoming:
+        return {**incoming, "images": stored_images} if stored_images else incoming
+    requested = incoming["images"]
+    if not isinstance(requested, list) or len(requested) > MAX_IMAGES:
+        raise InvalidInputError(message=f"A recipe can have at most {MAX_IMAGES} photos")
+    by_key = {(image.get("url"), image.get("data")): image for image in stored_images}
+    kept: list[dict[str, Any]] = []
+    for image in requested:
+        match = (
+            by_key.get((image.get("url"), image.get("data"))) if isinstance(image, dict) else None
+        )
+        if match is None:
+            raise InvalidInputError(message="A photo can only be kept, removed or reordered here")
+        if not any(match is k for k in kept):
+            kept.append(match)
+    return {**incoming, "images": kept}
 
 
 def sanitize_recipe_data(data: dict[str, Any]) -> dict[str, Any]:
@@ -176,7 +203,10 @@ async def create_recipe(
     sanitized_name = recipe_data.name or None
     sanitized_description = recipe_data.description or None
     # Shared cleanup: yield, times, parsedIngredients
-    cleaned_recipe_data = clean_recipe_data(sanitize_recipe_data(recipe_data.recipe_data)).data
+    # A new recipe has no stored photos to keep
+    cleaned_recipe_data = clean_recipe_data(
+        keep_stored_images(sanitize_recipe_data(recipe_data.recipe_data), {})
+    ).data
     total_time_minutes = recipe_data.total_time_minutes
     if total_time_minutes is None:
         total_time_minutes = derive_total_time_minutes(cleaned_recipe_data)
@@ -313,7 +343,8 @@ async def update_recipe(
         stored: dict[str, Any] = recipe.recipe_data if isinstance(recipe.recipe_data, dict) else {}
         previous_parsed = stored.get("parsedIngredients")
         update_data["recipe_data"] = clean_recipe_data(
-            sanitize_recipe_data(update_data["recipe_data"]), previous_parsed
+            keep_stored_images(sanitize_recipe_data(update_data["recipe_data"]), stored),
+            previous_parsed,
         ).data
         if "total_time_minutes" not in update_data:
             derived_total = derive_total_time_minutes(update_data["recipe_data"])
