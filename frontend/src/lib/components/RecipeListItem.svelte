@@ -3,6 +3,7 @@
 	import { auth } from '#lib/stores/auth.js';
 	import { favorites } from '#lib/stores/favorites.js';
 	import { recipeImageSrc } from '#lib/utils/recipe-image.js';
+	import { safeHttpUrl } from '#lib/utils/urls.js';
 	import {
 		UtensilsCrossed,
 		Clock,
@@ -23,6 +24,10 @@
 		undefined;
 
 	$: imageSrc = recipeImageSrc(recipe);
+	$: sourceHost = safeHttpUrl(recipe.source_url)?.hostname.replace(
+		/^www\./,
+		'',
+	);
 
 	// Only the member who added a recipe can edit or delete it
 	$: canEdit =
@@ -123,7 +128,7 @@
 					<span>•</span>
 					{#if recipe.source_type === 'imported'}
 						<Download size={12} aria-hidden="true" />
-						<span>Imported</span>
+						<span>{sourceHost ?? 'Imported'}</span>
 					{:else}
 						<PencilLine size={12} aria-hidden="true" />
 						<span>Manual</span>

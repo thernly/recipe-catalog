@@ -197,6 +197,29 @@ async def test_search_finds_recipes_by_ingredient_and_keyword(
 
 
 @pytest.mark.asyncio
+async def test_search_finds_recipes_by_source_site(client: AsyncClient, auth_headers: dict):
+    recipes = [
+        {
+            "name": "Roast Chicken",
+            "recipe_data": {},
+            "source_url": "https://cooking.nytimes.com/recipes/1",
+        },
+        {"name": "Smash Burger", "recipe_data": {}, "source_url": "https://www.seriouseats.com/x"},
+        {"name": "Toast", "recipe_data": {}},
+    ]
+    for recipe in recipes:
+        created = await client.post("/api/v1/recipes/", json=recipe, headers=auth_headers)
+        assert created.status_code == 201
+
+    response = await client.get(
+        "/api/v1/recipes/search", params={"query": "nytimes"}, headers=auth_headers
+    )
+    found = response.json()["recipes"]
+    assert [r["name"] for r in found] == ["Roast Chicken"]
+    assert found[0]["source_url"] == "https://cooking.nytimes.com/recipes/1"
+
+
+@pytest.mark.asyncio
 async def test_shortest_time_lists_recipes_without_a_time_last(
     client: AsyncClient, auth_headers: dict
 ):

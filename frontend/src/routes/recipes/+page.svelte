@@ -405,7 +405,7 @@
 				<div class="flex-1">
 					<input
 						type="search"
-						placeholder="Search by name, ingredient or keyword..."
+						placeholder="Search by name, ingredient, keyword or source site..."
 						aria-label="Search recipes"
 						value={searchParams.query}
 						on:input={handleSearch}
