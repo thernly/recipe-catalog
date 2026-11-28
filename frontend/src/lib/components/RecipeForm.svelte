@@ -77,6 +77,17 @@
 			? `data:${photo.mimeType};base64,${photo.data}`
 			: (photo.url ?? '');
 
+	// The file name at the end of the photo's address; uploads have no address
+	function photoName(photo: Photo): string {
+		if (!photo.url) return 'Uploaded photo';
+		try {
+			const path = new URL(photo.url).pathname;
+			return decodeURIComponent(path.split('/').pop() || '') || photo.url;
+		} catch {
+			return photo.url;
+		}
+	}
+
 	function setPhotos(next: Photo[]) {
 		// The image address follows the main photo when it pointed at it
 		const main = photos[0]?.url ?? '';
@@ -474,6 +485,9 @@
 				{#each photos as photo, i (photo)}
 					<li class="photo-tile">
 						<img src={photoSrc(photo)} alt="Photo {i + 1}" />
+						<p class="photo-name" title={photo.url || undefined}>
+							{photoName(photo)}
+						</p>
 						<div class="photo-actions">
 							{#if i === 0}
 								<span class="main-badge">Main photo</span>
@@ -866,6 +880,14 @@
 		aspect-ratio: 4 / 3;
 		object-fit: cover;
 		display: block;
+	}
+
+	/* Shown in full: size suffixes at the end tell copies apart */
+	.photo-name {
+		padding: 0.5rem 0.5rem 0;
+		font-size: 0.75rem;
+		color: var(--text-600);
+		overflow-wrap: anywhere;
 	}
 
 	.photo-actions {
