@@ -159,9 +159,72 @@ describe("RecipeForm", () => {
       confirm.mockRestore();
     });
 
-    it("has no photos section for a recipe without photos", () => {
-      const { queryByRole } = render(RecipeForm);
-      expect(queryByRole("heading", { name: "Photos" })).toBeNull();
+    const pick = (container: HTMLElement, file: File) => {
+      const input =
+        container.querySelector<HTMLInputElement>('input[type="file"]')!;
+      Object.defineProperty(input, "files", {
+        value: [file],
+        configurable: true,
+      });
+      return fireEvent.change(input);
+    };
+
+    it("adds a photo to a recipe that had none", async () => {
+      const onSubmit = vi.fn();
+      const { container, getByRole } = render(RecipeForm, {
+        props: {
+          recipe: {
+            ...recipe,
+            recipe_data: { ...recipe.recipe_data, images: [] },
+          },
+        },
+        events: { submit: onSubmit },
+      });
+
+      await pick(container, new File(["abc"], "a.png", { type: "image/png" }));
+      await waitFor(() => getByRole("img", { name: "Photo 1" }));
+      await fireEvent.submit(container.querySelector("form")!);
+
+      expect(onSubmit.mock.calls[0][0].detail.recipe_data.images).toEqual([
+        { url: "", data: btoa("abc"), mimeType: "image/png" },
+      ]);
+    });
+
+    it("stops offering to add a photo at five", async () => {
+      const photo = (n: number) => ({
+        url: "",
+        data: `D${n}`,
+        mimeType: "image/png",
+      });
+      const { container, getByText } = render(RecipeForm, {
+        props: {
+          recipe: {
+            ...recipe,
+            recipe_data: {
+              ...recipe.recipe_data,
+              images: [1, 2, 3, 4, 5].map(photo),
+            },
+          },
+        },
+      });
+
+      expect(container.querySelector('input[type="file"]')).toBeNull();
+      expect(getByText("A recipe can have 5 photos.")).toBeTruthy();
+    });
+
+    it("explains a photo that cannot be added", async () => {
+      vi.stubGlobal(
+        "createImageBitmap",
+        vi.fn().mockRejectedValue(new Error()),
+      );
+      const { container, findByRole } = render(RecipeForm);
+
+      await pick(container, new File(["x"], "a.heic", { type: "image/heic" }));
+
+      expect((await findByRole("alert")).textContent).toContain(
+        "not a picture",
+      );
+      vi.unstubAllGlobals();
     });
   });
 

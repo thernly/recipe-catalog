@@ -9,6 +9,9 @@
 	import IngredientsEditor from '#lib/components/recipe/IngredientsEditor.svelte';
 	import InstructionsEditor from '#lib/components/recipe/InstructionsEditor.svelte';
 	import Button from '#lib/components/Button.svelte';
+	import { shrinkPhoto } from '#lib/utils/shrink-photo.js';
+
+	const MAX_PHOTOS = 5; // MAX_IMAGES on the server
 
 	export let recipe: Recipe | null = null; // null for create, recipe for edit
 	export let saving = false;
@@ -88,6 +91,30 @@
 
 	function makeMainPhoto(index: number) {
 		setPhotos([photos[index], ...photos.filter((_, i) => i !== index)]);
+	}
+
+	// A photo taken or picked here, shrunk in the browser to fit the server's limit
+	let addingPhoto = false;
+	let photoError = '';
+
+	async function addPhoto(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		input.value = ''; // so the same file can be picked again
+		if (!file) return;
+		addingPhoto = true;
+		photoError = '';
+		try {
+			const photo = await shrinkPhoto(file);
+			if (photos.length < MAX_PHOTOS) setPhotos([...photos, photo]);
+		} catch (error) {
+			photoError =
+				error instanceof Error
+					? error.message
+					: 'The photo could not be added.';
+		} finally {
+			addingPhoto = false;
+		}
 	}
 
 	// Validation errors
@@ -436,48 +463,68 @@
 		</div>
 	</section>
 
-	{#if hadPhotos}
-		<section class="form-section">
-			<h2 class="section-title">Photos</h2>
-			<p class="form-help photos-help">
-				The first photo is the main one, shown on recipe cards. Removed photos
-				are deleted when you save.
-			</p>
-			{#if photos.length}
-				<ul class="photo-grid">
-					{#each photos as photo, i (photo)}
-						<li class="photo-tile">
-							<img src={photoSrc(photo)} alt="Photo {i + 1}" />
-							<div class="photo-actions">
-								{#if i === 0}
-									<span class="main-badge">Main photo</span>
-								{:else}
-									<button
-										type="button"
-										class="photo-button"
-										aria-label="Make photo {i + 1} the main photo"
-										on:click={() => makeMainPhoto(i)}
-									>
-										Make main
-									</button>
-								{/if}
+	<section class="form-section">
+		<h2 class="section-title">Photos</h2>
+		<p class="form-help photos-help">
+			The first photo is the main one, shown on recipe cards. Changes are saved
+			when you save the recipe.
+		</p>
+		{#if photos.length}
+			<ul class="photo-grid">
+				{#each photos as photo, i (photo)}
+					<li class="photo-tile">
+						<img src={photoSrc(photo)} alt="Photo {i + 1}" />
+						<div class="photo-actions">
+							{#if i === 0}
+								<span class="main-badge">Main photo</span>
+							{:else}
 								<button
 									type="button"
-									class="photo-button remove"
-									aria-label="Remove photo {i + 1}"
-									on:click={() => removePhoto(i)}
+									class="photo-button"
+									aria-label="Make photo {i + 1} the main photo"
+									on:click={() => makeMainPhoto(i)}
 								>
-									Remove
+									Make main
 								</button>
-							</div>
-						</li>
-					{/each}
-				</ul>
-			{:else}
-				<p class="form-help">No photos. Cancel to keep the ones you removed.</p>
-			{/if}
-		</section>
-	{/if}
+							{/if}
+							<button
+								type="button"
+								class="photo-button remove"
+								aria-label="Remove photo {i + 1}"
+								on:click={() => removePhoto(i)}
+							>
+								Remove
+							</button>
+						</div>
+					</li>
+				{/each}
+			</ul>
+		{:else if hadPhotos}
+			<p class="form-help">No photos. Cancel to keep the ones you removed.</p>
+		{:else}
+			<p class="form-help">No photos yet.</p>
+		{/if}
+		{#if photos.length < MAX_PHOTOS}
+			<label
+				class="btn btn-secondary btn-sm add-photo mt-3"
+				class:busy={addingPhoto}
+			>
+				{addingPhoto ? 'Adding photo…' : '+ Add photo'}
+				<input
+					type="file"
+					accept="image/*"
+					class="sr-only"
+					disabled={addingPhoto}
+					on:change={addPhoto}
+				/>
+			</label>
+		{:else}
+			<p class="form-help">A recipe can have {MAX_PHOTOS} photos.</p>
+		{/if}
+		{#if photoError}
+			<p class="error-message" role="alert">{photoError}</p>
+		{/if}
+	</section>
 
 	<!-- Ingredients Section -->
 	<IngredientsEditor
@@ -851,6 +898,23 @@
 
 	.photo-button.remove {
 		color: var(--color-error-text);
+	}
+
+	.add-photo {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		cursor: pointer;
+	}
+
+	.add-photo:focus-within {
+		outline: 2px solid var(--accent-500);
+		outline-offset: 2px;
+	}
+
+	.add-photo.busy {
+		opacity: 0.6;
+		cursor: progress;
 	}
 
 	.error-message {

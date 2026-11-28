@@ -5,10 +5,12 @@ Recipe CRUD operations.
 import base64
 import binascii
 import hashlib
+import io
 from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
+from PIL import Image
 from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,12 +32,40 @@ from app.utils.recipe_format import MAX_IMAGES
 router = APIRouter()
 
 
-def keep_stored_images(incoming: dict[str, Any], stored: dict[str, Any]) -> dict[str, Any]:
-    """The recipe's photos after an edit: stored ones, removed or reordered, never new ones.
+MAX_UPLOADED_PHOTO_BYTES = 300 * 1024
+PHOTO_FORMATS = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 
-    Pictures arrive through imports, which fetch and check them. A request may drop or
-    reorder the stored photos (matched by address and data) but not add one. Without an
-    `images` list the stored photos are kept.
+
+def uploaded_photo(image: Any) -> dict[str, str] | None:
+    """A photo added in the form, checked; None when it is not one.
+
+    It has no address, only base64 data (shrunk in the browser) that must decode to at
+    most MAX_UPLOADED_PHOTO_BYTES of a real JPEG, PNG or WebP picture.
+    """
+    if not isinstance(image, dict) or image.get("url") or not isinstance(image.get("data"), str):
+        return None
+    data = image["data"]
+    if len(data) > (MAX_UPLOADED_PHOTO_BYTES + 2) // 3 * 4:
+        return None
+    try:
+        raw = base64.b64decode(data, validate=True)
+        with Image.open(io.BytesIO(raw)) as picture:
+            mime_type = PHOTO_FORMATS.get(picture.format or "")
+            picture.verify()
+    except (binascii.Error, ValueError, OSError, Image.DecompressionBombError):
+        return None
+    if mime_type is None or mime_type not in settings.ALLOWED_IMAGE_TYPES:
+        return None
+    return {"url": "", "data": data, "mimeType": mime_type}
+
+
+def keep_stored_images(incoming: dict[str, Any], stored: dict[str, Any]) -> dict[str, Any]:
+    """The recipe's photos after an edit: stored ones removed or reordered, plus uploads.
+
+    Pictures with an address arrive through imports, which fetch and check them. A request
+    may drop or reorder the stored photos (matched by address and data) and add photos
+    taken or picked in the form (see uploaded_photo). Without an `images` list the stored
+    photos are kept.
     """
     stored_images = [image for image in stored.get("images") or [] if isinstance(image, dict)]
     if "images" not in incoming:
@@ -48,10 +78,13 @@ def keep_stored_images(incoming: dict[str, Any], stored: dict[str, Any]) -> dict
     for image in requested:
         match = (
             by_key.get((image.get("url"), image.get("data"))) if isinstance(image, dict) else None
-        )
+        ) or uploaded_photo(image)
         if match is None:
-            raise InvalidInputError(message="A photo can only be kept, removed or reordered here")
-        if not any(match is k for k in kept):
+            raise InvalidInputError(
+                message="A new photo must be a JPEG, PNG or WebP picture of 300 KB or less"
+            )
+        key = (match.get("url"), match.get("data"))
+        if not any((k.get("url"), k.get("data")) == key for k in kept):
             kept.append(match)
     return {**incoming, "images": kept}
 
@@ -207,7 +240,7 @@ async def create_recipe(
     sanitized_name = recipe_data.name or None
     sanitized_description = recipe_data.description or None
     # Shared cleanup: yield, times, parsedIngredients
-    # A new recipe has no stored photos to keep
+    # A new recipe has no stored photos to keep, only uploaded ones
     cleaned_recipe_data = clean_recipe_data(
         keep_stored_images(sanitize_recipe_data(recipe_data.recipe_data), {})
     ).data
