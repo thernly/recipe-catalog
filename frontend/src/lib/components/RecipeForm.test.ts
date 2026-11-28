@@ -136,6 +136,31 @@ describe("RecipeForm", () => {
       expect(data.image_url).toBe(second.url);
     });
 
+    it("shows each photo's file name", () => {
+      const { getByText } = render(RecipeForm, {
+        props: {
+          recipe: {
+            ...withPhotos,
+            recipe_data: {
+              ...withPhotos.recipe_data,
+              images: [
+                first,
+                {
+                  ...second,
+                  url: "https://example.com/up/pizza%20dough-1024x683.jpg?w=2",
+                },
+                { url: "", data: "Qw==", mimeType: "image/png" },
+              ],
+            },
+          },
+        },
+      });
+
+      expect(getByText("a.jpg")).toBeTruthy();
+      expect(getByText("pizza dough-1024x683.jpg")).toBeTruthy();
+      expect(getByText("Uploaded photo")).toBeTruthy();
+    });
+
     it("can remove every photo", async () => {
       const data = await saved(["Remove photo 2", "Remove photo 1"]);
 
