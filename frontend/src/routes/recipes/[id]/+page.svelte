@@ -628,14 +628,14 @@
 				{/if}
 
 				<!-- Tags -->
-				{#if recipe.cuisine || recipe.category || recipe.recipe_data?.keywords}
+				{#if recipe.cuisine || recipe.categories?.length || recipe.recipe_data?.keywords}
 					<div class="flex flex-wrap gap-2 mb-8">
 						{#if recipe.cuisine}
 							<span class="tag">{recipe.cuisine}</span>
 						{/if}
-						{#if recipe.category}
-							<span class="tag tag-secondary">{recipe.category}</span>
-						{/if}
+						{#each recipe.categories ?? [] as category (category)}
+							<span class="tag tag-secondary">{category}</span>
+						{/each}
 						{#if recipe.recipe_data?.keywords}
 							{#each recipe.recipe_data.keywords
 								.split(',')

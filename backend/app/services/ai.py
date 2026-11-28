@@ -351,7 +351,7 @@ Important:
         if mode == "catalog-first" and household_recipes:
             prompt += "\nMode: Catalog-first - Prioritize using recipes from the user's catalog below:\n\n"
             for recipe in household_recipes[:MAX_RECIPES_IN_PROMPT]:
-                prompt += f"- ID: {recipe.get('id')}, Name: {recipe.get('name')}, Category: {recipe.get('category', 'N/A')}\n"
+                prompt += f"- ID: {recipe.get('id')}, Name: {recipe.get('name')}, Category: {recipe.get('category') or 'N/A'}\n"
             prompt += "\nIf the catalog doesn't have suitable recipes for some meals, you may suggest new recipe names.\n"
         else:
             prompt += "\nMode: AI-only - Generate creative new recipe suggestions.\n"

@@ -102,6 +102,37 @@ async def test_import_single_recipe_from_file(
 
 
 @pytest.mark.asyncio
+async def test_import_keeps_every_category(
+    client: AsyncClient, auth_headers: dict, test_household: Household
+):
+    """A site's whole recipeCategory list is kept, split and in known spellings."""
+    recipe_data = {
+        "name": "Minestrone",
+        "recipeIngredient": ["beans"],
+        "recipeCategory": ["soup", "dinner, main course", "Soup"],
+    }
+    files = {"file": ("recipe.json", BytesIO(json.dumps(recipe_data).encode()), "application/json")}
+
+    response = await client.post(
+        "/api/v1/import/recipes",
+        data={"duplicate_handling": "skip"},
+        files=files,
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200, response.text
+    recipe_id = response.json()["details"]["items"][0]["recipe_id"]
+    saved = await client.get(f"/api/v1/recipes/{recipe_id}", headers=auth_headers)
+    assert saved.json()["categories"] == ["Soup", "Dinner", "Main Course"]
+    assert saved.json()["recipe_data"]["recipeCategory"] == ["Soup", "Dinner", "Main Course"]
+    # Export gives the list back
+    exported = await client.get(
+        f"/api/v1/recipes/{recipe_id}/export?format=json", headers=auth_headers
+    )
+    assert exported.json()["recipeCategory"] == ["Soup", "Dinner", "Main Course"]
+
+
+@pytest.mark.asyncio
 async def test_import_multiple_recipes_from_file(
     client: AsyncClient, auth_headers: dict, test_household: Household
 ):

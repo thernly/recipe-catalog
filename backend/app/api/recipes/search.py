@@ -15,6 +15,7 @@ from app.core.deps import get_current_user, get_user_household
 from app.models.collection import RecipeCollection
 from app.models.household import Household
 from app.models.recipe import Recipe
+from app.models.recipe_category import RecipeCategory
 from app.models.user import User, UserPreferences
 from app.schemas.recipe import RecipeSearchResult, RecipeSummary
 
@@ -36,6 +37,25 @@ def _option_filter(column: Any, selected: list[str], known: list[str]) -> Any:
     if OTHER in wanted:
         known_lower = {k.lower() for k in known} - {OTHER}
         clauses.append(or_(column.is_(None), column == "", func.lower(column).not_in(known_lower)))
+    return or_(*clauses)
+
+
+def _recipes_in_categories(names: set[str]) -> Any:
+    """Ids of recipes with at least one category in `names` (lower-cased)."""
+    return select(RecipeCategory.recipe_id).where(func.lower(RecipeCategory.name).in_(names))
+
+
+def _category_filter(selected: list[str], known: list[str]) -> Any:
+    """A recipe matches when any of its categories is checked. "Other" matches a
+    recipe none of whose categories is a known option, including one with none."""
+    wanted = {s.lower() for s in selected}
+    clauses: list[Any] = []
+    exact = wanted - {OTHER}
+    if exact:
+        clauses.append(Recipe.id.in_(_recipes_in_categories(exact)))
+    if OTHER in wanted:
+        known_lower = {k.lower() for k in known} - {OTHER}
+        clauses.append(Recipe.id.not_in(_recipes_in_categories(known_lower)))
     return or_(*clauses)
 
 
@@ -114,7 +134,9 @@ async def search_recipes(
                 Recipe.name.ilike(search_term),
                 Recipe.description.ilike(search_term),
                 Recipe.cuisine.ilike(search_term),
-                Recipe.category.ilike(search_term),
+                Recipe.id.in_(
+                    select(RecipeCategory.recipe_id).where(RecipeCategory.name.ilike(search_term))
+                ),
                 # "nytimes" finds every recipe imported from that site
                 Recipe.source_url.ilike(search_term),
                 # Ingredients and keywords live inside the recipe JSON ("chicken"
@@ -138,7 +160,7 @@ async def search_recipes(
             stmt = stmt.where(_option_filter(Recipe.cuisine, cuisine, known))
         if category:
             known = DEFAULT_CATEGORIES + (prefs.custom_categories if prefs else [])
-            stmt = stmt.where(_option_filter(Recipe.category, category, known))
+            stmt = stmt.where(_category_filter(category, known))
 
     if source_type:
         stmt = stmt.where(Recipe.source_type.in_(source_type))

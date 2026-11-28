@@ -101,8 +101,17 @@
 				{#if recipe.cuisine}
 					<span class="badge">{recipe.cuisine}</span>
 				{/if}
-				{#if recipe.category}
-					<span class="badge badge-secondary">{recipe.category}</span>
+				<!-- The card is small: two categories, then a count of the rest -->
+				{#each (recipe.categories ?? []).slice(0, 2) as category (category)}
+					<span class="badge badge-secondary">{category}</span>
+				{/each}
+				{#if (recipe.categories?.length ?? 0) > 2}
+					<span
+						class="badge badge-secondary"
+						title={recipe.categories?.slice(2).join(', ')}
+					>
+						+{(recipe.categories?.length ?? 0) - 2}
+					</span>
 				{/if}
 			</div>
 			{#if !canEdit && recipe.creator_display_name}

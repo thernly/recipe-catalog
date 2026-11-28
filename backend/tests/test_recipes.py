@@ -61,7 +61,7 @@ async def test_create_recipe_success(client: AsyncClient, auth_headers: dict):
             "instructions": ["Mix ingredients", "Bake at 350F"],
         },
         "cuisine": "Italian",
-        "category": "Dessert",
+        "categories": ["Dessert", "Baking"],
         "total_time_minutes": 30,
     }
 
@@ -76,7 +76,9 @@ async def test_create_recipe_success(client: AsyncClient, auth_headers: dict):
     assert data["name"] == "Test Recipe"
     assert data["description"] == "A delicious test recipe"
     assert data["cuisine"] == "Italian"
-    assert data["category"] == "Dessert"
+    assert data["categories"] == ["Dessert", "Baking"]
+    # The schema.org copy is kept equal to the stored categories
+    assert data["recipe_data"]["recipeCategory"] == ["Dessert", "Baking"]
     assert data["total_time_minutes"] == 30
     assert "id" in data
     assert "created_at" in data
@@ -217,6 +219,90 @@ async def test_search_finds_recipes_by_source_site(client: AsyncClient, auth_hea
     found = response.json()["recipes"]
     assert [r["name"] for r in found] == ["Roast Chicken"]
     assert found[0]["source_url"] == "https://cooking.nytimes.com/recipes/1"
+
+
+async def _create_with_categories(client: AsyncClient, headers: dict, name: str, *categories: str):
+    created = await client.post(
+        "/api/v1/recipes/",
+        json={"name": name, "recipe_data": {}, "categories": list(categories)},
+        headers=headers,
+    )
+    assert created.status_code == 201, created.text
+    return created.json()
+
+
+async def _search_names(client: AsyncClient, headers: dict, **params) -> list[str]:
+    response = await client.get("/api/v1/recipes/search", params=params, headers=headers)
+    assert response.status_code == 200, response.text
+    return sorted(r["name"] for r in response.json()["recipes"])
+
+
+@pytest.mark.asyncio
+async def test_search_category_matches_any_of_several(client: AsyncClient, auth_headers: dict):
+    await _create_with_categories(client, auth_headers, "Minestrone", "Soup", "Dinner")
+    await _create_with_categories(client, auth_headers, "Pancakes", "Breakfast")
+    await _create_with_categories(client, auth_headers, "Roast", "Dinner")
+
+    assert await _search_names(client, auth_headers, category="soup") == ["Minestrone"]
+    assert await _search_names(client, auth_headers, category="Dinner") == ["Minestrone", "Roast"]
+    # Several checked: any of them; a recipe is listed once
+    assert await _search_names(client, auth_headers, category=["Soup", "Dinner"]) == [
+        "Minestrone",
+        "Roast",
+    ]
+    # Text search looks at every category too
+    assert await _search_names(client, auth_headers, query="soup") == ["Minestrone"]
+    # List rows carry the names, and known spellings are normalized ("soup" -> "Soup")
+    response = await client.get(
+        "/api/v1/recipes/search", params={"query": "Minestrone"}, headers=auth_headers
+    )
+    assert response.json()["recipes"][0]["categories"] == ["Soup", "Dinner"]
+
+
+@pytest.mark.asyncio
+async def test_search_category_other_means_no_standard_category(
+    client: AsyncClient, auth_headers: dict
+):
+    await _create_with_categories(client, auth_headers, "Minestrone", "Soup", "Weeknight")
+    await _create_with_categories(client, auth_headers, "Granola", "Weeknight")
+    await _create_with_categories(client, auth_headers, "Toast")
+
+    # "Other": none of the recipe's categories is a standard one, or it has none at all
+    assert await _search_names(client, auth_headers, category="Other") == ["Granola", "Toast"]
+    assert await _search_names(client, auth_headers, category=["Other", "Soup"]) == [
+        "Granola",
+        "Minestrone",
+        "Toast",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_update_clears_categories_with_empty_list(client: AsyncClient, auth_headers: dict):
+    recipe = await _create_with_categories(client, auth_headers, "Minestrone", "Soup", "Dinner")
+    url = f"/api/v1/recipes/{recipe['id']}"
+
+    # Left out: unchanged, and a new recipe_data does not lose them
+    kept = await client.patch(url, json={"recipe_data": {"recipeYield": "6"}}, headers=auth_headers)
+    assert kept.status_code == 200, kept.text
+    assert kept.json()["categories"] == ["Soup", "Dinner"]
+    assert kept.json()["recipe_data"]["recipeCategory"] == ["Soup", "Dinner"]
+
+    # Kept categories stay in place, new ones follow, spelled like the known option
+    changed = await client.patch(url, json={"categories": ["lunch; Soup"]}, headers=auth_headers)
+    assert changed.json()["categories"] == ["Soup", "Lunch"]
+    assert changed.json()["recipe_data"]["recipeCategory"] == ["Soup", "Lunch"]
+
+    cleared = await client.patch(url, json={"categories": []}, headers=auth_headers)
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["categories"] == []
+    assert cleared.json()["recipe_data"]["recipeCategory"] == []
+    assert await _search_names(client, auth_headers, category="Soup") == []
+
+    # A copy takes the original's categories
+    await client.patch(url, json={"categories": ["Soup"]}, headers=auth_headers)
+    copy = await client.post(f"{url}/duplicate", headers=auth_headers)
+    assert copy.status_code == 201
+    assert copy.json()["categories"] == ["Soup"]
 
 
 @pytest.mark.asyncio

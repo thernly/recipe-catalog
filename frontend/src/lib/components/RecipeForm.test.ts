@@ -253,7 +253,7 @@ describe("RecipeForm", () => {
     });
   });
 
-  it("suggests the cuisines and categories the recipe list filters on", async () => {
+  it("suggests the cuisines the recipe list filters on", async () => {
     const { container } = render(RecipeForm, { props: { recipe } });
     const options = (id: string) =>
       [...container.querySelectorAll(`#${id} option`)].map((option) =>
@@ -263,10 +263,75 @@ describe("RecipeForm", () => {
     await waitFor(() =>
       expect(options("cuisine-options")).toEqual(["Italian", "Thai"]),
     );
-    expect(options("category-options")).toEqual(["Dessert"]);
     expect(container.querySelector("#cuisine")?.getAttribute("list")).toBe(
       "cuisine-options",
     );
+  });
+
+  describe("categories", () => {
+    const withCategories = { ...recipe, categories: ["Soup", "Weeknight"] };
+
+    it("offers the list's categories as tick boxes, with the recipe's own ticked", async () => {
+      const { findByLabelText, getByLabelText } = render(RecipeForm, {
+        props: { recipe: withCategories },
+      });
+
+      expect((await findByLabelText("Dessert")).matches(":checked")).toBe(
+        false,
+      );
+      expect(getByLabelText("Soup").matches(":checked")).toBe(true);
+      // A category outside the list is still shown, ticked
+      expect(getByLabelText("Weeknight").matches(":checked")).toBe(true);
+    });
+
+    it("saves the ticked categories, and [] when all are unticked", async () => {
+      const onSubmit = vi.fn();
+      const { container, findByLabelText, getByLabelText } = render(
+        RecipeForm,
+        {
+          props: { recipe: withCategories },
+          events: { submit: onSubmit },
+        },
+      );
+
+      await fireEvent.click(await findByLabelText("Dessert"));
+      await fireEvent.click(getByLabelText("Weeknight"));
+      await fireEvent.submit(container.querySelector("form")!);
+      expect(onSubmit.mock.calls[0][0].detail.categories).toEqual([
+        "Soup",
+        "Dessert",
+      ]);
+
+      await fireEvent.click(getByLabelText("Soup"));
+      await fireEvent.click(getByLabelText("Dessert"));
+      await fireEvent.submit(container.querySelector("form")!);
+      expect(onSubmit.mock.calls[1][0].detail.categories).toEqual([]);
+    });
+
+    it("adds a typed category once, spelled like the list's option", async () => {
+      const onSubmit = vi.fn();
+      const { container, findByLabelText, getByLabelText, getByRole } = render(
+        RecipeForm,
+        { props: { recipe }, events: { submit: onSubmit } },
+      );
+      await findByLabelText("Dessert");
+      const other = getByLabelText("Other category");
+
+      await fireEvent.input(other, { target: { value: " dessert " } });
+      await fireEvent.click(getByRole("button", { name: "Add" }));
+      await fireEvent.input(other, { target: { value: "Brunch" } });
+      await fireEvent.keyDown(other, { key: "Enter" });
+      await fireEvent.input(other, { target: { value: "brunch" } });
+      await fireEvent.click(getByRole("button", { name: "Add" }));
+
+      expect(getByLabelText("Brunch").matches(":checked")).toBe(true);
+      expect((other as HTMLInputElement).value).toBe("");
+      await fireEvent.submit(container.querySelector("form")!);
+      expect(onSubmit.mock.calls[0][0].detail.categories).toEqual([
+        "Dessert",
+        "Brunch",
+      ]);
+    });
   });
 });
 

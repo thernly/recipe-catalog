@@ -71,7 +71,9 @@ async def convert_to_schema_org(recipe_db: Any, *, fetch_images: bool = True) ->
         "prepTime": recipe_data.get("prepTime", ""),
         "cookTime": recipe_data.get("cookTime", ""),
         "totalTime": recipe_data.get("totalTime", ""),
-        "recipeCategory": _ensure_array(recipe_data.get("recipeCategory") or recipe_db.category),
+        "recipeCategory": _ensure_array(
+            recipe_data.get("recipeCategory") or getattr(recipe_db, "category_names", None)
+        ),
         "recipeCuisine": _ensure_array(recipe_data.get("recipeCuisine") or recipe_db.cuisine),
         "keywords": recipe_data.get("keywords", ""),
         "recipeIngredient": recipe_data.get("recipeIngredient", []),
@@ -289,12 +291,8 @@ async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, An
         images_data.append(largest_image([await _with_data(image) for image in group]))
     image_url = next((image["url"] for image in images_data if image["url"]), None)
 
-    # Extract category and cuisine (take first if array)
-    category = schema_recipe.get("recipeCategory")
-    if isinstance(category, list):
-        category = category[0] if len(category) > 0 else None
-    elif not category:
-        category = None
+    # Every category is kept (the importer normalizes them); cuisine is one value
+    categories = _ensure_array(schema_recipe.get("recipeCategory"))
 
     cuisine = schema_recipe.get("recipeCuisine")
     if isinstance(cuisine, list):
@@ -302,7 +300,6 @@ async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, An
     elif not cuisine:
         cuisine = None
 
-    category = category[:100] if isinstance(category, str) else None
     cuisine = cuisine[:100] if isinstance(cuisine, str) else None
 
     # Calculate total time in minutes
@@ -348,7 +345,7 @@ async def convert_from_schema_org(schema_recipe: dict[str, Any]) -> dict[str, An
         "recipe_data": recipe_data,
         "source_url": source_url,
         "cuisine": cuisine,
-        "category": category,
+        "categories": categories,
         "total_time_minutes": total_time_minutes,
         "source_type": "imported",
         # Restored as recipe notes by the importer; kept out of recipe_data

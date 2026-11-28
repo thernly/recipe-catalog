@@ -526,7 +526,7 @@ async def export_all_data(
                 "source_url": recipe.source_url,
                 "source_type": recipe.source_type,
                 "cuisine": recipe.cuisine,
-                "category": recipe.category,
+                "categories": recipe.category_names,
                 "total_time_minutes": recipe.total_time_minutes,
                 "created_at": recipe.created_at.isoformat() if recipe.created_at else None,
                 "updated_at": recipe.updated_at.isoformat() if recipe.updated_at else None,
