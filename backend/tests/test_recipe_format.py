@@ -3,10 +3,13 @@ Tests for recipe format conversion utilities
 """
 
 import base64
+import io
+import os
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from PIL import Image
 
 from app.utils.recipe_format import (
     _ensure_array,
@@ -14,6 +17,8 @@ from app.utils.recipe_format import (
     _parse_duration_to_minutes,
     convert_from_schema_org,
     convert_to_schema_org,
+    dedupe_recipe_images,
+    picture_key,
 )
 from app.utils.safe_fetch import FetchResult, SafeFetchError
 
@@ -492,3 +497,136 @@ async def test_round_trip_conversion():
     assert internal_format["description"] == "Testing round trip"
     assert internal_format["recipe_data"]["recipeIngredient"] == ["1 cup flour"]
     assert internal_format["total_time_minutes"] == 30
+
+
+# Addresses from real imports: one picture listed at several sizes or crops
+WP = "https://alexandracooks.com/wp-content/uploads/2012/10/pancake211"
+NYT = "https://static01.nyt.com/images/2016/06/15/dining/15CRACKERS1/15CRACKERS1"
+
+
+@pytest.mark.parametrize(
+    "first, second",
+    [
+        (f"{WP}-225x225.jpg", f"{WP}.jpg"),
+        (f"{WP}-320x180.jpg", f"{WP}-260x195.jpg"),
+        (
+            "https://lechefswife.com/wp-content/uploads/2020/12/IMG_2456-scaled-225x225.jpg",
+            "https://lechefswife.com/wp-content/uploads/2020/12/IMG_2456-scaled.jpg",
+        ),
+        (
+            "https://junedarville.com/wp-content/uploads/2016/09/Waterzooi-scaled.jpg",
+            "https://junedarville.com/wp-content/uploads/2016/09/Waterzooi-500x375.jpg",
+        ),
+        (f"{NYT}-videoSixteenByNineJumbo1600-v2.jpg", f"{NYT}-facebookJumbo-v2.jpg"),
+        (f"{NYT}-mediumSquareAt3X.jpg", f"{NYT}-googleFourByThree.jpg"),
+    ],
+)
+def test_picture_key_matches_sizes_of_one_picture(first, second):
+    assert picture_key(first) == picture_key(second)
+
+
+@pytest.mark.parametrize(
+    "first, second",
+    [
+        # Different photos on one site
+        (
+            "https://cdn.shopify.com/s/files/1/1250/2125/files/Grissini.jpg?v=1749388970",
+            "https://cdn.shopify.com/s/files/1/1250/2125/files/Grissini_cuts.jpg?v=1749388901",
+        ),
+        # The same name in another upload folder
+        (
+            "https://example.com/wp-content/uploads/2022/01/soup.jpg",
+            "https://example.com/wp-content/uploads/2023/05/soup.jpg",
+        ),
+        # Left alone: may be different shots
+        (
+            "https://images.101cookbooks.com/blended-vegetable-soup-h.jpg?w=1200",
+            "https://images.101cookbooks.com/blended-vegetable-soup-1.jpg?w=1200",
+        ),
+    ],
+)
+def test_picture_key_keeps_different_pictures_apart(first, second):
+    assert picture_key(first) != picture_key(second)
+
+
+def _image(url, size):
+    return {"url": url, "data": "x" * size, "mimeType": "image/jpeg"}
+
+
+async def test_import_keeps_each_picture_once_at_its_largest_size():
+    sizes = {
+        f"{WP}-225x225.jpg": 10,
+        f"{WP}-260x195.jpg": 12,
+        f"{WP}.jpg": 90,
+        "https://example.com/other.jpg": 40,
+    }
+
+    async def fetch(url):
+        return _image(url, sizes[url])
+
+    with patch("app.utils.recipe_format._fetch_and_encode_image", side_effect=fetch):
+        result = await convert_from_schema_org({"name": "Dutch Baby", "image": list(sizes)})
+
+    kept = result["recipe_data"]["images"]
+    assert [image["url"] for image in kept] == [f"{WP}.jpg", "https://example.com/other.jpg"]
+    assert result["image_url"] == f"{WP}.jpg"
+
+
+async def test_import_counts_the_five_picture_limit_after_matching_sizes():
+    urls = [f"https://example.com/p{n}-500x500.jpg" for n in range(6)]
+    urls.insert(1, "https://example.com/p0-480x270.jpg")
+
+    async def fetch(url):
+        return _image(url, 5)
+
+    with patch("app.utils.recipe_format._fetch_and_encode_image", side_effect=fetch):
+        result = await convert_from_schema_org({"name": "Many", "image": urls})
+
+    assert len(result["recipe_data"]["images"]) == 5
+    assert result["recipe_data"]["images"][1]["url"] == "https://example.com/p1-500x500.jpg"
+
+
+def test_dedupe_recipe_images_keeps_the_largest_copy_where_the_picture_first_appeared():
+    thumb, full = _image(f"{WP}-225x225.jpg", 10), _image(f"{WP}.jpg", 90)
+    other = _image("https://example.com/other.jpg", 40)
+    no_address = {"url": "", "data": "abc", "mimeType": "image/png"}
+    recipe = MockRecipe(
+        image_url=thumb["url"],
+        recipe_data={"name": "Dutch Baby", "images": [thumb, other, full, no_address]},
+    )
+
+    dropped = dedupe_recipe_images(recipe)
+
+    assert dropped == [thumb]
+    assert recipe.recipe_data["images"] == [full, other, no_address]
+    assert recipe.recipe_data["name"] == "Dutch Baby"
+    assert recipe.image_url == full["url"]
+
+
+def _png(width, height, noisy):
+    picture = Image.new("RGB", (width, height), "white")
+    if noisy:  # noise compresses badly, so a small picture makes a big file
+        picture = Image.frombytes("RGB", (width, height), os.urandom(width * height * 3))
+    buffer = io.BytesIO()
+    picture.save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode()
+
+
+def test_dedupe_recipe_images_keeps_the_most_pixels_not_the_biggest_file():
+    small_big_file = {"url": f"{WP}-500x500.jpg", "data": _png(60, 60, True), "mimeType": "x"}
+    large_small_file = {"url": f"{WP}-scaled.jpg", "data": _png(400, 300, False), "mimeType": "x"}
+    assert len(small_big_file["data"]) > len(large_small_file["data"])
+    recipe = MockRecipe(recipe_data={"images": [small_big_file, large_small_file]})
+
+    dedupe_recipe_images(recipe)
+
+    assert recipe.recipe_data["images"] == [large_small_file]
+
+
+def test_dedupe_recipe_images_leaves_distinct_pictures_alone():
+    images = [_image("https://example.com/a.jpg", 5), _image("https://example.com/b.jpg", 5)]
+    recipe = MockRecipe(image_url="https://example.com/a.jpg", recipe_data={"images": images})
+    before = recipe.recipe_data
+
+    assert dedupe_recipe_images(recipe) == []
+    assert recipe.recipe_data is before
