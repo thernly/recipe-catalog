@@ -2,13 +2,17 @@
 Recipe CRUD operations.
 """
 
+import base64
+import binascii
+import hashlib
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_user_household
 from app.core.exceptions import InvalidInputError, RecipeNotFoundError
@@ -299,6 +303,44 @@ async def get_recipe(
     recipe_response.creator_display_name = creator.display_name if creator else None
 
     return recipe_response
+
+
+@router.get("/{recipe_id}/photo", response_class=Response)
+async def get_recipe_photo(
+    recipe_id: int,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    household: Household = Depends(get_user_household),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """The recipe's main photo as an image file, from its stored picture data.
+
+    Lists show photos through this rather than the picture's address on the recipe's
+    site, which can disappear. Readable by whoever can read the recipe. Revalidated on
+    every view (ETag), so a new main photo shows at once.
+    """
+    result = await db.execute(
+        select(Recipe).where(
+            Recipe.id == recipe_id,
+            Recipe.household_id == household.id,
+            or_(Recipe.deleted_at.is_(None), Recipe.user_id == current_user.id),
+        )
+    )
+    recipe = result.scalar_one_or_none()
+    photo = recipe.main_photo if recipe else None
+    # Only image types are served, so stored data can never be sent as a page or script
+    if photo is None or photo.get("mimeType") not in settings.ALLOWED_IMAGE_TYPES:
+        raise RecipeNotFoundError(recipe_id=recipe_id)
+    try:
+        content = base64.b64decode(photo["data"], validate=True)
+    except (binascii.Error, ValueError) as error:
+        raise RecipeNotFoundError(recipe_id=recipe_id) from error
+
+    etag = f'"{hashlib.sha256(content).hexdigest()[:32]}"'
+    headers = {"ETag": etag, "Cache-Control": "private, no-cache"}
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=headers)
+    return Response(content, media_type=photo["mimeType"], headers=headers)
 
 
 @router.patch("/{recipe_id}", response_model=RecipeSchema)

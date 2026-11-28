@@ -119,6 +119,8 @@ class RecipeSummary(BaseModel):
     description: str | None = None
     image_url: str | None = None
     _validate_image = field_validator("image_url", mode="before")(safe_http_url)
+    # Stored photo served by GET /recipes/{id}/photo; image_url is only the fallback
+    has_photo: bool = False
     cuisine: str | None = None
     category: str | None = None
     total_time_minutes: int | None = None

@@ -1,5 +1,7 @@
 """Recipe model."""
 
+from typing import Any
+
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -72,6 +74,21 @@ class Recipe(Base):
         cascade="all, delete-orphan",
         order_by="RecipeNote.created_at",
     )
+
+    @property
+    def main_photo(self) -> dict[str, Any] | None:
+        """The first stored photo when its picture data is stored, else None."""
+        data: Any = self.recipe_data
+        images = (data if isinstance(data, dict) else {}).get("images") or []
+        first = images[0] if images else None
+        if isinstance(first, dict) and str(first.get("data") or "").strip():
+            return first
+        return None
+
+    @property
+    def has_photo(self) -> bool:
+        """Lists show the photo through GET /recipes/{id}/photo when this is true."""
+        return self.main_photo is not None
 
     # Composite indexes for the household-scoped list and search queries.
     # Created in migration 291505919b8f; declared here so --autogenerate does not
