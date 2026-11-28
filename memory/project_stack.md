@@ -27,12 +27,13 @@ metadata:
 
 - **Framework**: FastAPI (Python)
 - **Package manager**: `uv` — use `uv run`, `uv add`, `uv sync`. Never `pip install`.
-- **Database**: SQLite locally, Cloudflare D1 in production
+- **Database**: SQLite everywhere (local, Proxmox server, Docker). Cloudflare D1 is not set up.
 
 ## Deployment
 
-- **Primary target**: Cloudflare Pages (frontend) + Cloudflare Workers (backend) + Cloudflare D1
-- **Alternative**: Self-hosted on Proxmox with Docker + nginx (static adapter for SvelteKit)
+- **Production**: Proxmox LXC, backend under systemd, nginx serving the static frontend (`scripts/proxmox/`)
+- **Alternative**: Docker Compose + nginx (static adapter for SvelteKit)
+- See `docs/operations/deployment.md`
 
 ## Auth
 

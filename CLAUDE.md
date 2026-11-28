@@ -114,7 +114,7 @@ A recipe's content lives in a single `recipe_data` JSON column in **schema.org/R
 
 `--autogenerate` only sees models registered on `Base.metadata`, which is why `alembic/env.py` imports `app.models`. A new model must be exported from `app/models/__init__.py`, and a composite index added by a migration must also be declared in the model's `__table_args__` — otherwise the next autogenerate proposes dropping it. `tests/test_migrations.py::test_env_py_metadata_is_populated` guards the import.
 
-**Database**: SQLite locally (`backend/recipes.db`), Cloudflare D1 in production. Async via `aiosqlite` + SQLAlchemy async; Alembic owns the schema. Use `app/models/_utils.py` (`utc_now`, `ensure_utc`, `is_expired`) for datetimes — SQLite returns naive values.
+**Database**: SQLite everywhere: `backend/recipes.db` locally, `data/recipes.db` on the Proxmox server and in Docker (`docs/operations/deployment.md`). Cloudflare D1 is not set up. Async via `aiosqlite` + SQLAlchemy async; Alembic owns the schema. Use `app/models/_utils.py` (`utc_now`, `ensure_utc`, `is_expired`) for datetimes — SQLite returns naive values.
 
 **Soft delete**: recipes have `deleted_at`; collections are hard-deleted. Most queries must filter `WHERE deleted_at IS NULL`. Purging is a **manual operator step** (see `docs/operations/runbook.md`) — the startup `cleanup_expired_data()` only removes expired OAuth states, so nothing auto-deletes trashed records.
 
