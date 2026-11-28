@@ -115,6 +115,8 @@ async def search_recipes(
                 Recipe.description.ilike(search_term),
                 Recipe.cuisine.ilike(search_term),
                 Recipe.category.ilike(search_term),
+                # "nytimes" finds every recipe imported from that site
+                Recipe.source_url.ilike(search_term),
                 # Ingredients and keywords live inside the recipe JSON ("chicken"
                 # finds a recipe that merely contains chicken).
                 # ponytail: a text scan of each recipe's JSON, fine for one
