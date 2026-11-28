@@ -25,6 +25,7 @@
 	import AddToShoppingListDialog from '#lib/components/AddToShoppingListDialog.svelte';
 	import RecipeNotes from '#lib/components/RecipeNotes.svelte';
 	import RecipeCooking from '#lib/components/recipe/RecipeCooking.svelte';
+	import RecipePhotos from '#lib/components/recipe/RecipePhotos.svelte';
 	import RecipeCollectionsMenu from '#lib/components/RecipeCollectionsMenu.svelte';
 	import { auth } from '#lib/stores/auth.js';
 	import { favorites } from '#lib/stores/favorites.js';
@@ -566,19 +567,11 @@
 			<!-- Main content -->
 			<div class="container-custom py-8 recipe-content">
 				<!-- Hero Image -->
-				{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
-					<div class="recipe-hero-image mb-6">
-						<img
-							src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe
-								.recipe_data.images[0].data}"
-							alt={recipe.name}
-						/>
-					</div>
-				{:else if recipe.image_url}
-					<div class="recipe-hero-image mb-6">
-						<img src={recipe.image_url} alt={recipe.name} />
-					</div>
-				{/if}
+				<RecipePhotos
+					images={recipe.recipe_data?.images}
+					imageUrl={recipe.image_url}
+					name={recipe.name}
+				/>
 				<!-- Description -->
 				{#if recipe.description}
 					<p
@@ -1114,50 +1107,6 @@
 	.recipe-header {
 		background: var(--neutral-50);
 		border-bottom: 1px solid var(--neutral-200);
-	}
-
-	.recipe-hero-image {
-		width: 100%;
-		height: 50vh;
-		max-height: 500px;
-		min-height: 300px;
-		overflow: hidden;
-		background: var(--neutral-100);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: var(--radius-xl);
-		margin: 0 auto;
-		box-shadow: var(--shadow-lg);
-		position: relative;
-	}
-
-	.recipe-hero-image::after {
-		content: '';
-		position: absolute;
-		bottom: 0;
-		left: 0;
-		right: 0;
-		height: 60%;
-		background: linear-gradient(
-			to top,
-			rgba(0, 0, 0, 0.5) 0%,
-			rgba(0, 0, 0, 0.2) 40%,
-			transparent 100%
-		);
-		pointer-events: none;
-		border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-	}
-
-	.recipe-hero-image img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		transition: transform var(--transition-slow);
-	}
-
-	.recipe-hero-image:hover img {
-		transform: scale(1.02);
 	}
 
 	.metadata-card-consolidated {
