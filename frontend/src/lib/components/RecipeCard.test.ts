@@ -155,27 +155,14 @@ describe("RecipeCard", () => {
     expect(img?.alt).toBe("Test Recipe");
   });
 
-  it("should render base64 image when provided", () => {
-    const recipeWithBase64 = {
-      ...mockRecipe,
-      recipe_data: {
-        images: [
-          {
-            data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-            mimeType: "image/png",
-            url: "",
-          },
-        ],
-      },
-    };
-
+  it("shows the stored photo, not the address on the recipe's site", () => {
+    // The list carries no picture data; the app serves the stored photo
     const { container } = render(RecipeCard, {
-      props: { recipe: recipeWithBase64 },
+      props: { recipe: { ...mockRecipe, id: 17, has_photo: true } },
     });
 
     const img = container.querySelector("img");
-    expect(img).toBeTruthy();
-    expect(img?.src).toContain("data:image/png;base64");
+    expect(img?.getAttribute("src")).toBe("/api/v1/recipes/17/photo");
   });
 
   it("should render placeholder when no image provided", () => {

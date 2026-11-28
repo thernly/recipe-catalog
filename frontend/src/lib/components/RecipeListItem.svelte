@@ -2,6 +2,7 @@
 	import type { RecipeSummary } from '#lib/api/recipes.js';
 	import { auth } from '#lib/stores/auth.js';
 	import { favorites } from '#lib/stores/favorites.js';
+	import { recipeImageSrc } from '#lib/utils/recipe-image.js';
 	import {
 		UtensilsCrossed,
 		Clock,
@@ -20,6 +21,8 @@
 		undefined;
 	export let onfavorite: ((recipe: RecipeSummary) => void) | undefined =
 		undefined;
+
+	$: imageSrc = recipeImageSrc(recipe);
 
 	// Only the member who added a recipe can edit or delete it
 	$: canEdit =
@@ -63,17 +66,11 @@
 			on:click={href ? undefined : handleView}
 			class="recipe-list-thumbnail block shrink-0"
 		>
-			{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
+			{#if imageSrc}
 				<img
-					src="data:{recipe.recipe_data.images[0].mimeType};base64,{recipe
-						.recipe_data.images[0].data}"
+					src={imageSrc}
 					alt={recipe.name}
-					class="w-full h-full object-cover"
-				/>
-			{:else if recipe.image_url}
-				<img
-					src={recipe.image_url}
-					alt={recipe.name}
+					loading="lazy"
 					class="w-full h-full object-cover"
 				/>
 			{:else}

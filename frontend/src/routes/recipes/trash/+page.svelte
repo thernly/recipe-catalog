@@ -9,6 +9,7 @@
 	} from '#lib/api/recipes.js';
 	import { dialog } from '#lib/stores/dialog.js';
 	import { toast } from '#lib/stores/toast.js';
+	import { recipeImageSrc } from '#lib/utils/recipe-image.js';
 
 	let recipes: RecipeSummary[] = [];
 	let loading = true;
@@ -173,20 +174,12 @@
 					<article class="trash-item">
 						<!-- Recipe info -->
 						<div class="flex items-start gap-4 flex-1">
-							{#if recipe.recipe_data?.images?.[0]?.data && recipe.recipe_data.images[0].data.trim()}
+							{#if recipeImageSrc(recipe)}
 								<div class="trash-item-thumbnail">
 									<img
-										src="data:{recipe.recipe_data.images[0]
-											.mimeType};base64,{recipe.recipe_data.images[0].data}"
+										src={recipeImageSrc(recipe)}
 										alt={recipe.name}
-										class="w-full h-full object-cover"
-									/>
-								</div>
-							{:else if recipe.image_url}
-								<div class="trash-item-thumbnail">
-									<img
-										src={recipe.image_url}
-										alt={recipe.name}
+										loading="lazy"
 										class="w-full h-full object-cover"
 									/>
 								</div>

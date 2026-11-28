@@ -44,7 +44,8 @@ export interface RecipeSummary {
   name: string;
   description?: string;
   image_url?: string;
-  recipe_data?: RecipeData;
+  /** A stored photo exists; lists show it via recipeImageSrc. */
+  has_photo?: boolean;
   cuisine?: string;
   category?: string;
   total_time_minutes?: number;
